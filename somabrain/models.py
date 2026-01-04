@@ -26,6 +26,8 @@ class OutboxEvent(models.Model):
     last_error = models.TextField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'outbox_events'
         constraints = [
             models.UniqueConstraint(
@@ -42,9 +44,13 @@ class OutboxEvent(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
+        """Return string representation."""
+
         return f"OutboxEvent(id={self.id}, topic='{self.topic}', status='{self.status}')"
     
     def __repr__(self):
+        """Return object representation."""
+
         return self.__str__()
 
 
@@ -65,6 +71,8 @@ class EpisodicSnapshot(models.Model):
     policy_tags = models.JSONField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'episodic_snapshots'
         indexes = [
             models.Index(fields=['tenant_id', 'namespace', 'key']),
@@ -74,9 +82,13 @@ class EpisodicSnapshot(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
+        """Return string representation."""
+
         return f"EpisodicSnapshot(id={self.id}, tenant_id={self.tenant_id}, key='{self.key}')"
     
     def __repr__(self):
+        """Return object representation."""
+
         return self.__str__()
 
 
@@ -95,6 +107,8 @@ class SleepState(models.Model):
     metadata = models.JSONField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'sleep_states'
         indexes = [
             models.Index(fields=['tenant_id', 'timestamp']),
@@ -103,6 +117,8 @@ class SleepState(models.Model):
         ordering = ['-timestamp']
     
     def __str__(self):
+        """Return string representation."""
+
         return f"SleepState(tenant={self.tenant_id}, state={self.state})"
 
 
@@ -123,6 +139,8 @@ class CognitiveThread(models.Model):
     metadata = models.JSONField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'cognitive_threads'
         indexes = [
             models.Index(fields=['tenant_id', 'status']),
@@ -132,6 +150,8 @@ class CognitiveThread(models.Model):
         ordering = ['-updated_at']
     
     def __str__(self):
+        """Return string representation."""
+
         return f"CognitiveThread(id={self.thread_id}, tenant={self.tenant_id})"
 
 
@@ -151,6 +171,8 @@ class TokenLedger(models.Model):
     metadata = models.JSONField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'token_ledger'
         indexes = [
             models.Index(fields=['tenant_id', 'timestamp']),
@@ -159,6 +181,8 @@ class TokenLedger(models.Model):
         ordering = ['-timestamp']
     
     def __str__(self):
+        """Return string representation."""
+
         return f"TokenLedger(tenant={self.tenant_id}, tokens={self.tokens_used})"
 
 
@@ -179,6 +203,8 @@ class FeedbackRecord(models.Model):
     metadata = models.JSONField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'feedback_records'
         indexes = [
             models.Index(fields=['tenant_id', 'timestamp']),
@@ -188,6 +214,8 @@ class FeedbackRecord(models.Model):
         ordering = ['-timestamp']
     
     def __str__(self):
+        """Return string representation."""
+
         return f"FeedbackRecord(id={self.feedback_id}, tenant={self.tenant_id}, rating={self.rating})"
 
 
@@ -205,6 +233,8 @@ class ConstitutionVersion(models.Model):
     is_active = models.BooleanField(default=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'constitution_versions'
         ordering = ['-created_at']
         indexes = [
@@ -212,6 +242,8 @@ class ConstitutionVersion(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         return f"ConstitutionVersion(checksum={self.checksum[:12]}, active={self.is_active})"
 
 
@@ -229,6 +261,8 @@ class ConstitutionSignature(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'constitution_signatures'
         constraints = [
             models.UniqueConstraint(
@@ -242,4 +276,6 @@ class ConstitutionSignature(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         return f"ConstitutionSignature(checksum={self.checksum[:12]}, signer={self.signer_id})"

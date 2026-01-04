@@ -23,6 +23,8 @@ except Exception:
 
 @dataclass
 class ScorerWeights:
+    """Scorerweights class implementation."""
+
     w_cosine: float
     w_fd: float
     w_recency: float
@@ -57,6 +59,8 @@ class UnifiedScorer:
         recency_tau: float,
         fd_backend: Optional[FDSalienceSketch] = None,
     ) -> None:
+        """Initialize the instance."""
+
         lo, hi = sorted((float(weight_min), float(weight_max)))
         cosine_val = _gain_setting("w_cosine")
         fd_val = _gain_setting("w_fd")
@@ -73,6 +77,15 @@ class UnifiedScorer:
         self._weight_bounds = (lo, hi)
 
     def _clamp(self, component: str, value: float, lo: float, hi: float) -> float:
+        """Execute clamp.
+
+            Args:
+                component: The component.
+                value: The value.
+                lo: The lo.
+                hi: The hi.
+            """
+
         v = float(value)
         if v < lo:
             if M:
@@ -90,6 +103,13 @@ class UnifiedScorer:
         return cosine_similarity(a, b)
 
     def _fd_component(self, query: np.ndarray, candidate: np.ndarray) -> float:
+        """Execute fd component.
+
+            Args:
+                query: The query.
+                candidate: The candidate.
+            """
+
         if self._fd is None:
             return 0.0
         q_proj = self._fd.project(query)
@@ -98,6 +118,12 @@ class UnifiedScorer:
         return cosine_similarity(q_proj, c_proj)
 
     def _recency_component(self, recency_steps: Optional[int]) -> float:
+        """Execute recency component.
+
+            Args:
+                recency_steps: The recency_steps.
+            """
+
         if recency_steps is None:
             return 0.0
         age = max(0.0, float(recency_steps))
@@ -113,6 +139,13 @@ class UnifiedScorer:
         recency_steps: Optional[int] = None,
         cosine: Optional[float] = None,
     ) -> float:
+        """Execute score.
+
+            Args:
+                query: The query.
+                candidate: The candidate.
+            """
+
         q = np.asarray(query, dtype=float).reshape(-1)
         c = np.asarray(candidate, dtype=float).reshape(-1)
         cos = float(cosine) if cosine is not None else self._cosine(q, c)
@@ -137,6 +170,9 @@ class UnifiedScorer:
         return total_score
 
     def stats(self) -> dict[str, float | dict[str, float | bool]]:
+        """Execute stats.
+            """
+
         info: dict[str, float | dict[str, float | bool]] = {
             "w_cosine": self._weights.w_cosine,
             "w_fd": self._weights.w_fd,

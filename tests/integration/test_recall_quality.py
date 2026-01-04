@@ -1,3 +1,5 @@
+"""Module test_recall_quality."""
+
 from __future__ import annotations
 
 import time
@@ -24,6 +26,9 @@ API_URL = settings.SOMABRAIN_API_URL or "http://localhost:9696"
 
 
 def _memory_available() -> bool:
+    """Execute memory available.
+        """
+
     try:
         headers = {"Authorization": f"Bearer {MEM_TOKEN}"} if MEM_TOKEN else {}
         url = MEM_URL.rstrip("/")
@@ -38,6 +43,9 @@ def _memory_available() -> bool:
 
 
 def _api_available() -> bool:
+    """Execute api available.
+        """
+
     try:
         base = API_URL or "http://localhost:9696"
         r = httpx.get(f"{base.rstrip('/')}/health", timeout=2.0)
@@ -51,6 +59,9 @@ def _api_available() -> bool:
 
 @pytest.fixture(scope="session")
 def http_client() -> httpx.Client:
+    """Execute http client.
+        """
+
     if not MEM_TOKEN:
         pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN must be set for workbench tests")
     if not _memory_available():
@@ -66,12 +77,29 @@ def http_client() -> httpx.Client:
 
 
 def _remember(client: httpx.Client, tenant: str, text: str) -> None:
+    """Execute remember.
+
+        Args:
+            client: The client.
+            tenant: The tenant.
+            text: The text.
+        """
+
     payload = {"payload": {"task": text, "content": text, "memory_type": "episodic"}}
     r = client.post("/memory/remember", headers={"X-Tenant-ID": tenant}, json=payload)
     assert r.status_code == 200, r.text
 
 
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
+    """Execute recall texts.
+
+        Args:
+            client: The client.
+            tenant: The tenant.
+            query: The query.
+            k: The k.
+        """
+
     r = client.post(
         "/memory/recall",
         headers={"X-Tenant-ID": tenant},
@@ -85,6 +113,12 @@ def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List
 
 
 def test_recall_quality_basic(http_client: httpx.Client) -> None:
+    """Execute test recall quality basic.
+
+        Args:
+            http_client: The http_client.
+        """
+
     tenant = "workbench-quality"
     corpus = {
         "alpha solar storage": {
@@ -124,6 +158,12 @@ def test_recall_quality_basic(http_client: httpx.Client) -> None:
 
 
 def test_multi_tenant_isolation(http_client: httpx.Client) -> None:
+    """Execute test multi tenant isolation.
+
+        Args:
+            http_client: The http_client.
+        """
+
     tenant_a = "workbench-tenant-a"
     tenant_b = "workbench-tenant-b"
     text_a = "alpha unique payload"
@@ -141,6 +181,12 @@ def test_multi_tenant_isolation(http_client: httpx.Client) -> None:
 
 
 def test_recall_includes_degraded_flag(http_client: httpx.Client) -> None:
+    """Execute test recall includes degraded flag.
+
+        Args:
+            http_client: The http_client.
+        """
+
     tenant = "workbench-degraded"
     r = http_client.post(
         "/memory/recall",

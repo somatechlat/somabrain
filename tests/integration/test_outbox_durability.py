@@ -1,3 +1,5 @@
+"""Module test_outbox_durability."""
+
 from __future__ import annotations
 
 import asyncio
@@ -17,6 +19,9 @@ MEM_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
 
 
 def _memory_available() -> bool:
+    """Execute memory available.
+        """
+
     try:
         headers = {"Authorization": f"Bearer {MEM_TOKEN}"} if MEM_TOKEN else {}
         url = MEM_URL.rstrip("/")
@@ -32,6 +37,9 @@ def _memory_available() -> bool:
 @pytest.mark.integration
 @pytest.mark.django_db
 def test_outbox_event_replays_when_memory_available() -> None:
+    """Execute test outbox event replays when memory available.
+        """
+
     if not MEM_TOKEN:
         pytest.skip(
             "SOMABRAIN_MEMORY_HTTP_TOKEN must be set for outbox durability test"

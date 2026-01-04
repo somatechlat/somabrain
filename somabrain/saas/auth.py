@@ -227,6 +227,8 @@ class GoogleOAuth:
     """
     
     def __init__(self):
+        """Initialize the instance."""
+
         self.client_id = getattr(settings, "GOOGLE_OAUTH_CLIENT_ID", None)
         self.client_secret = getattr(settings, "GOOGLE_OAUTH_CLIENT_SECRET", None)
         self.redirect_uri = getattr(settings, "GOOGLE_OAUTH_REDIRECT_URI", None)
@@ -303,7 +305,19 @@ def require_scope(scope: str):
             ...
     """
     def decorator(func):
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         def wrapper(request, *args, **kwargs):
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             auth = getattr(request, "auth", {})
             scopes = auth.get("scopes", [])
             
@@ -402,10 +416,22 @@ def require_auth(roles: list = None, any_role: bool = False):
             ...
     """
     def decorator(func):
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         from functools import wraps
         
         @wraps(func)
         def wrapper(request, *args, **kwargs):
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             from ninja.errors import HttpError
             
             # Check for JWT auth
@@ -592,6 +618,8 @@ class MultiAuth:
     """
     
     def __init__(self, auth_classes: list):
+        """Initialize the instance."""
+
         self.auth_classes = auth_classes
     
     def __call__(self, request: HttpRequest) -> Optional[dict]:

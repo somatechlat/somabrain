@@ -12,6 +12,9 @@ import httpx
 
 
 def load_manifest():
+    """Execute load manifest.
+        """
+
     paths = sorted(glob.glob("artifacts/benchmarks/seed_manifest_*.json"))
     if not paths:
         raise RuntimeError("No seed manifest found in artifacts/benchmarks/")
@@ -20,6 +23,14 @@ def load_manifest():
 
 
 def eval_precision_recall(base_url: str, items, k=5):
+    """Execute eval precision recall.
+
+        Args:
+            base_url: The base_url.
+            items: The items.
+            k: The k.
+        """
+
     client = httpx.Client(timeout=20.0)
     url = base_url.rstrip("/") + "/memory/recall"
     results = []
@@ -46,6 +57,9 @@ def eval_precision_recall(base_url: str, items, k=5):
 
 
 def main():
+    """Execute main.
+        """
+
     manifest = load_manifest()
     base_url = manifest.get("base_url", "http://localhost:9696")
     items = manifest.get("items", [])

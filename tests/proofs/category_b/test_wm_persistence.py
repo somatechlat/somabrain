@@ -68,9 +68,18 @@ class TestWMPersistence:
             """Minimal memory client for testing WM persistence."""
 
             def __init__(self):
+                """Initialize the instance."""
+
                 self._stored: Dict[str, Dict[str, Any]] = {}
 
             async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
+                """Execute aremember.
+
+                    Args:
+                        key: The key.
+                        payload: The payload.
+                    """
+
                 self._stored[key] = payload
                 return True
 
@@ -78,6 +87,13 @@ class TestWMPersistence:
                 self, query: str, top_k: int = 10
             ) -> List[tuple[float, Dict[str, Any]]]:
                 # Return all stored items that match the query criteria
+                """Execute arecall.
+
+                    Args:
+                        query: The query.
+                        top_k: The top_k.
+                    """
+
                 results = []
                 for key, payload in self._stored.items():
                     if key.startswith("wm:"):
@@ -105,6 +121,9 @@ class TestWMPersistence:
 
         # Persist items using the persister
         async def persist_items():
+            """Execute persist items.
+                """
+
             await persister.start()
             for item in wm._items:
                 await persister.queue_persist(item)
@@ -125,6 +144,9 @@ class TestWMPersistence:
         restorer = WMRestorer(client, tenant_id, timeout_s=5.0)
 
         async def restore_wm():
+            """Execute restore wm.
+                """
+
             start = time.time()
             restored = await restorer.restore(wm2)
             elapsed = time.time() - start
@@ -153,11 +175,22 @@ class TestWMPersistence:
 
         # Create test memory client
         class TestMemoryClient:
+            """Testmemoryclient class implementation."""
+
             def __init__(self):
+                """Initialize the instance."""
+
                 self._stored = {}
                 self._store_times = []
 
             async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
+                """Execute aremember.
+
+                    Args:
+                        key: The key.
+                        payload: The payload.
+                    """
+
                 self._stored[key] = payload
                 self._store_times.append(time.time())
                 return True
@@ -177,6 +210,9 @@ class TestWMPersistence:
         )
 
         async def test_persistence():
+            """Execute test persistence.
+                """
+
             await persister.start()
             start_time = time.time()
 
@@ -212,10 +248,21 @@ class TestWMPersistence:
 
         # Create test memory client
         class TestMemoryClient:
+            """Testmemoryclient class implementation."""
+
             def __init__(self):
+                """Initialize the instance."""
+
                 self._stored = {}
 
             async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
+                """Execute aremember.
+
+                    Args:
+                        key: The key.
+                        payload: The payload.
+                    """
+
                 self._stored[key] = payload
                 return True
 
@@ -225,6 +272,9 @@ class TestWMPersistence:
 
         async def test_eviction():
             # Mark an item as evicted
+            """Execute test eviction.
+                """
+
             item_id = f"wm_{tenant_id}_1_1_12345"
             result = await persister.mark_evicted(item_id)
 
@@ -296,10 +346,19 @@ class TestWMRestorerTimeout:
 
         # Create a slow memory client
         class SlowMemoryClient:
+            """Slowmemoryclient class implementation."""
+
             async def arecall(
                 self, query: str, top_k: int = 10
             ) -> List[tuple[float, Dict[str, Any]]]:
                 # Simulate slow response
+                """Execute arecall.
+
+                    Args:
+                        query: The query.
+                        top_k: The top_k.
+                    """
+
                 await asyncio.sleep(0.1)
                 return []
 
@@ -310,6 +369,9 @@ class TestWMRestorerTimeout:
         wm = WorkingMemory(capacity=10)
 
         async def test_timeout():
+            """Execute test timeout.
+                """
+
             start = time.time()
             restored = await restorer.restore(wm)
             elapsed = time.time() - start

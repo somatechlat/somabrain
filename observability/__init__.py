@@ -1,3 +1,5 @@
+"""Module __init__."""
+
 from .provider import init_tracing, get_tracer  # noqa: F401
 from common.logging import logger  # noqa: F401
 

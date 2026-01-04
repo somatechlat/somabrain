@@ -74,9 +74,17 @@ class CognitiveMiddleware:
     """Middleware for brain-like request processing and monitoring."""
 
     def __init__(self, get_response):
+        """Initialize the instance."""
+
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        """Execute call  .
+
+            Args:
+                request: The request.
+            """
+
         request_id = f"{time.time()}_{id(request)}"
         path = request.path
         method = request.method

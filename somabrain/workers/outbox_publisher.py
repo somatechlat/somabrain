@@ -59,6 +59,9 @@ _BACKPRESSURE_ENABLED = (
 
 def _bootstrap() -> Optional[str]:
     # Prefer explicit SOMA_KAFKA_BOOTSTRAP if present (plain host:port)
+    """Execute bootstrap.
+        """
+
     direct = (getattr(settings, "KAFKA_BOOTSTRAP", "") or "").strip()
     if direct:
         return direct
@@ -69,6 +72,9 @@ def _bootstrap() -> Optional[str]:
 
 
 def _make_producer():  # pragma: no cover - optional at runtime
+    """Execute make producer.
+        """
+
     bootstrap = _bootstrap()
     if not bootstrap:
         return None
@@ -168,6 +174,9 @@ _known_pending_tenants: set[str] = set()
 
 
 def _update_outbox_pending_metrics() -> None:
+    """Execute update outbox pending metrics.
+        """
+
     if report_outbox_pending is None:
         return
     counts: dict[str, int] = {}
@@ -308,6 +317,9 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
 
 def run_forever() -> None:  # pragma: no cover - integration loop
     # Require DB and Kafka to be ready before starting
+    """Execute run forever.
+        """
+
     assert_ready(
         require_kafka=True,
         require_redis=False,
@@ -356,6 +368,9 @@ def run_forever() -> None:  # pragma: no cover - integration loop
 
 
 def main() -> None:  # pragma: no cover
+    """Execute main.
+        """
+
     run_forever()
 
 

@@ -14,6 +14,12 @@ import numpy as np
 
 
 def _hash_to_uint64(b: bytes) -> int:
+    """Execute hash to uint64.
+
+        Args:
+            b: The b.
+        """
+
     h = hashlib.blake2b(b, digest_size=8)
     return int.from_bytes(h.digest(), byteorder="little", signed=False)
 

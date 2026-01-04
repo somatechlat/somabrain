@@ -13,6 +13,9 @@ BENCH = ROOT / "cognition_core_bench.py"
 
 
 def main():
+    """Execute main.
+        """
+
     if not BENCH.exists():
         print("cognition_core_bench.py not found", file=sys.stderr)
         return 2

@@ -757,4 +757,3 @@ SERVER_EMAIL = env('SERVER_EMAIL', default='server@somabrain.ai')
 # Email subject prefix (for admin emails)
 EMAIL_SUBJECT_PREFIX = '[SomaBrain] '
 
-

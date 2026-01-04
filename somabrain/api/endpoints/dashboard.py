@@ -82,11 +82,23 @@ class TenantSummaryOut(Schema):
     
     @staticmethod
     def resolve_last_activity(obj):
+        """Execute resolve last activity.
+
+            Args:
+                obj: The obj.
+            """
+
         activity = getattr(obj, "_last_activity", None)
         return activity.isoformat() if activity else None
     
     @staticmethod
     def resolve_created_at(obj):
+        """Execute resolve created at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.created_at.isoformat()
 
 

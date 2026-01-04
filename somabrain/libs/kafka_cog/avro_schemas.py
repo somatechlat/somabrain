@@ -22,6 +22,12 @@ _BASE = _root / "proto" / "cog"
 
 
 def load_schema(name: str) -> Dict[str, Any]:
+    """Execute load schema.
+
+        Args:
+            name: The name.
+        """
+
     stem = name.strip()
     if not stem:
         raise ValueError("Empty schema name")

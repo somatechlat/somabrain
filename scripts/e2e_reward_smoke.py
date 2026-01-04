@@ -1,3 +1,5 @@
+"""Module e2e_reward_smoke."""
+
 from __future__ import annotations
 
 import json
@@ -13,14 +15,28 @@ except Exception:
     import urllib.request as _rq
 
     class _Resp:
+        """Resp class implementation."""
+
         def __init__(self, code: int, data: bytes):
+            """Initialize the instance."""
+
             self.status_code = code
             self._data = data
 
         def json(self) -> Any:
+            """Execute json.
+                """
+
             return json.loads(self._data.decode("utf-8"))
 
     def _post(url: str, json_body: Any) -> _Resp:
+        """Execute post.
+
+            Args:
+                url: The url.
+                json_body: The json_body.
+            """
+
         req = _rq.Request(
             url,
             data=json.dumps(json_body).encode("utf-8"),
@@ -32,15 +48,32 @@ except Exception:
 else:
 
     def _post(url: str, json_body: Any):
+        """Execute post.
+
+            Args:
+                url: The url.
+                json_body: The json_body.
+            """
+
         return requests.post(url, json=json_body, timeout=10)
 
 
 def _bootstrap() -> str:
+    """Execute bootstrap.
+        """
+
     url = getattr(settings, "SOMABRAIN_KAFKA_BOOTSTRAP_SERVERS", "kafka://127.0.0.1:30001")
     return str(url).replace("kafka://", "")
 
 
 def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
+    """Execute consume one.
+
+        Args:
+            topic: The topic.
+            timeout_s: The timeout_s.
+        """
+
     try:
         from kafka import KafkaConsumer
     except Exception:
@@ -67,6 +100,13 @@ def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
 
 
 def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
+    """Execute consume one ck.
+
+        Args:
+            topic: The topic.
+            timeout_s: The timeout_s.
+        """
+
     try:
         from confluent_kafka import Consumer
     except Exception:
@@ -100,6 +140,9 @@ def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
 def main() -> int:
     # 0) Prepare a consumer at 'latest' BEFORE posting so we only capture new events
     # Prefer confluent-kafka path if available; otherwise prepare a kafka-python consumer pre-POST
+    """Execute main.
+        """
+
     use_ck = False
     try:
         use_ck = True

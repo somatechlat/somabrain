@@ -195,6 +195,9 @@ class BudgetedPredictor:
         exc: Optional[BaseException] = None
 
         def _run():
+            """Execute run.
+                """
+
             nonlocal result, exc
             try:
                 result = self.inner.predict_and_compare(expected_vec, actual_vec)

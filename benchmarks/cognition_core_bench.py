@@ -37,6 +37,13 @@ from somabrain.quantum import HRRConfig, QuantumLayer
 
 
 def percentiles(vals: List[float], ps: List[float]) -> Dict[float, float]:
+    """Execute percentiles.
+
+        Args:
+            vals: The vals.
+            ps: The ps.
+        """
+
     if not vals:
         return {p: float("nan") for p in ps}
     x = sorted(vals)
@@ -51,6 +58,13 @@ def percentiles(vals: List[float], ps: List[float]) -> Dict[float, float]:
 def run_quality_bench(
     dim: int = 8192, dtype: str = "float32"
 ) -> List[Dict[str, object]]:
+    """Execute run quality bench.
+
+        Args:
+            dim: The dim.
+            dtype: The dtype.
+        """
+
     rows: List[Dict[str, object]] = []
     ks = [1, 4, 16]
 
@@ -114,6 +128,14 @@ def run_quality_bench(
             def _tikhonov_naive(
                 sig: np.ndarray, role: np.ndarray, lam: float = 5e-2
             ) -> np.ndarray:
+                """Execute tikhonov naive.
+
+                    Args:
+                        sig: The sig.
+                        role: The role.
+                        lam: The lam.
+                    """
+
                 fc = np.fft.rfft(sig).astype(np.complex128)
                 fb = np.fft.rfft(role).astype(np.complex128)
                 S = (fb * np.conjugate(fb)).real.astype(np.float64)
@@ -178,6 +200,13 @@ def run_quality_bench(
 def run_latency_bench(
     dim: int = 8192, dtype: str = "float32"
 ) -> List[Dict[str, object]]:
+    """Execute run latency bench.
+
+        Args:
+            dim: The dim.
+            dtype: The dtype.
+        """
+
     rows: List[Dict[str, object]] = []
     n = 200
     # Unitary exact
@@ -245,6 +274,13 @@ def run_latency_bench(
 
 
 def write_csv(rows: List[Dict[str, object]], path: Path) -> None:
+    """Execute write csv.
+
+        Args:
+            rows: The rows.
+            path: The path.
+        """
+
     if not rows:
         return
     # union of all keys to accommodate different row schemas
@@ -263,6 +299,9 @@ def write_csv(rows: List[Dict[str, object]], path: Path) -> None:
 
 
 def _git_sha() -> str:
+    """Execute git sha.
+        """
+
     try:
         root = Path(__file__).resolve().parents[1]
         return (
@@ -275,6 +314,12 @@ def _git_sha() -> str:
 
 
 def _provenance(extra: dict | None = None) -> dict:
+    """Execute provenance.
+
+        Args:
+            extra: The extra.
+        """
+
     prov = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "python": sys.version.split()[0],
@@ -291,6 +336,14 @@ def _provenance(extra: dict | None = None) -> dict:
 def try_plots(
     quality: List[Dict[str, object]], latency: List[Dict[str, object]], out_dir: Path
 ) -> None:
+    """Execute try plots.
+
+        Args:
+            quality: The quality.
+            latency: The latency.
+            out_dir: The out_dir.
+        """
+
     try:
         import os
 
@@ -359,6 +412,13 @@ def try_plots(
 
 
 def main(dim: int = 8192, dtype: str = "float32") -> None:
+    """Execute main.
+
+        Args:
+            dim: The dim.
+            dtype: The dtype.
+        """
+
     out_dir = Path("benchmarks")
     out_dir.mkdir(parents=True, exist_ok=True)
     quality = run_quality_bench(dim=dim, dtype=dtype)

@@ -113,6 +113,8 @@ class TransactionTracer:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._otel_tracer = None
         self._initialized = False
         self._try_init_otel()
@@ -278,6 +280,9 @@ class TransactionTracer:
         @contextmanager
         def _context():
             # Save current values
+            """Execute context.
+                """
+
             old_trace = _current_trace_id.get()
             old_tenant = _current_tenant_id.get()
             old_persona = _current_persona_id.get()
@@ -358,10 +363,19 @@ def trace_transaction(
             ...
     """
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         op_name = operation or f"{func.__module__}.{func.__name__}"
         
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs) -> T:
+            """Execute sync wrapper.
+                """
+
             tracer = get_tracer()
             
             # Build attributes from args
@@ -382,6 +396,9 @@ def trace_transaction(
         
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs) -> T:
+            """Execute async wrapper.
+                """
+
             tracer = get_tracer()
             
             # Build attributes from args

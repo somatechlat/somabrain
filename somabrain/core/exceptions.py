@@ -26,11 +26,15 @@ class SomaBrainError(Exception):
     """
 
     def __init__(self, message: str, context: dict[str, Any] | None = None) -> None:
+        """Initialize the instance."""
+
         super().__init__(message)
         self.message = message
         self.context = context or {}
 
     def __str__(self) -> str:
+        """Return string representation."""
+
         if self.context:
             ctx_str = ", ".join(f"{k}={v!r}" for k, v in self.context.items())
             return f"{self.message} [{ctx_str}]"
@@ -80,6 +84,8 @@ class CircuitBreakerOpen(MemoryServiceError):
         reset_after_seconds: float | None = None,
         context: dict[str, Any] | None = None,
     ) -> None:
+        """Initialize the instance."""
+
         ctx = context or {}
         if reset_after_seconds is not None:
             ctx["reset_after_seconds"] = reset_after_seconds

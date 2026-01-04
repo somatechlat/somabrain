@@ -45,6 +45,12 @@ router = Router(tags=["Import/Export"])
 # =============================================================================
 
 def get_job_key(job_id: str) -> str:
+    """Retrieve job key.
+
+        Args:
+            job_id: The job_id.
+        """
+
     return f"import_export_job:{job_id}"
 
 
@@ -80,6 +86,12 @@ def update_job(job_id: str, **updates):
 
 
 def get_job(job_id: str) -> Optional[dict]:
+    """Retrieve job.
+
+        Args:
+            job_id: The job_id.
+        """
+
     return cache.get(get_job_key(job_id))
 
 

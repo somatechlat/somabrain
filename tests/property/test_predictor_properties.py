@@ -83,6 +83,12 @@ def matvec_from_matrix(A: np.ndarray) -> Callable[[np.ndarray], np.ndarray]:
     """Create a matvec function from a matrix."""
 
     def apply_A(x: np.ndarray) -> np.ndarray:
+        """Execute apply A.
+
+            Args:
+                x: The x.
+            """
+
         return A @ x
 
     return apply_A

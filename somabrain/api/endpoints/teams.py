@@ -39,14 +39,32 @@ router = Router(tags=["Teams"])
 # =============================================================================
 
 def get_teams_key(tenant_id: str) -> str:
+    """Retrieve teams key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"teams:tenant:{tenant_id}"
 
 
 def get_team_key(team_id: str) -> str:
+    """Retrieve team key.
+
+        Args:
+            team_id: The team_id.
+        """
+
     return f"team:{team_id}"
 
 
 def get_user_teams_key(user_id: str) -> str:
+    """Retrieve user teams key.
+
+        Args:
+            user_id: The user_id.
+        """
+
     return f"teams:user:{user_id}"
 
 
@@ -80,10 +98,22 @@ def create_team(tenant_id: str, name: str, description: str, created_by: str) ->
 
 
 def get_team(team_id: str) -> Optional[dict]:
+    """Retrieve team.
+
+        Args:
+            team_id: The team_id.
+        """
+
     return cache.get(get_team_key(team_id))
 
 
 def update_team(team_id: str, **updates) -> Optional[dict]:
+    """Execute update team.
+
+        Args:
+            team_id: The team_id.
+        """
+
     key = get_team_key(team_id)
     team = cache.get(key)
     if team:

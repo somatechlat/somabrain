@@ -287,4 +287,3 @@ _safe_add_router(api, "/environment/", environment_router, tags=["Environment"])
 # System Metrics Router
 from somabrain.api.endpoints.system_metrics import router as system_metrics_router
 _safe_add_router(api, "/metrics/", system_metrics_router, tags=["System Metrics"])
-

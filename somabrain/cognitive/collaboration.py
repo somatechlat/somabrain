@@ -48,6 +48,8 @@ class Message:
     payload: str
 
     def __repr__(self) -> str:  # pragma: no cover – trivial
+        """Return object representation."""
+
         target = self.recipient if self.recipient else "*broadcast*"
         return f"Message(from={self.sender}, to={target}, payload={self.payload!r})"
 
@@ -61,6 +63,8 @@ class CollaborationManager:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._agents: Dict[str, List[Message]] = {}
         logger.info("CollaborationManager initialised")
 

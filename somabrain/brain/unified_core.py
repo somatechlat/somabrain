@@ -12,6 +12,8 @@ class UnifiedBrainCore:
     """Unified mathematical core replacing complex component interactions."""
 
     def __init__(self, fractal_memory, fnom_memory, neuromods):
+        """Initialize the instance."""
+
         self.fractal = fractal_memory
         self.fnom = fnom_memory
         self.neuromods = neuromods

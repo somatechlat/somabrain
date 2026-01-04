@@ -43,10 +43,22 @@ router = Router(tags=["Backup"])
 # =============================================================================
 
 def get_backup_key(backup_id: str) -> str:
+    """Retrieve backup key.
+
+        Args:
+            backup_id: The backup_id.
+        """
+
     return f"backup:{backup_id}"
 
 
 def get_tenant_backups_key(tenant_id: str) -> str:
+    """Retrieve tenant backups key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"backups:tenant:{tenant_id}"
 
 
@@ -94,6 +106,12 @@ def update_backup(backup_id: str, **updates) -> Optional[dict]:
 
 
 def get_backup(backup_id: str) -> Optional[dict]:
+    """Retrieve backup.
+
+        Args:
+            backup_id: The backup_id.
+        """
+
     return cache.get(get_backup_key(backup_id))
 
 

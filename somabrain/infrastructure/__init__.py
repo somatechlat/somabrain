@@ -28,6 +28,12 @@ from urllib.parse import urlparse
 
 
 def _clean(value: Optional[str]) -> Optional[str]:
+    """Execute clean.
+
+        Args:
+            value: The value.
+        """
+
     if value is None:
         return None
     try:
@@ -38,6 +44,9 @@ def _clean(value: Optional[str]) -> Optional[str]:
 
 
 def _first_non_empty(*values: Optional[str]) -> Optional[str]:
+    """Execute first non empty.
+        """
+
     for value in values:
         cleaned = _clean(value)
         if cleaned:
@@ -47,6 +56,12 @@ def _first_non_empty(*values: Optional[str]) -> Optional[str]:
 
 def _from_settings(attr: str) -> Optional[str]:
     # Retrieve configuration from the centralized Settings singleton.
+    """Execute from settings.
+
+        Args:
+            attr: The attr.
+        """
+
     try:
         return _clean(getattr(settings, attr, None))
     except Exception:
@@ -72,6 +87,8 @@ def get_redis_url(default: Optional[str] = None) -> Optional[str]:
 
 @dataclass(frozen=True)
 class MemoryEndpoint:
+    """Memoryendpoint class implementation."""
+
     scheme: str
     host: str
     port: Optional[int]
@@ -195,6 +212,12 @@ def require(value: Optional[str], *, message: str) -> str:
 
 
 def _parse_url(value: str) -> tuple[str, str, Optional[int]]:
+    """Execute parse url.
+
+        Args:
+            value: The value.
+        """
+
     parsed = urlparse(value if "://" in value else f"http://{value}")
     if not parsed.hostname:
         raise RuntimeError(f"Invalid memory endpoint: {value!r}")

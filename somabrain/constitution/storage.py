@@ -29,6 +29,8 @@ LOGGER = logging.getLogger("somabrain.constitution.storage")
 
 @dataclasses.dataclass(slots=True)
 class ConstitutionRecord:
+    """Constitutionrecord class implementation."""
+
     document: Dict[str, Any]
     checksum: str
     created_at: dt.datetime
@@ -51,6 +53,8 @@ class ConstitutionStorage:
         redis_sig_key: str = "soma:constitution:signatures",
         db_url: Optional[str] = None,  # Ignored, Django uses settings.DATABASES
     ) -> None:
+        """Initialize the instance."""
+
         self._redis_client = redis_client
         self._redis_url = redis_url or settings.SOMABRAIN_REDIS_URL
         self._redis_key = redis_key
@@ -64,6 +68,13 @@ class ConstitutionStorage:
     def save_new(
         self, document: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None
     ) -> str:
+        """Execute save new.
+
+            Args:
+                document: The document.
+                metadata: The metadata.
+            """
+
         checksum = self._compute_checksum(document)
         metadata = metadata or {}
         now = dt.datetime.now(dt.timezone.utc)
@@ -87,6 +98,9 @@ class ConstitutionStorage:
         return checksum
     
     def load_active(self) -> ConstitutionRecord:
+        """Execute load active.
+            """
+
         try:
             # Try to get active version
             version = (
@@ -123,6 +137,14 @@ class ConstitutionStorage:
     
     @transaction.atomic
     def record_signature(self, checksum: str, signer_id: str, signature: str) -> None:
+        """Execute record signature.
+
+            Args:
+                checksum: The checksum.
+                signer_id: The signer_id.
+                signature: The signature.
+            """
+
         now = dt.datetime.now(dt.timezone.utc)
         sig_id = f"{checksum}:{signer_id}"
         
@@ -142,6 +164,12 @@ class ConstitutionStorage:
         self._sync_redis_signatures(checksum)
     
     def get_signatures(self, checksum: str) -> List[Dict[str, str]]:
+        """Retrieve signatures.
+
+            Args:
+                checksum: The checksum.
+            """
+
         try:
             rows = (
                 ConstitutionSignature.objects
@@ -229,6 +257,9 @@ class ConstitutionStorage:
     
     # ------------------------------------------------------------------
     def _connect_redis(self):
+        """Execute connect redis.
+            """
+
         if self._redis_client is not None:
             return self._redis_client
         if not self._redis_url or redis is None:
@@ -246,6 +277,14 @@ class ConstitutionStorage:
         checksum: str,
         signatures: Optional[List[Dict[str, str]]] = None,
     ) -> None:
+        """Execute write redis.
+
+            Args:
+                document: The document.
+                checksum: The checksum.
+                signatures: The signatures.
+            """
+
         client = self._connect_redis()
         if client is None:
             return
@@ -261,6 +300,13 @@ class ConstitutionStorage:
     def _write_redis_metadata(
         self, metadata: Dict[str, Any], created_at: dt.datetime
     ) -> None:
+        """Execute write redis metadata.
+
+            Args:
+                metadata: The metadata.
+                created_at: The created_at.
+            """
+
         client = self._connect_redis()
         if client is None:
             return
@@ -275,6 +321,9 @@ class ConstitutionStorage:
             LOGGER.debug("Failed to write constitution metadata to redis: %s", exc)
     
     def _load_from_redis(self) -> Optional[ConstitutionRecord]:
+        """Execute load from redis.
+            """
+
         client = self._connect_redis()
         if client is None:
             return None
@@ -314,6 +363,12 @@ class ConstitutionStorage:
         )
     
     def _sync_redis_signatures(self, checksum: str) -> None:
+        """Execute sync redis signatures.
+
+            Args:
+                checksum: The checksum.
+            """
+
         client = self._connect_redis()
         if client is None:
             return
@@ -327,6 +382,12 @@ class ConstitutionStorage:
     
     @staticmethod
     def _compute_checksum(document: Dict[str, Any]) -> str:
+        """Execute compute checksum.
+
+            Args:
+                document: The document.
+            """
+
         payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode(
             "utf-8"
         )
@@ -334,6 +395,12 @@ class ConstitutionStorage:
     
     @staticmethod
     def _ensure_datetime(value: Any) -> dt.datetime:
+        """Execute ensure datetime.
+
+            Args:
+                value: The value.
+            """
+
         if isinstance(value, dt.datetime):
             if value.tzinfo is None:
                 return value.replace(tzinfo=dt.timezone.utc)

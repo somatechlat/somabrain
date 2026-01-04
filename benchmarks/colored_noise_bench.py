@@ -13,6 +13,14 @@ from somabrain.quantum import HRRConfig, QuantumLayer
 
 
 def make_colored_noise_spectrum(n_bins, exponent=1.0, seed=0):
+    """Execute make colored noise spectrum.
+
+        Args:
+            n_bins: The n_bins.
+            exponent: The exponent.
+            seed: The seed.
+        """
+
     rng = np.random.default_rng(seed)
     freqs = np.arange(1, n_bins + 1)
     power = 1.0 / (freqs**exponent)
@@ -24,6 +32,15 @@ def make_colored_noise_spectrum(n_bins, exponent=1.0, seed=0):
 def run_bench(
     out_path: Path, D_list=(512, 1024), exponents=(0.5, 1.0, 2.0), seeds=(0, 1, 2)
 ):
+    """Execute run bench.
+
+        Args:
+            out_path: The out_path.
+            D_list: The D_list.
+            exponents: The exponents.
+            seeds: The seeds.
+        """
+
     results = {
         "meta": {
             "D_list": list(D_list),
@@ -50,6 +67,13 @@ def run_bench(
                 est_wiener = q.unbind_wiener(bound, b_noisy)
 
                 def mse(x, y):
+                    """Execute mse.
+
+                        Args:
+                            x: The x.
+                            y: The y.
+                        """
+
                     return float(np.mean((x - y) ** 2))
 
                 entry = {
@@ -104,6 +128,9 @@ def run_bench(
 
 
 def main():
+    """Execute main.
+        """
+
     p = argparse.ArgumentParser()
     p.add_argument(
         "--out", type=Path, default=Path("benchmarks/colored_noise_results.json")

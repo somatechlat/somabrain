@@ -23,17 +23,28 @@ DLQ_TOPIC = settings.SOMABRAIN_LEARNER_DLQ_TOPIC
 
 
 class LearnerDLQ:
+    """Learnerdlq class implementation."""
+
     def __init__(
         self,
         producer: Any | None = None,
         topic: str | None = DLQ_TOPIC,
         path: str | None = None,
     ):
+        """Initialize the instance."""
+
         self.producer = producer
         self.topic = topic
         self.path = path or DLQ_DEFAULT_PATH
 
     def record(self, event: Dict[str, Any], reason: str) -> None:
+        """Execute record.
+
+            Args:
+                event: The event.
+                reason: The reason.
+            """
+
         payload = {
             "ts": time.time(),
             "reason": reason,

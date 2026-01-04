@@ -1,3 +1,5 @@
+"""Module events."""
+
 from __future__ import annotations
 
 import time
@@ -7,6 +9,15 @@ from typing import Dict
 def build_next_event(
     domain: str, tenant: str, confidence: float, predicted_state: str
 ) -> Dict[str, object]:
+    """Execute build next event.
+
+        Args:
+            domain: The domain.
+            tenant: The tenant.
+            confidence: The confidence.
+            predicted_state: The predicted_state.
+        """
+
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     regret = max(0.0, min(1.0, 1.0 - float(confidence)))
     return {

@@ -1,3 +1,5 @@
+"""Module record_dependency_install_metrics."""
+
 from __future__ import annotations
 import json
 import os
@@ -27,6 +29,9 @@ ARTIFACT_PATH = (
 
 
 def ensure_uv_lock() -> None:
+    """Execute ensure uv lock.
+        """
+
     if not UV_LOCK.exists():
         raise FileNotFoundError(
             "uv.lock not found. Generate it with `uv pip install -e .[dev]` first."
@@ -34,6 +39,9 @@ def ensure_uv_lock() -> None:
 
 
 def run_uv_sync() -> tuple[float, subprocess.CompletedProcess[str]]:
+    """Execute run uv sync.
+        """
+
     cmd = ["uv", "sync", "--locked", "--all-extras"]
     start = time.perf_counter()
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
@@ -46,6 +54,9 @@ def run_uv_sync() -> tuple[float, subprocess.CompletedProcess[str]]:
 
 
 def count_locked_packages() -> int:
+    """Execute count locked packages.
+        """
+
     count = 0
     with UV_LOCK.open("r", encoding="utf-8") as fp:
         for line in fp:
@@ -55,6 +66,13 @@ def count_locked_packages() -> int:
 
 
 def write_metrics(duration: float, package_count: int) -> None:
+    """Execute write metrics.
+
+        Args:
+            duration: The duration.
+            package_count: The package_count.
+        """
+
     ARTIFACT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     payload = {
@@ -82,6 +100,9 @@ def write_metrics(duration: float, package_count: int) -> None:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     ensure_uv_lock()
     duration, _ = run_uv_sync()
     package_count = count_locked_packages()

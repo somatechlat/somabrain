@@ -1,3 +1,5 @@
+"""Module test_memory_e2e."""
+
 import time
 import pytest
 from somabrain.memory_client import MemoryClient, RecallHit
@@ -54,6 +56,8 @@ def test_memory_remember_and_recall() -> None:
     class ConfigProxy:
         """Proxy to expose lowercase settings to MemoryClient/Transport."""
         def __init__(self, wrapped_settings):
+            """Initialize the instance."""
+
             self._wrapped = wrapped_settings
             # Explicitly provide the token expected by create_memory_transport
             self.memory_http_token = AUTH["api_token"]
@@ -61,6 +65,12 @@ def test_memory_remember_and_recall() -> None:
             self.memory_http_endpoint = getattr(wrapped_settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:10101")
 
         def __getattr__(self, name):
+            """Execute getattr  .
+
+                Args:
+                    name: The name.
+                """
+
             return getattr(self._wrapped, name)
 
     # Use the proxy config with credentials

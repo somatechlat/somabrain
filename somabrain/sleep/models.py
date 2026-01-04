@@ -20,8 +20,12 @@ class TenantSleepState(models.Model):
     scheduled_wake = models.DateTimeField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = 'tenant_sleep_states'
         app_label = 'somabrain'
         
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant_id}: {self.current_state}"

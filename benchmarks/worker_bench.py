@@ -21,10 +21,18 @@ import asyncio
 
 
 async def _run_async(iterations: int):
+    """Execute run async.
+
+        Args:
+            iterations: The iterations.
+        """
+
     req = RetrievalRequest(query="benchmark test", top_k=10)
 
     # Minimal context object used by the pipeline
     class Ctx:
+        """Ctx class implementation."""
+
         namespace = "bench"
         tenant_id = "bench"
 
@@ -40,6 +48,12 @@ async def _run_async(iterations: int):
 
 
 def run(iterations: int):
+    """Execute run.
+
+        Args:
+            iterations: The iterations.
+        """
+
     asyncio.run(_run_async(iterations))
 
 

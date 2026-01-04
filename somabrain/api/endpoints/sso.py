@@ -59,10 +59,22 @@ class IdPStatus(str, Enum):
 # =============================================================================
 
 def get_idps_key(tenant_id: str) -> str:
+    """Retrieve idps key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"idps:tenant:{tenant_id}"
 
 
 def get_idp_key(idp_id: str) -> str:
+    """Retrieve idp key.
+
+        Args:
+            idp_id: The idp_id.
+        """
+
     return f"idp:{idp_id}"
 
 
@@ -96,10 +108,22 @@ def create_idp(tenant_id: str, name: str, provider_type: str, config: dict, crea
 
 
 def get_idp(idp_id: str) -> Optional[dict]:
+    """Retrieve idp.
+
+        Args:
+            idp_id: The idp_id.
+        """
+
     return cache.get(get_idp_key(idp_id))
 
 
 def update_idp(idp_id: str, **updates) -> Optional[dict]:
+    """Execute update idp.
+
+        Args:
+            idp_id: The idp_id.
+        """
+
     key = get_idp_key(idp_id)
     idp = cache.get(key)
     if idp:
@@ -109,6 +133,12 @@ def update_idp(idp_id: str, **updates) -> Optional[dict]:
 
 
 def get_tenant_idps(tenant_id: str) -> List[dict]:
+    """Retrieve tenant idps.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     idp_ids = cache.get(get_idps_key(tenant_id), [])
     idps = []
     for iid in idp_ids:

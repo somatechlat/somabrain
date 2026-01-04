@@ -1,3 +1,5 @@
+"""Module serde."""
+
 from __future__ import annotations
 from typing import Any, Dict
 from common.logging import logger
@@ -25,6 +27,8 @@ class AvroSerde:
 
 
 def __init__(self, schema: Dict[str, Any]):
+    """Initialize the instance."""
+
     if parse_schema is None:
         raise RuntimeError(
             "fastavro not installed; install fastavro or use dev extras to enable Avro serde"
@@ -34,6 +38,12 @@ def __init__(self, schema: Dict[str, Any]):
 
 
 def serialize(self, record: Dict[str, Any]) -> bytes:
+    """Execute serialize.
+
+        Args:
+            record: The record.
+        """
+
     if schemaless_writer is None:
         raise RuntimeError("fastavro not available for serialization")
 
@@ -43,6 +53,12 @@ def serialize(self, record: Dict[str, Any]) -> bytes:
 
 
 def deserialize(self, payload: bytes) -> Dict[str, Any]:
+    """Execute deserialize.
+
+        Args:
+            payload: The payload.
+        """
+
     if schemaless_reader is None:
         raise RuntimeError("fastavro not available for deserialization")
 

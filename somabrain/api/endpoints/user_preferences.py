@@ -71,6 +71,12 @@ DEFAULT_PREFERENCES = {
 # =============================================================================
 
 def get_user_prefs_key(user_id: str) -> str:
+    """Retrieve user prefs key.
+
+        Args:
+            user_id: The user_id.
+        """
+
     return f"user_prefs:{user_id}"
 
 

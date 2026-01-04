@@ -24,6 +24,9 @@ import httpx
 
 
 def _git_sha() -> str:
+    """Execute git sha.
+        """
+
     try:
         return (
             subprocess.check_output(
@@ -37,6 +40,12 @@ def _git_sha() -> str:
 
 
 def _provenance(args: argparse.Namespace) -> Dict[str, str]:
+    """Execute provenance.
+
+        Args:
+            args: The args.
+        """
+
     return {
         "run_at": datetime.utcnow().strftime("%Y%m%dT%H%M%SZ"),
         "git_sha": _git_sha(),
@@ -51,10 +60,19 @@ def _provenance(args: argparse.Namespace) -> Dict[str, str]:
 
 
 def _headers(tenant: str) -> Dict[str, str]:
+    """Execute headers.
+
+        Args:
+            tenant: The tenant.
+        """
+
     return {"Content-Type": "application/json", "X-Tenant-ID": tenant}
 
 
 def load_manifest() -> Dict:
+    """Execute load manifest.
+        """
+
     paths = sorted(glob.glob("artifacts/benchmarks/seed_manifest_*.json"))
     if not paths:
         raise RuntimeError("No seed manifest found in artifacts/benchmarks/")
@@ -105,6 +123,15 @@ def autoseed(base: str, tenant: str, count: int) -> Dict:
 def eval_precision_at_1(
     base_url: str, tenant: str, items: List[Dict], top_k: int
 ) -> Dict[str, int]:
+    """Execute eval precision at 1.
+
+        Args:
+            base_url: The base_url.
+            tenant: The tenant.
+            items: The items.
+            top_k: The top_k.
+        """
+
     client = httpx.Client(timeout=20.0)
     url = base_url.rstrip("/") + "/memory/recall"
     correct = 0
@@ -129,6 +156,9 @@ def eval_precision_at_1(
 
 
 def main():
+    """Execute main.
+        """
+
     ap = argparse.ArgumentParser(
         description="Evaluate learning speed (precision@1 vs N)"
     )

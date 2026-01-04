@@ -46,6 +46,8 @@ THREAD_ACTIVE = M.get_gauge(
 )
 
 class ThreadCreateRequest(Schema):
+    """Data model for ThreadCreateRequest."""
+
     tenant_id: str
     options: List[str]
 

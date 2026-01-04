@@ -89,6 +89,14 @@ def feedback_endpoint(request: HttpRequest, payload: dict):
         
         # Get adaptation engine
         def _get_adaptation(builder, planner, tenant_id):
+            """Execute get adaptation.
+
+                Args:
+                    builder: The builder.
+                    planner: The planner.
+                    tenant_id: The tenant_id.
+                """
+
             return get_context_route_state().get_adaptation_engine(builder, planner, tenant_id)
         
         adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
@@ -138,6 +146,14 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: Optional[str] = N
         planner = get_context_planner()
         
         def _get_adaptation(builder, planner, tenant_id):
+            """Execute get adaptation.
+
+                Args:
+                    builder: The builder.
+                    planner: The planner.
+                    tenant_id: The tenant_id.
+                """
+
             return get_context_route_state().get_adaptation_engine(builder, planner, tenant_id)
         
         adapter = _get_adaptation(builder, planner, tenant_id=target_tenant)
@@ -183,6 +199,14 @@ def adaptation_reset_endpoint(request: HttpRequest, payload: dict):
         planner = get_context_planner()
        
         def _get_adaptation(builder, planner, tenant_id):
+            """Execute get adaptation.
+
+                Args:
+                    builder: The builder.
+                    planner: The planner.
+                    tenant_id: The tenant_id.
+                """
+
             return get_context_route_state().get_adaptation_engine(builder, planner, tenant_id)
         
         adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)

@@ -25,6 +25,8 @@ from django.conf import settings
 
 @dataclass(frozen=True)
 class ModeConfig:
+    """Modeconfig class implementation."""
+
     name: str
     enable_integrator: bool
     enable_orchestrator: bool
@@ -50,10 +52,16 @@ class ModeConfig:
     enable_cog_threads: bool
 
     def as_dict(self) -> Dict[str, bool]:  # convenience for logging/metrics
+        """Execute as dict.
+            """
+
         return {k: getattr(self, k) for k in self.__dataclass_fields__ if k != "name"}
 
 
 def _resolve_mode() -> str:
+    """Execute resolve mode.
+        """
+
     raw = (settings.SOMABRAIN_MODE or "").strip().lower()
     if not raw:
         return "full-local" if settings.home_dir else "prod"
@@ -89,6 +97,9 @@ def _load_overrides() -> List[str]:
 
 
 def get_mode_config() -> ModeConfig:
+    """Retrieve mode config.
+        """
+
     name = _resolve_mode()
     if name == "ci":
         # CI mode should provide a full feature set to allow the test suite to run

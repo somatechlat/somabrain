@@ -371,6 +371,12 @@ def rescore_and_rank_hits(
     now_ts = datetime.now(timezone.utc).timestamp()
 
     def _text_of(p: dict) -> str:
+        """Execute text of.
+
+            Args:
+                p: The p.
+            """
+
         return str(p.get("task") or p.get("fact") or p.get("content") or "").strip()
 
     scored_hits = []

@@ -12,6 +12,12 @@ from somabrain.services.outbox_sync import _send_event
 
 
 def _memory_available(url: str) -> bool:
+    """Execute memory available.
+
+        Args:
+            url: The url.
+        """
+
     try:
         resp = httpx.get(url.rstrip("/") + "/health", timeout=2.0)
         return resp.status_code < 500
@@ -25,10 +31,17 @@ MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
 
 @pytest.fixture
 def auth_settings():
+    """Execute auth settings.
+        """
+
     from tests.integration.infra_config import AUTH
     class ConfigProxy:
+        """Configproxy class implementation."""
+
         def __init__(self):
             # transport.py expects 'memory_http_token' and 'memory_http_endpoint'
+            """Initialize the instance."""
+
             self.memory_http_token = AUTH["api_token"]
             self.memory_http_endpoint = "http://127.0.0.1:10101"
             # Keep prefixed versions just in case other parts use them

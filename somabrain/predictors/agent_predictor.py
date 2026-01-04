@@ -50,6 +50,8 @@ class AgentPredictor(HeatDiffusionPredictor):
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         apply_A, dim = _load_agent_operator()
         cfg = PredictorConfig(
             diffusion_t=getattr(settings, "diffusion_t", 0.5),

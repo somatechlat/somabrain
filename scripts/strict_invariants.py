@@ -47,6 +47,12 @@ MAX_SIZE = 1_000_000
 
 
 def is_text(path: Path) -> bool:
+    """Check if text.
+
+        Args:
+            path: The path.
+        """
+
     try:
         with open(path, "rb") as f:
             chunk = f.read(4096)
@@ -59,6 +65,9 @@ def is_text(path: Path) -> bool:
 
 
 def main() -> int:
+    """Execute main.
+        """
+
     violations: list[tuple[str, str]] = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
         # Skip allowlisted directories

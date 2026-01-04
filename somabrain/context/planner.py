@@ -12,6 +12,8 @@ from django.conf import settings
 
 @dataclass
 class PlanCandidate:
+    """Plancandidate class implementation."""
+
     prompt: str
     utility: float
     notes: str = ""
@@ -19,6 +21,8 @@ class PlanCandidate:
 
 @dataclass
 class PlanResult:
+    """Planresult class implementation."""
+
     prompt: str
     utility: float
     candidates: List[PlanCandidate]
@@ -33,6 +37,8 @@ class ContextPlanner:
     """
 
     def __init__(self, utility_weights: UtilityWeights | None = None) -> None:
+        """Initialize the instance."""
+
         self._utility = utility_weights or UtilityWeights()
         # Load configuration from centralized Settings
         self._length_penalty_scale = float(settings.planner_length_penalty_scale)
@@ -45,15 +51,30 @@ class ContextPlanner:
 
     @property
     def utility_weights(self) -> UtilityWeights:
+        """Execute utility weights.
+            """
+
         return self._utility
 
     def plan(self, bundle) -> PlanResult:
+        """Execute plan.
+
+            Args:
+                bundle: The bundle.
+            """
+
         candidates = self._generate_candidates(bundle)
         ranked = sorted(candidates, key=lambda c: c.utility, reverse=True)
         best = ranked[0] if ranked else PlanCandidate(prompt=bundle.prompt, utility=0.0)
         return PlanResult(prompt=best.prompt, utility=best.utility, candidates=ranked)
 
     def _generate_candidates(self, bundle) -> List[PlanCandidate]:
+        """Execute generate candidates.
+
+            Args:
+                bundle: The bundle.
+            """
+
         base = PlanCandidate(
             prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt)
         )
@@ -63,6 +84,12 @@ class ContextPlanner:
         return candidates
 
     def _memory_highlights(self, bundle) -> List[PlanCandidate]:
+        """Execute memory highlights.
+
+            Args:
+                bundle: The bundle.
+            """
+
         results: List[PlanCandidate] = []
         for mem, weight in zip(bundle.memories, bundle.weights, strict=False):
             text = mem.metadata.get("text") or mem.metadata.get("content")
@@ -80,6 +107,14 @@ class ContextPlanner:
         return results
 
     def _score(self, bundle, prompt: str, emphasis: float = 1.0) -> float:
+        """Execute score.
+
+            Args:
+                bundle: The bundle.
+                prompt: The prompt.
+                emphasis: The emphasis.
+            """
+
         length_penalty = len(prompt) / max(self._length_penalty_scale, 1.0)
         context_gain = sum(bundle.weights) * emphasis
         memory_penalty = len(bundle.memories) / max(self._memory_penalty_scale, 1.0)

@@ -342,6 +342,12 @@ async def perform_recall(
     seen: set[Tuple[Optional[Tuple[float, ...]], str, str]] = set()
 
     def _append(item: Optional[MemoryRecallItem]) -> None:
+        """Execute append.
+
+            Args:
+                item: The item.
+            """
+
         if item is None:
             return
         coord_key = tuple(item.coordinate) if item.coordinate is not None else None

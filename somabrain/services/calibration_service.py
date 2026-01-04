@@ -28,6 +28,15 @@ class CalibrationService:
     def record_prediction(
         self, domain: str, tenant: str, confidence: float, correct: bool
     ) -> None:
+        """Execute record prediction.
+
+            Args:
+                domain: The domain.
+                tenant: The tenant.
+                confidence: The confidence.
+                correct: The correct.
+            """
+
         if not self.enabled:
             return
         key = (domain, tenant)
@@ -39,6 +48,13 @@ class CalibrationService:
             self._temperature[key] = 0.9 * prev + 0.1 * tgt
 
     def get_calibration_status(self, domain: str, tenant: str) -> dict:
+        """Retrieve calibration status.
+
+            Args:
+                domain: The domain.
+                tenant: The tenant.
+            """
+
         key = (domain, tenant)
         with self._lock:
             return {
@@ -48,6 +64,9 @@ class CalibrationService:
             }
 
     def get_all_calibration_status(self) -> dict:
+        """Retrieve all calibration status.
+            """
+
         with self._lock:
             return {
                 f"{d}:{t}": {

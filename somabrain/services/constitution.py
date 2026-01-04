@@ -1,3 +1,5 @@
+"""Module constitution."""
+
 from typing import Optional
 from somabrain.constitution import ConstitutionEngine
 from django.conf import settings
@@ -5,6 +7,9 @@ from django.conf import settings
 _engine: Optional[ConstitutionEngine] = None
 
 def get_constitution_engine() -> ConstitutionEngine:
+    """Retrieve constitution engine.
+        """
+
     global _engine
     if _engine is None:
         # Initialize with settings, allowing env vars or defaults

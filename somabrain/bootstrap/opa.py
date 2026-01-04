@@ -18,6 +18,8 @@ class SimpleOPAEngine:
     """
 
     def __init__(self, base_url: str):
+        """Initialize the instance."""
+
         self.base_url = base_url.rstrip("/")
 
     async def health(self) -> bool:

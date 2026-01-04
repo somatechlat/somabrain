@@ -77,6 +77,12 @@ class TestCoRecalledLinks:
         ]
 
         def coord_to_str(c: tuple) -> str:
+            """Execute coord to str.
+
+                Args:
+                    c: The c.
+                """
+
             return ",".join(str(x) for x in c)
 
         # Create co-recalled links between all pairs
@@ -186,6 +192,12 @@ class TestGraphAugmentedRecall:
         link_strength = 0.8
 
         def coord_to_str(c: tuple) -> str:
+            """Execute coord to str.
+
+                Args:
+                    c: The c.
+                """
+
             return ",".join(str(x) for x in c)
 
         # Create link A → B in SFM
@@ -359,6 +371,12 @@ class TestShortestPathQueries:
         coord_c = (7.0, 8.0, 9.0)
 
         def coord_to_str(c: tuple) -> str:
+            """Execute coord to str.
+
+                Args:
+                    c: The c.
+                """
+
             return ",".join(str(x) for x in c)
 
         with httpx.Client(base_url=sfm_url, timeout=10.0) as client:
@@ -421,6 +439,12 @@ class TestShortestPathQueries:
         coord_b = (400.0, 500.0, 600.0)
 
         def coord_to_str(c: tuple) -> str:
+            """Execute coord to str.
+
+                Args:
+                    c: The c.
+                """
+
             return ",".join(str(x) for x in c)
 
         with httpx.Client(base_url=sfm_url, timeout=10.0) as client:

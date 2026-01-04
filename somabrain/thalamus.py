@@ -21,6 +21,8 @@ class ThalamusRouter:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self.routes: List[Tuple[str, Callable[..., Any]]] = []
         self._attention_level: float = 1.0
 
@@ -82,4 +84,6 @@ class ThalamusRouter:
         return self._attention_level
 
     def __repr__(self) -> str:
+        """Return object representation."""
+
         return f"<ThalamusRouter routes={len(self.routes)} attention={self._attention_level:.2f}>"

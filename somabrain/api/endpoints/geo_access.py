@@ -57,10 +57,22 @@ class RuleType(str, Enum):
 # =============================================================================
 
 def get_rules_key(tenant_id: str) -> str:
+    """Retrieve rules key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"geo_rules:{tenant_id}"
 
 
 def get_rule_key(rule_id: str) -> str:
+    """Retrieve rule key.
+
+        Args:
+            rule_id: The rule_id.
+        """
+
     return f"geo_rule:{rule_id}"
 
 
@@ -114,10 +126,22 @@ def create_access_rule(
 
 
 def get_access_rule(rule_id: str) -> Optional[dict]:
+    """Retrieve access rule.
+
+        Args:
+            rule_id: The rule_id.
+        """
+
     return cache.get(get_rule_key(rule_id))
 
 
 def update_access_rule(rule_id: str, **updates) -> Optional[dict]:
+    """Execute update access rule.
+
+        Args:
+            rule_id: The rule_id.
+        """
+
     key = get_rule_key(rule_id)
     rule = cache.get(key)
     if rule:
@@ -127,6 +151,12 @@ def update_access_rule(rule_id: str, **updates) -> Optional[dict]:
 
 
 def get_tenant_rules(tenant_id: str) -> List[dict]:
+    """Retrieve tenant rules.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     rule_ids = cache.get(get_rules_key(tenant_id), [])
     rules = []
     for rid in rule_ids:

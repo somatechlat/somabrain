@@ -64,10 +64,22 @@ class ActivityType(str, Enum):
 # =============================================================================
 
 def get_activities_key(tenant_id: str) -> str:
+    """Retrieve activities key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"activities:tenant:{tenant_id}"
 
 
 def get_user_activities_key(user_id: str) -> str:
+    """Retrieve user activities key.
+
+        Args:
+            user_id: The user_id.
+        """
+
     return f"activities:user:{user_id}"
 
 

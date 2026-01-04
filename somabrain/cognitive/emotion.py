@@ -59,6 +59,8 @@ class EmotionModel:
     """
 
     def __init__(self, decay_rate: float | None = None):
+        """Initialize the instance."""
+
         self.state = EmotionVector()
         # Use Settings default if not explicitly provided
         rate = (
@@ -116,4 +118,6 @@ class EmotionModel:
     # Helper utilities – useful for debugging or logging
     # ------------------------------------------------------------------
     def __repr__(self) -> str:  # pragma: no cover – trivial
+        """Return object representation."""
+
         return f"EmotionModel(state={self.state}, decay_rate={self.decay_rate})"

@@ -17,6 +17,12 @@ from django.conf import settings
 
 
 def _strip_scheme(url: str) -> str:
+    """Execute strip scheme.
+
+        Args:
+            url: The url.
+        """
+
     try:
         u = str(url or "").strip()
         if "://" in u:

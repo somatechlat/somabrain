@@ -140,6 +140,12 @@ _MASK = "***REDACTED***"
 
 
 def _mask_value(v: Any) -> Any:
+    """Execute mask value.
+
+        Args:
+            v: The v.
+        """
+
     try:
         if v is None:
             return None
@@ -170,6 +176,12 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     try:
 
         def _walk(obj: Any) -> Any:
+            """Execute walk.
+
+                Args:
+                    obj: The obj.
+                """
+
             if isinstance(obj, dict):
                 out: Dict[str, Any] = {}
                 for k, v in obj.items():

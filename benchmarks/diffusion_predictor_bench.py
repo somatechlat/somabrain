@@ -1,3 +1,5 @@
+"""Module diffusion_predictor_bench."""
+
 from __future__ import annotations
 import json
 import os
@@ -45,6 +47,8 @@ except Exception:  # pragma: no cover
 
 @dataclass
 class TrialResult:
+    """Trialresult class implementation."""
+
     method: str
     n: int
     t: float
@@ -55,10 +59,19 @@ class TrialResult:
 
 
 def _now_tag() -> str:
+    """Execute now tag.
+        """
+
     return time.strftime("%Y%m%d_%H%M%S", time.gmtime())
 
 
 def _ensure_dirs(ts: str) -> Tuple[Path, Path]:
+    """Execute ensure dirs.
+
+        Args:
+            ts: The ts.
+        """
+
     base = Path("benchmarks")
     res = base / "results" / "diffusion_predictors" / ts
     plots = base / "plots" / "diffusion_predictors" / ts
@@ -70,6 +83,17 @@ def _ensure_dirs(ts: str) -> Tuple[Path, Path]:
 def _predict(
     method: str, L: NDArray[np.float_], x0: NDArray[np.float_], t: float, K: int, m: int
 ) -> Tuple[NDArray[np.float_], float]:
+    """Execute predict.
+
+        Args:
+            method: The method.
+            L: The L.
+            x0: The x0.
+            t: The t.
+            K: The K.
+            m: The m.
+        """
+
     n = L.shape[0]
     cfg = PredictorConfig(diffusion_t=t, chebyshev_K=K, lanczos_m=m)
     pred = HeatDiffusionPredictor(apply_A=matvec_from_matrix(L), dim=n, cfg=cfg)
@@ -84,10 +108,25 @@ def _predict(
 def _exact(
     L: NDArray[np.float_], x0: NDArray[np.float_], t: float
 ) -> NDArray[np.float_]:
+    """Execute exact.
+
+        Args:
+            L: The L.
+            x0: The x0.
+            t: The t.
+        """
+
     return expm(-t * L) @ x0
 
 
 def accuracy_sweep(res_dir: Path, plots_dir: Path) -> Dict[str, List[TrialResult]]:
+    """Execute accuracy sweep.
+
+        Args:
+            res_dir: The res_dir.
+            plots_dir: The plots_dir.
+        """
+
     methods = ["chebyshev", "lanczos"]
     ns = [16, 32]
     ts = [0.1, 0.3, 1.0]
@@ -140,6 +179,13 @@ def accuracy_sweep(res_dir: Path, plots_dir: Path) -> Dict[str, List[TrialResult
 
 
 def runtime_sweep(res_dir: Path, plots_dir: Path) -> List[TrialResult]:
+    """Execute runtime sweep.
+
+        Args:
+            res_dir: The res_dir.
+            plots_dir: The plots_dir.
+        """
+
     ns = [16, 32, 64, 128]
     t = 0.3
     cfgs = [("chebyshev", 40, 20), ("lanczos", 40, 20)]
@@ -175,6 +221,13 @@ def runtime_sweep(res_dir: Path, plots_dir: Path) -> List[TrialResult]:
 
 
 def example_heatmap(res_dir: Path, plots_dir: Path) -> None:
+    """Execute example heatmap.
+
+        Args:
+            res_dir: The res_dir.
+            plots_dir: The plots_dir.
+        """
+
     n = 32
     t = 0.3
     L = make_line_graph_laplacian(n)
@@ -195,6 +248,9 @@ def example_heatmap(res_dir: Path, plots_dir: Path) -> None:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     ts = _now_tag()
     res_dir, plots_dir = _ensure_dirs(ts)
     # Write a pointer to latest

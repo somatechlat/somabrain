@@ -129,9 +129,18 @@ class _NoOpMetric:
     """No-op metric that accepts any method call and does nothing."""
 
     def __getattr__(self, name: str) -> Callable[..., "_NoOpMetric"]:
+        """Execute getattr  .
+
+            Args:
+                name: The name.
+            """
+
         return lambda *args, **kwargs: self
 
     def __call__(self, *args: Any, **kwargs: Any) -> "_NoOpMetric":
+        """Execute call  .
+            """
+
         return self
 
 
@@ -206,6 +215,8 @@ class PrometheusMetrics:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._counters: Dict[str, Any] = {}
         self._gauges: Dict[str, Any] = {}
         self._histograms: Dict[str, Any] = {}

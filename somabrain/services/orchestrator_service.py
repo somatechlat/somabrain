@@ -58,6 +58,8 @@ SEGMENTS_TOPIC = getattr(settings, "topic_segments", "cog.segments")
 
 @dataclass
 class GlobalFrameCtx:
+    """Globalframectx class implementation."""
+
     ts: str
     tenant: str
     leader: str
@@ -68,6 +70,9 @@ class GlobalFrameCtx:
 
 
 def _bootstrap() -> str:
+    """Execute bootstrap.
+        """
+
     url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "") or getattr(
         settings, "kafka_bootstrap", ""
     )
@@ -79,6 +84,13 @@ def _bootstrap() -> str:
 def _parse_global_frame(
     raw: bytes, serde: Optional[AvroSerde]
 ) -> Optional[GlobalFrameCtx]:
+    """Execute parse global frame.
+
+        Args:
+            raw: The raw.
+            serde: The serde.
+        """
+
     try:
         data: Dict[str, Any]
         if serde is not None:
@@ -112,6 +124,13 @@ def _parse_global_frame(
 def _parse_segment_boundary(
     raw: bytes, serde: Optional[AvroSerde]
 ) -> Optional[Dict[str, Any]]:
+    """Execute parse segment boundary.
+
+        Args:
+            raw: The raw.
+            serde: The serde.
+        """
+
     try:
         if serde is not None:
             return serde.deserialize(raw)
@@ -122,7 +141,11 @@ def _parse_segment_boundary(
 
 
 class OrchestratorService:
+    """Orchestratorservice class implementation."""
+
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._serde_gf: Optional[AvroSerde] = None
         self._serde_sb: Optional[AvroSerde] = None
         if load_schema is not None and AvroSerde is not None:
@@ -156,12 +179,20 @@ class OrchestratorService:
             logger.debug("Health server initialization skipped: %s", e)
 
     def _start_health_server(self) -> None:
+        """Execute start health server.
+            """
+
         try:
             from http.server import BaseHTTPRequestHandler, HTTPServer
             import threading
 
             class _Handler(BaseHTTPRequestHandler):
+                """Handler class implementation."""
+
                 def do_GET(self):
+                    """Execute do GET.
+                        """
+
                     if self.path not in ("/health", "/healthz", "/ready"):
                         self.send_response(404)
                         self.end_headers()
@@ -173,6 +204,12 @@ class OrchestratorService:
                     self.wfile.write(json.dumps(payload).encode("utf-8"))
 
                 def log_message(self, format, *args):  # noqa: N802
+                    """Execute log message.
+
+                        Args:
+                            format: The format.
+                        """
+
                     return
 
             from django.conf import settings as _settings
@@ -184,6 +221,13 @@ class OrchestratorService:
             logger.warning("Failed to start health server: %s", e)
 
     def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
+        """Execute remember snapshot.
+
+            Args:
+                tenant: The tenant.
+                boundary: The boundary.
+            """
+
         gf = self._ctx.get(tenant)
         # Compose a minimal episodic payload for memory
         key = f"segment:{boundary.get('boundary_ts') or int(time.time()*1000)}"
@@ -240,6 +284,9 @@ class OrchestratorService:
             )
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
+        """Execute run forever.
+            """
+
         consumer = CKConsumer(
             {
                 "bootstrap.servers": _bootstrap(),
@@ -285,6 +332,9 @@ class OrchestratorService:
 
 
 def main() -> None:  # pragma: no cover - entrypoint
+    """Execute main.
+        """
+
     if not feature_enabled("orchestrator"):
         import logging
         from somabrain.metrics import get_counter

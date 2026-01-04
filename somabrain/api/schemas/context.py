@@ -10,10 +10,15 @@ except Exception:  # pragma: no cover
     BaseModel = object
 
     def Field(*a, **k):
+        """Execute Field.
+            """
+
         return None
 
 
 class EvaluateRequest(BaseModel):
+    """Data model for EvaluateRequest."""
+
     session_id: str
     query: str
     top_k: int = Field(default=5, ge=1, le=50)
@@ -21,6 +26,8 @@ class EvaluateRequest(BaseModel):
 
 
 class MemoryItem(BaseModel):
+    """Memoryitem class implementation."""
+
     id: str
     score: float
     metadata: Dict
@@ -28,6 +35,8 @@ class MemoryItem(BaseModel):
 
 
 class EvaluateResponse(BaseModel):
+    """Data model for EvaluateResponse."""
+
     query: str
     prompt: str
     tenant_id: str
@@ -39,6 +48,8 @@ class EvaluateResponse(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
+    """Data model for FeedbackRequest."""
+
     session_id: str
     query: str
     prompt: str
@@ -50,11 +61,15 @@ class FeedbackRequest(BaseModel):
 
 
 class FeedbackResponse(BaseModel):
+    """Data model for FeedbackResponse."""
+
     accepted: bool
     adaptation_applied: bool
 
 
 class RetrievalWeightsState(BaseModel):
+    """Retrievalweightsstate class implementation."""
+
     alpha: float
     beta: float
     gamma: float
@@ -62,12 +77,16 @@ class RetrievalWeightsState(BaseModel):
 
 
 class UtilityWeightsState(BaseModel):
+    """Utilityweightsstate class implementation."""
+
     lambda_: float
     mu: float
     nu: float
 
 
 class AdaptationGainsState(BaseModel):
+    """Adaptationgainsstate class implementation."""
+
     alpha: float
     gamma: float
     lambda_: float
@@ -76,6 +95,8 @@ class AdaptationGainsState(BaseModel):
 
 
 class AdaptationConstraintsState(BaseModel):
+    """Adaptationconstraintsstate class implementation."""
+
     alpha_min: float
     alpha_max: float
     gamma_min: float
@@ -89,6 +110,8 @@ class AdaptationConstraintsState(BaseModel):
 
 
 class AdaptationStateResponse(BaseModel):
+    """Data model for AdaptationStateResponse."""
+
     retrieval: RetrievalWeightsState
     utility: UtilityWeightsState
     history_len: int

@@ -137,6 +137,12 @@ def milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
     """Return Milvus telemetry (p95 latencies + segment load) for a tenant."""
 
     def _read(gauge, **labels) -> Optional[float]:
+        """Execute read.
+
+            Args:
+                gauge: The gauge.
+            """
+
         try:
             child = gauge.labels(**labels)
             stored = getattr(child, "_value", None)

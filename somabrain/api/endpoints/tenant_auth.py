@@ -55,6 +55,12 @@ class TenantAuthConfigOut(Schema):
     
     @staticmethod
     def resolve_preferred_provider_name(obj):
+        """Execute resolve preferred provider name.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.preferred_provider.name if obj.preferred_provider else None
 
 

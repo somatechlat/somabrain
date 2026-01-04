@@ -34,10 +34,18 @@ LOGGER = logging.getLogger("somabrain.constitution")
 
 
 class ConstitutionError(Exception):
+    """Exception raised for ConstitutionError."""
+
     pass
 
 
 def _decode_signature(sig: str) -> bytes:
+    """Execute decode signature.
+
+        Args:
+            sig: The sig.
+        """
+
     try:
         return bytes.fromhex(sig)
     except Exception:
@@ -62,6 +70,8 @@ class ConstitutionEngine:
         storage: Optional[ConstitutionStorage] = None,
         db_url: Optional[str] = None,
     ):
+        """Initialize the instance."""
+
         self._storage = storage or ConstitutionStorage(
             redis_url=redis_url,
             redis_client=redis_client,
@@ -154,6 +164,9 @@ class ConstitutionEngine:
         LOGGER.info("Saved constitution version %s", self._checksum[:8])
 
     def get_checksum(self) -> Optional[str]:
+        """Retrieve checksum.
+            """
+
         return self._checksum
 
     def get_signature(self) -> Optional[str]:
@@ -161,6 +174,9 @@ class ConstitutionEngine:
         return self._signature
 
     def get_signatures(self) -> List[Dict[str, str]]:
+        """Retrieve signatures.
+            """
+
         return list(self._signatures)
 
     def verify_signature(self, pubkey_path: Optional[str] = None) -> bool:
@@ -269,6 +285,9 @@ class ConstitutionEngine:
             return None
 
     def get_constitution(self) -> Optional[Dict[str, Any]]:
+        """Retrieve constitution.
+            """
+
         return self._constitution
 
     def validate(self, instance: Dict[str, Any]) -> Dict[str, Any]:
@@ -472,6 +491,12 @@ class ConstitutionEngine:
 
     # ------------------------------------------------------------------
     def _apply_record(self, record: ConstitutionRecord) -> None:
+        """Execute apply record.
+
+            Args:
+                record: The record.
+            """
+
         self._constitution = record.document
         self._checksum = record.checksum
         self._metadata = record.metadata

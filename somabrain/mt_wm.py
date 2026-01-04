@@ -46,6 +46,8 @@ from . import metrics as M
 
 @dataclass
 class MTWMConfig:
+    """Mtwmconfig class implementation."""
+
     per_tenant_capacity: int = field(
         default_factory=lambda: max(1, int(settings.SOMABRAIN_WM_PER_TENANT_CAPACITY))
     )
@@ -59,7 +61,11 @@ class MTWMConfig:
 
 
 class MultiTenantWM:
+    """Multitenantwm class implementation."""
+
     def __init__(self, dim: int, cfg: MTWMConfig | None = None, scorer=None):
+        """Initialize the instance."""
+
         self.dim = int(dim)
         self.cfg = cfg or MTWMConfig()
         self._wms: OrderedDict[str, WorkingMemory] = OrderedDict()
@@ -156,10 +162,24 @@ class MultiTenantWM:
         return results
 
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
+        """Execute novelty.
+
+            Args:
+                tenant_id: The tenant_id.
+                vec: The vec.
+            """
+
         with self._lock:
             return self._ensure(tenant_id).novelty(vec)
 
     def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
+        """Execute items.
+
+            Args:
+                tenant_id: The tenant_id.
+                limit: The limit.
+            """
+
         with self._lock:
             wm = self._ensure(tenant_id)
             data = [it.payload for it in wm._items]  # internal list for introspection
@@ -168,5 +188,8 @@ class MultiTenantWM:
         return data
 
     def tenants(self) -> List[str]:
+        """Execute tenants.
+            """
+
         with self._lock:
             return list(self._wms.keys())

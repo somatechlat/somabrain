@@ -106,6 +106,9 @@ class JournalEvent:
     last_error: Optional[str] = None
 
     def __post_init__(self):
+        """Execute post init  .
+            """
+
         if self.timestamp is None:
             self.timestamp = datetime.utcnow()
 
@@ -142,6 +145,8 @@ class LocalJournal:
     """
 
     def __init__(self, config: JournalConfig):
+        """Initialize the instance."""
+
         self.config = config
         self.journal_dir = Path(config.journal_dir)
         self.current_file: Optional[Path] = None

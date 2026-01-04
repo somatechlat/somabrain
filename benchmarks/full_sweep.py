@@ -22,6 +22,9 @@ METRICS = Path(__file__).resolve().parent / "metrics_dump.json"
 
 def run_all():
     # run stress
+    """Execute run all.
+        """
+
     run_stress(metrics_sink=str(METRICS))
     # run extended capacity (writes results_numerics.json)
     extended_snr_capacity_run()

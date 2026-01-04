@@ -39,6 +39,12 @@ router = Router(tags=["Request Logs"])
 # =============================================================================
 
 def get_logs_key(tenant_id: str) -> str:
+    """Retrieve logs key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"request_logs:{tenant_id}"
 
 

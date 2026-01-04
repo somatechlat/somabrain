@@ -210,6 +210,8 @@ class LeaderMetricsCollector:
     """Centralized metrics collection for leader election system."""
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._metrics: Dict[str, LeaderMetrics] = {}
 
     def get_metrics(self, tenant: str, instance_id: str) -> LeaderMetrics:

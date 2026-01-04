@@ -56,6 +56,9 @@ class TraceConfig:
     epsilon: float = 1e-12
 
     def validate(self) -> "TraceConfig":
+        """Execute validate.
+            """
+
         dim = int(self.dim)
         if dim <= 0:
             raise ValueError("dim must be positive")
@@ -98,6 +101,8 @@ class SuperposedTrace:
         rotation_matrix_factory: Optional[Callable[[int, int], np.ndarray]] = None,
         cleanup_index: Optional["CleanupIndex"] = None,
     ) -> None:
+        """Initialize the instance."""
+
         self.cfg = cfg.validate()
         self._q = quantum or QuantumLayer(
             HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed)
@@ -253,12 +258,24 @@ class SuperposedTrace:
     # Internal helpers
     # ------------------------------------------------------------------
     def _prepare_key(self, key: np.ndarray) -> np.ndarray:
+        """Execute prepare key.
+
+            Args:
+                key: The key.
+            """
+
         vec = self._ensure_vector(key, "key")
         if self._rotation is not None:
             vec = self._rotation @ vec
         return vec
 
     def _decayed_update(self, binding: np.ndarray) -> np.ndarray:
+        """Execute decayed update.
+
+            Args:
+                binding: The binding.
+            """
+
         new_state = (1.0 - self._eta) * self._state + self._eta * binding
         norm = float(np.linalg.norm(new_state))
         if not math.isfinite(norm) or norm <= self._eps:
@@ -266,6 +283,12 @@ class SuperposedTrace:
         return (new_state / norm).astype(np.float32, copy=False)
 
     def _cleanup(self, query: np.ndarray) -> Tuple[Optional[str], float, float]:
+        """Execute cleanup.
+
+            Args:
+                query: The query.
+            """
+
         if not self._anchors:
             logger.debug("SuperposedTrace.cleanup: no anchors registered")
             return None, 0.0, 0.0
@@ -301,6 +324,13 @@ class SuperposedTrace:
         return best_id, float(best_score), float(second_score)
 
     def _ensure_vector(self, vec: np.ndarray, name: str) -> np.ndarray:
+        """Execute ensure vector.
+
+            Args:
+                vec: The vec.
+                name: The name.
+            """
+
         if not isinstance(vec, np.ndarray):
             raise TypeError(f"{name} must be a numpy.ndarray")
         if vec.shape[-1] != self.cfg.dim:
@@ -328,12 +358,37 @@ __all__ = ["TraceConfig", "SuperposedTrace", "CleanupIndex"]
 
 
 class CleanupIndex(Protocol):
+        """Execute upsert.
+
+            Args:
+                anchor_id: The anchor_id.
+                vector: The vector.
+            """
+
+    """Cleanupindex class implementation."""
+
     def upsert(self, anchor_id: str, vector: np.ndarray) -> None: ...
 
+        """Execute remove.
+
+            Args:
+                anchor_id: The anchor_id.
+            """
+
     def remove(self, anchor_id: str) -> None: ...
+
+        """Execute search.
+
+            Args:
+                query: The query.
+                top_k: The top_k.
+            """
 
     def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]: ...
 
     def configure(
         self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
+        """Execute configure.
+            """
+
     ) -> None: ...

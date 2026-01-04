@@ -77,6 +77,8 @@ class DriftMonitor:
     """
 
     def __init__(self, dim: int, cfg: DriftConfig):
+        """Initialize the instance."""
+
         self.dim = int(dim)
         self.cfg = cfg
         self.n = 0
@@ -84,6 +86,12 @@ class DriftMonitor:
         self.M2 = np.zeros((dim,), dtype=np.float64)
 
     def update(self, x: np.ndarray) -> dict:
+        """Execute update.
+
+            Args:
+                x: The x.
+            """
+
         x = np.asarray(x, dtype=np.float64)
         if x.shape[-1] != self.dim:
             x = x[: self.dim]

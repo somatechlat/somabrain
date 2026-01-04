@@ -61,10 +61,22 @@ class RoleOut(Schema):
 
     @staticmethod
     def resolve_created_at(obj):
+        """Execute resolve created at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.created_at.isoformat()
 
     @staticmethod
     def resolve_updated_at(obj):
+        """Execute resolve updated at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.updated_at.isoformat()
 
 

@@ -41,9 +41,13 @@ from .quantum import QuantumLayer
 
 
 class MultiTenantHRRContext:
+    """Multitenanthrrcontext class implementation."""
+
     def __init__(
         self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int | None = None
     ):
+        """Initialize the instance."""
+
         self.q = q
         self.cfg = cfg
         self.max_tenants = int(
@@ -52,6 +56,12 @@ class MultiTenantHRRContext:
         self._ctxs: OrderedDict[str, HRRContext] = OrderedDict()
 
     def _ensure(self, tenant_id: str) -> HRRContext:
+        """Execute ensure.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         ctx = self._ctxs.get(tenant_id)
         if ctx is None:
             ctx = HRRContext(self.q, self.cfg, context_id=tenant_id)
@@ -62,12 +72,34 @@ class MultiTenantHRRContext:
         return ctx
 
     def admit(self, tenant_id: str, anchor_id: str, vec: np.ndarray) -> None:
+        """Execute admit.
+
+            Args:
+                tenant_id: The tenant_id.
+                anchor_id: The anchor_id.
+                vec: The vec.
+            """
+
         self._ensure(tenant_id).admit(anchor_id, vec)
 
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
+        """Execute novelty.
+
+            Args:
+                tenant_id: The tenant_id.
+                vec: The vec.
+            """
+
         return self._ensure(tenant_id).novelty(vec)
 
     def cleanup(self, tenant_id: str, query: np.ndarray) -> Tuple[str, float]:
+        """Execute cleanup.
+
+            Args:
+                tenant_id: The tenant_id.
+                query: The query.
+            """
+
         return self._ensure(tenant_id).cleanup(query)
 
     def analyze(self, tenant_id: str, query: np.ndarray) -> CleanupResult:
@@ -75,4 +107,10 @@ class MultiTenantHRRContext:
         return self._ensure(tenant_id).analyze(query)
 
     def stats(self, tenant_id: str) -> tuple[int, int]:
+        """Execute stats.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         return self._ensure(tenant_id).stats()

@@ -133,6 +133,12 @@ def replace_getenv_calls(content: str) -> str:
     pattern = re.compile(r"settings\.getenv\(\s*['\"]([^'\"]+)['\"](?:\s*,\s*[^)]+)?\)")
 
     def repl(match: re.Match) -> str:
+        """Execute repl.
+
+            Args:
+                match: The match.
+            """
+
         env_name = match.group(1)
         attr = ENV_TO_ATTR.get(env_name)
         if attr:
@@ -157,6 +163,9 @@ def process_file(path: pathlib.Path) -> bool:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     repo_root = pathlib.Path(__file__).resolve().parent.parent
     py_files: List[pathlib.Path] = list(repo_root.rglob("*.py"))
     modified: List[pathlib.Path] = []

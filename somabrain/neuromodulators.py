@@ -103,6 +103,8 @@ class Neuromodulators:
     """
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._state = NeuromodState(
             dopamine=settings.SOMABRAIN_NEURO_DOPAMINE_BASE,
             serotonin=settings.SOMABRAIN_NEURO_SEROTONIN_BASE,
@@ -113,6 +115,9 @@ class Neuromodulators:
         self._subs: List[Callable[[NeuromodState], None]] = []
 
     def get_state(self) -> NeuromodState:
+        """Retrieve state.
+            """
+
         return self._state
 
     def set_state(self, s: NeuromodState) -> None:
@@ -137,6 +142,12 @@ class Neuromodulators:
             logger.debug("Failed to update neuromod metrics: %s", metric_exc)
 
     def subscribe(self, cb: Callable[[NeuromodState], None]) -> None:
+        """Execute subscribe.
+
+            Args:
+                cb: The cb.
+            """
+
         self._subs.append(cb)
 
 
@@ -148,15 +159,30 @@ class PerTenantNeuromodulators:
     """
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._states: Dict[str, NeuromodState] = {}
         self._global = Neuromodulators()
 
     def get_state(self, tenant_id: str | None = None) -> NeuromodState:
+        """Retrieve state.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         if tenant_id is None:
             return self._global.get_state()
         return self._states.get(tenant_id, self._global.get_state())
 
     def set_state(self, tenant_id: str, state: NeuromodState) -> None:
+        """Set state.
+
+            Args:
+                tenant_id: The tenant_id.
+                state: The state.
+            """
+
         self._states[tenant_id] = state
         # Notify any global subscribers of the change for this tenant if needed
         # (subscribers receive the raw NeuromodState; they can filter by tenant themselves)
@@ -180,6 +206,8 @@ class AdaptiveNeuromodulators:
 
     def __init__(self):
         # Initialize adaptive parameters with learning bounds
+        """Initialize the instance."""
+
         self.dopamine_param = AdaptiveParameter(
             name="dopamine",
             initial_value=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4),
@@ -297,6 +325,8 @@ class AdaptivePerTenantNeuromodulators:
     """Per-tenant adaptive neuromodulator system."""
 
     def __init__(self):
+        """Initialize the instance."""
+
         self._adaptive_systems: Dict[str, AdaptiveNeuromodulators] = {}
         self._global = AdaptiveNeuromodulators()
 

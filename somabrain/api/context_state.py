@@ -37,6 +37,8 @@ class ContextRouteState:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._feedback_store: Optional[FeedbackStore] = None
         self._token_ledger: Optional[TokenLedger] = None
         self._adaptation_engines: Dict[str, AdaptationEngine] = {}

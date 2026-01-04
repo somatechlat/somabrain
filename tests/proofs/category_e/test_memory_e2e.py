@@ -1,3 +1,5 @@
+"""Module test_memory_e2e."""
+
 import asyncio
 import os
 import uuid
@@ -17,7 +19,11 @@ from somabrain.bootstrap.core_singletons import create_fractal_memory
 from somabrain.memory_client import MemoryClient
 
 class MockConfig:
+    """Mockconfig class implementation."""
+
     def __init__(self):
+        """Initialize the instance."""
+
         self.memory_http_endpoint = "http://localhost:9595"
         self.memory_http_token = "dev-032f8d463c84e7ef0d834c3a"
         self.namespace = "verification_test"
@@ -25,6 +31,9 @@ class MockConfig:
         self.memory_db_path = None
 
 async def verify_adapter_flow():
+    """Execute verify adapter flow.
+        """
+
     print(">>> 1. Initializing Adapter & Client...")
     cfg = MockConfig()
     # Create the adapter using our factory (which uses MemoryClient)

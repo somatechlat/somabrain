@@ -23,6 +23,8 @@ class ControlsMiddleware:
     """Django Middleware for SomaBrain Controls."""
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        """Initialize the instance."""
+
         self.get_response = get_response
         self.engine = PolicyEngine()
         self.audit = AuditLogger()
@@ -32,6 +34,12 @@ class ControlsMiddleware:
         # Pre-process request
         
         # Read body safely (Django caches it)
+        """Execute call  .
+
+            Args:
+                request: The request.
+            """
+
         raw_body = b""
         try:
             if request.method in ("POST", "PUT", "PATCH"):

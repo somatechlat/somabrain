@@ -33,6 +33,9 @@ async def start_memory_watchdog(
     """
 
     async def _watchdog_loop() -> None:
+        """Execute watchdog loop.
+            """
+
         while True:
             try:
                 # Attempt circuit reset periodically; updates circuit breaker metric internally

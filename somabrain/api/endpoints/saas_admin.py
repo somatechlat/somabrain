@@ -748,4 +748,3 @@ def report_usage(request, data: UsageReportSchema):
         "events_received": len(data.events),
         "events_forwarded": success_count,
     }
-

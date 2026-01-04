@@ -1,3 +1,5 @@
+"""Module client."""
+
 import logging
 from typing import Any, Dict
 
@@ -43,6 +45,8 @@ class OPAClient:
     def __init__(self, policy_path: str | None = None) -> None:
         # Use the canonical Settings field for the OPA request timeout.
         # If the Settings instance is unavailable (unlikely), fall back to 2 seconds.
+        """Initialize the instance."""
+
         if settings is not None:
             try:
                 self.timeout = float(
@@ -134,7 +138,15 @@ def get_opa_client() -> OPAClient:
 # For backwards compatibility, provide the singleton as module attribute
 # but make it lazy via a getter
 class _OPAClientProxy:
+    """Opaclientproxy class implementation."""
+
     def __getattr__(self, name):
+        """Execute getattr  .
+
+            Args:
+                name: The name.
+            """
+
         return getattr(get_opa_client(), name)
 
 opa_client = _OPAClientProxy()

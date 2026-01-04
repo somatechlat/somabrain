@@ -47,6 +47,8 @@ router = Router(tags=["Webhooks Dashboard"])
 # =============================================================================
 
 class DeliveryStatus(str, Enum):
+    """Deliverystatus class implementation."""
+
     PENDING = "pending"
     DELIVERED = "delivered"
     FAILED = "failed"
@@ -58,14 +60,32 @@ class DeliveryStatus(str, Enum):
 # =============================================================================
 
 def get_webhook_config_key(tenant_id: str) -> str:
+    """Retrieve webhook config key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"webhook:config:{tenant_id}"
 
 
 def get_deliveries_key(tenant_id: str) -> str:
+    """Retrieve deliveries key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"webhook:deliveries:{tenant_id}"
 
 
 def get_delivery_key(delivery_id: str) -> str:
+    """Retrieve delivery key.
+
+        Args:
+            delivery_id: The delivery_id.
+        """
+
     return f"webhook:delivery:{delivery_id}"
 
 

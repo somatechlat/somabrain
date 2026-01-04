@@ -209,10 +209,16 @@ class AmygdalaSalience:
 
     @property
     def last_fd_residual(self) -> float:
+        """Execute last fd residual.
+            """
+
         return float(self._last_fd_residual)
 
     @property
     def last_fd_capture(self) -> float:
+        """Execute last fd capture.
+            """
+
         return float(self._last_fd_capture)
 
     def gate_probs(self, s: float, neuromod: NeuromodState) -> tuple[float, float]:
@@ -238,6 +244,12 @@ class AmygdalaSalience:
 
         def _sig(x: float) -> float:
             # numerically stable sigmoid
+            """Execute sig.
+
+                Args:
+                    x: The x.
+                """
+
             import math
 
             x = max(-20.0, min(20.0, x))
@@ -249,6 +261,12 @@ class AmygdalaSalience:
 
     def _thresholds(self, neuromod: NeuromodState) -> tuple[float, float]:
         # NE raises thresholds under urgency
+        """Execute thresholds.
+
+            Args:
+                neuromod: The neuromod.
+            """
+
         th_store = self.cfg.threshold_store + float(neuromod.noradrenaline)
         th_act = self.cfg.threshold_act + float(neuromod.noradrenaline)
         # hysteresis to avoid flapping

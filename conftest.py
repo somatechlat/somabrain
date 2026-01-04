@@ -1,3 +1,5 @@
+"""Module conftest."""
+
 from hypothesis import settings as _hypothesis_settings
 import os
 

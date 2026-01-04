@@ -26,6 +26,8 @@ class TenantManager:
     """Centralized tenant management for all SomaBrain operations."""
 
     def __init__(self, tenant_registry: TenantRegistry):
+        """Initialize the instance."""
+
         self.registry = tenant_registry
         self._default_tenant_id: Optional[str] = None
         self._system_tenant_ids: Dict[str, str] = {}

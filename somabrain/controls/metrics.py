@@ -40,6 +40,12 @@ import somabrain.metrics as metrics
 
 def use_registry(r):
     # kept for compatibility; main code should use central somabrain.metrics
+    """Execute use registry.
+
+        Args:
+            r: The r.
+        """
+
     metrics.registry = r
 
 

@@ -18,12 +18,20 @@ class FrequentDirections:
     """
 
     def __init__(self, d: int, ell: int):
+        """Initialize the instance."""
+
         self.d = int(d)
         self.ell = int(ell)
         # S matrix stores at most ell rows
         self.S = np.zeros((0, d), dtype=float)
 
     def insert(self, v: np.ndarray):
+        """Execute insert.
+
+            Args:
+                v: The v.
+            """
+
         v = np.asarray(v, dtype=float).reshape(1, -1)
         self.S = np.vstack([self.S, v])
         if self.S.shape[0] > self.ell:
@@ -31,6 +39,9 @@ class FrequentDirections:
 
     def _compress(self):
         # compute SVD of current S, shrink singular values
+        """Execute compress.
+            """
+
         U, s, Vt = np.linalg.svd(self.S, full_matrices=False)
         # shrink by smallest singular value s[-1]
         delta = s[-1] ** 2
@@ -45,6 +56,12 @@ class FrequentDirections:
         return self.S.T @ self.S
 
     def top_components(self, r: Optional[int] = None):
+        """Execute top components.
+
+            Args:
+                r: The r.
+            """
+
         C = self.approx_cov()
         U, s, Vt = np.linalg.svd(C)
         if r is None:

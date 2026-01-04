@@ -61,10 +61,22 @@ class RetentionAction(str, Enum):
 # =============================================================================
 
 def get_policies_key(tenant_id: str) -> str:
+    """Retrieve policies key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"retention:policies:{tenant_id}"
 
 
 def get_policy_key(policy_id: str) -> str:
+    """Retrieve policy key.
+
+        Args:
+            policy_id: The policy_id.
+        """
+
     return f"retention:policy:{policy_id}"
 
 
@@ -133,6 +145,12 @@ def get_tenant_policies(tenant_id: str) -> List[dict]:
 
 
 def update_policy(policy_id: str, **updates) -> Optional[dict]:
+    """Execute update policy.
+
+        Args:
+            policy_id: The policy_id.
+        """
+
     key = get_policy_key(policy_id)
     policy = cache.get(key)
     if policy:

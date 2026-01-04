@@ -15,9 +15,17 @@ from somabrain.constitution import ConstitutionEngine, ConstitutionError
 
 
 class Command(BaseCommand):
+    """Command class implementation."""
+
     help = "Seed the initial Constitution from config/seed_constitution.json"
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--sign",
             action="store_true",
@@ -31,6 +39,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         config_path = options["file"]
         
         # Resolve path relative to project root

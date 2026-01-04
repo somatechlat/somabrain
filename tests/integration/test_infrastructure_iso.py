@@ -141,4 +141,3 @@ class TestInteroperabilityISO:
                 assert resp.status_code == 200
         except Exception as e:
             pytest.fail(f"SFM Health Check Failed: {e}")
-

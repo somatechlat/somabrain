@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class RetrievalWeights:
+    """Retrievalweights class implementation."""
+
     alpha: float
     beta: float
     gamma: float
@@ -36,6 +38,8 @@ class RetrievalWeights:
 
 @dataclass
 class MemoryRecord:
+    """Memoryrecord class implementation."""
+
     id: str
     score: float
     metadata: Dict
@@ -44,6 +48,8 @@ class MemoryRecord:
 
 @dataclass
 class ContextBundle:
+    """Contextbundle class implementation."""
+
     query: str
     prompt: str
     memories: List[MemoryRecord]
@@ -63,6 +69,8 @@ class ContextBuilder:
         weights: Optional[RetrievalWeights] = None,
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
+        """Initialize the instance."""
+
         self._embed_fn = embed_fn
         self._memory = memory
         self._memory_backend = memory_backend
@@ -100,6 +108,13 @@ class ContextBuilder:
         def _env_float(name: str, current: float) -> float:
             # Use Settings attribute if available; fall back to None.
             # Environment variable names are uppercase; Settings uses snake_case.
+            """Execute env float.
+
+                Args:
+                    name: The name.
+                    current: The current.
+                """
+
             attr_name = name.lower()
             value = getattr(settings, attr_name, None)
             if value is None:
@@ -166,6 +181,14 @@ class ContextBuilder:
         top_k: int = 5,
         session_id: Optional[str] = None,
     ) -> ContextBundle:
+        """Execute build.
+
+            Args:
+                query: The query.
+                top_k: The top_k.
+                session_id: The session_id.
+            """
+
         embedding = self._embed(query)
         results = self._search(query, embedding, top_k)
         memories: List[MemoryRecord] = [
@@ -201,21 +224,39 @@ class ContextBuilder:
 
     @property
     def weights(self) -> RetrievalWeights:
+        """Execute weights.
+            """
+
         return self._weights
 
     # ------------------------------------------------------------------
     def _embed(self, text: str) -> List[float]:
+        """Execute embed.
+
+            Args:
+                text: The text.
+            """
+
         raw = list(self._embed_fn(text))
         if not raw:
             raise RuntimeError("embedding function returned empty vector")
         return [float(v) for v in raw]
 
     def _namespace_for_tenant(self, tenant_id: str) -> str:
+        """Execute namespace for tenant.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         base = getattr(settings, "SOMABRAIN_NAMESPACE", "public") or "public"
         tid = str(tenant_id or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "public"))
         return f"{base}:{tid}"
 
     def _memory_component(self) -> object:
+        """Execute memory component.
+            """
+
         if self._memory is not None:
             return self._memory
         if self._memory_backend is None:
@@ -228,6 +269,14 @@ class ContextBuilder:
     def _search(
         self, query_text: str, embedding: List[float], top_k: int
     ) -> List[Dict[str, Any]]:
+        """Execute search.
+
+            Args:
+                query_text: The query_text.
+                embedding: The embedding.
+                top_k: The top_k.
+            """
+
         memory_component = self._memory_component()
         try:
             if hasattr(memory_component, "recall_with_scores"):
@@ -239,6 +288,12 @@ class ContextBuilder:
             return []
 
     def _hits_to_results(self, hits: Iterable[RecallHit]) -> List[Dict[str, Any]]:
+        """Execute hits to results.
+
+            Args:
+                hits: The hits.
+            """
+
         tenant = getattr(self, "_tenant_id", None) or None
         results: List[Dict[str, Any]] = []
         for idx, hit in enumerate(hits):
@@ -262,6 +317,13 @@ class ContextBuilder:
         query_vec: List[float],
         memories: List[MemoryRecord],
     ) -> List[float]:
+        """Execute compute weights.
+
+            Args:
+                query_vec: The query_vec.
+                memories: The memories.
+            """
+
         alpha, beta, gamma, tau = (
             self._weights.alpha,
             self._weights.beta,
@@ -409,6 +471,13 @@ class ContextBuilder:
         return get_entropy_cap_for_tenant(tenant_id, self._tenant_overrides_cache)
 
     def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
+        """Execute build prompt.
+
+            Args:
+                query: The query.
+                memories: The memories.
+            """
+
         context_blocks: List[str] = []
         for mem in memories:
             meta = mem.metadata or {}
@@ -426,6 +495,13 @@ class ContextBuilder:
         weights: List[float],
         memories: List[MemoryRecord],
     ) -> List[float]:
+        """Execute build residual.
+
+            Args:
+                weights: The weights.
+                memories: The memories.
+            """
+
         if not weights or not memories:
             return []
         dim = len(memories[0].embedding or [])
@@ -441,6 +517,12 @@ class ContextBuilder:
         return accum.tolist()
 
     def _temporal_decay(self, ts: float) -> float:
+        """Execute temporal decay.
+
+            Args:
+                ts: The ts.
+            """
+
         if ts <= 0:
             return max(self._recency_floor, 0.0)
         age = max(time.time() - ts, 0.0)
@@ -455,6 +537,12 @@ class ContextBuilder:
         return float(max(self._recency_floor, min(1.0, damp)))
 
     def _density_factor(self, metadata: Dict) -> float:
+        """Execute density factor.
+
+            Args:
+                metadata: The metadata.
+            """
+
         if not isinstance(metadata, dict):
             return 1.0
         margin = metadata.get("_cleanup_margin")

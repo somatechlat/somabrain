@@ -40,6 +40,12 @@ import requests
 
 
 def _load_schema(path: str):
+    """Execute load schema.
+
+        Args:
+            path: The path.
+        """
+
     with open(path, "r", encoding="utf-8") as f:
         return parse_schema(json.load(f))
 
@@ -92,6 +98,8 @@ class IntegratorHub:
         start_io: bool = True,
         start_health: bool = True,
     ):
+        """Initialize the instance."""
+
         ss = settings
         # Alpha/temperature/flag are re-read at runtime (see _effective_cfg)
         if alpha is None:
@@ -158,10 +166,18 @@ class IntegratorHub:
             self._health_thread.start()
 
     def _serve_health(self) -> None:
+        """Execute serve health.
+            """
+
         hub_ref = self
 
         class _Handler(BaseHTTPRequestHandler):
+            """Handler class implementation."""
+
             def do_GET(self):
+                """Execute do GET.
+                    """
+
                 if self.path not in ("/health", "/healthz", "/ready"):
                     self.send_response(404)
                     self.end_headers()
@@ -178,6 +194,12 @@ class IntegratorHub:
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
 
             def log_message(self, format, *args):  # noqa: N802
+                """Execute log message.
+
+                    Args:
+                        format: The format.
+                    """
+
                 return
 
         try:
@@ -187,6 +209,13 @@ class IntegratorHub:
             raise RuntimeError(f"Health server failed: {exc}") from exc
 
     def _encode(self, record: Dict, schema) -> bytes:
+        """Execute encode.
+
+            Args:
+                record: The record.
+                schema: The schema.
+            """
+
         import io
 
         buf = io.BytesIO()
@@ -203,6 +232,9 @@ class IntegratorHub:
         return {"alpha": alpha, "temperature": temp, "enable": flag, "opa_url": opa_url}
 
     def _select_leader(self) -> Optional[str]:
+        """Execute select leader.
+            """
+
         if not set(self.domains).issubset(self._latest.keys()):
             return None
         cfg = self._effective_cfg()
@@ -225,6 +257,12 @@ class IntegratorHub:
         return max(probs.items(), key=lambda kv: kv[1])[0]
 
     def _publish_global(self, leader: str) -> None:
+        """Execute publish global.
+
+            Args:
+                leader: The leader.
+            """
+
         cfg = self._effective_cfg()
         present = {d: self._latest[d] for d in self.domains if d in self._latest}
         if leader not in present:
@@ -311,6 +349,13 @@ class IntegratorHub:
         self.producer.flush()
 
     def _default_opa_request(self, url: str, context: Dict[str, float]) -> bool:
+        """Execute default opa request.
+
+            Args:
+                url: The url.
+                context: The context.
+            """
+
         try:
             resp = requests.post(url, json={"input": context}, timeout=1)
             if not resp.ok:
@@ -323,6 +368,9 @@ class IntegratorHub:
             return False
 
     def run(self) -> None:  # pragma: no cover (I/O loop)
+        """Execute run.
+            """
+
         if self.consumer is None:
             return
         while True:

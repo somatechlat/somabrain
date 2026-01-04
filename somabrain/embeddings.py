@@ -35,7 +35,16 @@ try:  # pragma: no cover - trivial import guard
 except Exception:  # pragma: no cover
 
     def arc_cache(*args, **kwargs):
+        """Execute arc cache.
+            """
+
         def _decorator(fn):
+            """Execute decorator.
+
+                Args:
+                    fn: The fn.
+                """
+
             return fn
 
         return _decorator
@@ -199,12 +208,20 @@ class _CachedEmbedder:
         provider_label: str = "unknown",
     ):
         # Use arc_cache decorator for memoization if cache_size > 0
+        """Initialize the instance."""
+
         self._embed = (
             arc_cache(max_size=cache_size)(embed_fn) if cache_size > 0 else embed_fn
         )
         self._provider = str(provider_label)
 
     def embed(self, text: str) -> np.ndarray:
+        """Execute embed.
+
+            Args:
+                text: The text.
+            """
+
         return self._embed(text)
 
 
@@ -235,6 +252,12 @@ def make_embedder(cfg, quantum=None):
     if provider == "hrr" and quantum is not None:
 
         def _hrr_embed(text: str) -> np.ndarray:
+            """Execute hrr embed.
+
+                Args:
+                    text: The text.
+                """
+
             hv = quantum.encode_text(text)
             return (
                 hv.astype("float32")

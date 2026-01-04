@@ -579,16 +579,38 @@ class TestSFMDegradationMode:
         # Create a mock-like circuit breaker for testing
         # Note: We're not using mocks, but creating a minimal implementation
         class TestCircuitBreaker:
+            """Testcircuitbreaker class implementation."""
+
             def __init__(self):
+                """Initialize the instance."""
+
                 self._open_tenants = set()
 
             def is_open(self, tenant: str) -> bool:
+                """Check if open.
+
+                    Args:
+                        tenant: The tenant.
+                    """
+
                 return tenant in self._open_tenants
 
             def open(self, tenant: str) -> None:
+                """Execute open.
+
+                    Args:
+                        tenant: The tenant.
+                    """
+
                 self._open_tenants.add(tenant)
 
             def close(self, tenant: str) -> None:
+                """Execute close.
+
+                    Args:
+                        tenant: The tenant.
+                    """
+
                 self._open_tenants.discard(tenant)
 
         cb = TestCircuitBreaker()

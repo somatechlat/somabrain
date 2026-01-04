@@ -1,3 +1,5 @@
+"""Module opa."""
+
 from ninja import Router
 from django.http import HttpRequest
 from ninja.errors import HttpError

@@ -46,6 +46,8 @@ from django.conf import settings
 
 @dataclass
 class MCConfig:
+    """Mcconfig class implementation."""
+
     columns: int = field(default_factory=lambda: max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS)))
     per_col_capacity: int = field(
         default_factory=lambda: max(
@@ -74,12 +76,20 @@ class MultiColumnWM:
     """
 
     def __init__(self, dim: int, cfg: MCConfig, scorer=None):
+        """Initialize the instance."""
+
         self.dim = int(dim)
         self.cfg = cfg
         self._tenants: OrderedDict[str, List[WorkingMemory]] = OrderedDict()
         self._scorer = scorer
 
     def _ensure(self, tenant_id: str) -> List[WorkingMemory]:
+        """Execute ensure.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         cols = self._tenants.get(tenant_id)
         if cols is None:
             cols = [
@@ -130,6 +140,14 @@ class MultiColumnWM:
         *,
         cleanup_overlap: float | None = None,
     ) -> None:
+        """Execute admit.
+
+            Args:
+                tenant_id: The tenant_id.
+                vec: The vec.
+                payload: The payload.
+            """
+
         cols = self._ensure(tenant_id)
         idx = self._choose_column(payload, len(cols))
         cols[idx].admit(vec, dict(payload), cleanup_overlap=cleanup_overlap)
@@ -141,6 +159,14 @@ class MultiColumnWM:
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
     ) -> List[Tuple[float, dict]]:
+        """Execute recall.
+
+            Args:
+                tenant_id: The tenant_id.
+                vec: The vec.
+                top_k: The top_k.
+            """
+
         cols = self._ensure(tenant_id)
         per_col: List[List[Tuple[float, dict]]] = []
         bests: List[float] = []
@@ -175,6 +201,13 @@ class MultiColumnWM:
         return combined[: max(0, int(top_k))]
 
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
+        """Execute novelty.
+
+            Args:
+                tenant_id: The tenant_id.
+                vec: The vec.
+            """
+
         cols = self._ensure(tenant_id)
         best = 0.0
         for wm in cols:
@@ -184,6 +217,13 @@ class MultiColumnWM:
         return max(0.0, 1.0 - best)
 
     def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
+        """Execute items.
+
+            Args:
+                tenant_id: The tenant_id.
+                limit: The limit.
+            """
+
         cols = self._ensure(tenant_id)
         data: List[dict] = []
         for wm in cols:
@@ -193,5 +233,11 @@ class MultiColumnWM:
         return data
 
     def stats(self, tenant_id: str) -> Dict[str, int]:
+        """Execute stats.
+
+            Args:
+                tenant_id: The tenant_id.
+            """
+
         cols = self._ensure(tenant_id)
         return {f"col_{i}": len(wm._items) for i, wm in enumerate(cols)}

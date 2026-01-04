@@ -46,6 +46,8 @@ router = Router(tags=["Notifications"])
 # =============================================================================
 
 class NotificationType(str, Enum):
+    """Notificationtype class implementation."""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -55,6 +57,8 @@ class NotificationType(str, Enum):
 
 
 class NotificationPriority(str, Enum):
+    """Notificationpriority class implementation."""
+
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -66,10 +70,22 @@ class NotificationPriority(str, Enum):
 # =============================================================================
 
 def get_notifications_key(user_id: str) -> str:
+    """Retrieve notifications key.
+
+        Args:
+            user_id: The user_id.
+        """
+
     return f"notifications:user:{user_id}"
 
 
 def get_notification_key(notification_id: str) -> str:
+    """Retrieve notification key.
+
+        Args:
+            notification_id: The notification_id.
+        """
+
     return f"notification:{notification_id}"
 
 

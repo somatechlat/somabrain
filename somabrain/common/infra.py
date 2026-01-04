@@ -1,3 +1,5 @@
+"""Module infra."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -5,11 +7,24 @@ from django.conf import settings
 
 
 def _strip(url: Optional[str]) -> str:
+    """Execute strip.
+
+        Args:
+            url: The url.
+        """
+
     u = (url or "").strip()
     return u.split("://", 1)[1] if "://" in u else u
 
 
 def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
+    """Execute check kafka.
+
+        Args:
+            bootstrap: The bootstrap.
+            timeout_s: The timeout_s.
+        """
+
     bs = _strip(bootstrap)
     if not bs:
         return False

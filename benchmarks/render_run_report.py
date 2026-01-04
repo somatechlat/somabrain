@@ -13,6 +13,12 @@ from typing import Any, List
 
 
 def _read_json(p: Path) -> Any:
+    """Execute read json.
+
+        Args:
+            p: The p.
+        """
+
     if not p.exists():
         return None
     try:
@@ -22,6 +28,12 @@ def _read_json(p: Path) -> Any:
 
 
 def render(run_dir: Path) -> int:
+    """Execute render.
+
+        Args:
+            run_dir: The run_dir.
+        """
+
     summ = _read_json(run_dir / "summary.json") or {}
     deltas = _read_json(run_dir / "metrics_deltas.json") or {}
     recall = _read_json(run_dir / "recall_live_results.json") or {}
@@ -87,6 +99,9 @@ def render(run_dir: Path) -> int:
 
 
 def main() -> int:
+    """Execute main.
+        """
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", type=Path, required=True)
     args = ap.parse_args()

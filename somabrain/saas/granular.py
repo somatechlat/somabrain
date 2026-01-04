@@ -464,8 +464,20 @@ def require_permission(*permissions: str, require_all: bool = True):
     """
     def decorator(func):
         @wraps(func)
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         def wrapper(request, *args, **kwargs):
             # Get auth from request
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             auth = getattr(request, "auth", None)
             if auth is None:
                 logger.warning("Permission check failed: No auth context")

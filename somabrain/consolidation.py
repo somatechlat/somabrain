@@ -52,6 +52,14 @@ from .reflect import top_keywords
 def _episodics_from_wm(
     mtwm: MultiTenantWM, tenant_id: str, limit: int = 256
 ) -> List[dict]:
+    """Execute episodics from wm.
+
+        Args:
+            mtwm: The mtwm.
+            tenant_id: The tenant_id.
+            limit: The limit.
+        """
+
     items = mtwm.items(tenant_id, limit=limit)
     return [p for p in items if (p.get("memory_type") == "episodic")]
 
@@ -59,6 +67,13 @@ def _episodics_from_wm(
 def _coords_for_payloads(
     mem: MemoryClient, payloads: List[dict]
 ) -> List[Tuple[float, float, float]]:
+    """Execute coords for payloads.
+
+        Args:
+            mem: The mem.
+            payloads: The payloads.
+        """
+
     coords: List[Tuple[float, float, float]] = []
     for p in payloads:
         c = p.get("coordinate")
@@ -163,6 +178,9 @@ def run_rem(
 
 
 def main():
+    """Execute main.
+        """
+
     parser = argparse.ArgumentParser(description="SomaBrain Sleep Cycle")
     parser.add_argument("sleep", nargs="?", help="sleep command", default="sleep")
     parser.add_argument("--tenant", dest="tenant", default="public")

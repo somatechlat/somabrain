@@ -95,6 +95,8 @@ class IntegratorLeaderElection:
 
     def __init__(self, redis_url: Optional[str] = None) -> None:
         # Prefer explicit argument; fall back to central settings.
+        """Initialize the instance."""
+
         self._redis_url = redis_url or settings.SOMABRAIN_REDIS_URL or ""
         self._redis_client = None
         self._leader_states: Dict[str, LeaderState] = {}

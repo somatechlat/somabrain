@@ -62,6 +62,8 @@ class MilvusAnnIndex(CleanupIndex):
         top_k: int = 64,
         ef_search: int = 128,
     ) -> None:
+        """Initialize the instance."""
+
         if not _PYMILVUS_AVAILABLE:
             raise RuntimeError(
                 "pymilvus is required for MilvusAnnIndex. "

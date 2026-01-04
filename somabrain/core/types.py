@@ -56,16 +56,40 @@ class NullMetrics:
     def inc_counter(
         self, name: str, labels: dict[str, str] | None = None, value: float = 1.0
     ) -> None:
+        """Execute inc counter.
+
+            Args:
+                name: The name.
+                labels: The labels.
+                value: The value.
+            """
+
         pass
 
     def observe_histogram(
         self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
+        """Execute observe histogram.
+
+            Args:
+                name: The name.
+                value: The value.
+                labels: The labels.
+            """
+
         pass
 
     def set_gauge(
         self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
+        """Set gauge.
+
+            Args:
+                name: The name.
+                value: The value.
+                labels: The labels.
+            """
+
         pass
 
 

@@ -15,9 +15,14 @@ from somabrain.saas.models import Role, FieldPermission, PlatformRole
 
 
 class Command(BaseCommand):
+    """Command class implementation."""
+
     help = "Seed system roles and default field permissions"
 
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         self.stdout.write("Seeding system roles...")
         
         # =================================================================

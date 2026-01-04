@@ -22,6 +22,15 @@ DEFAULT_BODY = {
 
 
 async def worker(client: httpx.AsyncClient, url: str, q: asyncio.Queue, results: list):
+    """Execute worker.
+
+        Args:
+            client: The client.
+            url: The url.
+            q: The q.
+            results: The results.
+        """
+
     while True:
         try:
             _ = q.get_nowait()
@@ -38,6 +47,14 @@ async def worker(client: httpx.AsyncClient, url: str, q: asyncio.Queue, results:
 
 
 async def run(url: str, concurrency: int, total: int):
+    """Execute run.
+
+        Args:
+            url: The url.
+            concurrency: The concurrency.
+            total: The total.
+        """
+
     q = asyncio.Queue()
     for i in range(total):
         q.put_nowait(i)

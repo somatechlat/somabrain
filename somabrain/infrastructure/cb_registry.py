@@ -17,4 +17,7 @@ _CB = CircuitBreaker(
 
 
 def get_cb() -> CircuitBreaker:
+    """Retrieve cb.
+        """
+
     return _CB

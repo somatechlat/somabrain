@@ -21,6 +21,8 @@ _SeedLike = Union[int, str, None]
 
 @dataclass(frozen=True)
 class _SeedBundle:
+    """Seedbundle class implementation."""
+
     prefix: bytes
     base_seed: np.uint64
 
@@ -33,6 +35,9 @@ def _build_seed_bundle(
     tenant_id: _SeedLike,
     model_version: _SeedLike,
 ) -> _SeedBundle:
+    """Execute build seed bundle.
+        """
+
     parts = [
         label,
         str(base_seed),
@@ -45,6 +50,13 @@ def _build_seed_bundle(
 
 
 def _active_count(dim: int, sparsity: Union[int, float]) -> int:
+    """Execute active count.
+
+        Args:
+            dim: The dim.
+            sparsity: The sparsity.
+        """
+
     if isinstance(sparsity, (int, np.integer)):
         count = int(sparsity)
     else:
@@ -90,6 +102,8 @@ class BHDCEncoder:
         model_version: _SeedLike = None,
         binary_mode: str = "pm_one",
     ) -> None:
+        """Initialize the instance."""
+
         self._dim = int(dim)
         if self._dim <= 0:
             raise ValueError("dimension must be positive")
@@ -113,16 +127,37 @@ class BHDCEncoder:
     # Vector generation
     # ------------------------------------------------------------------
     def random_vector(self) -> np.ndarray:
+        """Execute random vector.
+            """
+
         return self._vector_from_rng(self._rng)
 
     def vector_for_key(self, key: str) -> np.ndarray:
+        """Execute vector for key.
+
+            Args:
+                key: The key.
+            """
+
         seed = seed_to_uint64(self._seeds.prefix + key.encode("utf-8"))
         return self._vector_from_seed(np.uint64(seed))
 
     def vector_for_token(self, token: str) -> np.ndarray:
+        """Execute vector for token.
+
+            Args:
+                token: The token.
+            """
+
         return self.vector_for_key(f"role::{token}")
 
     def _vector_from_seed(self, seed: np.uint64) -> np.ndarray:
+        """Execute vector from seed.
+
+            Args:
+                seed: The seed.
+            """
+
         cached = self._cache.get(int(seed))
         if cached is not None:
             return cached
@@ -133,6 +168,12 @@ class BHDCEncoder:
         return vec
 
     def _vector_from_rng(self, rng: np.random.Generator) -> np.ndarray:
+        """Execute vector from rng.
+
+            Args:
+                rng: The rng.
+            """
+
         indices = rng.choice(self._dim, size=self._active, replace=False)
         if self._mode == "pm_one":
             vec = np.full(self._dim, -1.0, dtype=self._dtype)
@@ -156,6 +197,8 @@ class PermutationBinder:
         dtype: Union[str, np.dtype] = "float32",
         mix: str = "none",
     ) -> None:
+        """Initialize the instance."""
+
         self._dim = int(dim)
         if self._dim <= 0:
             raise ValueError("dimension must be positive")
@@ -171,11 +214,25 @@ class PermutationBinder:
 
     # ------------------------------------------------------------------
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Execute bind.
+
+            Args:
+                a: The a.
+                b: The b.
+            """
+
         a_arr = np.asarray(a, dtype=self._dtype)
         b_arr = np.asarray(b, dtype=self._dtype)
         return a_arr * b_arr
 
     def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Execute unbind.
+
+            Args:
+                c: The c.
+                b: The b.
+            """
+
         c_arr = np.asarray(c, dtype=self._dtype)
         b_arr = np.asarray(b, dtype=self._dtype)
         denom_abs = np.abs(b_arr)
@@ -187,6 +244,13 @@ class PermutationBinder:
 
     # ------------------------------------------------------------------
     def permute(self, vec: np.ndarray, times: int = 1) -> np.ndarray:
+        """Execute permute.
+
+            Args:
+                vec: The vec.
+                times: The times.
+            """
+
         arr = np.asarray(vec, dtype=self._dtype)
         return np.roll(arr, times)
 
@@ -194,6 +258,12 @@ class PermutationBinder:
     def _permute_operand(
         self, operand: np.ndarray, *, expected_shape: Tuple[int, ...]
     ) -> np.ndarray:
+        """Execute permute operand.
+
+            Args:
+                operand: The operand.
+            """
+
         b_arr = np.asarray(operand, dtype=self._dtype)
         if b_arr.shape != expected_shape:
             raise ValueError("operands must have the same shape for binding")
@@ -204,10 +274,16 @@ class PermutationBinder:
 
     @property
     def permutation(self) -> np.ndarray:
+        """Execute permutation.
+            """
+
         return self._perm
 
     @property
     def inverse_permutation(self) -> np.ndarray:
+        """Execute inverse permutation.
+            """
+
         return self._perm_inv
 
 

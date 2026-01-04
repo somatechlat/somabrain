@@ -16,6 +16,12 @@ from somabrain.monitoring.drift_detector import drift_detector
 
 
 def _human(ts: float) -> str:
+    """Execute human.
+
+        Args:
+            ts: The ts.
+        """
+
     if not ts:
         return "-"
     try:
@@ -26,6 +32,9 @@ def _human(ts: float) -> str:
 
 def main() -> None:
     # Prefer live in-memory state (centralized mode gating); use persistence file alternative if detector disabled
+    """Execute main.
+        """
+
     if drift_detector.enabled:
         state = drift_detector.export_state()
     else:
