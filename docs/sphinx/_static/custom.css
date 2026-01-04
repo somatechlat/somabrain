@@ -1,0 +1,103 @@
+/* Yachaq Theme - Warm Cream & Charcoal */
+:root {
+    --yachaq-cream: #FDFBF7;
+    --yachaq-cream-dark: #F5F2EB;
+    --yachaq-charcoal: #1A1A1A;
+    --yachaq-gold: #D4AF37;
+    /* Assumed accent */
+    --yachaq-text: #1A1A1A;
+    --yachaq-text-muted: #666666;
+}
+
+body {
+    background-color: var(--yachaq-cream);
+    color: var(--yachaq-text);
+}
+
+.wy-nav-content {
+    background-color: var(--yachaq-cream) !important;
+    max-width: 900px;
+}
+
+.wy-nav-side {
+    background-color: var(--yachaq-cream-dark) !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.wy-menu-vertical a {
+    color: var(--yachaq-text-muted) !important;
+}
+
+.wy-menu-vertical a:hover {
+    background-color: rgba(0, 0, 0, 0.05) !important;
+    color: var(--yachaq-text) !important;
+}
+
+.wy-menu-vertical a.current {
+    background-color: white !important;
+    color: var(--yachaq-charcoal) !important;
+    border-right: 3px solid var(--yachaq-charcoal);
+    font-weight: bold;
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--yachaq-charcoal) !important;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Links */
+a {
+    color: var(--yachaq-charcoal);
+    text-decoration: underline;
+    text-decoration-color: rgba(26, 26, 26, 0.3);
+}
+
+a:hover {
+    color: var(--yachaq-charcoal);
+    text-decoration-color: var(--yachaq-charcoal);
+}
+
+/* Tables */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal;
+}
+
+.rst-content table.docutils {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Code Blocks */
+.rst-content pre.literal-block,
+.rst-content div[class^="highlight"] {
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    background: white;
+    color: #333;
+}
+
+/* Search */
+.wy-side-nav-search {
+    background-color: var(--yachaq-cream-dark) !important;
+    color: var(--yachaq-text);
+}
+
+.wy-side-nav-search input[type=text] {
+    border-color: transparent;
+    background-color: white;
+    color: var(--yachaq-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Mobile Nav */
+.wy-nav-top {
+    background-color: var(--yachaq-cream-dark) !important;
+    color: var(--yachaq-text) !important;
+}

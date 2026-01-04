@@ -92,6 +92,7 @@ html_theme_options = {
 }
 
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]  # YACHAQ brand styling
 html_title = "SomaBrain Documentation"
 html_short_title = "SomaBrain"
 
