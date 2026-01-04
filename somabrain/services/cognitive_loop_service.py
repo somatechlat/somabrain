@@ -37,6 +37,8 @@ class CognitiveLoopState:
     """Encapsulates cognitive loop state for DI container management."""
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._bu_publisher = None
         self._sleep_state_cache: Dict[str, tuple[SleepState, float]] = {}
         self._sleep_cache_ttl = 5.0

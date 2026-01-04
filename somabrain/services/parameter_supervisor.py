@@ -26,6 +26,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class MetricsSnapshot:
+    """Metricssnapshot class implementation."""
+
     tenant: str
     namespace: str
     metrics: Dict[str, float]
@@ -39,6 +41,8 @@ class ParameterSupervisor:
     """Persist and optionally act on incoming metric snapshots."""
 
     def __init__(self, config_service: ConfigService) -> None:
+        """Initialize the instance."""
+
         self._config_service = config_service
         # Keep the latest snapshot per (tenant, namespace) for observability/debugging.
         self._latest: Dict[Tuple[str, str], MetricsSnapshot] = {}

@@ -110,6 +110,9 @@ class TestContextAndAttention:
         current_time = [0.0]
 
         def mock_now() -> float:
+            """Execute mock now.
+                """
+
             return current_time[0]
 
         from somabrain.context_hrr import HRRContext, HRRContextConfig

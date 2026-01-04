@@ -1,3 +1,5 @@
+"""Module test_cognition_workbench."""
+
 
 import pytest
 import math
@@ -6,6 +8,9 @@ from somabrain.exec_controller import ExecutiveController, ExecConfig, Policy
 @pytest.fixture
 def exec_controller():
     # Use a small window for testing responsiveness
+    """Execute exec controller.
+        """
+
     cfg = ExecConfig(window=5, conflict_threshold=0.5, explore_boost_k=2, use_bandits=False)
     # Manually run post_init defaults if needed, but the class does it.
     # We need to mock settings or provide non-None values to avoid default lookup failure?

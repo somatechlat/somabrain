@@ -135,9 +135,17 @@ class PrometheusTimingMiddleware:
     """
 
     def __init__(self, get_response: Callable[[Any], Any]):
+        """Initialize the instance."""
+
         self.get_response = get_response
 
     def __call__(self, request: Any) -> Any:
+        """Execute call  .
+
+            Args:
+                request: The request.
+            """
+
         start = time.perf_counter()
         response = self.get_response(request)
         

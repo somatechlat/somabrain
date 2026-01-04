@@ -18,6 +18,8 @@ class EtcdClient:
     """Wrapper around ``etcd3.client`` with typed helpers."""
 
     def __init__(self, host: str = "etcd", port: int = 2379, timeout: float = 5.0):
+        """Initialize the instance."""
+
         if etcd3 is None:  # pragma: no cover - executed when dependency missing
             raise RuntimeError(
                 "etcd3 package not available; install it or disable Etcd integration"
@@ -25,15 +27,34 @@ class EtcdClient:
         self._client = etcd3.client(host=host, port=port, timeout=timeout)
 
     def get_flag(self, key: str) -> Optional[str]:
+        """Retrieve flag.
+
+            Args:
+                key: The key.
+            """
+
         value, _ = self._client.get(key)
         if value is None:
             return None
         return value.decode("utf-8") if isinstance(value, bytes) else str(value)
 
     def set_flag(self, key: str, value: str) -> None:
+        """Set flag.
+
+            Args:
+                key: The key.
+                value: The value.
+            """
+
         self._client.put(key, value)
 
     def delete_flag(self, key: str) -> None:
+        """Execute delete flag.
+
+            Args:
+                key: The key.
+            """
+
         self._client.delete(key)
 
     @contextmanager
@@ -43,6 +64,12 @@ class EtcdClient:
         """Watch a prefix and invoke ``callback`` for every update."""
 
         def _handler(event):
+            """Execute handler.
+
+                Args:
+                    event: The event.
+                """
+
             if event.value is None:
                 payload = None
             else:

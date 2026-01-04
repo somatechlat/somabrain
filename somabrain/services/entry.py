@@ -22,6 +22,13 @@ from typing import Callable
 
 
 def _start_thread(target: Callable[[], None], name: str) -> threading.Thread:
+    """Execute start thread.
+
+        Args:
+            target: The target.
+            name: The name.
+        """
+
     th = threading.Thread(target=target, name=name, daemon=True)
     th.start()
     print(f"orchestrator: started {name} thread")
@@ -29,6 +36,9 @@ def _start_thread(target: Callable[[], None], name: str) -> threading.Thread:
 
 
 def _run_integrator() -> None:
+    """Execute run integrator.
+        """
+
     try:
         from .integrator_hub import IntegratorHub
 
@@ -39,6 +49,9 @@ def _run_integrator() -> None:
 
 
 def _run_segmentation() -> None:
+    """Execute run segmentation.
+        """
+
     try:
         from .segmentation_service import SegmentationService
 
@@ -49,6 +62,9 @@ def _run_segmentation() -> None:
 
 
 def _run_drift_monitor() -> None:
+    """Execute run drift monitor.
+        """
+
     try:
         from somabrain.monitoring.drift_detector import drift_service
 
@@ -58,6 +74,9 @@ def _run_drift_monitor() -> None:
 
 
 def _run_calibration() -> None:
+    """Execute run calibration.
+        """
+
     try:
         from .calibration_service import CalibrationService
 
@@ -68,6 +87,9 @@ def _run_calibration() -> None:
 
 
 def _run_learner() -> None:
+    """Execute run learner.
+        """
+
     try:
         # Import directly and create a fresh service instance
         from .learner_online import LearnerService
@@ -81,6 +103,9 @@ def _run_learner() -> None:
 def main() -> None:  # pragma: no cover
     # Legacy composite flag ENABLE_COG_THREADS removed – rely on central feature flags.
     # The orchestrator now starts services solely based on `feature_enabled`.
+    """Execute main.
+        """
+
     from somabrain.modes import feature_enabled
     from django.conf import settings
 
@@ -122,6 +147,13 @@ def main() -> None:  # pragma: no cover
     stop = threading.Event()
 
     def _sig_handler(signum, frame):
+        """Execute sig handler.
+
+            Args:
+                signum: The signum.
+                frame: The frame.
+            """
+
         print(f"orchestrator: received signal {signum}; shutting down...")
         stop.set()
 

@@ -8,6 +8,9 @@ from kafka import KafkaAdminClient, NewTopic
 
 
 def main():
+    """Execute main.
+        """
+
     p = argparse.ArgumentParser()
     p.add_argument("--bootstrap-server", default="127.0.0.1:9092")
     p.add_argument("--topic", default="soma.audit")

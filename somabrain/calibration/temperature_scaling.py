@@ -24,6 +24,8 @@ class TemperatureScaler:
     """Temperature scaling for confidence calibration."""
 
     def __init__(self, min_samples: int = 50):
+        """Initialize the instance."""
+
         self.min_samples = min_samples
         self.temperature = 1.0
         self.is_fitted = False
@@ -48,6 +50,12 @@ class TemperatureScaler:
         logits = np.log(p / (1 - p))
 
         def nll(temp: float) -> float:
+            """Execute nll.
+
+                Args:
+                    temp: The temp.
+                """
+
             t = max(1e-6, float(temp))
             z = logits / t
             # Numerically stable sigmoid

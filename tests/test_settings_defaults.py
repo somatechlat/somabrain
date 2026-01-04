@@ -1,3 +1,5 @@
+"""Module test_settings_defaults."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,6 +15,9 @@ from somabrain.wm import WorkingMemory
 
 
 def test_mcconfig_defaults_follow_settings() -> None:
+    """Execute test mcconfig defaults follow settings.
+        """
+
     cfg = MCConfig()
     assert cfg.columns == max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS))
     assert cfg.vote_temperature == settings.SOMABRAIN_MICRO_VOTE_TEMPERATURE
@@ -22,6 +27,9 @@ def test_mcconfig_defaults_follow_settings() -> None:
 
 
 def test_mtwm_defaults_follow_settings() -> None:
+    """Execute test mtwm defaults follow settings.
+        """
+
     cfg = MTWMConfig()
     assert cfg.max_tenants == settings.SOMABRAIN_MTWM_MAX_TENANTS
     assert cfg.per_tenant_capacity == max(1, int(settings.SOMABRAIN_WM_PER_TENANT_CAPACITY))
@@ -30,6 +38,9 @@ def test_mtwm_defaults_follow_settings() -> None:
 
 
 def test_working_memory_defaults_use_settings() -> None:
+    """Execute test working memory defaults use settings.
+        """
+
     wm = WorkingMemory(capacity=4, dim=2)
     assert wm.alpha == settings.SOMABRAIN_WM_ALPHA
     assert wm.beta == settings.SOMABRAIN_WM_BETA
@@ -39,23 +50,55 @@ def test_working_memory_defaults_use_settings() -> None:
 
 
 def test_budgeted_predictor_uses_settings_timeout() -> None:
+    """Execute test budgeted predictor uses settings timeout.
+        """
+
     bp = BudgetedPredictor(SlowPredictor())
     assert bp.timeout_ms == settings.predictor_timeout_ms
 
 
 def test_rwr_plan_respects_settings_limits() -> None:
+    """Execute test rwr plan respects settings limits.
+        """
+
     class _Mem:
+        """Mem class implementation."""
+
         def __init__(self):
+            """Initialize the instance."""
+
             self.calls = 0
 
         def coord_for_key(self, task_key, universe=None):
+            """Execute coord for key.
+
+                Args:
+                    task_key: The task_key.
+                    universe: The universe.
+                """
+
             return (0.0, 0.0, 0.0)
 
         def links_from(self, coord, type_filter=None, limit=None):
+            """Execute links from.
+
+                Args:
+                    coord: The coord.
+                    type_filter: The type_filter.
+                    limit: The limit.
+                """
+
             assert limit == max(1, int(settings.planner_rwr_edges_per_node))
             return []
 
         def payloads_for_coords(self, coords, universe=None):
+            """Execute payloads for coords.
+
+                Args:
+                    coords: The coords.
+                    universe: The universe.
+                """
+
             self.calls += 1
             return []
 
@@ -65,6 +108,9 @@ def test_rwr_plan_respects_settings_limits() -> None:
 
 
 def test_no_direct_getenv_outside_settings() -> None:
+    """Execute test no direct getenv outside settings.
+        """
+
     root = Path(__file__).resolve().parents[1]
     offenders: list[str] = []
     for path in root.rglob("*.py"):

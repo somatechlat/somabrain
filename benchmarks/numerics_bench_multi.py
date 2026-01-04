@@ -8,6 +8,13 @@ from somabrain import numerics as num
 
 
 def run(D, N):
+    """Execute run.
+
+        Args:
+            D: The D.
+            N: The N.
+        """
+
     x = np.random.randn(N, D).astype(np.float32)
     t0 = time.time()
     _ = num.normalize_array(x, axis=-1, keepdims=False)

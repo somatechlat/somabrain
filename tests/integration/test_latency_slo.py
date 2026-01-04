@@ -1,3 +1,5 @@
+"""Module test_latency_slo."""
+
 from __future__ import annotations
 
 import time
@@ -21,6 +23,12 @@ TENANT = "workbench-slo"
 
 
 def _api_available(url: str) -> bool:
+    """Execute api available.
+
+        Args:
+            url: The url.
+        """
+
     base = url.rstrip("/") or "http://localhost:9696"
     try:
         r = httpx.get(f"{base}/health", timeout=2.0)
@@ -34,6 +42,9 @@ def _api_available(url: str) -> bool:
 
 
 def _api_client() -> httpx.Client:
+    """Execute api client.
+        """
+
     base = API_URL or "http://localhost:9696"
     if not _api_available(base):
         raise RuntimeError("API unavailable")
@@ -44,6 +55,9 @@ def _api_client() -> httpx.Client:
 
 @pytest.mark.integration
 def test_latency_slo_basic() -> None:
+    """Execute test latency slo basic.
+        """
+
     if not MEM_TOKEN:
         pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN required for latency SLO test")
     if not _api_available(API_URL):
@@ -91,6 +105,12 @@ def test_latency_slo_basic() -> None:
 
     # Use a simple percentile to avoid small-sample quantile sensitivity.
     def p95(values):
+        """Execute p95.
+
+            Args:
+                values: The values.
+            """
+
         if not values:
             return 0.0
         vs = sorted(values)

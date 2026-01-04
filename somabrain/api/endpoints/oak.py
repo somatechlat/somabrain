@@ -32,10 +32,14 @@ _milvus = MilvusClient()
 
 # Local Schema Definitions
 class OakOptionCreateRequest(Schema):
+    """Data model for OakOptionCreateRequest."""
+
     payload: str  # base64 encoded
     option_id: Optional[str] = None
 
 class OakPlanSuggestResponse(Schema):
+    """Data model for OakPlanSuggestResponse."""
+
     plan: List[str]
 
 @router.post("/option/create", response=OakPlanSuggestResponse, auth=bearer_auth)

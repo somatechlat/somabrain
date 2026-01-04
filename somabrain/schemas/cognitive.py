@@ -31,6 +31,9 @@ class Observation(BaseModel):
 
     @model_validator(mode="after")
     def _validate_embeddings(self):
+        """Execute validate embeddings.
+            """
+
         self.embeddings = normalize_vector(self.embeddings, dim=_get_settings().hrr_dim)
         return self
 
@@ -48,6 +51,9 @@ class Thought(BaseModel):
 
     @model_validator(mode="after")
     def _validate_vector(self):
+        """Execute validate vector.
+            """
+
         self.vector = normalize_vector(self.vector, dim=_get_settings().hrr_dim)
         return self
 
@@ -64,6 +70,9 @@ class Memory(BaseModel):
 
     @model_validator(mode="after")
     def _validate_memory_vector(self):
+        """Execute validate memory vector.
+            """
+
         self.vector = normalize_vector(self.vector, dim=_get_settings().hrr_dim)
         return self
 
@@ -110,19 +119,31 @@ class Feedback(BaseModel):
     metrics: Dict[str, Any] = {}
 
     class Observation(BaseModel):
+        """Observation class implementation."""
+
         data: dict
         timestamp: float
 
     class Thought(BaseModel):
+        """Thought class implementation."""
+
         query: str
         context: dict = {}
 
     class Memory(BaseModel):
+        """Memory class implementation."""
+
         data: dict
         timestamp: float
 
         @classmethod
         def from_observation(cls, obs: Any):
+            """Execute from observation.
+
+                Args:
+                    obs: The obs.
+                """
+
             if hasattr(obs, "embeddings"):
                 vec = getattr(obs, "embeddings", [])
                 ts = float(getattr(obs, "when", 0.0)) if hasattr(obs, "when") else 0.0
@@ -137,6 +158,12 @@ class Feedback(BaseModel):
             return cls(data={"vector": normalized}, timestamp=ts)
 
         def matches(self, thought: Any) -> bool:
+            """Execute matches.
+
+                Args:
+                    thought: The thought.
+                """
+
             from somabrain.math import cosine_similarity, normalize_vector as _norm
 
             if hasattr(thought, "vector"):
@@ -250,6 +277,9 @@ class PersonalityState(BaseModel):
 
     @model_validator(mode="after")
     def _validate_traits(self):
+        """Execute validate traits.
+            """
+
         validated: Dict[str, float] = {}
         for k, v in (self.traits or {}).items():
             try:

@@ -376,4 +376,3 @@ def create_fnom_memory(cfg, embedder):
         namespace="fnom",
         embedder=embedder
     )
-

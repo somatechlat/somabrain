@@ -15,6 +15,13 @@ import json
 BASE_URL = "http://localhost:9696"
 
 def log(msg, success=None):
+    """Execute log.
+
+        Args:
+            msg: The msg.
+            success: The success.
+        """
+
     if success is True:
         print(f"✅ {msg}")
     elif success is False:
@@ -23,6 +30,9 @@ def log(msg, success=None):
         print(f"ℹ️  {msg}")
 
 def check_health():
+    """Execute check health.
+        """
+
     url = f"{BASE_URL}/api/health/health"
     log(f"Checking {url}...")
     try:
@@ -45,6 +55,9 @@ def check_health():
         return False
 
 def check_admin_status():
+    """Execute check admin status.
+        """
+
     url = f"{BASE_URL}/api/admin/status"
     log(f"Checking {url}...")
     try:
@@ -61,6 +74,9 @@ def check_admin_status():
         return False
 
 def main():
+    """Execute main.
+        """
+
     log("Starting deployment verification...")
     
     if not check_health():

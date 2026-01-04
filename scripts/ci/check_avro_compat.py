@@ -1,3 +1,5 @@
+"""Module check_avro_compat."""
+
 #!/usr/bin/env python3
 import json
 import sys
@@ -10,15 +12,34 @@ from pathlib import Path
 
 
 def load_schema(p: Path):
+    """Execute load schema.
+
+        Args:
+            p: The p.
+        """
+
     with p.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def index_fields(schema: dict) -> dict:
+    """Execute index fields.
+
+        Args:
+            schema: The schema.
+        """
+
     return {f["name"]: f for f in schema.get("fields", [])}
 
 
 def check_backward_compatible(old: dict, new: dict) -> list[str]:
+    """Execute check backward compatible.
+
+        Args:
+            old: The old.
+            new: The new.
+        """
+
     problems: list[str] = []
     oldf = index_fields(old)
     newf = index_fields(new)
@@ -37,6 +58,9 @@ def check_backward_compatible(old: dict, new: dict) -> list[str]:
 
 
 def main():
+    """Execute main.
+        """
+
     repo = Path(__file__).resolve().parents[2]
     new_dir = repo / "proto" / "cog" / "avro"
     old_dir = repo / "proto" / "cog"

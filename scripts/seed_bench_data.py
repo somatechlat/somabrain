@@ -18,6 +18,14 @@ import httpx
 
 
 def main(count: int, base_url: str, namespace: str | None = None):
+    """Execute main.
+
+        Args:
+            count: The count.
+            base_url: The base_url.
+            namespace: The namespace.
+        """
+
     out = []
     client = httpx.Client(timeout=30.0)
     remember_url = base_url.rstrip("/") + "/memory/remember"

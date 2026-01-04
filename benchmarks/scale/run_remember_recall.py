@@ -24,6 +24,9 @@ DEFAULT_PORT = 9696
 
 
 def read_env_port() -> int:
+    """Execute read env port.
+        """
+
     port = None
     if os.path.exists(ENV_FILE):
         with open(ENV_FILE, "r") as f:
@@ -46,6 +49,12 @@ HEADERS = {"Content-Type": "application/json"}
 
 
 def make_payload(i: int):
+    """Execute make payload.
+
+        Args:
+            i: The i.
+        """
+
     return {
         "payload": {
             "task": "scale-test",
@@ -85,6 +94,9 @@ async def post_remember(client: httpx.AsyncClient, i: int):
 
 
 async def run():
+    """Execute run.
+        """
+
     async with httpx.AsyncClient(base_url=BASE) as client:
         tasks = [post_remember(client, i) for i in range(100)]
         print(f"Posting 100 /memory/remember to {BASE}/memory/remember ...")

@@ -1,3 +1,5 @@
+"""Module utility_guard."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -14,6 +16,15 @@ def compute_utility(
     p_confidence: float, cost: float, latency: float, const_params: dict
 ) -> float:
     # default params
+    """Execute compute utility.
+
+        Args:
+            p_confidence: The p_confidence.
+            cost: The cost.
+            latency: The latency.
+            const_params: The const_params.
+        """
+
     lam = const_params.get("lambda", const_params.get("lam", 1.0))
     mu = const_params.get("mu", 0.0)
     nu = const_params.get("nu", 0.0)

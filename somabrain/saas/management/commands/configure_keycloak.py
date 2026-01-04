@@ -26,9 +26,17 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
+    """Command class implementation."""
+
     help = "Configure Keycloak realm for SomaBrain"
 
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--realm",
             default="somabrain",
@@ -46,6 +54,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         realm_name = options["realm"]
         dry_run = options["dry_run"]
         force = options["force"]

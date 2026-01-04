@@ -22,6 +22,8 @@ class FractalClientAdapter:
     """
 
     def __init__(self, client: MemoryClient):
+        """Initialize the instance."""
+
         self.client = client
 
     def encode_fractal(self, content: Dict[str, Any], importance: float = 1.0) -> List[Any]:
@@ -85,7 +87,11 @@ class FractalClientAdapter:
             
             # So 'node' must be an object with 'memory_trace' attribute.
             class AdapterNode:
+                """Adapternode class implementation."""
+
                 def __init__(self, p):
+                    """Initialize the instance."""
+
                     self.memory_trace = p
             
             results.append((AdapterNode(hit.payload), hit.score))

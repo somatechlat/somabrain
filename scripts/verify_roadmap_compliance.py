@@ -22,6 +22,8 @@ class RoadmapComplianceVerifier:
 
     def __init__(self, base_url: str = None):
         # Use configured API URL if not explicitly provided
+        """Initialize the instance."""
+
         self.base_url = base_url or settings.api_url
         self.metrics_url = f"{settings.api_url}/metrics"
 
@@ -155,6 +157,13 @@ class RoadmapComplianceVerifier:
         }
 
         def kl_divergence(d1, d2):
+            """Execute kl divergence.
+
+                Args:
+                    d1: The d1.
+                    d2: The d2.
+                """
+
             total = 0.0
             for k in d1.keys():
                 pk = max(d1[k], 1e-12)

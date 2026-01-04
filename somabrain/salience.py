@@ -49,6 +49,8 @@ class FDSalienceSketch:
         rank: int,
         decay: float = 1.0,
     ):
+        """Initialize the instance."""
+
         if dim <= 0:
             raise ValueError("dim must be positive")
         if rank <= 0:
@@ -89,6 +91,9 @@ class FDSalienceSketch:
         return residual_ratio, self.capture_ratio
 
     def _apply_decay(self) -> None:
+        """Execute apply decay.
+            """
+
         if self.decay >= 0.9999:
             return
         if self._fd.S.size:
@@ -97,6 +102,12 @@ class FDSalienceSketch:
         self._total_energy *= self.decay
 
     def _residual_energy(self, vector: np.ndarray) -> float:
+        """Execute residual energy.
+
+            Args:
+                vector: The vector.
+            """
+
         if self._basis is None or self._alpha is None:
             return float(np.dot(vector, vector))
         if self._basis.size == 0:
@@ -107,6 +118,9 @@ class FDSalienceSketch:
         return max(0.0, total - captured)
 
     def _refresh_low_rank(self) -> None:
+        """Execute refresh low rank.
+            """
+
         if self._fd.S.size == 0:
             self._basis = None
             self._alpha = None
@@ -153,6 +167,9 @@ class FDSalienceSketch:
 
     @property
     def capture_ratio(self) -> float:
+        """Execute capture ratio.
+            """
+
         if self._total_energy <= EPS:
             return 1.0
         ratio = self._captured_energy / max(self._total_energy, EPS)
@@ -180,18 +197,30 @@ class FDSalienceSketch:
 
     @property
     def total_energy(self) -> float:
+        """Execute total energy.
+            """
+
         return float(self._total_energy)
 
     @property
     def captured_energy(self) -> float:
+        """Execute captured energy.
+            """
+
         return float(self._captured_energy)
 
     @property
     def trace_norm_error(self) -> float:
+        """Execute trace norm error.
+            """
+
         return float(self._trace_norm_error)
 
     @property
     def psd_ok(self) -> bool:
+        """Execute psd ok.
+            """
+
         return bool(self._psd_ok)
 
     def stats(self) -> Dict[str, float | bool]:

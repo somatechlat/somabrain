@@ -28,6 +28,13 @@ HEADERS = {"Content-Type": "application/json"}
 
 
 def _post(endpoint: str, payload: dict):
+    """Execute post.
+
+        Args:
+            endpoint: The endpoint.
+            payload: The payload.
+        """
+
     url = urljoin(BASE_URL + "/", endpoint.lstrip("/"))
     try:
         resp = requests.post(url, headers=HEADERS, data=json.dumps(payload))
@@ -39,6 +46,12 @@ def _post(endpoint: str, payload: dict):
 
 
 def _get(endpoint: str):
+    """Execute get.
+
+        Args:
+            endpoint: The endpoint.
+        """
+
     url = urljoin(BASE_URL + "/", endpoint.lstrip("/"))
     try:
         resp = requests.get(url, headers=HEADERS)
@@ -53,18 +66,36 @@ def _get(endpoint: str):
 # CLI command implementations
 # ----------------------------------------------------------------------
 def cmd_remember(args):
+    """Execute cmd remember.
+
+        Args:
+            args: The args.
+        """
+
     payload = {"payload": {"text": args.text}}
     result = _post("/memory/remember", payload)
     print(json.dumps(result, indent=2))
 
 
 def cmd_recall(args):
+    """Execute cmd recall.
+
+        Args:
+            args: The args.
+        """
+
     payload = {"query": args.query}
     result = _post("/memory/recall", payload)
     print(json.dumps(result, indent=2))
 
 
 def cmd_get(args):
+    """Execute cmd get.
+
+        Args:
+            args: The args.
+        """
+
     result = _get(f"/memory/{args.key}")
     print(json.dumps(result, indent=2))
 
@@ -73,6 +104,9 @@ def cmd_get(args):
 # Argument parser
 # ----------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
+    """Execute build parser.
+        """
+
     parser = argparse.ArgumentParser(
         prog="memory_cli",
         description="Interact with SomaBrain memory service from the command line.",
@@ -95,6 +129,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main():
+    """Execute main.
+        """
+
     parser = build_parser()
     args = parser.parse_args()
     args.func(args)

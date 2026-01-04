@@ -60,14 +60,29 @@ class ReleaseStatus(str, Enum):
 # =============================================================================
 
 def get_releases_key() -> str:
+    """Retrieve releases key.
+        """
+
     return "changelog:releases"
 
 
 def get_release_key(release_id: str) -> str:
+    """Retrieve release key.
+
+        Args:
+            release_id: The release_id.
+        """
+
     return f"changelog:release:{release_id}"
 
 
 def get_user_read_key(user_id: str) -> str:
+    """Retrieve user read key.
+
+        Args:
+            user_id: The user_id.
+        """
+
     return f"changelog:read:{user_id}"
 
 
@@ -103,10 +118,22 @@ def create_release(
 
 
 def get_release(release_id: str) -> Optional[dict]:
+    """Retrieve release.
+
+        Args:
+            release_id: The release_id.
+        """
+
     return cache.get(get_release_key(release_id))
 
 
 def update_release(release_id: str, **updates) -> Optional[dict]:
+    """Execute update release.
+
+        Args:
+            release_id: The release_id.
+        """
+
     key = get_release_key(release_id)
     release = cache.get(key)
     if release:
@@ -116,6 +143,9 @@ def update_release(release_id: str, **updates) -> Optional[dict]:
 
 
 def get_all_releases() -> List[dict]:
+    """Retrieve all releases.
+        """
+
     release_ids = cache.get(get_releases_key(), [])
     releases = []
     for rid in release_ids:

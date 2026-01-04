@@ -25,6 +25,8 @@ class RecallSessionStore:
     """
 
     def __init__(self, ttl_seconds: int = 900) -> None:
+        """Initialize the instance."""
+
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._lock = RLock()
         self._ttl_seconds = ttl_seconds

@@ -18,6 +18,8 @@ class TieredMemoryRegistry:
         # For test/local use we keep two maps:
         # - tenant -> injected backend object (register/get)
         # - tenant -> in‑process records captured via remember() for diagnostics
+        """Initialize the instance."""
+
         self._store: Dict[str, Any] = {}
         self._records: Dict[str, Dict[str, Any]] = {}
 

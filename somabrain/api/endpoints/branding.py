@@ -81,6 +81,12 @@ DEFAULT_BRANDING = {
 # =============================================================================
 
 def get_branding_key(tenant_id: str) -> str:
+    """Retrieve branding key.
+
+        Args:
+            tenant_id: The tenant_id.
+        """
+
     return f"branding:tenant:{tenant_id}"
 
 

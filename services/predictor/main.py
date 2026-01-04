@@ -88,6 +88,14 @@ DOMAIN_CONFIG = {
 
 
 def _calibrated(domain: str, tenant: str, confidence: float) -> float:
+    """Execute calibrated.
+
+        Args:
+            domain: The domain.
+            tenant: The tenant.
+            confidence: The confidence.
+        """
+
     if _calib is None:
         return confidence
     try:
@@ -119,6 +127,9 @@ def _get_runtime():
 
 
 def _metrics_handles():  # pragma: no cover
+    """Execute metrics handles.
+        """
+
     if _metrics is None:
         return {}, None, None
     counters = {

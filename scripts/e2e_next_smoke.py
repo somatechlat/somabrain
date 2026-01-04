@@ -1,3 +1,5 @@
+"""Module e2e_next_smoke."""
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -6,11 +8,17 @@ import time
 
 
 def _bootstrap() -> str:
+    """Execute bootstrap.
+        """
+
     url = settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30001"
     return str(url).replace("kafka://", "")
 
 
 def main() -> int:
+    """Execute main.
+        """
+
     try:
         from kafka import KafkaConsumer
     except Exception as e:

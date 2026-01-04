@@ -17,6 +17,8 @@ class SecurityMiddleware:
     """Advanced security middleware for brain protection."""
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        """Initialize the instance."""
+
         self.get_response = get_response
         self.suspicious_patterns = [
             re.compile(r"union\s+select", re.IGNORECASE),
@@ -26,6 +28,12 @@ class SecurityMiddleware:
         ]
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        """Execute call  .
+
+            Args:
+                request: The request.
+            """
+
         path = request.path
         method = request.method
         # Django headers can be accessed via request.headers (case insensitive)

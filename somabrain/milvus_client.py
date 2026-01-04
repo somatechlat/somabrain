@@ -94,6 +94,14 @@ def _record_latency(kind: str, tenant_id: str, value: float) -> float:
 
 
 def _set_latency_gauge(gauge, tenant_id: str, seconds: float) -> None:
+    """Execute set latency gauge.
+
+        Args:
+            gauge: The gauge.
+            tenant_id: The tenant_id.
+            seconds: The seconds.
+        """
+
     try:
         gauge.labels(tenant_id=tenant_id).set(seconds)
     except Exception:
@@ -101,6 +109,13 @@ def _set_latency_gauge(gauge, tenant_id: str, seconds: float) -> None:
 
 
 def _set_segment_load(collection: str, value: int | float) -> None:
+    """Execute set segment load.
+
+        Args:
+            collection: The collection.
+            value: The value.
+        """
+
     try:
         MILVUS_SEGMENT_LOAD.labels(collection=collection).set(value)
     except Exception:
@@ -128,6 +143,8 @@ class MilvusClient:
     collection: "Collection | None"
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         if not _PYMILVUS_AVAILABLE:
             raise RuntimeError(
                 "pymilvus library not available. Install pymilvus to use MilvusClient."
@@ -179,6 +196,9 @@ class MilvusClient:
     # Private helpers
     # ------------------------------------------------------------------
     def _create_collection(self) -> None:
+        """Execute create collection.
+            """
+
         fields = [
             FieldSchema(
                 name="option_id",
@@ -202,6 +222,9 @@ class MilvusClient:
         coll.load()
 
     def _verify_collection_schema(self) -> None:
+        """Execute verify collection schema.
+            """
+
         if self.collection is None:
             raise RuntimeError(
                 "Cannot verify schema: Milvus collection is not initialized"
@@ -325,6 +348,14 @@ class MilvusClient:
     # Public API
     # ------------------------------------------------------------------
     def upsert_option(self, tenant_id: str, option_id: str, payload: bytes) -> None:
+        """Execute upsert option.
+
+            Args:
+                tenant_id: The tenant_id.
+                option_id: The option_id.
+                payload: The payload.
+            """
+
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot upsert option")
 
@@ -370,6 +401,15 @@ class MilvusClient:
         top_k: int | None = None,
         similarity_threshold: float | None = None,
     ) -> List[Tuple[str, float]]:
+        """Execute search similar.
+
+            Args:
+                tenant_id: The tenant_id.
+                payload: The payload.
+                top_k: The top_k.
+                similarity_threshold: The similarity_threshold.
+            """
+
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot search")
 

@@ -29,6 +29,8 @@ class SimpleOPAEngine:
     """
 
     def __init__(self, base_url: str):
+        """Initialize the instance."""
+
         self.base_url = base_url.rstrip("/")
 
     def health_sync(self) -> bool:
@@ -54,9 +56,17 @@ class OpaMiddleware:
     """Django Middleware for OPA Enforcment."""
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+        """Initialize the instance."""
+
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
+        """Execute call  .
+
+            Args:
+                request: The request.
+            """
+
         try:
             opa_url = getattr(settings, "SOMABRAIN_OPA_URL", None)
         except Exception:

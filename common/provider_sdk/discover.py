@@ -20,6 +20,12 @@ except Exception:  # pragma: no cover - optional dependency
 
 def _sub_env_vars(s: str) -> str:
     # Replace ${VAR} with environment value if present
+    """Execute sub env vars.
+
+        Args:
+            s: The s.
+        """
+
     out = s
     for part in [p for p in os.environ.keys()]:
         out = out.replace(f"${{{part}}}", os.environ.get(part, ""))
@@ -27,6 +33,12 @@ def _sub_env_vars(s: str) -> str:
 
 
 def _load_yaml(path: Path) -> Dict[str, Any]:
+    """Execute load yaml.
+
+        Args:
+            path: The path.
+        """
+
     if yaml is None:
         raise RuntimeError("PyYAML is required to load YAML provider files")
     text = path.read_text()
@@ -35,6 +47,12 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
 
 
 def _load_json(path: Path) -> Dict[str, Any]:
+    """Execute load json.
+
+        Args:
+            path: The path.
+        """
+
     text = _sub_env_vars(path.read_text())
     return json.loads(text) or {}
 

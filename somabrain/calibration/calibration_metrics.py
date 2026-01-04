@@ -36,6 +36,8 @@ class CalibrationTracker:
     """
 
     def __init__(self, window_size: int = 1000):
+        """Initialize the instance."""
+
         self.window_size = window_size
         self.calibration_data: Dict[str, Dict[str, deque]] = defaultdict(
             lambda: defaultdict(lambda: deque(maxlen=window_size))

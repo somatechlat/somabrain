@@ -1,3 +1,5 @@
+"""Module base."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -28,6 +30,9 @@ def _select_heat_method() -> str:
 
 
 def _now_ts() -> str:
+    """Execute now ts.
+        """
+
     from datetime import datetime, timezone
 
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -38,6 +43,8 @@ ApplyOp = Callable[[np.ndarray], np.ndarray]
 
 @dataclass
 class PredictorConfig:
+    """Predictorconfig class implementation."""
+
     diffusion_t: float = 0.5
     alpha: float = 2.0  # confidence = exp(-alpha * mse)
     chebyshev_K: int = 30
@@ -57,24 +64,41 @@ class PredictorBase:
     def __init__(
         self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None
     ):
+        """Initialize the instance."""
+
         self.apply_A = apply_A
         self.dim = int(dim)
         self.cfg = cfg or PredictorConfig()
         self._method = _select_heat_method()
 
     def salience(self, x0: np.ndarray) -> np.ndarray:
+        """Execute salience.
+
+            Args:
+                x0: The x0.
+            """
+
         t = float(self.cfg.diffusion_t)
         if self._method == "lanczos":
             return graph_heat_lanczos(self.apply_A, x0, t, m=int(self.cfg.lanczos_m))
 
         # default chebyshev
         class _Cfg:
+            """Cfg class implementation."""
+
             truth_chebyshev_K = int(self.cfg.chebyshev_K)
 
         return graph_heat_chebyshev(self.apply_A, x0, t, _Cfg())
 
     @staticmethod
     def mse(a: np.ndarray, b: np.ndarray) -> float:
+        """Execute mse.
+
+            Args:
+                a: The a.
+                b: The b.
+            """
+
         a = np.asarray(a, dtype=float)
         b = np.asarray(b, dtype=float)
         if a.shape != b.shape:
@@ -85,6 +109,13 @@ class PredictorBase:
     def error_and_confidence(
         self, salience: np.ndarray, observed: np.ndarray
     ) -> Tuple[float, float]:
+        """Execute error and confidence.
+
+            Args:
+                salience: The salience.
+                observed: The observed.
+            """
+
         err = self.mse(salience, observed)
         conf = float(np.exp(-self.cfg.alpha * max(0.0, err)))
         return err, conf
@@ -99,6 +130,13 @@ class HeatDiffusionPredictor(PredictorBase):
     def step(
         self, source_idx: int, observed: np.ndarray
     ) -> Tuple[np.ndarray, float, float]:
+        """Execute step.
+
+            Args:
+                source_idx: The source_idx.
+                observed: The observed.
+            """
+
         x0 = np.zeros(self.dim, dtype=float)
         x0[max(0, min(self.dim - 1, int(source_idx)))] = 1.0
         y = self.salience(x0)
@@ -129,13 +167,31 @@ def make_line_graph_laplacian(n: int) -> np.ndarray:
 
 
 def matvec_from_matrix(M: np.ndarray) -> ApplyOp:
+    """Execute matvec from matrix.
+
+        Args:
+            M: The M.
+        """
+
     def _apply(v: np.ndarray) -> np.ndarray:
+        """Execute apply.
+
+            Args:
+                v: The v.
+            """
+
         return M @ v
 
     return _apply
 
 
 def _to_ndarray(obj: object) -> Optional[np.ndarray]:
+    """Execute to ndarray.
+
+        Args:
+            obj: The obj.
+        """
+
     try:
         arr = np.array(obj, dtype=float)
         if arr.ndim == 2 and arr.shape[0] == arr.shape[1]:
@@ -147,6 +203,12 @@ def _to_ndarray(obj: object) -> Optional[np.ndarray]:
 
 def _laplacian_from_adjacency(A: np.ndarray) -> np.ndarray:
     # L = D - A
+    """Execute laplacian from adjacency.
+
+        Args:
+            A: The A.
+        """
+
     deg = np.sum(A, axis=1)
     L = np.diag(deg) - A
     return L

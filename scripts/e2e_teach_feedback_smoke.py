@@ -37,11 +37,17 @@ REWARD_TOPIC = "cog.reward.events"
 
 
 def _bootstrap() -> str:
+    """Execute bootstrap.
+        """
+
     url = settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30102"
     return str(url).replace("kafka://", "")
 
 
 def _avro_reward_serde() -> Optional[AvroSerde]:
+    """Execute avro reward serde.
+        """
+
     if load_schema is None or AvroSerde is None:
         return None
     try:
@@ -52,6 +58,12 @@ def _avro_reward_serde() -> Optional[AvroSerde]:
 
 def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
     # Try Avro first
+    """Execute decode reward.
+
+        Args:
+            value: The value.
+        """
+
     serde = _avro_reward_serde()
     if serde is not None:
         try:
@@ -68,6 +80,13 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
 
 
 def produce_teach_feedback(prod: KafkaProducer, frame_id: str) -> None:
+    """Execute produce teach feedback.
+
+        Args:
+            prod: The prod.
+            frame_id: The frame_id.
+        """
+
     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     rec = {
         "feedback_id": f"fb-{int(time.time()*1000)}",
@@ -85,6 +104,14 @@ def produce_teach_feedback(prod: KafkaProducer, frame_id: str) -> None:
 def consume_reward_for_frame(
     consumer: KafkaConsumer, frame_id: str, timeout_s: int = 60
 ) -> bool:
+    """Execute consume reward for frame.
+
+        Args:
+            consumer: The consumer.
+            frame_id: The frame_id.
+            timeout_s: The timeout_s.
+        """
+
     deadline = time.time() + timeout_s
     while time.time() < deadline:
         msg = consumer.poll(timeout_ms=500)
@@ -108,6 +135,9 @@ def consume_reward_for_frame(
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     bootstrap = _bootstrap()
     frame_id = f"frame-{int(time.time()*1000)}"
 

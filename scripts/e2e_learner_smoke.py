@@ -1,3 +1,5 @@
+"""Module e2e_learner_smoke."""
+
 from __future__ import annotations
 
 import json
@@ -12,14 +14,28 @@ except Exception:
     import urllib.request as _rq
 
     class _Resp:
+        """Resp class implementation."""
+
         def __init__(self, code: int, data: bytes) -> None:
+            """Initialize the instance."""
+
             self.status_code = code
             self._data = data
 
         def json(self) -> Any:
+            """Execute json.
+                """
+
             return json.loads(self._data.decode("utf-8"))
 
     def _post(url: str, body: Any) -> _Resp:
+        """Execute post.
+
+            Args:
+                url: The url.
+                body: The body.
+            """
+
         req = _rq.Request(
             url,
             data=json.dumps(body).encode("utf-8"),
@@ -31,15 +47,32 @@ except Exception:
 else:
 
     def _post(url: str, body: Any):
+        """Execute post.
+
+            Args:
+                url: The url.
+                body: The body.
+            """
+
         return requests.post(url, json=body, timeout=10)
 
 
 def _bootstrap() -> str:
+    """Execute bootstrap.
+        """
+
     url = settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30001"
     return str(url).replace("kafka://", "")
 
 
 def _consume_one(topic: str, timeout_s: float) -> bool:
+    """Execute consume one.
+
+        Args:
+            topic: The topic.
+            timeout_s: The timeout_s.
+        """
+
     try:
         from kafka import KafkaConsumer
     except Exception:
@@ -70,6 +103,9 @@ def main() -> int:
     # 1) POST a reward to reward_producer
     # Retrieve the reward producer port as an integer.
     # ``settings.reward_producer_port`` is already an int, but we ensure the type.
+    """Execute main.
+        """
+
     int(settings.reward_producer_port)
     from django.conf import settings as _settings
 

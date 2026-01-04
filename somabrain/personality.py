@@ -16,11 +16,21 @@ from somabrain.tenant_manager import get_tenant_manager
 
 
 class PersonalityStore:
+    """Personalitystore class implementation."""
+
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._lock = RLock()
         self._states: Dict[str, PersonalityState] = {}
 
     def get(self, tenant: str | None = None) -> PersonalityState:
+        """Execute get.
+
+            Args:
+                tenant: The tenant.
+            """
+
         t = tenant or get_tenant_manager().current_tenant()
         with self._lock:
             return self._states.setdefault(t, PersonalityState())  # validated default
@@ -28,6 +38,13 @@ class PersonalityStore:
     def set(
         self, state: PersonalityState, tenant: str | None = None
     ) -> PersonalityState:
+        """Execute set.
+
+            Args:
+                state: The state.
+                tenant: The tenant.
+            """
+
         t = tenant or get_tenant_manager().current_tenant()
         with self._lock:
             # store a copy to avoid external mutation
@@ -46,5 +63,8 @@ class PersonalityStore:
             return updated
 
     def all(self) -> Dict[str, PersonalityState]:
+        """Execute all.
+            """
+
         with self._lock:
             return {k: v.model_copy() for k, v in self._states.items()}

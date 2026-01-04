@@ -35,6 +35,12 @@ class Command(BaseCommand):
     help = "Create default subscription tiers and test data"
     
     def add_arguments(self, parser):
+        """Execute add arguments.
+
+            Args:
+                parser: The parser.
+            """
+
         parser.add_argument(
             "--with-test-tenant",
             action="store_true",
@@ -42,6 +48,9 @@ class Command(BaseCommand):
         )
     
     def handle(self, *args, **options):
+        """Execute handle.
+            """
+
         self.stdout.write("Creating SaaS seed data...")
         
         # Create tiers

@@ -42,6 +42,9 @@ _memory_backend = MultiTenantMemory(cfg=settings)
 
 @lru_cache(maxsize=1)
 def get_context_builder() -> ContextBuilder:
+    """Retrieve context builder.
+        """
+
     return ContextBuilder(
         embed_fn=_embedder.embed,
         memory_backend=_memory_backend,
@@ -52,4 +55,7 @@ def get_context_builder() -> ContextBuilder:
 
 @lru_cache(maxsize=1)
 def get_context_planner() -> ContextPlanner:
+    """Retrieve context planner.
+        """
+
     return ContextPlanner(utility_weights=_utility_weights)

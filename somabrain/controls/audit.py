@@ -45,12 +45,19 @@ from .metrics import AUDIT_WRITES
 
 
 class AuditLogger:
+    """Auditlogger class implementation."""
+
     def __init__(self, path: str = "audit_log.jsonl"):
+        """Initialize the instance."""
+
         self.path = path
         self._lock = threading.Lock()
         self._prev_hash = self._load_last_hash()
 
     def _load_last_hash(self) -> str:
+        """Execute load last hash.
+            """
+
         try:
             if not os.path.exists(self.path):
                 return ""
@@ -66,6 +73,12 @@ class AuditLogger:
             return ""
 
     def _hash(self, rec: Dict[str, Any]) -> str:
+        """Execute hash.
+
+            Args:
+                rec: The rec.
+            """
+
         h = hashlib.blake2b(digest_size=16)
         prev = (self._prev_hash or "").encode("utf-8")
         h.update(prev)
@@ -73,6 +86,12 @@ class AuditLogger:
         return h.hexdigest()
 
     def write(self, rec: Dict[str, Any]) -> None:
+        """Execute write.
+
+            Args:
+                rec: The rec.
+            """
+
         rec = dict(rec)
         rec.setdefault("ts", time.time())
         with self._lock:

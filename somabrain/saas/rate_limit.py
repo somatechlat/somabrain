@@ -36,6 +36,8 @@ class RateLimitExceeded(Exception):
         reset_time: int,
         message: str = "Rate limit exceeded",
     ):
+        """Initialize the instance."""
+
         self.limit = limit
         self.remaining = remaining
         self.reset_time = reset_time
@@ -52,6 +54,8 @@ class QuotaExceeded(Exception):
         reset_date: str,
         message: str = "Monthly quota exceeded",
     ):
+        """Initialize the instance."""
+
         self.quota = quota
         self.used = used
         self.reset_date = reset_date
@@ -77,6 +81,8 @@ class TokenBucketRateLimiter:
         default_rps: int = 10,
         default_burst: int = 20,
     ):
+        """Initialize the instance."""
+
         self.key_prefix = key_prefix
         self.default_rps = default_rps
         self.default_burst = default_burst
@@ -179,6 +185,8 @@ class QuotaTracker:
     """
     
     def __init__(self, key_prefix: str = "quota"):
+        """Initialize the instance."""
+
         self.key_prefix = key_prefix
     
     def _get_key(self, tenant_id: str, metric: str) -> str:
@@ -262,11 +270,19 @@ class RateLimitMiddleware:
     """
     
     def __init__(self, get_response):
+        """Initialize the instance."""
+
         self.get_response = get_response
         self.limiter = TokenBucketRateLimiter()
     
     def __call__(self, request):
         # Skip rate limiting for health checks
+        """Execute call  .
+
+            Args:
+                request: The request.
+            """
+
         if request.path in ("/healthz", "/readyz", "/metrics"):
             return self.get_response(request)
         
@@ -359,10 +375,22 @@ def rate_limit(rps: int = 10, burst: int = 20):
             ...
     """
     def decorator(func):
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         limiter = TokenBucketRateLimiter()
         
         def wrapper(request, *args, **kwargs):
             # Get identifier
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             identifier = f"view:{func.__name__}:{request.META.get('REMOTE_ADDR', 'unknown')}"
             
             allowed, limit, remaining, reset_time = limiter.check_and_consume(
@@ -396,9 +424,21 @@ def check_quota(metric: str, amount: int = 1):
             ...
     """
     def decorator(func):
+        """Execute decorator.
+
+            Args:
+                func: The func.
+            """
+
         tracker = QuotaTracker()
         
         def wrapper(request, *args, **kwargs):
+            """Execute wrapper.
+
+                Args:
+                    request: The request.
+                """
+
             if not hasattr(request, "tenant_id") or not request.tenant_id:
                 return func(request, *args, **kwargs)
             

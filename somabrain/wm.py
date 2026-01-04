@@ -179,6 +179,13 @@ class WorkingMemory:
 
     @staticmethod
     def _validate_scale(value: float, default: float) -> float:
+        """Execute validate scale.
+
+            Args:
+                value: The value.
+                default: The default.
+            """
+
         try:
             v = float(value)
         except Exception:
@@ -450,6 +457,13 @@ class WorkingMemory:
         return compute_novelty(query_vec, self._items)
 
     def _recency_steps(self, now: float, admitted_at: float) -> float:
+        """Execute recency steps.
+
+            Args:
+                now: The now.
+                admitted_at: The admitted_at.
+            """
+
         age = max(0.0, float(now) - float(admitted_at))
         if age <= 0.0:
             return 0.0

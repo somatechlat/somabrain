@@ -43,6 +43,8 @@ class LagoClient:
     """
     
     def __init__(self):
+        """Initialize the instance."""
+
         self.base_url = getattr(settings, "LAGO_URL", "http://localhost:3000")
         self.api_key = getattr(settings, "LAGO_API_KEY", "")
         self._client = None

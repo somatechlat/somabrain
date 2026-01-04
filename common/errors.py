@@ -26,6 +26,8 @@ class SomabrainError(RuntimeError):
         code: Optional[str] = None,
         cause: Optional[BaseException] = None,
     ) -> None:
+        """Initialize the instance."""
+
         super().__init__(message)
         self.code = code
         self.__cause__ = cause

@@ -46,11 +46,32 @@ class _MetricProtocol(Protocol):
     type‑checker can validate calls such as ``metric.labels(...).inc()``.
     """
 
+        """Execute labels.
+            """
+
     def labels(self, *args: Any, **kwargs: Any) -> "_MetricProtocol": ...
+
+        """Execute inc.
+
+            Args:
+                amount: The amount.
+            """
 
     def inc(self, amount: float = 1) -> None: ...  # noqa: D401
 
+        """Execute set.
+
+            Args:
+                value: The value.
+            """
+
     def set(self, value: float) -> None: ...
+
+        """Execute observe.
+
+            Args:
+                value: The value.
+            """
 
     def observe(self, value: float) -> None: ...
 

@@ -13,6 +13,8 @@ class WorkingMemoryBuffer:
     """Lightweight session-indexed storage for cognitive traces."""
 
     def __init__(self, max_items_per_session: int = 10):
+        """Initialize the instance."""
+
         self._store: Dict[str, List[Dict[str, Any]]] = {}
         self._max_items = max_items_per_session
 

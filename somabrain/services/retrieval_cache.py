@@ -29,10 +29,19 @@ class RetrievalCache:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._cache: Dict[_CacheKey, List[_CandidateRecord]] = {}
         self._lock = Lock()
 
     def _normalize(self, namespace: str | None, query: str | None) -> _CacheKey:
+        """Execute normalize.
+
+            Args:
+                namespace: The namespace.
+                query: The query.
+            """
+
         ns = (namespace or "").strip().lower()
         q = (query or "").strip().lower()
         return (ns, q)

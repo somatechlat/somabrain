@@ -11,10 +11,21 @@ import numpy as np
 
 
 def approx_equal(a, b, tol=1e-6):
+    """Execute approx equal.
+
+        Args:
+            a: The a.
+            b: The b.
+            tol: The tol.
+        """
+
     return abs(a - b) <= tol
 
 
 def run():
+    """Execute run.
+        """
+
     cfg = HRRConfig(dim=256, seed=42)
     q = make_quantum_layer(cfg)
     # random vector

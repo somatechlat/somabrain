@@ -34,6 +34,9 @@ OUT = Path(__file__).resolve().parent / "workbench_numerics_results.json"
 
 
 def _git_sha() -> str:
+    """Execute git sha.
+        """
+
     try:
         return (
             subprocess.check_output(
@@ -48,6 +51,12 @@ def _git_sha() -> str:
 
 
 def _provenance(extra: dict | None = None) -> dict:
+    """Execute provenance.
+
+        Args:
+            extra: The extra.
+        """
+
     prov = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "python": sys.version.split()[0],
@@ -66,6 +75,13 @@ def run(
     D_list: tuple[int, ...] = (128, 256, 1024),
     dtypes: tuple[str, ...] = ("float32", "float64"),
 ):
+    """Execute run.
+
+        Args:
+            D_list: The D_list.
+            dtypes: The dtypes.
+        """
+
     results = {
         "provenance": _provenance(
             {

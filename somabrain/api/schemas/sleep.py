@@ -17,6 +17,8 @@ from somabrain.sleep import SleepState
 
 
 class SleepTargetState(str, Enum):
+    """Sleeptargetstate class implementation."""
+
     ACTIVE = "active"
     LIGHT = "light"
     DEEP = "deep"
@@ -54,6 +56,12 @@ class SleepRequest(BaseModel):
     @validator("target_state")
     def _validate_target(cls, v: SleepTargetState) -> SleepTargetState:
         # Ensure the value maps to the internal SleepState enum.
+        """Execute validate target.
+
+            Args:
+                v: The v.
+            """
+
         if v.value not in {s.value for s in SleepState}:
             raise ValueError(f"Invalid sleep state: {v}")
         return v

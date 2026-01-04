@@ -194,6 +194,8 @@ class TransactionEventStore:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._producer = None
         self._initialized = False
         self._event_handlers: List[Callable[[TransactionEvent], None]] = []

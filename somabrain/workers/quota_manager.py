@@ -29,6 +29,8 @@ class TenantQuotaManager:
     """Manages per-tenant processing quotas and backpressure."""
 
     def __init__(self, quota_limit: int, quota_window: int):
+        """Initialize the instance."""
+
         self.quota_limit = quota_limit
         self.quota_window = quota_window
         self.tenant_usage: dict[str, list[float]] = {}  # tenant -> list of timestamps

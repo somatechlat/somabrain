@@ -32,27 +32,51 @@ class _RemovedConstant:
     """Sentinel that raises error on any access to removed constants."""
 
     def __init__(self, name: str):
+        """Initialize the instance."""
+
         self._name = name
 
     def __repr__(self) -> str:
+        """Return object representation."""
+
         raise AttributeError(self._error_msg())
 
     def __str__(self) -> str:
+        """Return string representation."""
+
         raise AttributeError(self._error_msg())
 
     def __bool__(self) -> bool:
+        """Execute bool  .
+            """
+
         raise AttributeError(self._error_msg())
 
     def __int__(self) -> int:
+        """Execute int  .
+            """
+
         raise AttributeError(self._error_msg())
 
     def __float__(self) -> float:
+        """Execute float  .
+            """
+
         raise AttributeError(self._error_msg())
 
     def __getitem__(self, key):
+        """Execute getitem  .
+
+            Args:
+                key: The key.
+            """
+
         raise AttributeError(self._error_msg())
 
     def _error_msg(self) -> str:
+        """Execute error msg.
+            """
+
         return (
             f"somabrain.nano_profile.{self._name} has been removed. "
             f"Use common.config.settings.settings instead."

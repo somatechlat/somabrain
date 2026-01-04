@@ -42,6 +42,8 @@ class SleepStateManager:
     """Manages sleep state transitions and parameters."""
 
     def __init__(self):
+        """Initialize the instance."""
+
         self.parameters = SleepParameters()
 
     def compute_parameters(self, state: SleepState) -> Dict[str, float]:

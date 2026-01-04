@@ -1,3 +1,5 @@
+"""Module health."""
+
 from __future__ import annotations
 
 """Utility module for simple health-check HTTP calls.

@@ -1,3 +1,5 @@
+"""Module check_memory_endpoint."""
+
 #!/usr/bin/env python3
 # ruff: noqa: E402
 import os

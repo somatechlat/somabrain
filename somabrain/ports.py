@@ -31,6 +31,13 @@ DEFAULT_SERVICE_PORTS: Dict[str, int] = {
 
 
 def is_port_free(port: int, host: str = "127.0.0.1") -> bool:
+    """Check if port free.
+
+        Args:
+            port: The port.
+            host: The host.
+        """
+
     hosts = {host, "0.0.0.0"}
     for entry in hosts:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -43,6 +50,14 @@ def is_port_free(port: int, host: str = "127.0.0.1") -> bool:
 
 
 def pick_free_port(start: int, host: str = "127.0.0.1", attempts: int = 1000) -> int:
+    """Execute pick free port.
+
+        Args:
+            start: The start.
+            host: The host.
+            attempts: The attempts.
+        """
+
     for offset in range(attempts):
         candidate = start + offset
         if is_port_free(candidate, host=host):
@@ -51,6 +66,12 @@ def pick_free_port(start: int, host: str = "127.0.0.1", attempts: int = 1000) ->
 
 
 def allocate_ports(defaults: Dict[str, int] | None = None) -> Dict[str, int]:
+    """Execute allocate ports.
+
+        Args:
+            defaults: The defaults.
+        """
+
     defaults = defaults or DEFAULT_SERVICE_PORTS
     allocation: Dict[str, int] = {}
     for key, base in defaults.items():

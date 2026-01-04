@@ -31,6 +31,8 @@ class TenantOverridesCache:
     """
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self._overrides: Dict[str, dict] | None = None
         self._path: str | None = None
 

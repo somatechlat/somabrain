@@ -55,6 +55,8 @@ class SomaBrainUnavailableError(RuntimeError):
     """Raised when SomaBrain is not in an "up" state for strict callers."""
 
     def __init__(self, status: str, reason: str, health: Optional[SomaBrainHealth]):
+        """Initialize the instance."""
+
         msg = f"SomaBrain status={status!r}: {reason}"
         super().__init__(msg)
         self.status = status
@@ -79,6 +81,8 @@ class SomaBrainClient:
         health_ttl_s: float = 5.0,
         timeout_s: float = 10.0,
     ):
+        """Initialize the instance."""
+
         self.base = base_url.rstrip("/")
         self.headers: Dict[str, str] = {"Content-Type": "application/json"}
         if token:

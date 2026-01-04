@@ -18,6 +18,9 @@ from somabrain.learning.dataset import build_examples, iter_jsonl, export_exampl
 
 
 def _git_metadata() -> Dict[str, Any]:
+    """Execute git metadata.
+        """
+
     meta: Dict[str, Any] = {}
     try:
         commit = subprocess.run(
@@ -49,6 +52,9 @@ def _git_metadata() -> Dict[str, Any]:
 
 
 def _config_snapshot() -> Dict[str, Any]:
+    """Execute config snapshot.
+        """
+
     cfg = settings
     snapshot: Dict[str, Any] = {}
     try:
@@ -68,6 +74,12 @@ def _config_snapshot() -> Dict[str, Any]:
 
 
 def _digest_dict(payload: Dict[str, Any]) -> Optional[str]:
+    """Execute digest dict.
+
+        Args:
+            payload: The payload.
+        """
+
     try:
         blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
     except Exception:
@@ -78,6 +90,12 @@ def _digest_dict(payload: Dict[str, Any]) -> Optional[str]:
 
 
 def main(argv: Optional[Iterable[str]] = None) -> int:
+    """Execute main.
+
+        Args:
+            argv: The argv.
+        """
+
     parser = argparse.ArgumentParser(description="Export SomaBrain training corpus")
     parser.add_argument("input", help="Path to JSONL file with memory records")
     parser.add_argument("output", help="Destination JSONL file")

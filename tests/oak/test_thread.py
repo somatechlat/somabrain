@@ -1,3 +1,5 @@
+"""Module test_thread."""
+
 from __future__ import annotations
 
 import pytest
@@ -22,6 +24,9 @@ PG_DSN = getattr(settings, "SOMABRAIN_POSTGRES_DSN", None) or getattr(settings, 
 
 
 def _require_pg() -> None:
+    """Execute require pg.
+        """
+
     if not PG_DSN:
         pytest.skip("SOMABRAIN_POSTGRES_DSN or DATABASE_URL must be set for oak thread tests")
 

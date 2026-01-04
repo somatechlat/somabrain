@@ -311,6 +311,12 @@ class TestPlanExecution:
 
         # Executor that always succeeds
         def executor(step: Step) -> bool:
+            """Execute executor.
+
+                Args:
+                    step: The step.
+                """
+
             return True
 
         results = planner.execute(plan, executor)
@@ -336,6 +342,12 @@ class TestPlanExecution:
 
         # Executor that fails on step2
         def executor(step: Step) -> bool:
+            """Execute executor.
+
+                Args:
+                    step: The step.
+                """
+
             return step.name != "step2"
 
         results = planner.execute(plan, executor)
@@ -427,6 +439,13 @@ class TestGoalSatisfaction:
 
         # Callable goal that checks for specific step
         def goal_checker(context: Dict[str, Any], last_step: Step) -> bool:
+            """Execute goal checker.
+
+                Args:
+                    context: The context.
+                    last_step: The last_step.
+                """
+
             return last_step.name == "analyze_goal"
 
         context: Dict[str, Any] = {}

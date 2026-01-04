@@ -39,6 +39,8 @@ class LearnerService:
 
     def __init__(self) -> None:
         # Load tenant overrides from the optional YAML file.
+        """Initialize the instance."""
+
         self._tenant_overrides: Dict[str, Dict[str, Any]] = {}
         overrides_path = settings.SOMABRAIN_LEARNING_TENANTS_FILE
         if overrides_path:
@@ -222,6 +224,13 @@ class LearnerService:
         topic = getattr(self._settings, "topic_config_updates", "cog.config.updates")
 
         def _delivery_report(err: Optional[Exception], msg: Any) -> None:
+            """Execute delivery report.
+
+                Args:
+                    err: The err.
+                    msg: The msg.
+                """
+
             if err is not None:
                 logger.error("Failed to deliver config update: %s", err)
             else:

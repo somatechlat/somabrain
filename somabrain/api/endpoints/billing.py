@@ -86,18 +86,42 @@ class SubscriptionOut(Schema):
     
     @staticmethod
     def resolve_tier_name(obj):
+        """Execute resolve tier name.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.tier.name
     
     @staticmethod
     def resolve_tier_slug(obj):
+        """Execute resolve tier slug.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.tier.slug
     
     @staticmethod
     def resolve_started_at(obj):
+        """Execute resolve started at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.started_at.isoformat()
     
     @staticmethod
     def resolve_ends_at(obj):
+        """Execute resolve ends at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.ends_at.isoformat() if obj.ends_at else None
 
 
@@ -129,6 +153,12 @@ class UsageRecordOut(Schema):
     
     @staticmethod
     def resolve_recorded_at(obj):
+        """Execute resolve recorded at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.recorded_at.isoformat()
 
 

@@ -46,10 +46,22 @@ router = Router(tags=["Sessions"])
 # =============================================================================
 
 def get_sessions_key(user_id: str) -> str:
+    """Retrieve sessions key.
+
+        Args:
+            user_id: The user_id.
+        """
+
     return f"sessions:user:{user_id}"
 
 
 def get_session_key(session_id: str) -> str:
+    """Retrieve session key.
+
+        Args:
+            session_id: The session_id.
+        """
+
     return f"session:{session_id}"
 
 
@@ -180,6 +192,12 @@ def list_my_sessions(
     
     # Parse user agent for device type
     def parse_device(ua: str) -> str:
+        """Execute parse device.
+
+            Args:
+                ua: The ua.
+            """
+
         ua_lower = ua.lower() if ua else ""
         if "mobile" in ua_lower or "android" in ua_lower:
             return "mobile"

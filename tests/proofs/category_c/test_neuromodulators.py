@@ -269,6 +269,12 @@ class TestNeuromodulatorPubSub:
         received_states: list[NeuromodState] = []
 
         def callback(state: NeuromodState) -> None:
+            """Execute callback.
+
+                Args:
+                    state: The state.
+                """
+
             received_states.append(state)
 
         # Subscribe to updates

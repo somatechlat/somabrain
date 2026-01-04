@@ -46,6 +46,8 @@ class SoftmaxIntegrator:
     """
 
     def __init__(self, tau: float = 1.0, stale_seconds: float = 5.0):
+        """Initialize the instance."""
+
         self.tau = max(tau, 1e-9)  # avoid division by zero
         self.stale_seconds = stale_seconds
         self._data: Dict[str, Dict[str, DomainObs]] = {}

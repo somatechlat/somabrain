@@ -41,6 +41,12 @@ def configure_tracing(
 
 
 def get_tracer(service_name: str) -> Optional[Tracer]:
+    """Retrieve tracer.
+
+        Args:
+            service_name: The service_name.
+        """
+
     if trace is None:  # pragma: no cover - executed when OTel missing
         return None
     return trace.get_tracer(service_name)

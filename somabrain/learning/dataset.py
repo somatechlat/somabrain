@@ -8,6 +8,12 @@ from typing import Callable, Iterable, Iterator, List, Optional, Sequence
 
 
 def _extract_text(payload: dict) -> Optional[str]:
+    """Execute extract text.
+
+        Args:
+            payload: The payload.
+        """
+
     for key in ("text", "task", "content", "what"):
         value = payload.get(key)
         if isinstance(value, str) and value.strip():
@@ -17,6 +23,8 @@ def _extract_text(payload: dict) -> Optional[str]:
 
 @dataclass
 class TrainingExample:
+    """Trainingexample class implementation."""
+
     prompt: str
     response: str
     tenant: str
@@ -24,6 +32,12 @@ class TrainingExample:
     metadata: dict
 
     def tokens(self, tokenizer: Callable[[str], Sequence[int]]) -> dict:
+        """Execute tokens.
+
+            Args:
+                tokenizer: The tokenizer.
+            """
+
         return {
             "prompt_tokens": list(tokenizer(self.prompt)),
             "response_tokens": list(tokenizer(self.response)),
@@ -34,6 +48,12 @@ class TrainingExample:
 
 
 def _conversation_from_payload(payload: dict) -> Optional[List[dict]]:
+    """Execute conversation from payload.
+
+        Args:
+            payload: The payload.
+        """
+
     convo = payload.get("conversation")
     if isinstance(convo, list):
         messages: List[dict] = []
@@ -50,6 +70,12 @@ def _conversation_from_payload(payload: dict) -> Optional[List[dict]]:
 
 
 def _build_example(record: dict) -> Optional[TrainingExample]:
+    """Execute build example.
+
+        Args:
+            record: The record.
+        """
+
     tenant = str(record.get("tenant") or "unknown")
     namespace = str(record.get("namespace") or "default")
     payload = record.get("payload")
@@ -112,6 +138,12 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
 
 
 def build_examples(records: Iterable[dict]) -> List[TrainingExample]:
+    """Execute build examples.
+
+        Args:
+            records: The records.
+        """
+
     examples: List[TrainingExample] = []
     for record in records:
         example = _build_example(record)
@@ -124,16 +156,36 @@ def tokenize_examples(
     examples: Iterable[TrainingExample],
     tokenizer: Callable[[str], Sequence[int]],
 ) -> List[dict]:
+    """Execute tokenize examples.
+
+        Args:
+            examples: The examples.
+            tokenizer: The tokenizer.
+        """
+
     return [example.tokens(tokenizer) for example in examples]
 
 
 def export_examples(examples: Iterable[TrainingExample], path: str) -> None:
+    """Execute export examples.
+
+        Args:
+            examples: The examples.
+            path: The path.
+        """
+
     with open(path, "w", encoding="utf-8") as handle:
         for example in examples:
             handle.write(json.dumps(asdict(example), ensure_ascii=False) + "\n")
 
 
 def iter_jsonl(path: str) -> Iterator[dict]:
+    """Execute iter jsonl.
+
+        Args:
+            path: The path.
+        """
+
     with open(path, "r", encoding="utf-8") as handle:
         for line in handle:
             line = line.strip()

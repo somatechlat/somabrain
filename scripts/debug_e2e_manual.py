@@ -1,3 +1,5 @@
+"""Module debug_e2e_manual."""
+
 import os
 import sys
 import django
@@ -11,6 +13,9 @@ django.setup()
 from somabrain.memory_client import MemoryClient
 
 def run_debug():
+    """Execute run debug.
+        """
+
     print("DEBUG: Initializing MemoryClient...")
     client = MemoryClient(cfg=settings)
     

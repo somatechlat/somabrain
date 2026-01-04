@@ -26,6 +26,8 @@ from . import consolidation
 
 @dataclass
 class ConsolidationConfig:
+    """Consolidationconfig class implementation."""
+
     tenant: str = "sandbox"
     buffer_max: int = 512
     nrem_top_k: int = 16
@@ -45,6 +47,8 @@ class Hippocampus:
         mt_memory=None,
         mt_wm=None,
     ) -> None:
+        """Initialize the instance."""
+
         self.cfg = cfg
         self._buffers: Dict[str, Deque[dict]] = defaultdict(
             lambda: deque(maxlen=cfg.buffer_max)

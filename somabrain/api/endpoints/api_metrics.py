@@ -38,6 +38,13 @@ router = Router(tags=["Metrics"])
 # =============================================================================
 
 def get_metrics_key(tenant_id: str, metric_type: str) -> str:
+    """Retrieve metrics key.
+
+        Args:
+            tenant_id: The tenant_id.
+            metric_type: The metric_type.
+        """
+
     return f"metrics:{tenant_id}:{metric_type}"
 
 

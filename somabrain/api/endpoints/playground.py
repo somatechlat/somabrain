@@ -41,6 +41,12 @@ router = Router(tags=["API Playground"])
 # =============================================================================
 
 def get_history_key(user_id: str) -> str:
+    """Retrieve history key.
+
+        Args:
+            user_id: The user_id.
+        """
+
     return f"playground:history:{user_id}"
 
 

@@ -77,6 +77,12 @@ def chebyshev_heat_apply(
         raise ValueError("Invalid spectral interval")
 
     def apply_Ap(v: np.ndarray) -> np.ndarray:
+        """Execute apply Ap.
+
+            Args:
+                v: The v.
+            """
+
         return (2.0 * apply_A(v) - (b + a) * v) / (b - a)
 
     # coefficients for exp(-t * lambda) on [-1,1] can be approximated via

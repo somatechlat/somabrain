@@ -21,6 +21,8 @@ class Feedback:
     """
 
     def __init__(self, event: str, score: float):
+        """Initialize the instance."""
+
         self.event = event
         self.score = float(score)
 

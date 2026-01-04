@@ -74,14 +74,32 @@ class UserOut(Schema):
 
     @staticmethod
     def resolve_created_at(obj):
+        """Execute resolve created at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.created_at.isoformat()
 
     @staticmethod
     def resolve_last_login_at(obj):
+        """Execute resolve last login at.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.last_login_at.isoformat() if obj.last_login_at else None
 
     @staticmethod
     def resolve_roles(obj):
+        """Execute resolve roles.
+
+            Args:
+                obj: The obj.
+            """
+
         from somabrain.saas.models import TenantUserRole
         assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
         return [{"id": str(a.role.id), "name": a.role.name, "slug": a.role.slug} for a in assignments]
@@ -99,10 +117,22 @@ class UserListOut(Schema):
 
     @staticmethod
     def resolve_tenant_name(obj):
+        """Execute resolve tenant name.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.tenant.name if obj.tenant else ""
 
     @staticmethod
     def resolve_roles(obj):
+        """Execute resolve roles.
+
+            Args:
+                obj: The obj.
+            """
+
         from somabrain.saas.models import TenantUserRole
         assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
         return [a.role.slug for a in assignments]

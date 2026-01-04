@@ -241,6 +241,9 @@ async def start_milvus_reconciliation_task() -> None:
         return
 
     async def _runner() -> None:
+        """Execute runner.
+            """
+
         log = logging.getLogger("somabrain")
         while True:
             try:

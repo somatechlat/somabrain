@@ -1,3 +1,5 @@
+"""Module kafka."""
+
 from __future__ import annotations
 
 import json
@@ -37,9 +39,18 @@ class _KafkaProducerAdapter:
     """Adapter to provide kafka-python Producer.send API on top of confluent-kafka."""
 
     def __init__(self, ck: CKProducer) -> None:
+        """Initialize the instance."""
+
         self._ck = ck
 
     def send(self, topic: str, value: bytes):  # mimic kafka-python
+        """Execute send.
+
+            Args:
+                topic: The topic.
+                value: The value.
+            """
+
         if isinstance(value, (bytes, bytearray)):
             payload = value
         else:
@@ -49,7 +60,15 @@ class _KafkaProducerAdapter:
 
         # return an object with get(timeout) to mimic Future
         class _Fut:
+            """Fut class implementation."""
+
             def get(self, timeout: float | int = 5):
+                """Execute get.
+
+                    Args:
+                        timeout: The timeout.
+                    """
+
                 remaining = ck.flush(timeout)
                 if remaining != 0:
                     raise TimeoutError("produce not fully flushed")
@@ -59,9 +78,18 @@ class _KafkaProducerAdapter:
         return _Fut()
 
     def flush(self, timeout: float | int = 5):
+        """Execute flush.
+
+            Args:
+                timeout: The timeout.
+            """
+
         return self._ck.flush(timeout)
 
     def close(self):
+        """Execute close.
+            """
+
         try:
             self._ck.flush(5)
         except Exception:
@@ -70,6 +98,9 @@ class _KafkaProducerAdapter:
 
 def make_producer() -> _KafkaProducerAdapter:  # pragma: no cover - integration path
     # Strict: no disable flag pathway; Kafka must be reachable.
+    """Execute make producer.
+        """
+
     ck = CKProducer({"bootstrap.servers": _bootstrap_url(), "compression.type": "none"})
     return _KafkaProducerAdapter(ck)
 

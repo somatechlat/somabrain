@@ -30,6 +30,9 @@ from collections import defaultdict
 def _default_base_url() -> str:
     # Use the centralized helper to obtain the API base URL, falling back to the
     # historic default only if the helper returns ``None``.
+    """Execute default base url.
+        """
+
     from django.conf import settings
 
     return (get_api_base_url() or getattr(settings, "SOMABRAIN_API_URL", "http://localhost:9696")).rstrip("/")
@@ -38,10 +41,19 @@ def _default_base_url() -> str:
 def _default_token() -> str | None:
     # Use centralized Settings for token retrieval.
     # Use the centralized Settings field for the outbox API token.
+    """Execute default token.
+        """
+
     return getattr(settings, "SOMABRAIN_OUTBOX_API_TOKEN", None)
 
 
 def _auth_headers(token: str | None) -> dict[str, str]:
+    """Execute auth headers.
+
+        Args:
+            token: The token.
+        """
+
     if not token:
         raise SystemExit(
             "Admin token required. Pass --token or set SOMABRAIN_API_TOKEN."
@@ -58,6 +70,13 @@ def _fetch_page(
     limit: int,
     offset: int = 0,
 ) -> Dict[str, Any]:
+    """Execute fetch page.
+
+        Args:
+            base: The base.
+            token: The token.
+        """
+
     params = {"status": status, "limit": limit, "offset": offset}
     if tenant:
         params["tenant"] = tenant
@@ -73,6 +92,13 @@ def _fetch_page(
 
 
 def _print_events(events: Iterable[Dict[str, Any]], as_json: bool) -> None:
+    """Execute print events.
+
+        Args:
+            events: The events.
+            as_json: The as_json.
+        """
+
     if as_json:
         print(json.dumps(list(events), indent=2, sort_keys=True))
         return
@@ -85,6 +111,12 @@ def _print_events(events: Iterable[Dict[str, Any]], as_json: bool) -> None:
 
 
 def cmd_list(args: argparse.Namespace) -> None:
+    """Execute cmd list.
+
+        Args:
+            args: The args.
+        """
+
     data = _fetch_page(
         args.url,
         args.token,
@@ -101,6 +133,12 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 
 def cmd_replay(args: argparse.Namespace) -> None:
+    """Execute cmd replay.
+
+        Args:
+            args: The args.
+        """
+
     base = args.url
     payload = {"event_ids": args.event_ids}
     resp = requests.post(
@@ -115,6 +153,12 @@ def cmd_replay(args: argparse.Namespace) -> None:
 
 
 def cmd_tail(args: argparse.Namespace) -> None:
+    """Execute cmd tail.
+
+        Args:
+            args: The args.
+        """
+
     seen: set[int] = set()
     try:
         while True:
@@ -148,6 +192,13 @@ def _iter_events(
     tenant: str | None,
     page_size: int,
 ):
+    """Execute iter events.
+
+        Args:
+            base: The base.
+            token: The token.
+        """
+
     offset = 0
     while True:
         data = _fetch_page(
@@ -169,6 +220,12 @@ def _iter_events(
 
 
 def cmd_check(args: argparse.Namespace) -> None:
+    """Execute cmd check.
+
+        Args:
+            args: The args.
+        """
+
     max_pending = args.max_pending
     counts: dict[str, int] = defaultdict(int)
     for ev in _iter_events(
@@ -190,6 +247,9 @@ def cmd_check(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Execute build parser.
+        """
+
     ap = argparse.ArgumentParser(description="SomaBrain outbox admin helper")
     ap.add_argument("--url", default=_default_base_url())
     ap.add_argument("--token", default=_default_token())
@@ -232,6 +292,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Execute main.
+
+        Args:
+            argv: The argv.
+        """
+
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

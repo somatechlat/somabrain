@@ -76,6 +76,8 @@ class MemoryClient:
         # configuration singleton.  Making it optional restores backward
         # compatibility while preserving the ability to inject a custom Config
         # for advanced use‑cases.
+        """Initialize the instance."""
+
         self.cfg = cfg if cfg is not None else settings  # type: ignore[assignment]
         self._scorer = scorer
         self._embedder = embedder
@@ -98,6 +100,9 @@ class MemoryClient:
         self._transport = self._create_transport()
 
     def _init_local(self) -> None:
+        """Execute init local.
+            """
+
         return
 
     def _create_transport(self) -> MemoryHTTPTransport:
@@ -105,16 +110,25 @@ class MemoryClient:
         return create_memory_transport(self.cfg, logger)
 
     def _get_http_client(self) -> Optional[httpx.Client]:
+        """Execute get http client.
+            """
+
         if self._transport is None:
             return None
         return self._transport.client
 
     def _get_http_async_client(self) -> Optional[httpx.AsyncClient]:
+        """Execute get http async client.
+            """
+
         if self._transport is None:
             return None
         return self._transport.async_client
 
     def _init_redis(self) -> None:
+        """Execute init redis.
+            """
+
         return
 
     def health(self) -> dict:
@@ -137,6 +151,14 @@ class MemoryClient:
         max_retries: int = 2,
         operation: str = "unknown",
     ) -> tuple[bool, int, Any]:
+        """Execute http post with retries sync.
+
+            Args:
+                endpoint: The endpoint.
+                body: The body.
+                headers: The headers.
+            """
+
         from somabrain.memory.http_helpers import http_post_with_retries_sync
 
         return http_post_with_retries_sync(
@@ -158,6 +180,14 @@ class MemoryClient:
         max_retries: int = 2,
         operation: str = "unknown",
     ) -> tuple[bool, int, Any]:
+        """Execute http post with retries async.
+
+            Args:
+                endpoint: The endpoint.
+                body: The body.
+                headers: The headers.
+            """
+
         from somabrain.memory.http_helpers import http_post_with_retries_async
 
         return await http_post_with_retries_async(
@@ -171,6 +201,13 @@ class MemoryClient:
         )
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
+        """Execute store http sync.
+
+            Args:
+                body: The body.
+                headers: The headers.
+            """
+
         from somabrain.memory.http_helpers import store_http_sync
 
         return store_http_sync(
@@ -178,6 +215,13 @@ class MemoryClient:
         )
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
+        """Execute store http async.
+
+            Args:
+                body: The body.
+                headers: The headers.
+            """
+
         from somabrain.memory.http_helpers import store_http_async
 
         return await store_http_async(
@@ -187,6 +231,13 @@ class MemoryClient:
     def _store_bulk_http_sync(
         self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
+        """Execute store bulk http sync.
+
+            Args:
+                batch_request: The batch_request.
+                headers: The headers.
+            """
+
         from somabrain.memory.http_helpers import store_bulk_http_sync
 
         return store_bulk_http_sync(
@@ -196,6 +247,13 @@ class MemoryClient:
     async def _store_bulk_http_async(
         self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
+        """Execute store bulk http async.
+
+            Args:
+                batch_request: The batch_request.
+                headers: The headers.
+            """
+
         from somabrain.memory.http_helpers import store_bulk_http_async
 
         return await store_bulk_http_async(
@@ -213,6 +271,15 @@ class MemoryClient:
         universe: str,
         request_id: str,
     ) -> List[RecallHit]:
+        """Execute memories search sync.
+
+            Args:
+                query: The query.
+                top_k: The top_k.
+                universe: The universe.
+                request_id: The request_id.
+            """
+
         from somabrain.memory.recall_ops import memories_search_sync
 
         tenant, _ = self._tenant_namespace()
@@ -234,6 +301,15 @@ class MemoryClient:
         universe: str,
         request_id: str,
     ) -> List[RecallHit]:
+        """Execute memories search async.
+
+            Args:
+                query: The query.
+                top_k: The top_k.
+                universe: The universe.
+                request_id: The request_id.
+            """
+
         from somabrain.memory.recall_ops import memories_search_async
 
         tenant, _ = self._tenant_namespace()
@@ -252,38 +328,89 @@ class MemoryClient:
     def _http_recall_aggregate_sync(
         self, q: str, k: int, u: str, r: str
     ) -> List[RecallHit]:
+        """Execute http recall aggregate sync.
+
+            Args:
+                q: The q.
+                k: The k.
+                u: The u.
+                r: The r.
+            """
+
         return self._memories_search_sync(q, k, u, r)
 
     def _http_recall_aggregate_async(
         self, q: str, k: int, u: str, r: str
     ) -> List[RecallHit]:
+        """Execute http recall aggregate async.
+
+            Args:
+                q: The q.
+                k: The k.
+                u: The u.
+                r: The r.
+            """
+
         return self._memories_search_async(q, k, u, r)
 
     def _filter_hits_by_keyword(
         self, hits: List[RecallHit], keyword: str
     ) -> List[RecallHit]:
+        """Execute filter hits by keyword.
+
+            Args:
+                hits: The hits.
+                keyword: The keyword.
+            """
+
         from somabrain.memory.recall_ops import filter_hits_by_keyword
 
         return filter_hits_by_keyword(hits, keyword)
 
     # Scoring/recency helpers
     def _recency_normalisation(self) -> tuple[float, float]:
+        """Execute recency normalisation.
+            """
+
         return get_recency_normalisation(self.cfg)
 
     def _recency_profile(self) -> tuple[float, float, float, float]:
+        """Execute recency profile.
+            """
+
         return get_recency_profile(self.cfg)
 
     def _recency_features(
         self, ts_epoch: float | None, now_ts: float
     ) -> tuple[float | None, float]:
+        """Execute recency features.
+
+            Args:
+                ts_epoch: The ts_epoch.
+                now_ts: The now_ts.
+            """
+
         return compute_recency_features(ts_epoch, now_ts, self.cfg)
 
     def _density_factor(self, margin: float | None) -> float:
+        """Execute density factor.
+
+            Args:
+                margin: The margin.
+            """
+
         return compute_density_factor(margin, self.cfg)
 
     def _rescore_and_rank_hits(
         self, hits: List[RecallHit], query: str
     ) -> List[RecallHit]:
+        """Execute rescore and rank hits.
+
+            Args:
+                hits: The hits.
+                query: The query.
+            """
+
         return rescore_and_rank_hits(
             hits, query, self.cfg, self._scorer, self._embedder
         )
@@ -291,10 +418,20 @@ class MemoryClient:
     def _compat_enrich_payload(
         self, payload: dict, coord_key: str
     ) -> tuple[dict, str, dict]:
+        """Execute compat enrich payload.
+
+            Args:
+                payload: The payload.
+                coord_key: The coord_key.
+            """
+
         tenant, namespace = self._tenant_namespace()
         return enrich_payload(payload, coord_key, namespace, tenant=tenant)
 
     def _tenant_namespace(self) -> tuple[str, str]:
+        """Execute tenant namespace.
+            """
+
         from somabrain.memory.utils import get_tenant_namespace
 
         return get_tenant_namespace(self.cfg, override_namespace=self._namespace_override)
@@ -302,6 +439,15 @@ class MemoryClient:
     def _record_http_metrics(
         self, operation: str, success: bool, status: int, duration: float
     ) -> None:
+        """Execute record http metrics.
+
+            Args:
+                operation: The operation.
+                success: The success.
+                status: The status.
+                duration: The duration.
+            """
+
         from somabrain.memory.http_helpers import record_http_metrics
 
         record_http_metrics(

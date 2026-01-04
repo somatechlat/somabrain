@@ -7,6 +7,12 @@ from common.logging import logger
 
 @contextmanager
 def span(name: str, **attrs):
+    """Execute span.
+
+        Args:
+            name: The name.
+        """
+
     provider = trace.get_tracer_provider()
     # Detect default/uninitialized provider classes that result in no-op spans
     if provider is None or provider.__class__.__name__ in {

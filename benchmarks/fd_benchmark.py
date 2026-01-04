@@ -9,6 +9,9 @@ from somabrain.math.fd_rho import sketch_from_matrix, topk_eigenvalues_from_sket
 
 
 def main():
+    """Execute main.
+        """
+
     rng = np.random.default_rng(42)
     n = 2000
     d = 128

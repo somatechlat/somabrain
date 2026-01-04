@@ -33,6 +33,8 @@ class MemoryService:
     _circuit_breaker = get_cb()
 
     def __init__(self, backend: Any, namespace: str | None = None) -> None:
+        """Initialize the instance."""
+
         self._backend = backend
         self.namespace = namespace or ""
         self._cb = get_cb()
@@ -60,12 +62,21 @@ class MemoryService:
     # Circuit‑breaker delegation helpers
     # ---------------------------------------------------------------------
     def _is_circuit_open(self) -> bool:
+        """Execute is circuit open.
+            """
+
         return self._cb.is_open(self.tenant_id)
 
     def _mark_success(self) -> None:
+        """Execute mark success.
+            """
+
         self._cb.record_success(self.tenant_id)
 
     def _mark_failure(self) -> None:
+        """Execute mark failure.
+            """
+
         self._cb.record_failure(self.tenant_id)
 
     # ---------------------------------------------------------------------
@@ -100,6 +111,14 @@ class MemoryService:
     # Public API used by the application and tests
     # ---------------------------------------------------------------------
     def remember(self, key: str, payload: dict, universe: str | None = None):
+        """Execute remember.
+
+            Args:
+                key: The key.
+                payload: The payload.
+                universe: The universe.
+            """
+
         if universe and "universe" not in payload:
             payload["universe"] = universe
         # Attempt auto-reset of circuit if backend has recovered.
@@ -119,6 +138,14 @@ class MemoryService:
             raise RuntimeError("Memory service unavailable") from e
 
     def recall(self, query: str, top_k: int = 3, universe: str | None = None):
+        """Execute recall.
+
+            Args:
+                query: The query.
+                top_k: The top_k.
+                universe: The universe.
+            """
+
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
             raise RuntimeError("Memory service unavailable (circuit open)")
@@ -151,6 +178,14 @@ class MemoryService:
             raise RuntimeError("Memory service unavailable") from e
 
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
+        """Execute aremember.
+
+            Args:
+                key: The key.
+                payload: The payload.
+                universe: The universe.
+            """
+
         if universe and "universe" not in payload:
             payload["universe"] = universe
         self._reset_circuit_if_needed()
@@ -169,6 +204,14 @@ class MemoryService:
             raise RuntimeError("Memory service unavailable") from e
 
     async def arecall(self, query: str, top_k: int = 3, universe: str | None = None):
+        """Execute arecall.
+
+            Args:
+                query: The query.
+                top_k: The top_k.
+                universe: The universe.
+            """
+
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
             raise RuntimeError("Memory service unavailable (circuit open)")
@@ -207,6 +250,13 @@ class MemoryService:
         items: Iterable[tuple[str, dict]],
         universe: str | None = None,
     ) -> list[tuple[float, float, float]]:
+        """Execute aremember bulk.
+
+            Args:
+                items: The items.
+                universe: The universe.
+            """
+
         prepared: list[tuple[str, dict]] = []
         for key, payload in items:
             body = dict(payload)
@@ -235,6 +285,9 @@ class MemoryService:
     # Miscellaneous helper methods (mostly no‑ops for metrics)
     # ---------------------------------------------------------------------
     def _health_check(self) -> bool:
+        """Execute health check.
+            """
+
         try:
             health = self.client().health()
         except Exception as exc:
@@ -251,6 +304,9 @@ class MemoryService:
         return False
 
     def _reset_circuit_if_needed(self) -> bool:
+        """Execute reset circuit if needed.
+            """
+
         if not self._is_circuit_open():
             return False
         tenant = getattr(self, "namespace", "default")
@@ -264,6 +320,13 @@ class MemoryService:
 
     # The following methods simply proxy to the backend client.
     def coord_for_key(self, key: str, universe: str | None = None):
+        """Execute coord for key.
+
+            Args:
+                key: The key.
+                universe: The universe.
+            """
+
         return self.client().coord_for_key(key, universe)
 
     def fetch_by_coord(self, coord, universe: str | None = None):
@@ -272,10 +335,19 @@ class MemoryService:
         return self.client().fetch_by_coord(coord, universe)
 
     def delete(self, coordinate):
+        """Execute delete.
+
+            Args:
+                coordinate: The coordinate.
+            """
+
         self._reset_circuit_if_needed()
         return self.client().delete(coordinate)
 
     def health(self) -> dict:
+        """Execute health.
+            """
+
         return self.client().health()
 
     # ---------------------------------------------------------------------
@@ -306,6 +378,12 @@ class MemoryService:
         failure_threshold: int | None = None,
         reset_interval: float | None = None,
     ) -> None:
+        """Execute configure tenant thresholds.
+
+            Args:
+                tenant: The tenant.
+            """
+
         cls._circuit_breaker.configure_tenant(
             tenant,
             failure_threshold=failure_threshold,
@@ -326,15 +404,33 @@ class MemoryService:
 
     @classmethod
     def _should_attempt_reset(cls, tenant: str) -> bool:
+        """Execute should attempt reset.
+
+            Args:
+                tenant: The tenant.
+            """
+
         return cls._circuit_breaker.should_attempt_reset(tenant)
 
     # ---------------------------------------------------------------------
     # Tenant‑label utilities – thin wrappers around the infrastructure module
     # ---------------------------------------------------------------------
     def _tenant_label(self, namespace: str) -> str:
+        """Execute tenant label.
+
+            Args:
+                namespace: The namespace.
+            """
+
         return tenant_label(namespace)
 
     def _resolve_namespace_for_label(self, label: str) -> str:
+        """Execute resolve namespace for label.
+
+            Args:
+                label: The label.
+            """
+
         return resolve_namespace(label)
 
     @property
@@ -347,6 +443,13 @@ class MemoryService:
     # ---------------------------------------------------------------------
     @staticmethod
     def _update_outbox_metric(tenant: str, count: int) -> None:
+        """Execute update outbox metric.
+
+            Args:
+                tenant: The tenant.
+                count: The count.
+            """
+
         try:
             from somabrain import metrics
 
@@ -362,6 +465,13 @@ class MemoryService:
 
     @staticmethod
     def _update_tenant_outbox_metric(tenant: str, count: int) -> None:
+        """Execute update tenant outbox metric.
+
+            Args:
+                tenant: The tenant.
+                count: The count.
+            """
+
         try:
             from somabrain import metrics
 

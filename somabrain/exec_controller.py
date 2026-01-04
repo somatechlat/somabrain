@@ -83,6 +83,8 @@ class ExecConfig:
 
 @dataclass
 class Policy:
+    """Policy class implementation."""
+
     adj_top_k: int
     use_graph: bool
     inhibit_store: bool

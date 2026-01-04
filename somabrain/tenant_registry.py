@@ -32,6 +32,8 @@ class TenantRegistry:
     """Centralized tenant management service with perfect architecture."""
 
     def __init__(self, redis_url: Optional[str] = None):
+        """Initialize the instance."""
+
         self.redis_url = redis_url or "redis://localhost:6379/0"
         self._redis: Optional[redis.Redis] = None
         self._tenant_cache: Dict[str, TenantMetadata] = {}

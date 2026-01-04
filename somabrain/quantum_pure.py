@@ -42,6 +42,8 @@ class PureQuantumLayer:
     """
 
     def __init__(self, cfg: HRRConfig):
+        """Initialize the instance."""
+
         self.cfg = cfg
         # Use deterministic RNG for operations that need randomness
         self._rng = np.random.default_rng(cfg.seed)
@@ -51,6 +53,13 @@ class PureQuantumLayer:
         self._token_cache: Dict[str, np.ndarray] = {}
 
     def _ensure_vector(self, v: object, name: str = "vector") -> np.ndarray:
+        """Execute ensure vector.
+
+            Args:
+                v: The v.
+                name: The name.
+            """
+
         if isinstance(v, np.ndarray):
             arr = v
         else:
@@ -67,21 +76,39 @@ class PureQuantumLayer:
         return arr
 
     def _renorm(self, v: np.ndarray) -> np.ndarray:
+        """Execute renorm.
+
+            Args:
+                v: The v.
+            """
+
         if not self.cfg.renorm:
             return v.astype(self.cfg.dtype, copy=False)
         return normalize_array(v, axis=-1, keepdims=False, dtype=self.cfg.dtype)
 
     def random_vector(self) -> np.ndarray:
+        """Execute random vector.
+            """
+
         v = self._rng.normal(0.0, 1.0, size=self.cfg.dim)
         return self._renorm(v)
 
     def encode_text(self, text: str) -> np.ndarray:
+        """Execute encode text.
+
+            Args:
+                text: The text.
+            """
+
         seed64 = seed_to_uint64(text) ^ int(self.cfg.seed)
         rng = np.random.default_rng(np.uint64(seed64))
         v = rng.normal(0.0, 1.0, size=self.cfg.dim)
         return self._renorm(v)
 
     def superpose(self, *vectors) -> np.ndarray:
+        """Execute superpose.
+            """
+
         s = None
         for v in vectors:
             if isinstance(v, (list, tuple)):
@@ -96,6 +123,13 @@ class PureQuantumLayer:
         return self._renorm(s)
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Execute bind.
+
+            Args:
+                a: The a.
+                b: The b.
+            """
+
         a = self._ensure_vector(a, name="bind.a")
         b = self._ensure_vector(b, name="bind.b")
         fa = np.fft.rfft(a)
@@ -105,6 +139,13 @@ class PureQuantumLayer:
         return self._renorm(conv)
 
     def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Execute unbind.
+
+            Args:
+                c: The c.
+                b: The b.
+            """
+
         c = self._ensure_vector(c, name="unbind.c")
         b = self._ensure_vector(b, name="unbind.b")
         fc = np.fft.rfft(c).astype(np.complex128)
@@ -124,6 +165,13 @@ class PureQuantumLayer:
         return self._renorm(a_est)
 
     def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
+        """Execute permute.
+
+            Args:
+                a: The a.
+                times: The times.
+            """
+
         a = self._ensure_vector(a, name="permute.a")
         if times >= 0:
             idx = self._perm
@@ -143,6 +191,13 @@ class PureQuantumLayer:
     def cleanup(
         self, q: np.ndarray, anchors: Dict[str, np.ndarray]
     ) -> Tuple[str, float]:
+        """Execute cleanup.
+
+            Args:
+                q: The q.
+                anchors: The anchors.
+            """
+
         q = self._ensure_vector(q, name="cleanup.query")
         best_id = ""
         best = -1.0

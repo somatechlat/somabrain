@@ -1,9 +1,14 @@
+"""Module reset_milvus."""
+
 
 import os
 import sys
 from pymilvus import connections, utility
 
 def main():
+    """Execute main.
+        """
+
     print("Connecting to Milvus...")
     connections.connect(host="127.0.0.1", port="20530")
     

@@ -59,6 +59,12 @@ class TestThroughputCapacity:
         wm = WorkingMemory(capacity=200)
 
         def admit_item(i: int) -> Tuple[int, bool]:
+            """Execute admit item.
+
+                Args:
+                    i: The i.
+                """
+
             try:
                 vec = np.random.randn(512).astype(np.float32)
                 vec = vec / np.linalg.norm(vec)
@@ -278,6 +284,12 @@ class TestConcurrentOperations:
             wm.admit(f"pre_{i}", vec, {"index": i})
 
         def admit_op(i: int) -> bool:
+            """Execute admit op.
+
+                Args:
+                    i: The i.
+                """
+
             try:
                 vec = np.random.randn(512).astype(np.float32)
                 vec = vec / np.linalg.norm(vec)
@@ -287,6 +299,12 @@ class TestConcurrentOperations:
                 return False
 
         def recall_op(i: int) -> bool:
+            """Execute recall op.
+
+                Args:
+                    i: The i.
+                """
+
             try:
                 query = np.random.randn(512).astype(np.float32)
                 query = query / np.linalg.norm(query)

@@ -88,6 +88,9 @@ def check_postgresql() -> Dict[str, Any]:
     from django.db import connection
     
     def _check():
+        """Execute check.
+            """
+
         with connection.cursor() as cursor:
             # Get version and connection info
             cursor.execute("SELECT version()")
@@ -122,6 +125,9 @@ def check_redis() -> Dict[str, Any]:
     
     def _check():
         # Write and read test
+        """Execute check.
+            """
+
         cache.set("health_check_redis", "ok", 10)
         value = cache.get("health_check_redis")
         
@@ -154,6 +160,9 @@ def check_kafka() -> Dict[str, Any]:
     import socket
     
     def _check():
+        """Execute check.
+            """
+
         kafka_host = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "somabrain_kafka:9094")
         if ":" in kafka_host:
             host, port = kafka_host.split(":")
@@ -187,6 +196,9 @@ def check_kafka() -> Dict[str, Any]:
 def check_milvus() -> Dict[str, Any]:
     """Check Milvus vector database health."""
     def _check():
+        """Execute check.
+            """
+
         from somabrain.milvus_client import MilvusClient
         
         client = MilvusClient()
@@ -215,6 +227,9 @@ def check_opa() -> Dict[str, Any]:
     import httpx
     
     def _check():
+        """Execute check.
+            """
+
         opa_url = getattr(settings, "SOMABRAIN_OPA_URL", "http://localhost:20181")
         
         with httpx.Client(timeout=5) as client:
@@ -243,6 +258,9 @@ def check_minio() -> Dict[str, Any]:
     import httpx
     
     def _check():
+        """Execute check.
+            """
+
         minio_url = getattr(settings, "MINIO_ENDPOINT", "http://somabrain_minio:9000")
         
         with httpx.Client(timeout=5) as client:
@@ -271,6 +289,9 @@ def check_schema_registry() -> Dict[str, Any]:
     import httpx
     
     def _check():
+        """Execute check.
+            """
+
         registry_url = getattr(settings, "SCHEMA_REGISTRY_URL", "http://somabrain_schema_registry:8081")
         
         with httpx.Client(timeout=5) as client:
@@ -300,6 +321,9 @@ def check_keycloak() -> Dict[str, Any]:
     import httpx
     
     def _check():
+        """Execute check.
+            """
+
         keycloak_url = getattr(settings, "KEYCLOAK_URL", None)
         
         if not keycloak_url:
@@ -333,6 +357,9 @@ def check_keycloak() -> Dict[str, Any]:
 def check_lago() -> Dict[str, Any]:
     """Check Lago billing service health."""
     def _check():
+        """Execute check.
+            """
+
         from somabrain.saas.billing import get_lago_client
         
         lago = get_lago_client()
@@ -370,6 +397,9 @@ def check_soma_fractal_memory() -> Dict[str, Any]:
     import httpx
     
     def _check():
+        """Execute check.
+            """
+
         sfm_url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL", None)
         
         if not sfm_url:
@@ -403,6 +433,9 @@ def check_cognitive_service() -> Dict[str, Any]:
     """Check internal cognitive service status."""
     def _check():
         # Check if cognitive middleware is loaded
+        """Execute check.
+            """
+
         from somabrain.oak.planner import plan_for_tenant
         from somabrain.oak.option_manager import OptionManager
         
@@ -425,6 +458,9 @@ def check_cognitive_service() -> Dict[str, Any]:
 def check_embedder_service() -> Dict[str, Any]:
     """Check embedder service status."""
     def _check():
+        """Execute check.
+            """
+
         from somabrain.health.helpers import get_embedder
         
         embedder = get_embedder()

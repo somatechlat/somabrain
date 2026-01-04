@@ -1,3 +1,5 @@
+"""Module test_memory_workbench."""
+
 import time
 from typing import List, Set
 
@@ -11,6 +13,9 @@ ENDPOINT = "http://127.0.0.1:10101"
 
 @pytest.fixture
 def http_client():
+    """Execute http client.
+        """
+
     headers = {
         "Authorization": f"Bearer {AUTH['api_token']}",
         "Content-Type": "application/json",
@@ -22,6 +27,14 @@ def http_client():
 def _remember(client: httpx.Client, tenant: str, text: str) -> None:
     # Updated API: POST /memories
     # Schema: {"coord": "...", "payload": {"content": ...}, "memory_type": ...}
+    """Execute remember.
+
+        Args:
+            client: The client.
+            tenant: The tenant.
+            text: The text.
+        """
+
     payload = {
         "coord": "0,0,0",  # Dummy coord
         "payload": {"content": text, "task": text},
@@ -33,6 +46,15 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
 
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
     # Updated API: POST /memories/search
+    """Execute recall texts.
+
+        Args:
+            client: The client.
+            tenant: The tenant.
+            query: The query.
+            k: The k.
+        """
+
     r = client.post(
         "/memories/search",
         headers={"X-Soma-Tenant": tenant},
@@ -73,6 +95,14 @@ def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List
     ],
 )
 def test_memory_workbench(http_client: httpx.Client, tenant, corpus) -> None:
+    """Execute test memory workbench.
+
+        Args:
+            http_client: The http_client.
+            tenant: The tenant.
+            corpus: The corpus.
+        """
+
     client = http_client
     for text in corpus:
         _remember(client, tenant, text)

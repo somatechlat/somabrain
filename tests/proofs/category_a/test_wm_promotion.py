@@ -223,10 +223,21 @@ class TestWMLTMPromoter:
 
         # Create a minimal memory client for testing
         class TestMemoryClient:
+            """Testmemoryclient class implementation."""
+
             def __init__(self):
+                """Initialize the instance."""
+
                 self._stored: Dict[str, Any] = {}
 
             async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
+                """Execute aremember.
+
+                    Args:
+                        key: The key.
+                        payload: The payload.
+                    """
+
                 self._stored[key] = payload
                 return (1.0, 2.0, 3.0)  # Return coordinate
 
@@ -253,10 +264,21 @@ class TestWMLTMPromoter:
 
         # Create test memory client
         class TestMemoryClient:
+            """Testmemoryclient class implementation."""
+
             def __init__(self):
+                """Initialize the instance."""
+
                 self._stored: Dict[str, Any] = {}
 
             async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
+                """Execute aremember.
+
+                    Args:
+                        key: The key.
+                        payload: The payload.
+                    """
+
                 self._stored[key] = payload
                 return (1.0, 2.0, 3.0)
 
@@ -274,6 +296,9 @@ class TestWMLTMPromoter:
 
         async def test_promotion():
             # Promote item
+            """Execute test promotion.
+                """
+
             result = await promoter.promote(item_id, vector, payload)
             return result
 
@@ -305,10 +330,21 @@ class TestWMLTMPromoter:
 
         # Create test memory client that captures payload
         class TestMemoryClient:
+            """Testmemoryclient class implementation."""
+
             def __init__(self):
+                """Initialize the instance."""
+
                 self.last_payload: Dict[str, Any] = {}
 
             async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
+                """Execute aremember.
+
+                    Args:
+                        key: The key.
+                        payload: The payload.
+                    """
+
                 self.last_payload = payload
                 return (1.0, 2.0, 3.0)
 
@@ -323,6 +359,9 @@ class TestWMLTMPromoter:
         payload = {"content": "original content"}
 
         async def test_promotion():
+            """Execute test promotion.
+                """
+
             await promoter.promote(item_id, vector, payload)
 
         asyncio.run(test_promotion())

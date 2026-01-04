@@ -80,6 +80,13 @@ def health_view(request):
     from django.conf import settings
     
     def timed_check(name, check_func):
+        """Execute timed check.
+
+            Args:
+                name: The name.
+                check_func: The check_func.
+            """
+
         start = time.time()
         try:
             result = check_func()
@@ -101,6 +108,9 @@ def health_view(request):
     
     # PostgreSQL
     def check_pg():
+        """Execute check pg.
+            """
+
         with connection.cursor() as cursor:
             cursor.execute("SELECT version()")
             version = cursor.fetchone()[0]
@@ -112,6 +122,9 @@ def health_view(request):
     
     # Redis
     def check_redis():
+        """Execute check redis.
+            """
+
         cache.set("health_check", "ok", 10)
         ok = cache.get("health_check") == "ok"
         try:
@@ -124,6 +137,9 @@ def health_view(request):
     
     # Kafka
     def check_kafka():
+        """Execute check kafka.
+            """
+
         host = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "somabrain_kafka:9094")
         h, p = (host.split(":") + ["9094"])[:2]
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -135,6 +151,9 @@ def health_view(request):
     
     # Milvus
     def check_milvus():
+        """Execute check milvus.
+            """
+
         from somabrain.milvus_client import MilvusClient
         client = MilvusClient()
         return {"connected": client.collection is not None,
@@ -143,6 +162,9 @@ def health_view(request):
     
     # OPA
     def check_opa():
+        """Execute check opa.
+            """
+
         url = getattr(settings, "OPA_URL", "http://somabrain_opa:8181")
         with httpx.Client(timeout=3) as c:
             r = c.get(f"{url}/health")
@@ -151,6 +173,9 @@ def health_view(request):
     
     # MinIO
     def check_minio():
+        """Execute check minio.
+            """
+
         url = getattr(settings, "MINIO_ENDPOINT", "http://somabrain_minio:9000")
         with httpx.Client(timeout=3) as c:
             r = c.get(f"{url}/minio/health/live")
@@ -159,6 +184,9 @@ def health_view(request):
     
     # Schema Registry
     def check_schema_registry():
+        """Execute check schema registry.
+            """
+
         url = getattr(settings, "SCHEMA_REGISTRY_URL", "http://somabrain_schema_registry:8081")
         with httpx.Client(timeout=3) as c:
             r = c.get(f"{url}/subjects")
@@ -167,6 +195,9 @@ def health_view(request):
     
     # Keycloak
     def check_keycloak():
+        """Execute check keycloak.
+            """
+
         url = getattr(settings, "KEYCLOAK_URL", None)
         if not url: return {"configured": False}
         with httpx.Client(timeout=3) as c:
@@ -176,6 +207,9 @@ def health_view(request):
     
     # Lago
     def check_lago():
+        """Execute check lago.
+            """
+
         from somabrain.saas.billing import get_lago_client
         lago = get_lago_client()
         if not lago: return {"configured": False}
@@ -184,6 +218,9 @@ def health_view(request):
     
     # SomaFractalMemory
     def check_sfm():
+        """Execute check sfm.
+            """
+
         url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL", None)
         if not url: return {"configured": False}
         with httpx.Client(timeout=3) as c:
@@ -192,6 +229,9 @@ def health_view(request):
     health["internal_services"]["soma_fractal_memory"] = timed_check("SomaFractalMemory", check_sfm)
     
     def check_cognitive():
+        """Execute check cognitive.
+            """
+
         from somabrain.oak.planner import plan_for_tenant
         from somabrain.oak.option_manager import OptionManager
         return {"planner_loaded": True, "option_manager_loaded": True}
@@ -199,6 +239,9 @@ def health_view(request):
     
     # Embedder
     def check_embedder():
+        """Execute check embedder.
+            """
+
         from somabrain.health.helpers import get_embedder
         emb = get_embedder()
         return {"loaded": emb is not None}

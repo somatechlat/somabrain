@@ -26,11 +26,18 @@ SCOPED_PREFIXES = ("somabrain", "config", "clients")
 
 
 class RoadmapInvariantScanner:
+    """Roadmapinvariantscanner class implementation."""
+
     def __init__(self, root_path: str = ".") -> None:
+        """Initialize the instance."""
+
         self.root_path = Path(root_path)
         self.violations: List[Tuple[str, int, str, str]] = []
 
     def scan(self) -> List[Tuple[str, int, str, str]]:
+        """Execute scan.
+            """
+
         for file_path in self.root_path.rglob("*.py"):
             if not self._in_scope(file_path):
                 continue
@@ -50,9 +57,21 @@ class RoadmapInvariantScanner:
         return self.violations
 
     def _in_scope(self, file_path: Path) -> bool:
+        """Execute in scope.
+
+            Args:
+                file_path: The file_path.
+            """
+
         return any(part in SCOPED_PREFIXES for part in file_path.parts)
 
     def _should_skip_file(self, file_path: Path) -> bool:
+        """Execute should skip file.
+
+            Args:
+                file_path: The file_path.
+            """
+
         skip_parts = {
             "tests",
             "node_modules",
@@ -65,6 +84,13 @@ class RoadmapInvariantScanner:
         return any(part in skip_parts for part in file_path.parts)
 
     def _check_banned_keywords(self, file_path: Path, lines: List[str]) -> None:
+        """Execute check banned keywords.
+
+            Args:
+                file_path: The file_path.
+                lines: The lines.
+            """
+
         for lineno, line in enumerate(lines, 1):
             stripped = re.sub(r"#.*$", "", line)
             for keyword in BANNED_KEYWORDS:
@@ -74,21 +100,45 @@ class RoadmapInvariantScanner:
                     )
 
     def _check_banned_identifiers(self, file_path: Path, content: str) -> None:
+        """Execute check banned identifiers.
+
+            Args:
+                file_path: The file_path.
+                content: The content.
+            """
+
         for ident in BANNED_IDENTIFIERS:
             if re.search(rf"\\b{re.escape(ident)}\\b", content):
                 self._record_violation(file_path, 0, "BANNED_IDENTIFIER", ident)
 
     def _check_ast_patterns(self, file_path: Path, content: str) -> None:
+        """Execute check ast patterns.
+
+            Args:
+                file_path: The file_path.
+                content: The content.
+            """
+
         try:
             tree = ast.parse(content)
         except SyntaxError:
             return
 
         class ShimVisitor(ast.NodeVisitor):
+            """Shimvisitor class implementation."""
+
             def __init__(self) -> None:
+                """Initialize the instance."""
+
                 self.found = False
 
             def visit_Name(self, node: ast.Name) -> None:  # noqa: N802
+                """Execute visit Name.
+
+                    Args:
+                        node: The node.
+                    """
+
                 if node.id in BANNED_IDENTIFIERS:
                     self.found = True
                 self.generic_visit(node)
@@ -101,9 +151,21 @@ class RoadmapInvariantScanner:
     def _record_violation(
         self, file_path: Path, lineno: int, typ: str, detail: str
     ) -> None:
+        """Execute record violation.
+
+            Args:
+                file_path: The file_path.
+                lineno: The lineno.
+                typ: The typ.
+                detail: The detail.
+            """
+
         self.violations.append((str(file_path), lineno, typ, detail))
 
     def report(self) -> str:
+        """Execute report.
+            """
+
         if not self.violations:
             return "✅ Roadmap invariants satisfied"
         lines = ["❌ Roadmap violations detected:"]
@@ -113,6 +175,9 @@ class RoadmapInvariantScanner:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     scanner = RoadmapInvariantScanner()
     scanner.scan()
     print(scanner.report())

@@ -39,6 +39,9 @@ class GoldenMemoryItem:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        """Execute post init  .
+            """
+
         if self.embedding is None:
             # Generate deterministic embedding from content hash
             self.embedding = _generate_deterministic_embedding(self.content)

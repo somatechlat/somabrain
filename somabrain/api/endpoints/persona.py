@@ -1,3 +1,5 @@
+"""Module persona."""
+
 from typing import Dict, Optional, Any
 import time
 import hashlib
@@ -26,6 +28,12 @@ except ImportError:
 router = Router(tags=["persona"])
 
 def _compute_etag(payload: Dict[str, Any]) -> str:
+    """Execute compute etag.
+
+        Args:
+            payload: The payload.
+        """
+
     j = json.dumps(payload or {}, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(j.encode("utf-8")).hexdigest()
 

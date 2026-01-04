@@ -153,6 +153,8 @@ class IdentityProvider(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_identity_providers"
         ordering = ["display_order", "name"]
         verbose_name = "Identity Provider"
@@ -165,6 +167,8 @@ class IdentityProvider(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         scope = f"({self.tenant.slug})" if self.tenant else "(platform)"
         return f"{self.name} - {self.get_provider_type_display()} {scope}"
 
@@ -209,11 +213,15 @@ class TenantAuthConfig(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_tenant_auth_config"
         verbose_name = "Tenant Auth Config"
         verbose_name_plural = "Tenant Auth Configs"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"Auth Config for {self.tenant.name}"
 
 
@@ -261,12 +269,16 @@ class Role(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_roles"
         ordering = ["name"]
         verbose_name = "Role"
         verbose_name_plural = "Roles"
     
     def __str__(self):
+        """Return string representation."""
+
         return self.name
 
 
@@ -293,6 +305,8 @@ class FieldPermission(models.Model):
     can_edit = models.BooleanField(default=False)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_field_permissions"
         verbose_name = "Field Permission"
         verbose_name_plural = "Field Permissions"
@@ -307,6 +321,8 @@ class FieldPermission(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         perms = []
         if self.can_view:
             perms.append("view")
@@ -339,6 +355,8 @@ class TenantUserRole(models.Model):
     assigned_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_tenant_user_roles"
         verbose_name = "Tenant User Role"
         verbose_name_plural = "Tenant User Roles"
@@ -350,6 +368,8 @@ class TenantUserRole(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant_user.email} - {self.role.name}"
 
 
@@ -390,12 +410,16 @@ class SubscriptionTier(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_subscription_tiers"
         ordering = ["display_order", "price_monthly"]
         verbose_name = "Subscription Tier"
         verbose_name_plural = "Subscription Tiers"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} (${self.price_monthly}/mo)"
 
 
@@ -452,6 +476,8 @@ class Tenant(models.Model):
     created_by = models.CharField(max_length=255, null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_tenants"
         ordering = ["-created_at"]
         verbose_name = "Tenant"
@@ -462,6 +488,8 @@ class Tenant(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.slug})"
     
     def suspend(self, reason: str = None):
@@ -481,10 +509,16 @@ class Tenant(models.Model):
     
     @property
     def is_active(self):
+        """Check if active.
+            """
+
         return self.status == TenantStatus.ACTIVE
     
     @property
     def is_trial(self):
+        """Check if trial.
+            """
+
         return self.status == TenantStatus.TRIAL
 
 
@@ -529,6 +563,8 @@ class TenantUser(models.Model):
     last_login_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_tenant_users"
         ordering = ["-created_at"]
         verbose_name = "Tenant User"
@@ -545,6 +581,8 @@ class TenantUser(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.email} ({self.tenant.slug})"
 
 
@@ -596,12 +634,16 @@ class Subscription(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_subscriptions"
         ordering = ["-created_at"]
         verbose_name = "Subscription"
         verbose_name_plural = "Subscriptions"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant.name} - {self.tier.name}"
 
 
@@ -666,6 +708,8 @@ class APIKey(models.Model):
     )
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_api_keys"
         ordering = ["-created_at"]
         verbose_name = "API Key"
@@ -676,6 +720,8 @@ class APIKey(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.name} ({self.key_prefix}...)"
     
     @classmethod
@@ -775,6 +821,8 @@ class AuditLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     
     class Meta:
+        """Meta class implementation."""
+
         db_table = "saas_audit_log"
         ordering = ["-timestamp"]
         verbose_name = "Audit Log"
@@ -787,6 +835,8 @@ class AuditLog(models.Model):
         ]
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.action} by {self.actor_id} at {self.timestamp}"
     
     @classmethod
@@ -893,11 +943,15 @@ class TenantSubscription(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        """Meta class implementation."""
+
         ordering = ["-created_at"]
         verbose_name = "Tenant Subscription"
         verbose_name_plural = "Tenant Subscriptions"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant.name} - {self.tier.name} ({self.status})"
 
 
@@ -931,6 +985,8 @@ class UsageRecord(models.Model):
     recorded_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        """Meta class implementation."""
+
         ordering = ["-recorded_at"]
         indexes = [
             models.Index(fields=["tenant", "recorded_at"]),
@@ -940,6 +996,8 @@ class UsageRecord(models.Model):
         verbose_name_plural = "Usage Records"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant.slug}:{self.metric_name}={self.quantity}"
 
 
@@ -979,11 +1037,15 @@ class Webhook(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
+        """Meta class implementation."""
+
         ordering = ["-created_at"]
         verbose_name = "Webhook"
         verbose_name_plural = "Webhooks"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant.slug}: {self.url[:50]}"
 
 
@@ -1017,6 +1079,8 @@ class WebhookDelivery(models.Model):
     delivered_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        """Meta class implementation."""
+
         ordering = ["-delivered_at"]
         indexes = [
             models.Index(fields=["webhook", "delivered_at"]),
@@ -1026,6 +1090,8 @@ class WebhookDelivery(models.Model):
         verbose_name_plural = "Webhook Deliveries"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.webhook.id}:{self.event_type} - {'OK' if self.success else 'FAIL'}"
 
 
@@ -1043,6 +1109,8 @@ class Notification(models.Model):
     """
     
     class NotificationType(models.TextChoices):
+        """Notificationtype class implementation."""
+
         INFO = "info", "Information"
         WARNING = "warning", "Warning"
         ERROR = "error", "Error"
@@ -1052,6 +1120,8 @@ class Notification(models.Model):
         SYSTEM = "system", "System"
     
     class NotificationPriority(models.TextChoices):
+        """Notificationpriority class implementation."""
+
         LOW = "low", "Low"
         NORMAL = "normal", "Normal"
         HIGH = "high", "High"
@@ -1089,6 +1159,8 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
+        """Meta class implementation."""
+
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["tenant", "user_id", "is_read"]),
@@ -1098,4 +1170,6 @@ class Notification(models.Model):
         verbose_name_plural = "Notifications"
     
     def __str__(self):
+        """Return string representation."""
+
         return f"{self.tenant.slug}: {self.title[:30]}"

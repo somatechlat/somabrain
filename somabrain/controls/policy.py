@@ -42,13 +42,19 @@ from django.conf import settings
 
 @dataclass
 class PolicyDecision:
+    """Policydecision class implementation."""
+
     decision: str  # allow|deny|review
     reason: str
     hints: Dict[str, Any]
 
 
 class PolicyEngine:
+    """Policyengine class implementation."""
+
     def __init__(self, safety_threshold: float = 0.9):
+        """Initialize the instance."""
+
         self.safety_threshold = float(safety_threshold)
         pat = getattr(settings, "SOMABRAIN_BLOCK_UA_REGEX", "").strip()
         self._block_ua = re.compile(pat) if pat else None
@@ -56,12 +62,21 @@ class PolicyEngine:
     def _kill_switch(self) -> bool:
         # Disable kill switch during test runs to prevent unintended denial of requests.
         # Pytest sets the PYTEST_CURRENT_TEST environment variable for each test.
+        """Execute kill switch.
+            """
+
         if getattr(settings, "pytest_current_test", None):
             return False
         return bool(getattr(settings, "SOMABRAIN_KILL_SWITCH", False))
 
     def evaluate(self, ctx: Dict[str, Any]) -> PolicyDecision:
         # Global kill switch
+        """Execute evaluate.
+
+            Args:
+                ctx: The ctx.
+            """
+
         if self._kill_switch():
             return PolicyDecision("deny", "kill_switch", {"operator_pause": True})
         # Human override header triggers review

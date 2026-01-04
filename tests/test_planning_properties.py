@@ -42,6 +42,12 @@ def test_bfs_deterministic_ordering(strengths: list, seed: int) -> None:
 
     # Sort using the same logic as planner.py
     def sort_key(n):
+        """Execute sort key.
+
+            Args:
+                n: The n.
+            """
+
         coord_str = ",".join(f"{c:.6f}" for c in n["coord"])
         return (-n["strength"], coord_str)
 
@@ -82,6 +88,12 @@ def test_rwr_deterministic_ordering(probs: list) -> None:
 
     # Sort using the same logic as planner_rwr.py
     def sort_key(x):
+        """Execute sort key.
+
+            Args:
+                x: The x.
+            """
+
         return (-x[1], x[2])
 
     # Run sorting multiple times

@@ -77,6 +77,9 @@ def _get_jwt_cache() -> JWTKeyCache:
 
 def _auth_disabled() -> bool:
     # Auth disable capability removed: always enforce auth in strict mode.
+    """Execute auth disabled.
+        """
+
     return False
 
 
@@ -120,6 +123,9 @@ def invalidate_jwt_cache() -> None:
 
 
 def _jwt_algorithms() -> list[str]:
+    """Execute jwt algorithms.
+        """
+
     if getattr(settings, "SOMABRAIN_JWT_PUBLIC_KEY_PATH", None):
         return ["RS256", "RS384", "RS512"]
     return ["HS256", "HS384", "HS512"]

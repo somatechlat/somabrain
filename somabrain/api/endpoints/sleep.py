@@ -36,6 +36,9 @@ router = Router(tags=["sleep"])
 # Helper to get sleep manager singleton
 _sleep_manager: SleepStateManager = None
 def _get_sleep_manager():
+    """Execute get sleep manager.
+        """
+
     global _sleep_manager
     if _sleep_manager is None:
         _sleep_manager = SleepStateManager()
@@ -85,6 +88,16 @@ def _process_sleep_transition(
     ttl_seconds: Optional[int] = None,
     trace_id: Optional[str] = None
 ):
+    """Execute process sleep transition.
+
+        Args:
+            request: The request.
+            mode: The mode.
+            target_state_str: The target_state_str.
+            ttl_seconds: The ttl_seconds.
+            trace_id: The trace_id.
+        """
+
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
     tenant_id = ctx.tenant_id

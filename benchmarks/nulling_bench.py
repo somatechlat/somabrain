@@ -21,6 +21,15 @@ def run_bench(
     null_fracs=(0.0, 0.1, 0.2, 0.3, 0.5),
     seeds=(0, 1, 2),
 ):
+    """Execute run bench.
+
+        Args:
+            out_path: The out_path.
+            D_list: The D_list.
+            null_fracs: The null_fracs.
+            seeds: The seeds.
+        """
+
     results = {
         "meta": {
             "D_list": list(D_list),
@@ -51,6 +60,13 @@ def run_bench(
                 est_wiener = q.unbind_wiener(bound, b_null)
 
                 def mse(x, y):
+                    """Execute mse.
+
+                        Args:
+                            x: The x.
+                            y: The y.
+                        """
+
                     return float(np.mean((x - y) ** 2))
 
                 entry = {
@@ -106,6 +122,9 @@ def run_bench(
 
 
 def main():
+    """Execute main.
+        """
+
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, default=Path("benchmarks/nulling_results.json"))
     args = p.parse_args()

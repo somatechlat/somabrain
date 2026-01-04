@@ -25,6 +25,9 @@ class LayerPolicy:
     promote_margin: float = 0.1  # margin requirement to promote into the next tier
 
     def validate(self) -> "LayerPolicy":
+        """Execute validate.
+            """
+
         thr = float(self.threshold)
         if not 0.0 <= thr <= 1.0:
             raise ValueError("threshold must be between 0 and 1")
@@ -46,6 +49,9 @@ class RecallContext:
 
     @property
     def margin(self) -> float:
+        """Execute margin.
+            """
+
         return max(0.0, float(self.score) - float(self.second_score))
 
 
@@ -63,6 +69,8 @@ class TieredMemory:
         wm_cleanup_index: Optional["CleanupIndex"] = None,
         ltm_cleanup_index: Optional["CleanupIndex"] = None,
     ) -> None:
+        """Initialize the instance."""
+
         self.wm = SuperposedTrace(wm_cfg, cleanup_index=wm_cleanup_index)
         self.ltm = SuperposedTrace(ltm_cfg, cleanup_index=ltm_cleanup_index)
         self._wm_policy = (wm_policy or LayerPolicy()).validate()
@@ -114,12 +122,25 @@ class TieredMemory:
     def _recall_internal(
         self, trace: SuperposedTrace, key: np.ndarray, *, layer: str
     ) -> RecallContext:
+        """Execute recall internal.
+
+            Args:
+                trace: The trace.
+                key: The key.
+            """
+
         raw, (anchor_id, best, second) = trace.recall(key)
         return RecallContext(
             layer=layer, anchor_id=anchor_id, score=best, second_score=second, raw=raw
         )
 
     def _should_promote(self, result: RecallContext) -> bool:
+        """Execute should promote.
+
+            Args:
+                result: The result.
+            """
+
         if result.score < self._wm_policy.threshold:
             return False
         if result.margin < self._wm_policy.promote_margin:
@@ -130,6 +151,14 @@ class TieredMemory:
 
     @staticmethod
     def _ensure_vector(vec: np.ndarray, dim: int, name: str) -> np.ndarray:
+        """Execute ensure vector.
+
+            Args:
+                vec: The vec.
+                dim: The dim.
+                name: The name.
+            """
+
         if not isinstance(vec, np.ndarray):
             raise TypeError(f"{name} must be a numpy.ndarray")
         arr = vec.astype(np.float32, copy=False)
@@ -147,18 +176,30 @@ class TieredMemory:
 
     @property
     def wm_config(self) -> TraceConfig:
+        """Execute wm config.
+            """
+
         return self.wm.cfg
 
     @property
     def ltm_config(self) -> TraceConfig:
+        """Execute ltm config.
+            """
+
         return self.ltm.cfg
 
     @property
     def wm_policy(self) -> LayerPolicy:
+        """Execute wm policy.
+            """
+
         return self._wm_policy
 
     @property
     def ltm_policy(self) -> LayerPolicy:
+        """Execute ltm policy.
+            """
+
         return self._ltm_policy
 
     def configure(
@@ -170,6 +211,9 @@ class TieredMemory:
         cleanup_params: Optional[dict] = None,
         wm_tau: Optional[float] = None,
     ) -> None:
+        """Execute configure.
+            """
+
         self.wm.update_parameters(
             eta=wm_eta,
             cleanup_topk=cleanup_topk,
@@ -198,6 +242,13 @@ class TieredMemory:
         wm_cleanup_index: Optional[CleanupIndex] = None,
         ltm_cleanup_index: Optional[CleanupIndex] = None,
     ) -> Tuple[int, int]:
+        """Execute rebuild cleanup indexes.
+
+            Args:
+                wm_cleanup_index: The wm_cleanup_index.
+                ltm_cleanup_index: The ltm_cleanup_index.
+            """
+
         wm_count = self.wm.rebuild_cleanup_index(wm_cleanup_index)
         ltm_count = self.ltm.rebuild_cleanup_index(ltm_cleanup_index)
         return wm_count, ltm_count

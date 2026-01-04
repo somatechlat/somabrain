@@ -25,6 +25,17 @@ def run(
     dtype="float32",
     accuracy_thresholds=(0.7, 0.8, 0.9),
 ):
+    """Execute run.
+
+        Args:
+            out: The out.
+            Ds: The Ds.
+            ks: The ks.
+            trials: The trials.
+            dtype: The dtype.
+            accuracy_thresholds: The accuracy_thresholds.
+        """
+
     results = {
         "meta": {
             "D": list(Ds),

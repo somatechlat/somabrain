@@ -27,6 +27,9 @@ class PerformanceMetrics:
     accuracy: float = 0.0
 
     def clamp(self) -> "PerformanceMetrics":
+        """Execute clamp.
+            """
+
         self.success_rate = min(max(self.success_rate, 0.0), 1.0)
         self.error_rate = min(max(self.error_rate, 0.0), 1.0)
         self.latency = max(self.latency, 1e-6)
@@ -45,6 +48,8 @@ class AdaptiveParameter:
         max_value: float,
         learning_rate: float = 0.01,
     ) -> None:
+        """Initialize the instance."""
+
         self.name = name
         self.min_value = float(min_value)
         self.max_value = float(max_value)
@@ -53,6 +58,9 @@ class AdaptiveParameter:
         self._clamp()
 
     def _clamp(self) -> None:
+        """Execute clamp.
+            """
+
         self.current_value = min(
             max(self.current_value, self.min_value), self.max_value
         )
@@ -65,6 +73,9 @@ class AdaptiveParameter:
         return self.current_value
 
     def stats(self) -> dict:
+        """Execute stats.
+            """
+
         return {
             "name": self.name,
             "value": self.current_value,
@@ -93,6 +104,8 @@ class AdaptiveCore:
 
     def __init__(self) -> None:
         # Lazy import to avoid circular dependencies.
+        """Initialize the instance."""
+
         from .integration import AdaptiveIntegrator
 
         self._integrator = AdaptiveIntegrator()
@@ -102,7 +115,13 @@ class AdaptiveCore:
         self._integrator.observe(perf, delta)
 
     def get_system_stats(self) -> dict:  # pragma: no cover
+        """Retrieve system stats.
+            """
+
         return self._integrator.get_system_stats()
 
     def get_scorer(self):  # pragma: no cover
+        """Retrieve scorer.
+            """
+
         return self._integrator.get_scorer()

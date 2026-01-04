@@ -19,21 +19,36 @@ from typing import Dict, Optional
 
 @dataclass
 class Arm:
+    """Arm class implementation."""
+
     name: str
     count: int = 0
     value: float = 0.0  # running mean reward
 
 
 class UCB1Bandit:
+    """Ucb1bandit class implementation."""
+
     def __init__(self):
+        """Initialize the instance."""
+
         self._arms: Dict[str, Arm] = {}
         self._n: int = 0
 
     def add_arm(self, name: str) -> None:
+        """Execute add arm.
+
+            Args:
+                name: The name.
+            """
+
         if name not in self._arms:
             self._arms[name] = Arm(name)
 
     def select(self) -> Optional[str]:
+        """Execute select.
+            """
+
         if not self._arms:
             return None
         # Ensure all arms are tried at least once
@@ -52,6 +67,13 @@ class UCB1Bandit:
         return best_name
 
     def update(self, name: str, reward: float) -> None:
+        """Execute update.
+
+            Args:
+                name: The name.
+                reward: The reward.
+            """
+
         arm = self._arms.get(name)
         if arm is None:
             return

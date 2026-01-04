@@ -11,6 +11,8 @@ from django.conf import settings
 
 
 class DeploymentMode(str, Enum):
+    """Deploymentmode class implementation."""
+
     DEV = "dev"
     STAGING = "staging"
     PRODUCTION = "production"
@@ -67,12 +69,20 @@ class ModeConfig:
     }
 
     def __init__(self, mode_str: str | None = None):
+        """Initialize the instance."""
+
         mode_str = mode_str or settings.SOMABRAIN_MODE
         self.mode = self._parse_mode(mode_str)
         self.profile = self.PROFILES[self.mode]
         self._validate()
 
     def _parse_mode(self, mode: str | None) -> DeploymentMode:
+        """Execute parse mode.
+
+            Args:
+                mode: The mode.
+            """
+
         m = (mode or "").strip().lower()
         if m in ("dev", "development"):
             return DeploymentMode.DEV
@@ -83,6 +93,9 @@ class ModeConfig:
         raise ValueError(f"Invalid mode: {mode}. Use dev, staging, or production")
 
     def _validate(self):
+        """Execute validate.
+            """
+
         if self.mode == DeploymentMode.PRODUCTION and not self.profile.auth_enabled:
             raise ValueError("CRITICAL: Auth cannot be disabled in production")
         if not self.profile.require_external_backends:

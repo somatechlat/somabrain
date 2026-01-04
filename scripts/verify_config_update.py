@@ -101,6 +101,9 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
 
 
 def main() -> None:
+    """Execute main.
+        """
+
     post_reward()
     cfg = consume_config_update()
     if cfg is None:

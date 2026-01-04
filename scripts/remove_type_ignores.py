@@ -1,3 +1,5 @@
+"""Module remove_type_ignores."""
+
 import os
 import re
 
@@ -5,6 +7,12 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 def process_file(path: str) -> None:
+    """Execute process file.
+
+        Args:
+            path: The path.
+        """
+
     with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     new_lines = []

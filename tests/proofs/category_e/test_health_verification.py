@@ -546,6 +546,9 @@ class TestSFMIntegrationHealth:
         from somabrain.healthchecks import check_sfm_integration_health_async
 
         async def run_async_check():
+            """Execute run async check.
+                """
+
             sfm_endpoint = os.environ.get("SFM_ENDPOINT", "http://localhost:9595")
             return await check_sfm_integration_health_async(
                 sfm_endpoint=sfm_endpoint,

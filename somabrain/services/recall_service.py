@@ -107,6 +107,12 @@ def recall_ltm(
         ql = raw_query.lower()
 
         def _lex_match(p: dict) -> bool:
+            """Execute lex match.
+
+                Args:
+                    p: The p.
+                """
+
             for k in ("task", "text", "content", "what", "fact"):
                 v = p.get(k)
                 if isinstance(v, str) and v and (ql in v.lower() or v.lower() in ql):
@@ -155,6 +161,12 @@ def recall_ltm(
 
     def _is_token_like(s: str) -> bool:
         # Heuristic: alnum/_/- only, length 6-64, includes both letters and digits
+        """Execute is token like.
+
+            Args:
+                s: The s.
+            """
+
         if not s or len(s) < 6 or len(s) > 64:
             return False
         if not re.match(r"^[A-Za-z0-9_-]+$", s):
@@ -165,6 +177,12 @@ def recall_ltm(
 
     def _lexical_score(p: dict) -> int:
         # Score by exact contains in common fields; higher for exact token-like
+        """Execute lexical score.
+
+            Args:
+                p: The p.
+            """
+
         score = 0
         fields = ("task", "text", "content", "what", "fact")
         for k in fields:
@@ -198,6 +216,12 @@ def recall_ltm(
 
 
 def _text_of(p: dict) -> str:
+    """Execute text of.
+
+        Args:
+            p: The p.
+        """
+
     return str(p.get("task") or p.get("fact") or "").strip()
 
 
@@ -280,6 +304,21 @@ async def recall_ltm_async(
     # Avoid blocking the event loop: run the synchronous recall_ltm in a
     # thread executor so heavy sync operations (including sync HTTP calls)
     # don't stall the async worker under high concurrency.
+    """Execute recall ltm async.
+
+        Args:
+            mem_client: The mem_client.
+            text: The text.
+            top_k: The top_k.
+            universe: The universe.
+            cohort: The cohort.
+            use_sdr: The use_sdr.
+            sdr_enc: The sdr_enc.
+            sdr_idx_map: The sdr_idx_map.
+            graph_hops: The graph_hops.
+            graph_limit: The graph_limit.
+        """
+
     loop = asyncio.get_event_loop()
     payloads, hits = await loop.run_in_executor(
         None,

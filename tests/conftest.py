@@ -1,3 +1,5 @@
+"""Module conftest."""
+
 import httpx
 import pytest
 
@@ -18,16 +20,28 @@ django.setup()
 
 # Use centralized Settings for test configuration (Lazy Loaded)
 def get_mem_url():
+    """Retrieve mem url.
+        """
+
     return settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
 
 def get_mem_token():
+    """Retrieve mem token.
+        """
+
     return settings.SOMABRAIN_MEMORY_HTTP_TOKEN
 
 def get_api_url():
+    """Retrieve api url.
+        """
+
     return settings.SOMABRAIN_API_URL or "http://localhost:9696"
 
 
 def _memory_available() -> bool:
+    """Execute memory available.
+        """
+
     mem_url = get_mem_url()
     mem_token = get_mem_token()
     try:
@@ -42,6 +56,9 @@ def _memory_available() -> bool:
 
 
 def _api_available() -> bool:
+    """Execute api available.
+        """
+
     try:
         base = get_api_url()
         r = httpx.get(f"{base.rstrip('/')}/health", timeout=2.0)
@@ -55,6 +72,9 @@ def _api_available() -> bool:
 
 @pytest.fixture(scope="session")
 def http_client() -> httpx.Client:
+    """Execute http client.
+        """
+
     mem_token = get_mem_token()
     if not mem_token:
         # pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN must be set for workbench tests") 

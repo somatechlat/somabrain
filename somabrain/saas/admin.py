@@ -47,12 +47,26 @@ class ActiveStatusFilter(SimpleListFilter):
     parameter_name = "is_active"
     
     def lookups(self, request, model_admin):
+        """Execute lookups.
+
+            Args:
+                request: The request.
+                model_admin: The model_admin.
+            """
+
         return (
             ("yes", "Active"),
             ("no", "Inactive"),
         )
     
     def queryset(self, request, queryset):
+        """Execute queryset.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         if self.value() == "yes":
             return queryset.filter(is_active=True)
         if self.value() == "no":
@@ -65,6 +79,13 @@ class RecentlyCreatedFilter(SimpleListFilter):
     parameter_name = "created_recently"
     
     def lookups(self, request, model_admin):
+        """Execute lookups.
+
+            Args:
+                request: The request.
+                model_admin: The model_admin.
+            """
+
         return (
             ("today", "Today"),
             ("week", "This Week"),
@@ -72,6 +93,13 @@ class RecentlyCreatedFilter(SimpleListFilter):
         )
     
     def queryset(self, request, queryset):
+        """Execute queryset.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         now = timezone.now()
         if self.value() == "today":
             return queryset.filter(created_at__date=now.date())
@@ -172,10 +200,24 @@ class SubscriptionTierAdmin(admin.ModelAdmin):
     
     @admin.action(description="Mark selected tiers as active")
     def make_active(self, request, queryset):
+        """Execute make active.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=True)
     
     @admin.action(description="Mark selected tiers as inactive")
     def make_inactive(self, request, queryset):
+        """Execute make inactive.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=False)
 
 
@@ -238,10 +280,22 @@ class TenantAdmin(admin.ModelAdmin):
     status_badge.admin_order_field = "status"
     
     def users_count(self, obj):
+        """Execute users count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.users.count()
     users_count.short_description = "Users"
     
     def api_keys_count(self, obj):
+        """Execute api keys count.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.api_keys.count()
     api_keys_count.short_description = "API Keys"
     
@@ -253,16 +307,37 @@ class TenantAdmin(admin.ModelAdmin):
     
     @admin.action(description="Suspend selected tenants")
     def suspend_tenants(self, request, queryset):
+        """Execute suspend tenants.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(status=TenantStatus.SUSPENDED, suspended_at=timezone.now())
         self.message_user(request, f"Suspended {queryset.count()} tenants.")
     
     @admin.action(description="Activate selected tenants")
     def activate_tenants(self, request, queryset):
+        """Execute activate tenants.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(status=TenantStatus.ACTIVE, suspended_at=None)
         self.message_user(request, f"Activated {queryset.count()} tenants.")
     
     @admin.action(description="Export selected as CSV")
     def export_as_csv(self, request, queryset):
+        """Execute export as csv.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = "attachment; filename=tenants.csv"
         writer = csv.writer(response)
@@ -313,6 +388,12 @@ class TenantUserAdmin(admin.ModelAdmin):
     tenant_link.short_description = "Tenant"
     
     def permissions_count(self, obj):
+        """Execute permissions count.
+
+            Args:
+                obj: The obj.
+            """
+
         return len(obj.permissions) if obj.permissions else 0
     permissions_count.short_description = "Perms"
     
@@ -320,10 +401,24 @@ class TenantUserAdmin(admin.ModelAdmin):
     
     @admin.action(description="Deactivate selected users")
     def deactivate_users(self, request, queryset):
+        """Execute deactivate users.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=False)
     
     @admin.action(description="Activate selected users")
     def activate_users(self, request, queryset):
+        """Execute activate users.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=True)
 
 
@@ -343,6 +438,12 @@ class SubscriptionAdmin(admin.ModelAdmin):
     autocomplete_fields = ["tenant", "tier"]
     
     def status_badge(self, obj):
+        """Execute status badge.
+
+            Args:
+                obj: The obj.
+            """
+
         colors = {"active": "green", "trialing": "blue", 
                   "past_due": "orange", "cancelled": "red"}
         color = colors.get(obj.status, "gray")
@@ -372,12 +473,24 @@ class APIKeyAdmin(admin.ModelAdmin):
     autocomplete_fields = ["tenant"]
     
     def tenant_link(self, obj):
+        """Execute tenant link.
+
+            Args:
+                obj: The obj.
+            """
+
         from django.urls import reverse
         url = reverse("admin:saas_tenant_change", args=[obj.tenant_id])
         return format_html('<a href="{}">{}</a>', url, obj.tenant.name)
     tenant_link.short_description = "Tenant"
     
     def key_prefix_display(self, obj):
+        """Execute key prefix display.
+
+            Args:
+                obj: The obj.
+            """
+
         color = "green" if obj.is_active else "red"
         return format_html(
             '<code style="color: {}; background: #f0f0f0; padding: 2px 6px; '
@@ -390,11 +503,25 @@ class APIKeyAdmin(admin.ModelAdmin):
     
     @admin.action(description="Revoke selected API keys")
     def revoke_keys(self, request, queryset):
+        """Execute revoke keys.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=False, revoked_at=timezone.now())
         self.message_user(request, f"Revoked {queryset.count()} API keys.")
     
     @admin.action(description="Reactivate selected API keys")
     def activate_keys(self, request, queryset):
+        """Execute activate keys.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=True, revoked_at=None)
 
 
@@ -435,16 +562,42 @@ class AuditLogAdmin(admin.ModelAdmin):
     )
     
     def actor_display(self, obj):
+        """Execute actor display.
+
+            Args:
+                obj: The obj.
+            """
+
         return obj.actor_email or obj.actor_id[:8] + "..."
     actor_display.short_description = "Actor"
     
     def has_add_permission(self, request):
+        """Check if add permission.
+
+            Args:
+                request: The request.
+            """
+
         return False
     
     def has_change_permission(self, request, obj=None):
+        """Check if change permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
     
     def has_delete_permission(self, request, obj=None):
+        """Check if delete permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
 
 
@@ -466,15 +619,35 @@ class UsageRecordAdmin(admin.ModelAdmin):
     autocomplete_fields = ["tenant"]
     
     def api_key_prefix(self, obj):
+        """Execute api key prefix.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.api_key_id:
             return format_html('<code>{}</code>', str(obj.api_key_id)[:8] + "...")
         return "-"
     api_key_prefix.short_description = "API Key"
     
     def has_change_permission(self, request, obj=None):
+        """Check if change permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
     
     def has_delete_permission(self, request, obj=None):
+        """Check if delete permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
 
 
@@ -513,6 +686,12 @@ class WebhookAdmin(admin.ModelAdmin):
     )
     
     def url_truncated(self, obj):
+        """Execute url truncated.
+
+            Args:
+                obj: The obj.
+            """
+
         url = obj.url
         if len(url) > 40:
             url = url[:37] + "..."
@@ -523,14 +702,35 @@ class WebhookAdmin(admin.ModelAdmin):
     
     @admin.action(description="Reset failure count")
     def reset_failure_count(self, request, queryset):
+        """Execute reset failure count.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(failure_count=0)
     
     @admin.action(description="Disable selected webhooks")
     def disable_webhooks(self, request, queryset):
+        """Execute disable webhooks.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=False)
     
     @admin.action(description="Enable selected webhooks")
     def enable_webhooks(self, request, queryset):
+        """Execute enable webhooks.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_active=True)
 
 
@@ -552,6 +752,12 @@ class WebhookDeliveryAdmin(admin.ModelAdmin):
     date_hierarchy = "delivered_at"
     
     def status_badge(self, obj):
+        """Execute status badge.
+
+            Args:
+                obj: The obj.
+            """
+
         color = "green" if obj.success else "red"
         status = f"{obj.status_code}" if obj.status_code else "Failed"
         return format_html(
@@ -562,18 +768,44 @@ class WebhookDeliveryAdmin(admin.ModelAdmin):
     status_badge.short_description = "Status"
     
     def response_time_display(self, obj):
+        """Execute response time display.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.response_time_ms:
             return f"{obj.response_time_ms}ms"
         return "-"
     response_time_display.short_description = "Time"
     
     def has_add_permission(self, request):
+        """Check if add permission.
+
+            Args:
+                request: The request.
+            """
+
         return False
     
     def has_change_permission(self, request, obj=None):
+        """Check if change permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
     
     def has_delete_permission(self, request, obj=None):
+        """Check if delete permission.
+
+            Args:
+                request: The request.
+                obj: The obj.
+            """
+
         return False
 
 
@@ -595,12 +827,24 @@ class NotificationAdmin(admin.ModelAdmin):
     autocomplete_fields = ["tenant"]
     
     def title_truncated(self, obj):
+        """Execute title truncated.
+
+            Args:
+                obj: The obj.
+            """
+
         if len(obj.title) > 40:
             return obj.title[:37] + "..."
         return obj.title
     title_truncated.short_description = "Title"
     
     def user_display(self, obj):
+        """Execute user display.
+
+            Args:
+                obj: The obj.
+            """
+
         if obj.user_id:
             return str(obj.user_id)[:8] + "..."
         return "All Users"
@@ -610,14 +854,35 @@ class NotificationAdmin(admin.ModelAdmin):
     
     @admin.action(description="Mark selected as read")
     def mark_as_read(self, request, queryset):
+        """Execute mark as read.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_read=True, read_at=timezone.now())
     
     @admin.action(description="Mark selected as unread")
     def mark_as_unread(self, request, queryset):
+        """Execute mark as unread.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         queryset.update(is_read=False, read_at=None)
     
     @admin.action(description="Delete expired notifications")
     def delete_expired(self, request, queryset):
+        """Execute delete expired.
+
+            Args:
+                request: The request.
+                queryset: The queryset.
+            """
+
         expired = queryset.filter(expires_at__lt=timezone.now())
         count = expired.count()
         expired.delete()

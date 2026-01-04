@@ -1,3 +1,5 @@
+"""Module diagnose_memory_write."""
+
 import httpx
 import json
 import os
@@ -6,6 +8,9 @@ ENDPOINT = "http://localhost:10101"
 TOKEN = "dev-token-somastack2024"
 
 def try_store():
+    """Execute try store.
+        """
+
     url = f"{ENDPOINT}/memories"
     headers = {
         "Authorization": f"Bearer {TOKEN}",

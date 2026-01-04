@@ -62,6 +62,8 @@ class PrefrontalCortex:
     """
 
     def __init__(self, config: PrefrontalConfig | None = None) -> None:
+        """Initialize the instance."""
+
         self.config = config or PrefrontalConfig()
         self.state: Dict[str, Any] = {}
 
@@ -104,4 +106,6 @@ class PrefrontalCortex:
         return data
 
     def __repr__(self) -> str:
+        """Return object representation."""
+
         return f"PrefrontalCortex(config={self.config!r})"

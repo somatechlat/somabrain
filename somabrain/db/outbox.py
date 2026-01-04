@@ -54,6 +54,8 @@ class OutboxBackpressureError(Exception):
     def __init__(
         self, pending_count: int, threshold: int = OUTBOX_BACKPRESSURE_THRESHOLD
     ):
+        """Initialize the instance."""
+
         self.pending_count = pending_count
         self.threshold = threshold
         super().__init__(

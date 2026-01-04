@@ -45,6 +45,8 @@ REQUIRED_TOPIC_ENV_VARS = [
 
 @dataclass
 class CheckResult:
+    """Checkresult class implementation."""
+
     name: str
     ok: bool
     detail: str
@@ -72,6 +74,9 @@ def _env(name: str, default: str | None = None) -> str | None:
 
 
 def check_postgres() -> CheckResult:
+    """Execute check postgres.
+        """
+
     dsn = _env("SOMABRAIN_POSTGRES_DSN")
     if not dsn:
         return CheckResult("postgres", False, "SOMABRAIN_POSTGRES_DSN not set")
@@ -86,6 +91,9 @@ def check_postgres() -> CheckResult:
 
 
 def check_redis() -> CheckResult:
+    """Execute check redis.
+        """
+
     url = _env("SOMABRAIN_REDIS_URL")
     if not url:
         return CheckResult("redis", False, "SOMABRAIN_REDIS_URL not set")
@@ -100,6 +108,14 @@ def check_redis() -> CheckResult:
 
 
 def _socket_connect(host: str, port: int, timeout: float = 3.0) -> bool:
+    """Execute socket connect.
+
+        Args:
+            host: The host.
+            port: The port.
+            timeout: The timeout.
+        """
+
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
@@ -108,6 +124,9 @@ def _socket_connect(host: str, port: int, timeout: float = 3.0) -> bool:
 
 
 def check_kafka() -> List[CheckResult]:
+    """Execute check kafka.
+        """
+
     results: List[CheckResult] = []
     bootstrap = _env("SOMA_KAFKA_BOOTSTRAP") or _env("SOMABRAIN_KAFKA_URL")
     if not bootstrap:
@@ -172,6 +191,9 @@ def check_kafka() -> List[CheckResult]:
 
 
 def check_opa() -> CheckResult:
+    """Execute check opa.
+        """
+
     base = _env("SOMABRAIN_OPA_URL")
     if not base:
         return CheckResult("opa", False, "SOMABRAIN_OPA_URL not set")
@@ -187,6 +209,9 @@ def check_opa() -> CheckResult:
 
 
 def check_outbox_pending() -> CheckResult:
+    """Execute check outbox pending.
+        """
+
     from django.conf import settings
 
     base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or settings.api_url
@@ -236,6 +261,9 @@ def check_outbox_pending() -> CheckResult:
 
 
 def main() -> int:
+    """Execute main.
+        """
+
     checks: List[CheckResult] = []
     checks.append(check_postgres())
     checks.append(check_redis())

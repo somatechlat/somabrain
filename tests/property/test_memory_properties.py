@@ -34,6 +34,12 @@ def test_stable_coord_bounds(key: str) -> None:
 
 
 def _memory_service_available(url: str) -> bool:
+    """Execute memory service available.
+
+        Args:
+            url: The url.
+        """
+
     try:
         resp = httpx.get(url.rstrip("/") + "/health", timeout=2.0)
         return resp.status_code < 500

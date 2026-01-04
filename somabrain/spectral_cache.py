@@ -25,6 +25,9 @@ import numpy as np
 
 
 def _default_cache_dir() -> Path:
+    """Execute default cache dir.
+        """
+
     env = settings.SOMABRAIN_SPECTRAL_CACHE_DIR
     if env:
         p = Path(env).expanduser()
@@ -41,6 +44,12 @@ _CACHE_DIR = _default_cache_dir()
 
 def _token_to_filename(token: str) -> str:
     # use blake2b hex to make safe filenames and keep them short
+    """Execute token to filename.
+
+        Args:
+            token: The token.
+        """
+
     h = hashlib.blake2b(token.encode("utf-8"), digest_size=16).hexdigest()
     return f"role_{h}.npz"
 

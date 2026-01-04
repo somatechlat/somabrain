@@ -50,6 +50,8 @@ class DriftDetector:
     _PERSIST_KEY = "entries"
 
     def __init__(self) -> None:
+        """Initialize the instance."""
+
         self.enabled: bool = bool(getattr(settings, "SOMABRAIN_USE_DRIFT_MONITOR", False))
         # Internal mutable state – protected by a lock for thread safety.
         self._state: Dict[str, Any] = {}
@@ -103,6 +105,9 @@ class DriftDetector:
     # should never crash the main service.
     # ---------------------------------------------------------------------
     def _persist_to_disk(self) -> None:
+        """Execute persist to disk.
+            """
+
         path = Path(getattr(settings, "SOMABRAIN_DRIFT_STORE_PATH", ""))
         if not path:
             return
@@ -118,6 +123,9 @@ class DriftDetector:
             )
 
     def _load_from_disk(self) -> None:
+        """Execute load from disk.
+            """
+
         path = Path(getattr(settings, "SOMABRAIN_DRIFT_STORE_PATH", ""))
         if not path or not path.is_file():
             return
