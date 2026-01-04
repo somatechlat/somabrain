@@ -30,7 +30,7 @@ def forward_request(request: HttpRequest, body: ProxyRequest):
 
     # Basic proxy logic - forward to configured service
     target_url = getattr(body, "target_url", None)
-    payload = getattr(body, "payload", {})
+    getattr(body, "payload", {})
 
     logger.debug(f"Proxy request for {ctx.tenant_id} to {target_url}")
 

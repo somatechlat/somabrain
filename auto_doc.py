@@ -204,8 +204,8 @@ def process_file(filepath):
                 # Format docstring with indentation
                 ds_lines = ds.split("\n")
                 formatted_ds = indent + ds_lines[0]  # First line has indentation
-                for l in ds_lines[1:]:
-                    formatted_ds += "\n" + (indent + l if l else "")
+                for line in ds_lines[1:]:
+                    formatted_ds += "\n" + (indent + line if line else "")
                 formatted_ds += "\n"
 
                 insertions.append((body_start_line, formatted_ds))

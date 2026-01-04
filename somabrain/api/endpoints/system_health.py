@@ -505,7 +505,7 @@ def get_full_health(request):
     - DevOps: Kubernetes probe compatible
     """
 
-    start_time = time.time()
+    time.time()
 
     # Infrastructure checks
     infrastructure = {

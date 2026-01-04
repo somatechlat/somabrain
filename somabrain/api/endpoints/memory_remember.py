@@ -88,8 +88,6 @@ def remember_memory(request: HttpRequest, payload: MemoryWriteRequest):
     )
 
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-    persisted_to_ltm = False
-    coord = None
     degraded_warnings: List[str] = []
 
     circuit_open = memsvc._is_circuit_open()

@@ -301,7 +301,7 @@ def get_user_timeline(
             raise HttpError(403, "Access denied")
 
     # Verify user belongs to tenant
-    user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
+    get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
 
     activities = get_user_activities(str(user_id), limit)
 
