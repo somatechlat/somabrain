@@ -34,6 +34,7 @@ extensions = [
     "sphinx.ext.mathjax",  # Math rendering for cognitive docs
     "sphinx_autodoc_typehints",  # Type hints support
     "sphinx.ext.autosummary",  # Create summaries
+    "myst_parser",  # Markdown parser
 ]
 
 # Napoleon settings for Google-style docstrings

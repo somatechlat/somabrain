@@ -372,7 +372,7 @@ def rate_limit(rps: int = 10, burst: int = 20):
     """
     Decorator for custom rate limiting on a view.
 
-    Usage:
+    Example:
         @rate_limit(rps=5, burst=10)
         def my_view(request):
             ...
@@ -425,7 +425,7 @@ def check_quota(metric: str, amount: int = 1):
     """
     Decorator to check quota before processing request.
 
-    Usage:
+    Example:
         @check_quota("api_calls")
         def my_view(request):
             ...
