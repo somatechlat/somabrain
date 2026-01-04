@@ -17,8 +17,8 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Session lifecycle
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from typing import List, Optional
+from datetime import timedelta
 from uuid import UUID, uuid4
 import hashlib
 
@@ -29,9 +29,9 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain.saas.models import (
-    Tenant, 
+    Tenant,
     TenantUser,
-    AuditLog, 
+    AuditLog,
     ActorType,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
@@ -45,12 +45,13 @@ router = Router(tags=["Sessions"])
 # SESSION STORAGE (Real Django Cache)
 # =============================================================================
 
+
 def get_sessions_key(user_id: str) -> str:
     """Retrieve sessions key.
 
-        Args:
-            user_id: The user_id.
-        """
+    Args:
+        user_id: The user_id.
+    """
 
     return f"sessions:user:{user_id}"
 
@@ -58,9 +59,9 @@ def get_sessions_key(user_id: str) -> str:
 def get_session_key(session_id: str) -> str:
     """Retrieve session key.
 
-        Args:
-            session_id: The session_id.
-        """
+    Args:
+        session_id: The session_id.
+    """
 
     return f"session:{session_id}"
 
@@ -73,11 +74,11 @@ def create_session(
 ) -> dict:
     """Create a REAL session in Django cache."""
     session_id = str(uuid4())
-    
+
     # Generate session token
     token_data = f"{session_id}:{user_id}:{timezone.now().isoformat()}"
     session_token = hashlib.sha256(token_data.encode()).hexdigest()[:64]
-    
+
     session = {
         "id": session_id,
         "user_id": user_id,
@@ -90,15 +91,15 @@ def create_session(
         "expires_at": (timezone.now() + timedelta(hours=24)).isoformat(),
         "is_active": True,
     }
-    
+
     # Store in REAL Django cache
     cache.set(get_session_key(session_id), session, timeout=86400)
-    
+
     # Add to user's session list
     user_sessions = cache.get(get_sessions_key(user_id), [])
     user_sessions.append(session_id)
     cache.set(get_sessions_key(user_id), user_sessions, timeout=86400 * 7)
-    
+
     return session
 
 
@@ -133,8 +134,10 @@ def revoke_session(session_id: str) -> bool:
 # SCHEMAS
 # =============================================================================
 
+
 class SessionOut(Schema):
     """Session output."""
+
     id: str
     ip_address: str
     user_agent: str
@@ -147,6 +150,7 @@ class SessionOut(Schema):
 
 class SessionDetailOut(Schema):
     """Detailed session output."""
+
     id: str
     user_id: str
     tenant_id: str
@@ -160,6 +164,7 @@ class SessionDetailOut(Schema):
 
 class SessionStats(Schema):
     """Session statistics."""
+
     active_sessions: int
     total_today: int
     unique_ips: int
@@ -170,6 +175,7 @@ class SessionStats(Schema):
 # SESSION ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/sessions", response=List[SessionOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_my_sessions(
@@ -178,25 +184,25 @@ def list_my_sessions(
 ):
     """
     List current user's active sessions.
-    
+
     🔒 Security: User can see their own sessions
-    
+
     REAL data from Django cache.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     sessions = get_user_sessions(str(request.user_id))
-    
+
     # Parse user agent for device type
     def parse_device(ua: str) -> str:
         """Execute parse device.
 
-            Args:
-                ua: The ua.
-            """
+        Args:
+            ua: The ua.
+        """
 
         ua_lower = ua.lower() if ua else ""
         if "mobile" in ua_lower or "android" in ua_lower:
@@ -205,7 +211,7 @@ def list_my_sessions(
             return "tablet"
         else:
             return "desktop"
-    
+
     return [
         SessionOut(
             id=s["id"],
@@ -233,15 +239,18 @@ def get_session_detail(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     session = get_session(session_id)
     if not session:
         raise HttpError(404, "Session not found")
-    
+
     # User can only see their own sessions
-    if str(session.get("user_id")) != str(request.user_id) and not request.is_super_admin:
+    if (
+        str(session.get("user_id")) != str(request.user_id)
+        and not request.is_super_admin
+    ):
         raise HttpError(403, "Access denied")
-    
+
     return SessionDetailOut(
         id=session["id"],
         user_id=session.get("user_id", ""),
@@ -264,26 +273,29 @@ def revoke_session_endpoint(
 ):
     """
     Revoke a session (log out from device).
-    
+
     🔒 Security: Session revocation
-    
+
     REAL cache update.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     session = get_session(session_id)
     if not session:
         raise HttpError(404, "Session not found")
-    
+
     # User can only revoke their own sessions
-    if str(session.get("user_id")) != str(request.user_id) and not request.is_super_admin:
+    if (
+        str(session.get("user_id")) != str(request.user_id)
+        and not request.is_super_admin
+    ):
         raise HttpError(403, "Access denied")
-    
+
     success = revoke_session(session_id)
-    
+
     if success:
         # Audit log - REAL
         tenant = get_object_or_404(Tenant, id=tenant_id)
@@ -296,7 +308,7 @@ def revoke_session_endpoint(
             tenant=tenant,
             details={"ip": session.get("ip_address")},
         )
-    
+
     return {"success": success, "revoked": session_id}
 
 
@@ -309,32 +321,33 @@ def revoke_all_sessions(
 ):
     """
     Revoke all sessions for current user.
-    
+
     🔒 Security: Log out from all devices
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     sessions = get_user_sessions(str(request.user_id))
     revoked_count = 0
-    
+
     for session in sessions:
         # Skip current if requested
         if except_current:
             # In production, compare with current session token
             pass
-        
+
         if revoke_session(session["id"]):
             revoked_count += 1
-    
+
     return {"success": True, "revoked_count": revoked_count}
 
 
 # =============================================================================
 # ADMIN ENDPOINTS
 # =============================================================================
+
 
 @router.get("/{tenant_id}/admin/sessions", response=List[SessionDetailOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -346,37 +359,39 @@ def list_tenant_sessions(
 ):
     """
     List all sessions for a tenant (admin only).
-    
+
     🚨 SRE: Session monitoring
-    
+
     REAL data from TenantUser + cache.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Get REAL users from database
     users = TenantUser.objects.filter(tenant_id=tenant_id, is_active=True)
     if user_id:
         users = users.filter(id=user_id)
-    
+
     all_sessions = []
     for user in users[:100]:  # Limit to 100 users
         sessions = get_user_sessions(str(user.id))
         for s in sessions:
-            all_sessions.append(SessionDetailOut(
-                id=s["id"],
-                user_id=str(user.id),
-                tenant_id=str(tenant_id),
-                ip_address=s.get("ip_address", ""),
-                user_agent=s.get("user_agent", ""),
-                created_at=s.get("created_at", ""),
-                last_activity_at=s.get("last_activity_at", ""),
-                expires_at=s.get("expires_at", ""),
-                is_active=s.get("is_active", False),
-            ))
-    
+            all_sessions.append(
+                SessionDetailOut(
+                    id=s["id"],
+                    user_id=str(user.id),
+                    tenant_id=str(tenant_id),
+                    ip_address=s.get("ip_address", ""),
+                    user_agent=s.get("user_agent", ""),
+                    created_at=s.get("created_at", ""),
+                    last_activity_at=s.get("last_activity_at", ""),
+                    expires_at=s.get("expires_at", ""),
+                    is_active=s.get("is_active", False),
+                )
+            )
+
     return all_sessions
 
 
@@ -388,21 +403,21 @@ def get_session_stats(
 ):
     """
     Get session statistics for a tenant.
-    
+
     📊 Performance: REAL counts
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Get REAL users from database
     users = TenantUser.objects.filter(tenant_id=tenant_id, is_active=True)
-    
+
     all_sessions = []
     unique_ips = set()
     unique_devices = set()
-    
+
     for user in users[:100]:
         sessions = get_user_sessions(str(user.id))
         for s in sessions:
@@ -411,7 +426,7 @@ def get_session_stats(
                 unique_ips.add(s["ip_address"])
             if s.get("user_agent"):
                 unique_devices.add(s["user_agent"][:50])
-    
+
     return SessionStats(
         active_sessions=len(all_sessions),
         total_today=len(all_sessions),
@@ -430,24 +445,24 @@ def revoke_user_sessions(
 ):
     """
     Revoke all sessions for a specific user (admin).
-    
+
     🔒 Security: Force logout user
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Verify user belongs to tenant - REAL check
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     sessions = get_user_sessions(str(user.id))
     revoked_count = 0
-    
+
     for session in sessions:
         if revoke_session(session["id"]):
             revoked_count += 1
-    
+
     # Audit log - REAL
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -459,5 +474,5 @@ def revoke_user_sessions(
         tenant=tenant,
         details={"revoked_count": revoked_count},
     )
-    
+
     return {"success": True, "user_id": str(user.id), "revoked_count": revoked_count}

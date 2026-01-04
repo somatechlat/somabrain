@@ -31,8 +31,7 @@ class Observation(BaseModel):
 
     @model_validator(mode="after")
     def _validate_embeddings(self):
-        """Execute validate embeddings.
-            """
+        """Execute validate embeddings."""
 
         self.embeddings = normalize_vector(self.embeddings, dim=_get_settings().hrr_dim)
         return self
@@ -51,8 +50,7 @@ class Thought(BaseModel):
 
     @model_validator(mode="after")
     def _validate_vector(self):
-        """Execute validate vector.
-            """
+        """Execute validate vector."""
 
         self.vector = normalize_vector(self.vector, dim=_get_settings().hrr_dim)
         return self
@@ -70,8 +68,7 @@ class Memory(BaseModel):
 
     @model_validator(mode="after")
     def _validate_memory_vector(self):
-        """Execute validate memory vector.
-            """
+        """Execute validate memory vector."""
 
         self.vector = normalize_vector(self.vector, dim=_get_settings().hrr_dim)
         return self
@@ -140,9 +137,9 @@ class Feedback(BaseModel):
         def from_observation(cls, obs: Any):
             """Execute from observation.
 
-                Args:
-                    obs: The obs.
-                """
+            Args:
+                obs: The obs.
+            """
 
             if hasattr(obs, "embeddings"):
                 vec = getattr(obs, "embeddings", [])
@@ -160,9 +157,9 @@ class Feedback(BaseModel):
         def matches(self, thought: Any) -> bool:
             """Execute matches.
 
-                Args:
-                    thought: The thought.
-                """
+            Args:
+                thought: The thought.
+            """
 
             from somabrain.math import cosine_similarity, normalize_vector as _norm
 
@@ -277,8 +274,7 @@ class PersonalityState(BaseModel):
 
     @model_validator(mode="after")
     def _validate_traits(self):
-        """Execute validate traits.
-            """
+        """Execute validate traits."""
 
         validated: Dict[str, float] = {}
         for k, v in (self.traits or {}).items():

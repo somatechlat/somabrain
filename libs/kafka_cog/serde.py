@@ -40,9 +40,9 @@ def __init__(self, schema: Dict[str, Any]):
 def serialize(self, record: Dict[str, Any]) -> bytes:
     """Execute serialize.
 
-        Args:
-            record: The record.
-        """
+    Args:
+        record: The record.
+    """
 
     if schemaless_writer is None:
         raise RuntimeError("fastavro not available for serialization")
@@ -55,9 +55,9 @@ def serialize(self, record: Dict[str, Any]) -> bytes:
 def deserialize(self, payload: bytes) -> Dict[str, Any]:
     """Execute deserialize.
 
-        Args:
-            payload: The payload.
-        """
+    Args:
+        payload: The payload.
+    """
 
     if schemaless_reader is None:
         raise RuntimeError("fastavro not available for deserialization")

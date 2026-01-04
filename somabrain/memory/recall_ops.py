@@ -169,7 +169,7 @@ def memories_search_sync(
         "top_k": max(int(top_k), 1),
         "filters": {
             "universe": universe_value,
-        }
+        },
     }
 
     # Include tenant in filters
@@ -233,7 +233,7 @@ async def memories_search_async(
         "top_k": max(int(top_k), 1),
         "filters": {
             "universe": universe_value,
-        }
+        },
     }
 
     # Include tenant in filters

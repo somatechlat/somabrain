@@ -11,8 +11,7 @@ import hashlib
 import json
 import logging
 import pathlib
-from contextlib import contextmanager
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, List, Optional
 
 from django.db import transaction
 from django.conf import settings
@@ -44,7 +43,7 @@ class ConstitutionStorageError(RuntimeError):
 
 class ConstitutionStorage:
     """Persist constitutions to Redis (hot) and Postgres (historical)."""
-    
+
     def __init__(
         self,
         redis_url: Optional[str] = None,
@@ -62,7 +61,7 @@ class ConstitutionStorage:
         self._redis_checksum_key = f"{redis_key}:checksum"
         self._redis_meta_key = f"{redis_key}:meta"
         self._db_url = db_url  # Not used with Django
-    
+
     # ------------------------------------------------------------------
     @transaction.atomic
     def save_new(
@@ -70,54 +69,48 @@ class ConstitutionStorage:
     ) -> str:
         """Execute save new.
 
-            Args:
-                document: The document.
-                metadata: The metadata.
-            """
+        Args:
+            document: The document.
+            metadata: The metadata.
+        """
 
         checksum = self._compute_checksum(document)
         metadata = metadata or {}
         now = dt.datetime.now(dt.timezone.utc)
-        
+
         # Deactivate all existing versions
         ConstitutionVersion.objects.update(is_active=False)
-        
+
         # Create or update version
         version, created = ConstitutionVersion.objects.update_or_create(
             checksum=checksum,
             defaults={
-                'document': document,
-                'metadata': metadata,
-                'is_active': True,
-                'created_at': now,
-            }
+                "document": document,
+                "metadata": metadata,
+                "is_active": True,
+                "created_at": now,
+            },
         )
-        
+
         self._write_redis(document, checksum, signatures=[])
         self._write_redis_metadata(metadata, now)
         return checksum
-    
+
     def load_active(self) -> ConstitutionRecord:
-        """Execute load active.
-            """
+        """Execute load active."""
 
         try:
             # Try to get active version
             version = (
-                ConstitutionVersion.objects
-                .filter(is_active=True)
-                .order_by('-created_at')
+                ConstitutionVersion.objects.filter(is_active=True)
+                .order_by("-created_at")
                 .first()
             )
-            
+
             if version is None:
                 # Fall back to latest version
-                version = (
-                    ConstitutionVersion.objects
-                    .order_by('-created_at')
-                    .first()
-                )
-            
+                version = ConstitutionVersion.objects.order_by("-created_at").first()
+
             if version is not None:
                 signatures = self.get_signatures(version.checksum)
                 return ConstitutionRecord(
@@ -129,54 +122,52 @@ class ConstitutionStorage:
                 )
         except Exception as exc:
             LOGGER.debug("DB load failed, falling back to Redis: %s", exc)
-        
+
         record = self._load_from_redis()
         if record is not None:
             return record
         raise ConstitutionStorageError("No constitution document available")
-    
+
     @transaction.atomic
     def record_signature(self, checksum: str, signer_id: str, signature: str) -> None:
         """Execute record signature.
 
-            Args:
-                checksum: The checksum.
-                signer_id: The signer_id.
-                signature: The signature.
-            """
+        Args:
+            checksum: The checksum.
+            signer_id: The signer_id.
+            signature: The signature.
+        """
 
         now = dt.datetime.now(dt.timezone.utc)
         sig_id = f"{checksum}:{signer_id}"
-        
+
         try:
             ConstitutionSignature.objects.update_or_create(
                 id=sig_id,
                 defaults={
-                    'checksum': checksum,
-                    'signer_id': signer_id,
-                    'signature': signature,
-                    'created_at': now,
-                }
+                    "checksum": checksum,
+                    "signer_id": signer_id,
+                    "signature": signature,
+                    "created_at": now,
+                },
             )
         except Exception as exc:
             LOGGER.warning("Failed to persist constitution signature: %s", exc)
-        
+
         self._sync_redis_signatures(checksum)
-    
+
     def get_signatures(self, checksum: str) -> List[Dict[str, str]]:
         """Retrieve signatures.
 
-            Args:
-                checksum: The checksum.
-            """
+        Args:
+            checksum: The checksum.
+        """
 
         try:
-            rows = (
-                ConstitutionSignature.objects
-                .filter(checksum=checksum)
-                .order_by('created_at')
+            rows = ConstitutionSignature.objects.filter(checksum=checksum).order_by(
+                "created_at"
             )
-            
+
             results = [
                 {
                     "signer_id": row.signer_id,
@@ -190,7 +181,7 @@ class ConstitutionStorage:
                 return results
         except Exception:
             pass
-        
+
         # Fall back to Redis cache
         client = self._connect_redis()
         if client is None:
@@ -206,7 +197,7 @@ class ConstitutionStorage:
         if isinstance(data, list):
             return [x for x in data if isinstance(x, dict)]
         return []
-    
+
     def snapshot(
         self,
         document: Dict[str, Any],
@@ -226,7 +217,7 @@ class ConstitutionStorage:
         }
         # Local snapshot
         local_path = None
-        target = getattr(settings, 'CONSTITUTION_SNAPSHOT_DIR', None)
+        target = getattr(settings, "CONSTITUTION_SNAPSHOT_DIR", None)
         if target:
             path = pathlib.Path(target)
             path.mkdir(parents=True, exist_ok=True)
@@ -235,12 +226,12 @@ class ConstitutionStorage:
             LOGGER.info("wrote constitution snapshot to %s", outfile)
             local_path = str(outfile)
         # S3 snapshot
-        s3_bucket = getattr(settings, 'CONSTITUTION_S3_BUCKET', None)
+        s3_bucket = getattr(settings, "CONSTITUTION_S3_BUCKET", None)
         s3_uri = None
         if s3_bucket:
             try:
                 import boto3
-                
+
                 s3 = boto3.client("s3")
                 s3_key = f"constitution/constitution_{timestamp}_{checksum[:12]}.json"
                 s3.put_object(
@@ -254,11 +245,10 @@ class ConstitutionStorage:
             except Exception as exc:
                 LOGGER.warning("S3 snapshot upload failed: %s", exc)
         return s3_uri or local_path
-    
+
     # ------------------------------------------------------------------
     def _connect_redis(self):
-        """Execute connect redis.
-            """
+        """Execute connect redis."""
 
         if self._redis_client is not None:
             return self._redis_client
@@ -270,7 +260,7 @@ class ConstitutionStorage:
             LOGGER.debug("Redis connection failed: %s", exc)
             self._redis_client = None
         return self._redis_client
-    
+
     def _write_redis(
         self,
         document: Dict[str, Any],
@@ -279,11 +269,11 @@ class ConstitutionStorage:
     ) -> None:
         """Execute write redis.
 
-            Args:
-                document: The document.
-                checksum: The checksum.
-                signatures: The signatures.
-            """
+        Args:
+            document: The document.
+            checksum: The checksum.
+            signatures: The signatures.
+        """
 
         client = self._connect_redis()
         if client is None:
@@ -296,16 +286,16 @@ class ConstitutionStorage:
                 client.set(self._redis_sig_key, json.dumps(signatures))
         except Exception as exc:
             LOGGER.debug("Failed to write constitution cache to redis: %s", exc)
-    
+
     def _write_redis_metadata(
         self, metadata: Dict[str, Any], created_at: dt.datetime
     ) -> None:
         """Execute write redis metadata.
 
-            Args:
-                metadata: The metadata.
-                created_at: The created_at.
-            """
+        Args:
+            metadata: The metadata.
+            created_at: The created_at.
+        """
 
         client = self._connect_redis()
         if client is None:
@@ -319,10 +309,9 @@ class ConstitutionStorage:
             )
         except Exception as exc:
             LOGGER.debug("Failed to write constitution metadata to redis: %s", exc)
-    
+
     def _load_from_redis(self) -> Optional[ConstitutionRecord]:
-        """Execute load from redis.
-            """
+        """Execute load from redis."""
 
         client = self._connect_redis()
         if client is None:
@@ -361,13 +350,13 @@ class ConstitutionStorage:
             created_at=created_at,
             signatures=signatures or None,
         )
-    
+
     def _sync_redis_signatures(self, checksum: str) -> None:
         """Execute sync redis signatures.
 
-            Args:
-                checksum: The checksum.
-            """
+        Args:
+            checksum: The checksum.
+        """
 
         client = self._connect_redis()
         if client is None:
@@ -379,27 +368,27 @@ class ConstitutionStorage:
             client.set(self._redis_sig_key, json.dumps(signatures))
         except Exception as exc:
             LOGGER.debug("Failed to sync signatures to redis: %s", exc)
-    
+
     @staticmethod
     def _compute_checksum(document: Dict[str, Any]) -> str:
         """Execute compute checksum.
 
-            Args:
-                document: The document.
-            """
+        Args:
+            document: The document.
+        """
 
         payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode(
             "utf-8"
         )
         return hashlib.sha3_512(payload).hexdigest()
-    
+
     @staticmethod
     def _ensure_datetime(value: Any) -> dt.datetime:
         """Execute ensure datetime.
 
-            Args:
-                value: The value.
-            """
+        Args:
+            value: The value.
+        """
 
         if isinstance(value, dt.datetime):
             if value.tzinfo is None:

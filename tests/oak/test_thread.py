@@ -20,15 +20,18 @@ preserving the "no mocks" guarantee without causing false negatives.
 pytestmark = [pytest.mark.integration, pytest.mark.django_db]
 
 # Use centralized Settings for test configuration
-PG_DSN = getattr(settings, "SOMABRAIN_POSTGRES_DSN", None) or getattr(settings, "DATABASE_URL", None)
+PG_DSN = getattr(settings, "SOMABRAIN_POSTGRES_DSN", None) or getattr(
+    settings, "DATABASE_URL", None
+)
 
 
 def _require_pg() -> None:
-    """Execute require pg.
-        """
+    """Execute require pg."""
 
     if not PG_DSN:
-        pytest.skip("SOMABRAIN_POSTGRES_DSN or DATABASE_URL must be set for oak thread tests")
+        pytest.skip(
+            "SOMABRAIN_POSTGRES_DSN or DATABASE_URL must be set for oak thread tests"
+        )
 
 
 @pytest.mark.django_db

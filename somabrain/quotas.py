@@ -104,9 +104,9 @@ class QuotaManager:
     def _day_key(ts: float | None = None) -> int:
         """Execute day key.
 
-            Args:
-                ts: The ts.
-            """
+        Args:
+            ts: The ts.
+        """
 
         if ts is None:
             ts = time.time()
@@ -150,10 +150,10 @@ class QuotaManager:
     def allow_write(self, tenant_id: str, n: int = 1) -> bool:
         """Execute allow write.
 
-            Args:
-                tenant_id: The tenant_id.
-                n: The n.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            n: The n.
+        """
 
         if self._is_exempt(tenant_id):
             return True
@@ -172,9 +172,9 @@ class QuotaManager:
     def remaining(self, tenant_id: str) -> int:
         """Execute remaining.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         if self._is_exempt(tenant_id):
             # Exempt tenants have unlimited quota - return max int
@@ -225,9 +225,9 @@ class QuotaManager:
     def reset_quota(self, tenant_id: str) -> bool:
         """Execute reset quota.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         tenant_exists = self.tenant_exists(tenant_id)
         is_exempt = self._is_exempt(tenant_id)

@@ -42,9 +42,9 @@ class ConstitutionError(Exception):
 def _decode_signature(sig: str) -> bytes:
     """Execute decode signature.
 
-        Args:
-            sig: The sig.
-        """
+    Args:
+        sig: The sig.
+    """
 
     try:
         return bytes.fromhex(sig)
@@ -164,8 +164,7 @@ class ConstitutionEngine:
         LOGGER.info("Saved constitution version %s", self._checksum[:8])
 
     def get_checksum(self) -> Optional[str]:
-        """Retrieve checksum.
-            """
+        """Retrieve checksum."""
 
         return self._checksum
 
@@ -174,8 +173,7 @@ class ConstitutionEngine:
         return self._signature
 
     def get_signatures(self) -> List[Dict[str, str]]:
-        """Retrieve signatures.
-            """
+        """Retrieve signatures."""
 
         return list(self._signatures)
 
@@ -246,7 +244,9 @@ class ConstitutionEngine:
 
         Returns the signature encoded as hex string, or None on failure.
         """
-        priv_path = private_key_path or getattr(settings, "SOMABRAIN_CONSTITUTION_PRIVKEY_PATH", None)
+        priv_path = private_key_path or getattr(
+            settings, "SOMABRAIN_CONSTITUTION_PRIVKEY_PATH", None
+        )
         if not priv_path:
             LOGGER.debug("No private key path configured for constitution signing")
             return None
@@ -285,8 +285,7 @@ class ConstitutionEngine:
             return None
 
     def get_constitution(self) -> Optional[Dict[str, Any]]:
-        """Retrieve constitution.
-            """
+        """Retrieve constitution."""
 
         return self._constitution
 
@@ -493,9 +492,9 @@ class ConstitutionEngine:
     def _apply_record(self, record: ConstitutionRecord) -> None:
         """Execute apply record.
 
-            Args:
-                record: The record.
-            """
+        Args:
+            record: The record.
+        """
 
         self._constitution = record.document
         self._checksum = record.checksum

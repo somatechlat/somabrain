@@ -19,8 +19,7 @@ MEM_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
 
 
 def _memory_available() -> bool:
-    """Execute memory available.
-        """
+    """Execute memory available."""
 
     try:
         headers = {"Authorization": f"Bearer {MEM_TOKEN}"} if MEM_TOKEN else {}
@@ -37,8 +36,7 @@ def _memory_available() -> bool:
 @pytest.mark.integration
 @pytest.mark.django_db
 def test_outbox_event_replays_when_memory_available() -> None:
-    """Execute test outbox event replays when memory available.
-        """
+    """Execute test outbox event replays when memory available."""
 
     if not MEM_TOKEN:
         pytest.skip(
@@ -49,7 +47,7 @@ def test_outbox_event_replays_when_memory_available() -> None:
 
     client = MemoryClient(settings)
     tenant = "workbench-outbox"
-    key = f"outbox-{int(time.time()*1000)}"
+    key = f"outbox-{int(time.time() * 1000)}"
 
     # Clean any leftover event with same key (Django ORM)
     OutboxEvent.objects.filter(dedupe_key=key).delete()

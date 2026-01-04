@@ -11,7 +11,6 @@ Functions:
 from __future__ import annotations
 
 import os
-import sys
 
 
 def run_server() -> None:
@@ -36,7 +35,7 @@ def run_server() -> None:
         >>> # PORT=8000 somabrain-server
     """
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
-    
+
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
@@ -45,8 +44,8 @@ def run_server() -> None:
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
-    
+
     host = os.environ.get("HOST", "0.0.0.0")
     port = os.environ.get("PORT", "9696")
-    
+
     execute_from_command_line(["manage.py", "runserver", f"{host}:{port}"])

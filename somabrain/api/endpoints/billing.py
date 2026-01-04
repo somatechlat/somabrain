@@ -31,7 +31,6 @@ from somabrain.saas.models import (
     UsageRecord,
     AuditLog,
     ActorType,
-    SubscriptionStatus,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
@@ -45,8 +44,10 @@ router = Router(tags=["Billing"])
 # SCHEMAS
 # =============================================================================
 
+
 class SubscriptionTierOut(Schema):
     """Schema for subscription tier output."""
+
     id: UUID
     name: str
     slug: str
@@ -56,17 +57,17 @@ class SubscriptionTierOut(Schema):
     features: dict
     is_active: bool
     lago_plan_code: Optional[str]
-    
+
     @staticmethod
     def resolve_monthly_price(obj):
         """Map model price_monthly → schema monthly_price."""
         return obj.price_monthly
-    
+
     @staticmethod
     def resolve_annual_price(obj):
         """Map model price_yearly → schema annual_price."""
         return obj.price_yearly
-    
+
     @staticmethod
     def resolve_lago_plan_code(obj):
         """Lago plan code is the tier slug."""
@@ -75,6 +76,7 @@ class SubscriptionTierOut(Schema):
 
 class SubscriptionOut(Schema):
     """Schema for tenant subscription output."""
+
     id: UUID
     tenant_id: UUID
     tier_name: str
@@ -83,60 +85,63 @@ class SubscriptionOut(Schema):
     started_at: str
     ends_at: Optional[str]
     lago_subscription_id: Optional[str]
-    
+
     @staticmethod
     def resolve_tier_name(obj):
         """Execute resolve tier name.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.tier.name
-    
+
     @staticmethod
     def resolve_tier_slug(obj):
         """Execute resolve tier slug.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.tier.slug
-    
+
     @staticmethod
     def resolve_started_at(obj):
         """Execute resolve started at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.started_at.isoformat()
-    
+
     @staticmethod
     def resolve_ends_at(obj):
         """Execute resolve ends at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.ends_at.isoformat() if obj.ends_at else None
 
 
 class SubscriptionCreate(Schema):
     """Schema for creating a subscription."""
+
     tier_id: UUID
 
 
 class SubscriptionChangePlan(Schema):
     """Schema for changing subscription plan."""
+
     new_tier_id: UUID
 
 
 class UsageReportEvent(Schema):
     """Schema for usage event."""
+
     event_type: str  # e.g., "api_call", "memory_operation"
     count: int = 1
     properties: Optional[dict] = None
@@ -144,26 +149,28 @@ class UsageReportEvent(Schema):
 
 class UsageRecordOut(Schema):
     """Schema for usage record output."""
+
     id: UUID
     tenant_id: UUID
     metric_name: str
     quantity: int
     recorded_at: str
     metadata: dict
-    
+
     @staticmethod
     def resolve_recorded_at(obj):
         """Execute resolve recorded at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.recorded_at.isoformat()
 
 
 class InvoiceOut(Schema):
     """Schema for invoice output."""
+
     id: str
     status: str
     amount_cents: int
@@ -174,12 +181,14 @@ class InvoiceOut(Schema):
 
 class WalletCreate(Schema):
     """Schema for creating a wallet."""
+
     initial_credits: int
     currency: str = "USD"
 
 
 class CreditAdd(Schema):
     """Schema for adding credits."""
+
     credits: int
     reason: str = "Manual top-up"
 
@@ -188,17 +197,17 @@ class CreditAdd(Schema):
 # SUBSCRIPTION TIER ENDPOINTS (Public)
 # =============================================================================
 
+
 @router.get("/tiers", response=List[SubscriptionTierOut])
 def list_subscription_tiers(request):
     """
     List all available subscription tiers.
-    
+
     Public endpoint - no auth required.
     Returns active tiers sorted by price.
     """
     return list(
-        SubscriptionTier.objects.filter(is_active=True)
-        .order_by("price_monthly")
+        SubscriptionTier.objects.filter(is_active=True).order_by("price_monthly")
     )
 
 
@@ -212,6 +221,7 @@ def get_subscription_tier(request, tier_id: UUID):
 # TENANT SUBSCRIPTION ENDPOINTS
 # =============================================================================
 
+
 @router.get("/tenant/{tenant_id}/subscription", response=SubscriptionOut)
 @require_auth(roles=["super-admin", "tenant-admin", "billing-admin"], any_role=True)
 @require_permission(Permission.SUBSCRIPTIONS_READ.value)
@@ -221,7 +231,7 @@ def get_tenant_subscription(
 ):
     """
     Get current subscription for a tenant.
-    
+
     ALL 10 PERSONAS:
     - Security: Tenant isolation enforced
     - DBA: Efficient query with select_related
@@ -230,17 +240,23 @@ def get_tenant_subscription(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
-    subscription = Subscription.objects.filter(
-        tenant_id=tenant_id,
-        status="active",
-    ).select_related("tier").first()
-    
+
+    subscription = (
+        Subscription.objects.filter(
+            tenant_id=tenant_id,
+            status="active",
+        )
+        .select_related("tier")
+        .first()
+    )
+
     if not subscription:
         from ninja.errors import HttpError
+
         raise HttpError(404, "No active subscription found")
-    
+
     return subscription
 
 
@@ -254,33 +270,33 @@ def create_tenant_subscription(
 ):
     """
     Create a subscription for a tenant.
-    
+
     Creates both Django record and Lago subscription.
-    
+
     ALL 10 PERSONAS:
     - Security: Permission required
     - SRE: Dual-write ORM + Lago
     - Audit: Full logging
     """
     from django.db import transaction
-    
+
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     tier = get_object_or_404(SubscriptionTier, id=data.tier_id, is_active=True)
-    
+
     # Check for existing active subscription
-    existing = Subscription.objects.filter(
-        tenant=tenant, status="active"
-    ).exists()
+    existing = Subscription.objects.filter(tenant=tenant, status="active").exists()
     if existing:
         from ninja.errors import HttpError
+
         raise HttpError(400, "Tenant already has an active subscription")
-    
+
     with transaction.atomic():
         # 1. Create Django ORM record
         subscription = Subscription.objects.create(
@@ -289,7 +305,7 @@ def create_tenant_subscription(
             status="active",
             started_at=datetime.now(),
         )
-        
+
         # 2. Create Lago subscription
         lago = get_lago_client()
         if lago:
@@ -301,7 +317,7 @@ def create_tenant_subscription(
             if lago_response:
                 subscription.lago_subscription_id = lago_response.get("external_id")
                 subscription.save()
-        
+
         # 3. Audit log
         AuditLog.log(
             action="subscription.created",
@@ -312,7 +328,7 @@ def create_tenant_subscription(
             tenant=tenant,
             details={"tier": tier.name, "tier_id": str(tier.id)},
         )
-    
+
     return subscription
 
 
@@ -326,30 +342,34 @@ def change_subscription_plan(
 ):
     """
     Change tenant's subscription plan.
-    
+
     Updates both Django record and Lago subscription.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     new_tier = get_object_or_404(SubscriptionTier, id=data.new_tier_id, is_active=True)
-    
-    subscription = Subscription.objects.filter(
-        tenant=tenant, status="active"
-    ).select_related("tier").first()
-    
+
+    subscription = (
+        Subscription.objects.filter(tenant=tenant, status="active")
+        .select_related("tier")
+        .first()
+    )
+
     if not subscription:
         from ninja.errors import HttpError
+
         raise HttpError(404, "No active subscription found")
-    
+
     old_tier_name = subscription.tier.name
     subscription.tier = new_tier
     subscription.save()
-    
+
     # Update Lago
     lago = get_lago_client()
     if lago and subscription.lago_subscription_id:
@@ -357,7 +377,7 @@ def change_subscription_plan(
             external_id=subscription.lago_subscription_id,
             new_plan_code=new_tier.lago_plan_code,
         )
-    
+
     # Audit log
     AuditLog.log(
         action="subscription.plan_changed",
@@ -368,7 +388,7 @@ def change_subscription_plan(
         tenant=tenant,
         details={"old_tier": old_tier_name, "new_tier": new_tier.name},
     )
-    
+
     return subscription
 
 
@@ -381,24 +401,23 @@ def cancel_subscription(
 ):
     """Cancel tenant's subscription."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
-    subscription = Subscription.objects.filter(
-        tenant=tenant, status="active"
-    ).first()
-    
+
+    subscription = Subscription.objects.filter(tenant=tenant, status="active").first()
+
     if not subscription:
         from ninja.errors import HttpError
+
         raise HttpError(404, "No active subscription found")
-    
+
     subscription.status = "cancelled"
     subscription.ends_at = datetime.now()
     subscription.save()
-    
+
     # Terminate in Lago
     lago = get_lago_client()
     if lago and subscription.lago_subscription_id:
         lago.terminate_subscription(subscription.lago_subscription_id)
-    
+
     # Audit log
     AuditLog.log(
         action="subscription.cancelled",
@@ -409,13 +428,14 @@ def cancel_subscription(
         tenant=tenant,
         details={"tier": subscription.tier.name},
     )
-    
+
     return {"success": True, "message": "Subscription cancelled"}
 
 
 # =============================================================================
 # USAGE ENDPOINTS
 # =============================================================================
+
 
 @router.post("/tenant/{tenant_id}/usage")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -427,9 +447,9 @@ def report_usage(
 ):
     """
     Report a usage event for a tenant.
-    
+
     Records in Django ORM and sends to Lago for billing.
-    
+
     ALL 10 PERSONAS:
     - DBA: ORM for usage records
     - SRE: Lago for billing
@@ -439,10 +459,11 @@ def report_usage(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # 1. Save to Django ORM
     usage_record = UsageRecord.objects.create(
         tenant=tenant,
@@ -450,7 +471,7 @@ def report_usage(
         quantity=data.count,
         metadata=data.properties or {},
     )
-    
+
     # 2. Send to Lago
     lago = get_lago_client()
     if lago:
@@ -459,7 +480,7 @@ def report_usage(
             event_type=data.event_type,
             properties={"count": data.count, **(data.properties or {})},
         )
-    
+
     return {"success": True, "usage_id": str(usage_record.id)}
 
 
@@ -476,18 +497,20 @@ def get_usage_history(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
-    records = UsageRecord.objects.filter(
-        tenant_id=tenant_id
-    ).order_by("-recorded_at")[:limit]
-    
+
+    records = UsageRecord.objects.filter(tenant_id=tenant_id).order_by("-recorded_at")[
+        :limit
+    ]
+
     return list(records)
 
 
 # =============================================================================
 # INVOICE ENDPOINTS
 # =============================================================================
+
 
 @router.get("/tenant/{tenant_id}/invoices", response=List[InvoiceOut])
 @require_auth(roles=["super-admin", "tenant-admin", "billing-admin"], any_role=True)
@@ -501,17 +524,19 @@ def get_invoices(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     lago = get_lago_client()
     if not lago:
         from ninja.errors import HttpError
+
         raise HttpError(503, "Billing service unavailable")
-    
+
     invoices = lago.get_invoices(str(tenant_id))
     if invoices is None:
         return []
-    
+
     return [
         InvoiceOut(
             id=inv.get("lago_id", inv.get("id")),
@@ -535,23 +560,26 @@ def download_invoice(
 ):
     """Download invoice PDF from Lago."""
     from django.http import HttpResponse
-    
+
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     lago = get_lago_client()
     if not lago:
         from ninja.errors import HttpError
+
         raise HttpError(503, "Billing service unavailable")
-    
+
     pdf_data = lago.download_invoice_pdf(invoice_id)
     if not pdf_data:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Invoice not found")
-    
+
     response = HttpResponse(pdf_data, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="invoice_{invoice_id}.pdf"'
     return response
@@ -561,13 +589,14 @@ def download_invoice(
 # BILLING HEALTH
 # =============================================================================
 
+
 @router.get("/health")
 def billing_health(request):
     """Check billing service health."""
     lago = get_lago_client()
     if not lago:
         return {"status": "unavailable", "message": "Lago client not configured"}
-    
+
     is_healthy = lago.health_check()
     return {
         "status": "healthy" if is_healthy else "unhealthy",

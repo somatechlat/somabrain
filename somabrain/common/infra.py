@@ -9,9 +9,9 @@ from django.conf import settings
 def _strip(url: Optional[str]) -> str:
     """Execute strip.
 
-        Args:
-            url: The url.
-        """
+    Args:
+        url: The url.
+    """
 
     u = (url or "").strip()
     return u.split("://", 1)[1] if "://" in u else u
@@ -20,10 +20,10 @@ def _strip(url: Optional[str]) -> str:
 def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
     """Execute check kafka.
 
-        Args:
-            bootstrap: The bootstrap.
-            timeout_s: The timeout_s.
-        """
+    Args:
+        bootstrap: The bootstrap.
+        timeout_s: The timeout_s.
+    """
 
     bs = _strip(bootstrap)
     if not bs:
@@ -108,7 +108,11 @@ def check_opa(opa_url: Optional[str], timeout_s: float = 2.0) -> bool:
     the original semantics.
     """
     # Directly use the imported ``settings`` singleton.
-    url = (opa_url or getattr(settings, "SOMABRAIN_OPA_URL", None) or "").strip().rstrip("/")
+    url = (
+        (opa_url or getattr(settings, "SOMABRAIN_OPA_URL", None) or "")
+        .strip()
+        .rstrip("/")
+    )
     if not url:
         # Treat missing OPA as not configured rather than down
         return True

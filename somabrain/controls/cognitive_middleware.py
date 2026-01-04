@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import time
-import uuid
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from ninja.errors import HttpError
@@ -39,7 +38,7 @@ class CognitiveErrorHandler:
         # Django Ninja uses HttpError, Django uses Http404 etc.
         # Check string representation or type if possible
         err_str = str(error).lower()
-        
+
         if isinstance(error, HttpError):
             error_info["recovery_suggestions"] = [
                 "Check request parameters",
@@ -81,9 +80,9 @@ class CognitiveMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         """Execute call  .
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         request_id = f"{time.time()}_{id(request)}"
         path = request.path
@@ -96,14 +95,14 @@ class CognitiveMiddleware:
 
         try:
             response = self.get_response(request)
-            
+
             # Check if response is an error response (4xx or 5xx) that wasn't raised
             if response.status_code >= 500:
-                 # It's already caught by Django ExceptionMiddleware? 
-                 # Middleware only sees response if exception was handled or no exception raised.
-                 # If ExceptionMiddleware handles it, it returns response.
-                 # But we want to wrap UNHANDLED exceptions or analyze errors.
-                 pass
+                # It's already caught by Django ExceptionMiddleware?
+                # Middleware only sees response if exception was handled or no exception raised.
+                # If ExceptionMiddleware handles it, it returns response.
+                # But we want to wrap UNHANDLED exceptions or analyze errors.
+                pass
 
             processing_time = time.time() - start_time
             logger.info(
@@ -116,7 +115,7 @@ class CognitiveMiddleware:
         except Exception as e:
             # Process exception (this catches exceptions that Django's ExceptionMiddleware hasn't caught yet if we place this outer)
             # Typically CognitiveMiddleware should be high up (outer).
-            
+
             processing_time = time.time() - start_time
             error_info = CognitiveErrorHandler.handle_error(
                 e, f"{method} {path}", request_id
@@ -125,7 +124,7 @@ class CognitiveMiddleware:
             logger.error(
                 f"🧠 Request {request_id}: {method} {path} - Error after {processing_time:.4f}s: {str(e)}"
             )
-            
+
             return JsonResponse(
                 {
                     "error": "Cognitive processing error",

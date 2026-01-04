@@ -4,6 +4,7 @@
 Usage:
   python benchmarks/render_run_report.py --run-dir benchmarks/outputs/live_runs/<timestamp>
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,9 +16,9 @@ from typing import Any, List
 def _read_json(p: Path) -> Any:
     """Execute read json.
 
-        Args:
-            p: The p.
-        """
+    Args:
+        p: The p.
+    """
 
     if not p.exists():
         return None
@@ -30,9 +31,9 @@ def _read_json(p: Path) -> Any:
 def render(run_dir: Path) -> int:
     """Execute render.
 
-        Args:
-            run_dir: The run_dir.
-        """
+    Args:
+        run_dir: The run_dir.
+    """
 
     summ = _read_json(run_dir / "summary.json") or {}
     deltas = _read_json(run_dir / "metrics_deltas.json") or {}
@@ -99,8 +100,7 @@ def render(run_dir: Path) -> int:
 
 
 def main() -> int:
-    """Execute main.
-        """
+    """Execute main."""
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", type=Path, required=True)

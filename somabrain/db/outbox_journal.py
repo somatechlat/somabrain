@@ -30,14 +30,14 @@ def get_journal_events(
     since: Optional[datetime] = None,
 ) -> List[JournalEvent]:
     """Get events from the local journal with filtering.
-    
+
     Args:
         tenant_id: Optional tenant ID to filter by
         status: Optional status to filter by (pending|sent|failed)
         topic: Optional topic to filter by
         limit: Maximum number of events to return
         since: Only return events after this datetime
-    
+
     Returns:
         List of journal events
     """
@@ -58,32 +58,32 @@ def replay_journal_events(
     mark_processed: bool = True,
 ) -> int:
     """Replay journal events to the database outbox.
-    
+
     This function reads events from the local journal and enqueues them
     in the database outbox for processing by the outbox worker.
-    
+
     Args:
         tenant_id: Optional tenant ID to filter events
         limit: Maximum number of events to replay
         mark_processed: Whether to mark replayed events as processed in journal
-    
+
     Returns:
         Number of events successfully replayed
     """
     # Import here to avoid circular dependency
     from somabrain.db.outbox import enqueue_event
-    
+
     journal = get_journal()
-    
+
     # Get pending events from journal
     events = journal.read_events(tenant_id=tenant_id, status="pending", limit=limit)
-    
+
     if not events:
         return 0
-    
+
     replayed_count = 0
     event_ids = []
-    
+
     # Replay events to database outbox
     for event in events:
         try:
@@ -95,24 +95,24 @@ def replay_journal_events(
             )
             replayed_count += 1
             event_ids.append(event.id)
-        
+
         except Exception as e:
             logger.error(f"Failed to replay journal event {event.id} to database: {e}")
             continue
-    
+
     # Mark replayed events as processed in journal
     if mark_processed and event_ids:
         try:
             journal.mark_events_sent(event_ids)
         except Exception as e:
             logger.warning(f"Failed to mark journal events as processed: {e}")
-    
+
     return replayed_count
 
 
 def get_journal_stats() -> Dict[str, Any]:
     """Get statistics about the local journal.
-    
+
     Returns:
         Dictionary with journal statistics
     """
@@ -126,7 +126,7 @@ def get_journal_stats() -> Dict[str, Any]:
 
 def cleanup_journal() -> Dict[str, Any]:
     """Clean up the local journal by removing old files.
-    
+
     Returns:
         Dictionary with cleanup results
     """

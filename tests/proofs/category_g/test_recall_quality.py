@@ -282,9 +282,9 @@ class TestRecallQualityUnderScale:
         )
 
         # Average pairwise similarity should be below 90% (diverse)
-        assert (
-            avg_pairwise_sim < 0.9
-        ), f"Average pairwise similarity {avg_pairwise_sim:.2%} exceeds 90%"
+        assert avg_pairwise_sim < 0.9, (
+            f"Average pairwise similarity {avg_pairwise_sim:.2%} exceeds 90%"
+        )
 
     def test_freshness_recency_weighted(self) -> None:
         """G3.5: Freshness recency weighted.
@@ -361,9 +361,9 @@ class TestQualityMetrics:
         relevances = [3, 2, 1, 0]
         ndcg = ndcg_at_k(relevances, 4)
 
-        assert (
-            abs(ndcg - 1.0) < 0.01
-        ), f"nDCG for perfect ranking should be 1.0, got {ndcg}"
+        assert abs(ndcg - 1.0) < 0.01, (
+            f"nDCG for perfect ranking should be 1.0, got {ndcg}"
+        )
 
     def test_cosine_similarity_bounds(self) -> None:
         """Cosine similarity is bounded [-1, 1].

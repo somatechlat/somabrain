@@ -79,9 +79,9 @@ class TestCoRecalledLinks:
         def coord_to_str(c: tuple) -> str:
             """Execute coord to str.
 
-                Args:
-                    c: The c.
-                """
+            Args:
+                c: The c.
+            """
 
             return ",".join(str(x) for x in c)
 
@@ -194,9 +194,9 @@ class TestGraphAugmentedRecall:
         def coord_to_str(c: tuple) -> str:
             """Execute coord to str.
 
-                Args:
-                    c: The c.
-                """
+            Args:
+                c: The c.
+            """
 
             return ",".join(str(x) for x in c)
 
@@ -209,9 +209,9 @@ class TestGraphAugmentedRecall:
                 "strength": link_strength,
             }
             response = client.post("/graph/link", json=body, headers=headers)
-            assert (
-                response.status_code == 200
-            ), f"Failed to create link: {response.text}"
+            assert response.status_code == 200, (
+                f"Failed to create link: {response.text}"
+            )
 
             # Query neighbors of A to verify link exists
             params = {
@@ -373,9 +373,9 @@ class TestShortestPathQueries:
         def coord_to_str(c: tuple) -> str:
             """Execute coord to str.
 
-                Args:
-                    c: The c.
-                """
+            Args:
+                c: The c.
+            """
 
             return ",".join(str(x) for x in c)
 
@@ -441,9 +441,9 @@ class TestShortestPathQueries:
         def coord_to_str(c: tuple) -> str:
             """Execute coord to str.
 
-                Args:
-                    c: The c.
-                """
+            Args:
+                c: The c.
+            """
 
             return ",".join(str(x) for x in c)
 

@@ -195,8 +195,7 @@ class BudgetedPredictor:
         exc: Optional[BaseException] = None
 
         def _run():
-            """Execute run.
-                """
+            """Execute run."""
 
             nonlocal result, exc
             try:

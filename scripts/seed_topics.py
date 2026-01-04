@@ -10,8 +10,7 @@ from kafka.admin import NewTopic
 
 
 def _bootstrap() -> str:
-    """Execute bootstrap.
-        """
+    """Execute bootstrap."""
 
     url = getattr(settings, "SOMABRAIN_KAFKA_BOOTSTRAP_SERVERS", None)
     if not url:
@@ -24,8 +23,7 @@ def _bootstrap() -> str:
 
 def _topics() -> List[NewTopic]:
     # Retention: updates 3d, frames/segments 30d
-    """Execute topics.
-        """
+    """Execute topics."""
 
     return [
         NewTopic(
@@ -92,8 +90,7 @@ def _topics() -> List[NewTopic]:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     admin = KafkaAdminClient(bootstrap_servers=_bootstrap(), client_id="seed-topics")
     topics = _topics()

@@ -25,6 +25,7 @@ import logging
 # Django setup MUST be called before importing any Django models
 # This is required for standalone workers outside of manage.py
 import django
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
 django.setup()
 
@@ -59,8 +60,7 @@ _BACKPRESSURE_ENABLED = (
 
 def _bootstrap() -> Optional[str]:
     # Prefer explicit SOMA_KAFKA_BOOTSTRAP if present (plain host:port)
-    """Execute bootstrap.
-        """
+    """Execute bootstrap."""
 
     direct = (getattr(settings, "KAFKA_BOOTSTRAP", "") or "").strip()
     if direct:
@@ -72,8 +72,7 @@ def _bootstrap() -> Optional[str]:
 
 
 def _make_producer():  # pragma: no cover - optional at runtime
-    """Execute make producer.
-        """
+    """Execute make producer."""
 
     bootstrap = _bootstrap()
     if not bootstrap:
@@ -174,8 +173,7 @@ _known_pending_tenants: set[str] = set()
 
 
 def _update_outbox_pending_metrics() -> None:
-    """Execute update outbox pending metrics.
-        """
+    """Execute update outbox pending metrics."""
 
     if report_outbox_pending is None:
         return
@@ -241,7 +239,7 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
                 headers = {
                     "tenant-id": tenant_label,
                     "dedupe-key": ev.dedupe_key or "",
-                   "event-id": str(ev.id),
+                    "event-id": str(ev.id),
                     "event-topic": ev.topic,
                     "event-created-at": (
                         ev.created_at.isoformat() if ev.created_at else ""
@@ -317,8 +315,7 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
 
 def run_forever() -> None:  # pragma: no cover - integration loop
     # Require DB and Kafka to be ready before starting
-    """Execute run forever.
-        """
+    """Execute run forever."""
 
     assert_ready(
         require_kafka=True,
@@ -330,7 +327,9 @@ def run_forever() -> None:  # pragma: no cover - integration loop
     max_retries = int(getattr(settings, "OUTBOX_MAX_RETRIES", 5) or 5)
     poll_interval = float(getattr(settings, "OUTBOX_POLL_INTERVAL", 1.0) or 1.0)
     create_retry_ms = int(getattr(settings, "OUTBOX_PRODUCER_RETRY_MS", 1000) or 1000)
-    journal_replay_interval = int(getattr(settings, "JOURNAL_REPLAY_INTERVAL", 300) or 300)  # 5 minutes
+    journal_replay_interval = int(
+        getattr(settings, "JOURNAL_REPLAY_INTERVAL", 300) or 300
+    )  # 5 minutes
 
     producer = _make_producer()
 
@@ -368,8 +367,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
 
 
 def main() -> None:  # pragma: no cover
-    """Execute main.
-        """
+    """Execute main."""
 
     run_forever()
 

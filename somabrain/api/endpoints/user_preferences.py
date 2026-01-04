@@ -16,16 +16,14 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Default configuration
 """
 
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Optional, Dict, Any
 from uuid import UUID
 
-from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, TenantUser, AuditLog, ActorType
+from somabrain.saas.models import TenantUser, AuditLog, ActorType
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
 
@@ -70,12 +68,13 @@ DEFAULT_PREFERENCES = {
 # PREFERENCE STORAGE
 # =============================================================================
 
+
 def get_user_prefs_key(user_id: str) -> str:
     """Retrieve user prefs key.
 
-        Args:
-            user_id: The user_id.
-        """
+    Args:
+        user_id: The user_id.
+    """
 
     return f"user_prefs:{user_id}"
 
@@ -100,8 +99,10 @@ def set_user_preferences(user_id: str, prefs: Dict[str, Any]):
 # SCHEMAS
 # =============================================================================
 
+
 class UserProfileOut(Schema):
     """User profile output."""
+
     id: str
     email: str
     display_name: Optional[str]
@@ -115,6 +116,7 @@ class UserProfileOut(Schema):
 
 class UserProfileUpdate(Schema):
     """Update user profile."""
+
     display_name: Optional[str] = None
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
@@ -122,6 +124,7 @@ class UserProfileUpdate(Schema):
 
 class PreferencesOut(Schema):
     """User preferences output."""
+
     theme: str
     language: str
     timezone: str
@@ -135,6 +138,7 @@ class PreferencesOut(Schema):
 
 class PreferencesUpdate(Schema):
     """Update preferences."""
+
     theme: Optional[str] = None
     language: Optional[str] = None
     timezone: Optional[str] = None
@@ -148,6 +152,7 @@ class PreferencesUpdate(Schema):
 
 class NotificationPrefs(Schema):
     """Notification preferences."""
+
     email: bool = True
     push: bool = True
     in_app: bool = True
@@ -158,26 +163,29 @@ class NotificationPrefs(Schema):
 # PROFILE ENDPOINTS
 # =============================================================================
 
+
 @router.get("/me", response=UserProfileOut)
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_my_profile(request: AuthenticatedRequest):
     """
     Get current user's profile.
-    
+
     🎨 UX: Self-service profile
     """
     user = get_object_or_404(TenantUser, id=request.user_id)
-    
+
     return UserProfileOut(
         id=str(user.id),
         email=user.email,
         display_name=user.display_name,
-        avatar_url=getattr(user, 'avatar_url', None),
-        bio=getattr(user, 'bio', None),
+        avatar_url=getattr(user, "avatar_url", None),
+        bio=getattr(user, "bio", None),
         role=user.role,
         is_active=user.is_active,
         created_at=user.created_at.isoformat() if user.created_at else None,
-        last_login_at=user.last_login_at.isoformat() if hasattr(user, 'last_login_at') and user.last_login_at else None,
+        last_login_at=user.last_login_at.isoformat()
+        if hasattr(user, "last_login_at") and user.last_login_at
+        else None,
     )
 
 
@@ -189,22 +197,22 @@ def update_my_profile(
 ):
     """
     Update current user's profile.
-    
+
     🔒 Security: User can update own profile
     """
     user = get_object_or_404(TenantUser, id=request.user_id)
-    
+
     if data.display_name is not None:
         user.display_name = data.display_name
     if data.avatar_url is not None:
-        if hasattr(user, 'avatar_url'):
+        if hasattr(user, "avatar_url"):
             user.avatar_url = data.avatar_url
     if data.bio is not None:
-        if hasattr(user, 'bio'):
+        if hasattr(user, "bio"):
             user.bio = data.bio
-    
+
     user.save()
-    
+
     # Audit log
     AuditLog.log(
         action="profile.updated",
@@ -215,13 +223,13 @@ def update_my_profile(
         tenant=user.tenant,
         details=data.dict(exclude_unset=True),
     )
-    
+
     return UserProfileOut(
         id=str(user.id),
         email=user.email,
         display_name=user.display_name,
-        avatar_url=getattr(user, 'avatar_url', None),
-        bio=getattr(user, 'bio', None),
+        avatar_url=getattr(user, "avatar_url", None),
+        bio=getattr(user, "bio", None),
         role=user.role,
         is_active=user.is_active,
         created_at=user.created_at.isoformat() if user.created_at else None,
@@ -233,12 +241,13 @@ def update_my_profile(
 # PREFERENCES ENDPOINTS
 # =============================================================================
 
+
 @router.get("/me/preferences", response=PreferencesOut)
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_my_preferences(request: AuthenticatedRequest):
     """
     Get current user's preferences.
-    
+
     📊 Performance: Cached preferences
     """
     prefs = get_user_preferences(str(request.user_id))
@@ -253,21 +262,25 @@ def update_my_preferences(
 ):
     """
     Update current user's preferences.
-    
+
     🎨 UX: Personalization
     """
     prefs = get_user_preferences(str(request.user_id))
-    
+
     # Update provided fields
     for field, value in data.dict(exclude_unset=True).items():
         if value is not None:
-            if isinstance(value, dict) and field in prefs and isinstance(prefs[field], dict):
+            if (
+                isinstance(value, dict)
+                and field in prefs
+                and isinstance(prefs[field], dict)
+            ):
                 prefs[field].update(value)
             else:
                 prefs[field] = value
-    
+
     set_user_preferences(str(request.user_id), prefs)
-    
+
     return PreferencesOut(**prefs)
 
 
@@ -279,13 +292,13 @@ def update_notification_preferences(
 ):
     """
     Update notification preferences.
-    
+
     🎨 UX: Quick notification settings
     """
     prefs = get_user_preferences(str(request.user_id))
     prefs["notifications"] = data.dict()
     set_user_preferences(str(request.user_id), prefs)
-    
+
     return NotificationPrefs(**prefs["notifications"])
 
 
@@ -294,17 +307,18 @@ def update_notification_preferences(
 def reset_my_preferences(request: AuthenticatedRequest):
     """
     Reset preferences to defaults.
-    
+
     🛠️ DevOps: Default configuration
     """
     set_user_preferences(str(request.user_id), DEFAULT_PREFERENCES.copy())
-    
+
     return {"success": True, "message": "Preferences reset to defaults"}
 
 
 # =============================================================================
 # ADMIN PROFILE MANAGEMENT
 # =============================================================================
+
 
 @router.get("/{tenant_id}/users/{user_id}", response=UserProfileOut)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -316,23 +330,24 @@ def get_user_profile(
 ):
     """
     Get any user's profile (admin only).
-    
+
     🔒 Security: Admin access
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     return UserProfileOut(
         id=str(user.id),
         email=user.email,
         display_name=user.display_name,
-        avatar_url=getattr(user, 'avatar_url', None),
-        bio=getattr(user, 'bio', None),
+        avatar_url=getattr(user, "avatar_url", None),
+        bio=getattr(user, "bio", None),
         role=user.role,
         is_active=user.is_active,
         created_at=user.created_at.isoformat() if user.created_at else None,
@@ -351,22 +366,23 @@ def update_user_profile(
 ):
     """
     Update any user's profile (admin only).
-    
+
     🔒 Security: Admin management
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     if data.display_name is not None:
         user.display_name = data.display_name
-    
+
     user.save()
-    
+
     # Audit log
     AuditLog.log(
         action="user.profile_updated",
@@ -377,13 +393,13 @@ def update_user_profile(
         tenant=user.tenant,
         details=data.dict(exclude_unset=True),
     )
-    
+
     return UserProfileOut(
         id=str(user.id),
         email=user.email,
         display_name=user.display_name,
-        avatar_url=getattr(user, 'avatar_url', None),
-        bio=getattr(user, 'bio', None),
+        avatar_url=getattr(user, "avatar_url", None),
+        bio=getattr(user, "bio", None),
         role=user.role,
         is_active=user.is_active,
         created_at=user.created_at.isoformat() if user.created_at else None,
@@ -401,18 +417,19 @@ def get_user_preferences_admin(
 ):
     """
     Get any user's preferences (admin only).
-    
+
     🔒 Security: Admin view
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Verify user exists
     get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     prefs = get_user_preferences(str(user_id))
     return PreferencesOut(**prefs)
 
@@ -421,6 +438,7 @@ def get_user_preferences_admin(
 # AVAILABLE OPTIONS
 # =============================================================================
 
+
 @router.get("/options/themes")
 def list_available_themes():
     """List available themes."""
@@ -428,7 +446,11 @@ def list_available_themes():
         "themes": [
             {"id": "light", "name": "Light", "description": "Light mode theme"},
             {"id": "dark", "name": "Dark", "description": "Dark mode theme"},
-            {"id": "system", "name": "System", "description": "Follow system preference"},
+            {
+                "id": "system",
+                "name": "System",
+                "description": "Follow system preference",
+            },
         ]
     }
 

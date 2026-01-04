@@ -46,7 +46,9 @@ def init_tracing(
     """
     try:
         # Resolve a sane default when the caller does not provide a name.
-        effective_name = service_name or getattr(settings, "SOMABRAIN_SERVICE_NAME", "somabrain")
+        effective_name = service_name or getattr(
+            settings, "SOMABRAIN_SERVICE_NAME", "somabrain"
+        )
         resource = Resource.create({"service.name": effective_name})
         provider = TracerProvider(resource=resource)
         if console_export:

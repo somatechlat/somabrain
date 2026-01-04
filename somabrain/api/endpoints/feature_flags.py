@@ -16,11 +16,9 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Environment overrides
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime
+from typing import List, Optional, Dict
 from uuid import UUID
 
-from django.db.models import Q
 from django.utils import timezone
 from django.core.cache import cache
 from ninja import Router, Schema
@@ -37,8 +35,10 @@ router = Router(tags=["Feature Flags"])
 # SCHEMAS
 # =============================================================================
 
+
 class FeatureFlagOut(Schema):
     """Feature flag output."""
+
     key: str
     name: str
     description: Optional[str]
@@ -50,6 +50,7 @@ class FeatureFlagOut(Schema):
 
 class FeatureFlagCreate(Schema):
     """Create feature flag."""
+
     key: str
     name: str
     description: Optional[str] = None
@@ -59,6 +60,7 @@ class FeatureFlagCreate(Schema):
 
 class FeatureFlagUpdate(Schema):
     """Update feature flag."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     enabled: Optional[bool] = None
@@ -67,6 +69,7 @@ class FeatureFlagUpdate(Schema):
 
 class TenantFlagOverride(Schema):
     """Tenant-specific flag override."""
+
     flag_key: str
     enabled: bool
     reason: Optional[str] = None
@@ -74,6 +77,7 @@ class TenantFlagOverride(Schema):
 
 class FlagCheckResult(Schema):
     """Result of flag check."""
+
     flag_key: str
     enabled: bool
     source: str  # default, tenant_override, rollout
@@ -161,37 +165,39 @@ def set_tenant_override(tenant_id: str, flag_key: str, enabled: bool):
 # FLAG EVALUATION
 # =============================================================================
 
+
 def evaluate_flag(flag_key: str, tenant_id: Optional[str] = None) -> tuple:
     """
     Evaluate if a flag is enabled for a given context.
-    
+
     Returns (enabled: bool, source: str)
     """
     flag = get_flag(flag_key)
     if not flag:
         return False, "not_found"
-    
+
     # Check tenant override first
     if tenant_id:
         overrides = get_tenant_overrides(tenant_id)
         if flag_key in overrides:
             return overrides[flag_key], "tenant_override"
-    
+
     # Check if globally enabled
     if flag.get("enabled"):
         return True, "default"
-    
+
     # Check rollout percentage
     rollout = flag.get("rollout_percentage", 0)
     if rollout > 0 and tenant_id:
         # Simple hash-based rollout
         import hashlib
+
         hash_input = f"{flag_key}:{tenant_id}"
         hash_value = int(hashlib.md5(hash_input.encode()).hexdigest()[:8], 16)
         bucket = hash_value % 100
         if bucket < rollout:
             return True, "rollout"
-    
+
     return False, "default"
 
 
@@ -199,15 +205,13 @@ def evaluate_flag(flag_key: str, tenant_id: Optional[str] = None) -> tuple:
 # ENDPOINTS
 # =============================================================================
 
+
 @router.get("/flags", response=List[FeatureFlagOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_feature_flags(request: AuthenticatedRequest):
     """List all feature flags."""
     flags = get_all_flags()
-    return [
-        FeatureFlagOut(**flag)
-        for flag in flags.values()
-    ]
+    return [FeatureFlagOut(**flag) for flag in flags.values()]
 
 
 @router.get("/flags/{flag_key}", response=FeatureFlagOut)
@@ -217,6 +221,7 @@ def get_feature_flag(request: AuthenticatedRequest, flag_key: str):
     flag = get_flag(flag_key)
     if not flag:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Flag '{flag_key}' not found")
     return FeatureFlagOut(**flag)
 
@@ -229,8 +234,9 @@ def create_feature_flag(request: AuthenticatedRequest, data: FeatureFlagCreate):
     existing = get_flag(data.key)
     if existing:
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Flag '{data.key}' already exists")
-    
+
     now = timezone.now().isoformat()
     flag_data = {
         "key": data.key,
@@ -242,7 +248,7 @@ def create_feature_flag(request: AuthenticatedRequest, data: FeatureFlagCreate):
         "updated_at": now,
     }
     set_flag(data.key, flag_data)
-    
+
     # Audit log
     AuditLog.log(
         action="feature_flag.created",
@@ -252,20 +258,23 @@ def create_feature_flag(request: AuthenticatedRequest, data: FeatureFlagCreate):
         actor_type=ActorType.ADMIN,
         details={"name": data.name, "enabled": data.enabled},
     )
-    
+
     return FeatureFlagOut(**flag_data)
 
 
 @router.patch("/flags/{flag_key}", response=FeatureFlagOut)
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
-def update_feature_flag(request: AuthenticatedRequest, flag_key: str, data: FeatureFlagUpdate):
+def update_feature_flag(
+    request: AuthenticatedRequest, flag_key: str, data: FeatureFlagUpdate
+):
     """Update a feature flag (super admin only)."""
     flag = get_flag(flag_key)
     if not flag:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Flag '{flag_key}' not found")
-    
+
     if data.name is not None:
         flag["name"] = data.name
     if data.description is not None:
@@ -274,10 +283,10 @@ def update_feature_flag(request: AuthenticatedRequest, flag_key: str, data: Feat
         flag["enabled"] = data.enabled
     if data.rollout_percentage is not None:
         flag["rollout_percentage"] = data.rollout_percentage
-    
+
     flag["updated_at"] = timezone.now().isoformat()
     set_flag(flag_key, flag)
-    
+
     # Audit log
     AuditLog.log(
         action="feature_flag.updated",
@@ -287,7 +296,7 @@ def update_feature_flag(request: AuthenticatedRequest, flag_key: str, data: Feat
         actor_type=ActorType.ADMIN,
         details={"enabled": flag["enabled"], "rollout": flag["rollout_percentage"]},
     )
-    
+
     return FeatureFlagOut(**flag)
 
 
@@ -299,18 +308,20 @@ def delete_feature_flag(request: AuthenticatedRequest, flag_key: str):
     flag = get_flag(flag_key)
     if not flag:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Flag '{flag_key}' not found")
-    
+
     flags = get_all_flags()
     del flags[flag_key]
     cache.set("feature_flags", flags, timeout=3600)
-    
+
     return {"success": True}
 
 
 # =============================================================================
 # TENANT OVERRIDES
 # =============================================================================
+
 
 @router.post("/{tenant_id}/overrides")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -325,12 +336,14 @@ def set_tenant_flag_override(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     set_tenant_override(str(tenant_id), data.flag_key, data.enabled)
-    
+
     # Audit log
     from django.shortcuts import get_object_or_404
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
         action="feature_flag.override_set",
@@ -341,7 +354,7 @@ def set_tenant_flag_override(
         tenant=tenant,
         details={"enabled": data.enabled, "reason": data.reason},
     )
-    
+
     return {"success": True, "flag_key": data.flag_key, "enabled": data.enabled}
 
 
@@ -357,10 +370,11 @@ def check_flag(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     enabled, source = evaluate_flag(flag_key, str(tenant_id))
-    
+
     return FlagCheckResult(
         flag_key=flag_key,
         enabled=enabled,
@@ -380,11 +394,12 @@ def check_flags_bulk(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     results = {}
     for key in flag_keys:
         enabled, source = evaluate_flag(key, str(tenant_id))
         results[key] = {"enabled": enabled, "source": source}
-    
+
     return {"flags": results}

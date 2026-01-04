@@ -77,10 +77,14 @@ class NeuromodState:
     """
 
     dopamine: float = field(
-        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4))
+        default_factory=lambda: float(
+            getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4)
+        )
     )
     serotonin: float = field(
-        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5))
+        default_factory=lambda: float(
+            getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5)
+        )
     )
     noradrenaline: float = field(
         default_factory=lambda: float(
@@ -115,8 +119,7 @@ class Neuromodulators:
         self._subs: List[Callable[[NeuromodState], None]] = []
 
     def get_state(self) -> NeuromodState:
-        """Retrieve state.
-            """
+        """Retrieve state."""
 
         return self._state
 
@@ -144,9 +147,9 @@ class Neuromodulators:
     def subscribe(self, cb: Callable[[NeuromodState], None]) -> None:
         """Execute subscribe.
 
-            Args:
-                cb: The cb.
-            """
+        Args:
+            cb: The cb.
+        """
 
         self._subs.append(cb)
 
@@ -167,9 +170,9 @@ class PerTenantNeuromodulators:
     def get_state(self, tenant_id: str | None = None) -> NeuromodState:
         """Retrieve state.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         if tenant_id is None:
             return self._global.get_state()
@@ -178,10 +181,10 @@ class PerTenantNeuromodulators:
     def set_state(self, tenant_id: str, state: NeuromodState) -> None:
         """Set state.
 
-            Args:
-                tenant_id: The tenant_id.
-                state: The state.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            state: The state.
+        """
 
         self._states[tenant_id] = state
         # Notify any global subscribers of the change for this tenant if needed
@@ -288,7 +291,11 @@ def _calculate_dopamine_feedback(
         if task_type == "reward_learning"
         else 0.0
     )
-    return performance.success_rate + getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BIAS", 0.05) + boost
+    return (
+        performance.success_rate
+        + getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BIAS", 0.05)
+        + boost
+    )
 
 
 def _calculate_serotonin_feedback(
@@ -304,12 +311,21 @@ def _calculate_noradrenaline_feedback(
 ) -> float:
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
-    urgency_factor = getattr(settings, "SOMABRAIN_NEURO_URGENCY_FACTOR", 0.02) if task_type == "urgent" else 0.0
-    floor = max(0.0, min(1.0, float(getattr(settings, "SOMABRAIN_NEURO_LATENCY_FLOOR", 0.1))))
-    latency_term = (
-        1.0 / max(floor, performance.latency)
-    ) * getattr(settings, "SOMABRAIN_NEURO_LATENCY_SCALE", 0.01)
-    return min(getattr(settings, "SOMABRAIN_NEURO_NORAD_MAX", 0.1), latency_term + urgency_factor)
+    urgency_factor = (
+        getattr(settings, "SOMABRAIN_NEURO_URGENCY_FACTOR", 0.02)
+        if task_type == "urgent"
+        else 0.0
+    )
+    floor = max(
+        0.0, min(1.0, float(getattr(settings, "SOMABRAIN_NEURO_LATENCY_FLOOR", 0.1)))
+    )
+    latency_term = (1.0 / max(floor, performance.latency)) * getattr(
+        settings, "SOMABRAIN_NEURO_LATENCY_SCALE", 0.01
+    )
+    return min(
+        getattr(settings, "SOMABRAIN_NEURO_NORAD_MAX", 0.1),
+        latency_term + urgency_factor,
+    )
 
 
 def _calculate_acetylcholine_feedback(
@@ -317,8 +333,15 @@ def _calculate_acetylcholine_feedback(
 ) -> float:
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
-    memory_factor = getattr(settings, "SOMABRAIN_NEURO_MEMORY_FACTOR", 0.02) if task_type == "memory" else 0.0
-    return performance.accuracy * getattr(settings, "SOMABRAIN_NEURO_ACCURACY_SCALE", 0.05) + memory_factor
+    memory_factor = (
+        getattr(settings, "SOMABRAIN_NEURO_MEMORY_FACTOR", 0.02)
+        if task_type == "memory"
+        else 0.0
+    )
+    return (
+        performance.accuracy * getattr(settings, "SOMABRAIN_NEURO_ACCURACY_SCALE", 0.05)
+        + memory_factor
+    )
 
 
 class AdaptivePerTenantNeuromodulators:

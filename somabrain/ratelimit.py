@@ -55,8 +55,7 @@ class TokenBucket:
         self.ts = time.monotonic()
 
     def allow(self) -> bool:
-        """Execute allow.
-            """
+        """Execute allow."""
 
         now = time.monotonic()
         dt = now - self.ts
@@ -80,9 +79,9 @@ class RateLimiter:
     def allow(self, key: str) -> bool:
         """Execute allow.
 
-            Args:
-                key: The key.
-            """
+        Args:
+            key: The key.
+        """
 
         b = self._buckets.get(key)
         if b is None:

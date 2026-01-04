@@ -12,7 +12,6 @@ from ninja import Router, Query
 from django.http import HttpRequest
 from ninja.errors import HttpError
 
-from django.conf import settings
 from somabrain.api.auth import admin_auth
 from somabrain.auth import require_admin_auth
 from somabrain.api.memory.models import (
@@ -26,12 +25,14 @@ logger = logging.getLogger("somabrain.api.endpoints.memory_admin")
 
 router = Router(tags=["memory-admin"])
 
+
 def _get_tiered_registry():
     """Get the tiered memory registry singleton (lazy)."""
     # Import locally to avoid circular imports or early init
     try:
         from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
-        # We might need a global instance or create one. 
+
+        # We might need a global instance or create one.
         # The original code imported _TIERED_REGISTRY from somabrain.api.memory_api
         # We need to ensure we have access to it or instantiate it.
         # Since we are migrating, let's instantiate if not available or assume a singleton pattern.
@@ -40,17 +41,21 @@ def _get_tiered_registry():
     except ImportError:
         return None
 
+
 @router.post("/rebuild-ann", auth=admin_auth)
-def rebuild_ann_indexes(request: HttpRequest, payload: AnnRebuildRequest) -> Dict[str, Any]:
+def rebuild_ann_indexes(
+    request: HttpRequest, payload: AnnRebuildRequest
+) -> Dict[str, Any]:
     """Admin: Rebuild ANN indexes."""
     require_admin_auth(request, getattr(request, "cfg", None))
-    
+
     registry = _get_tiered_registry()
     if not registry:
         raise HttpError(503, "Tiered registry not available")
-        
+
     results = registry.rebuild(payload.tenant, namespace=payload.namespace)
     return {"ok": True, "results": results}
+
 
 @router.get("/outbox", response=List[OutboxEventSummary], auth=admin_auth)
 def list_outbox_events(
@@ -62,7 +67,7 @@ def list_outbox_events(
 ):
     """Admin: List outbox events."""
     require_admin_auth(request, getattr(request, "cfg", None))
-    
+
     try:
         events = outbox_db.list_events_by_status(
             status=status, tenant_id=tenant, limit=limit, offset=offset
@@ -90,14 +95,17 @@ def list_outbox_events(
         )
     return summaries
 
+
 @router.post("/outbox/replay", auth=admin_auth)
-def replay_outbox_events(request: HttpRequest, payload: OutboxReplayRequest) -> Dict[str, Any]:
+def replay_outbox_events(
+    request: HttpRequest, payload: OutboxReplayRequest
+) -> Dict[str, Any]:
     """Admin: Replay outbox events."""
     require_admin_auth(request, getattr(request, "cfg", None))
-    
+
     try:
         updated = outbox_db.mark_events_for_replay(payload.ids)
     except Exception as exc:
         raise HttpError(500, f"Replay failed: {exc}")
-        
+
     return {"ok": True, "updated": int(updated)}

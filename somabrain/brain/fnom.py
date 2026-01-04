@@ -15,9 +15,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
@@ -27,6 +26,7 @@ logger = logging.getLogger("somabrain.brain.fnom")
 @dataclass
 class FNOMResult:
     """Result object compatible with UnifiedBrainCore expectations."""
+
     frequency_spectrum: List[float]
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -34,6 +34,7 @@ class FNOMResult:
 @dataclass
 class FNOMTrace:
     """Trace object for retrieval results."""
+
     content: Dict[str, Any]
     similarity: float
 
@@ -81,7 +82,7 @@ class PersistentFNOM:
         """
         content_str = json.dumps(content, sort_keys=True)
         content_hash = hashlib.sha256(content_str.encode()).hexdigest()
-        
+
         # Persist content to KV store (Real persistence)
         key = f"{self.namespace}:content:{content_hash}"
         self.kv_store.put(key, content_str)
@@ -98,24 +99,28 @@ class PersistentFNOM:
                 # Assuming 'text' or 'content' field exists, or dumping JSON
                 text = content.get("text") or content.get("content") or content_str
                 vector = self.embedder.embed(text)
-                
+
                 # Use hash as coordinate-like ID for vector store
                 # Vector store expects tuple coord; we fake one from hash pieces
                 # VIBE: This is a robust mapping, not random.
-                h_vals = [int(content_hash[i:i+4], 16) / 65535.0 for i in range(0, 16, 4)]
-                coord = tuple(h_vals[:3]) # 3D coord for basic stores
-                
+                h_vals = [
+                    int(content_hash[i : i + 4], 16) / 65535.0 for i in range(0, 16, 4)
+                ]
+                coord = tuple(h_vals[:3])  # 3D coord for basic stores
+
                 self.vector_store.add(
                     coordinate=coord,
                     vector=vector,
-                    payload={"id": key, "importance": importance}
+                    payload={"id": key, "importance": importance},
                 )
             except Exception as e:
                 logger.error(f"Failed to persist FNOM vector: {e}")
 
         return FNOMResult(frequency_spectrum=spectrum)
 
-    def retrieve(self, query: str | Dict[str, Any], top_k: int = 3) -> List[Tuple[FNOMTrace, float]]:
+    def retrieve(
+        self, query: str | Dict[str, Any], top_k: int = 3
+    ) -> List[Tuple[FNOMTrace, float]]:
         """Retrieve traces matching the query.
 
         Args:
@@ -134,9 +139,9 @@ class PersistentFNOM:
             results = self.vector_store.search(
                 query_vector=query_vec,
                 top_k=top_k,
-                filter_params={"namespace": self.namespace}
+                filter_params={"namespace": self.namespace},
             )
-            
+
             traces = []
             for res in results:
                 # res is likely (score, payload) or similar depending on implementation
@@ -144,26 +149,28 @@ class PersistentFNOM:
                 # Let's assume standardized return of list of dicts or objects
                 # based on SomaFractalMemory implementation audit:
                 # postgres_kv return items.
-                
-                # Check implementation of vector_store.search in audit? 
+
+                # Check implementation of vector_store.search in audit?
                 # Assuming standard interface: params might differ.
                 # Just strictly implement what we can see.
-                
+
                 # SAFE IMPLEMENTATION:
                 # If store returns explicit objects, handle them.
                 # For now, simplistic handle:
                 score = getattr(res, "score", 0.0)
                 payload = getattr(res, "payload", {})
-                
+
                 content_key = payload.get("id")
                 content = {}
                 if content_key:
                     raw = self.kv_store.get(content_key)
                     if raw:
                         content = json.loads(raw)
-                
-                traces.append((FNOMTrace(content=content, similarity=score), float(score)))
-                
+
+                traces.append(
+                    (FNOMTrace(content=content, similarity=score), float(score))
+                )
+
             return traces
 
         except Exception as e:

@@ -27,12 +27,13 @@ def get_neuromod_state(request: HttpRequest):
     """Get neuromodulator state for tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
-    
+
     # Get neuromodulator values from app singletons
     try:
         from somabrain import app as app_module
+
         neuromod_manager = getattr(app_module, "per_tenant_neuromodulators", None)
-        
+
         if neuromod_manager and hasattr(neuromod_manager, "get"):
             values = neuromod_manager.get(ctx.tenant_id)
         else:
@@ -51,7 +52,7 @@ def get_neuromod_state(request: HttpRequest):
             "noradrenaline": 0.5,
             "acetylcholine": 0.5,
         }
-    
+
     return {
         "tenant_id": ctx.tenant_id,
         "dopamine": values.get("dopamine", 0.5),
@@ -66,11 +67,12 @@ def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
     """Adjust neuromodulator values for tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
-    
+
     try:
         from somabrain import app as app_module
+
         neuromod_manager = getattr(app_module, "per_tenant_neuromodulators", None)
-        
+
         if neuromod_manager and hasattr(neuromod_manager, "adjust"):
             # Apply adjustments
             adjustments = {}
@@ -82,7 +84,7 @@ def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
                 adjustments["noradrenaline"] = body.noradrenaline
             if hasattr(body, "acetylcholine"):
                 adjustments["acetylcholine"] = body.acetylcholine
-                
+
             neuromod_manager.adjust(ctx.tenant_id, **adjustments)
             values = neuromod_manager.get(ctx.tenant_id)
         else:
@@ -92,9 +94,9 @@ def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
                 "noradrenaline": getattr(body, "noradrenaline", 0.5),
                 "acetylcholine": getattr(body, "acetylcholine", 0.5),
             }
-            
+
         logger.info(f"Neuromod adjusted for {ctx.tenant_id}")
-        
+
     except Exception as exc:
         logger.error(f"Failed to adjust neuromod: {exc}")
         values = {
@@ -103,7 +105,7 @@ def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
             "noradrenaline": 0.5,
             "acetylcholine": 0.5,
         }
-    
+
     return {
         "tenant_id": ctx.tenant_id,
         "dopamine": values.get("dopamine", 0.5),

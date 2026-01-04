@@ -26,10 +26,10 @@ import os
 def _hit_endpoint(base_url: str, path: str) -> None:
     """Execute hit endpoint.
 
-        Args:
-            base_url: The base_url.
-            path: The path.
-        """
+    Args:
+        base_url: The base_url.
+        path: The path.
+    """
 
     try:
         resp = httpx.get(f"{base_url}{path}", timeout=5.0)
@@ -40,8 +40,7 @@ def _hit_endpoint(base_url: str, path: str) -> None:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     parser = argparse.ArgumentParser(
         description="Run a simple profiling load against the API."

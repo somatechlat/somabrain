@@ -47,9 +47,9 @@ else:
 def _as_namespace(ctx: Any) -> str:
     """Execute as namespace.
 
-        Args:
-            ctx: The ctx.
-        """
+    Args:
+        ctx: The ctx.
+    """
 
     return getattr(ctx, "namespace", "") or "default"
 
@@ -64,9 +64,9 @@ def _candidate_from_payload(
 ) -> RetrievalCandidate:
     """Execute candidate from payload.
 
-        Args:
-            payload: The payload.
-        """
+    Args:
+        payload: The payload.
+    """
 
     return RetrievalCandidate(
         coord=coord,
@@ -80,9 +80,9 @@ def _candidate_from_payload(
 def _heuristic_is_key(query: str) -> bool:
     """Execute heuristic is key.
 
-        Args:
-            query: The query.
-        """
+    Args:
+        query: The query.
+    """
 
     q = (query or "").strip()
     return " " not in q and len(q) >= 6
@@ -91,9 +91,9 @@ def _heuristic_is_key(query: str) -> bool:
 def _safe_coord_from_str(coord_str: str) -> Optional[str]:
     """Execute safe coord from str.
 
-        Args:
-            coord_str: The coord_str.
-        """
+    Args:
+        coord_str: The coord_str.
+    """
 
     if not coord_str:
         return None
@@ -115,9 +115,9 @@ async def run_retrieval_pipeline(
 ) -> RetrievalResponse:
     """Execute run retrieval pipeline.
 
-        Args:
-            req: The req.
-        """
+    Args:
+        req: The req.
+    """
 
     namespace = _as_namespace(ctx)
     memsvc = MemoryService(_rt.mt_memory, namespace)

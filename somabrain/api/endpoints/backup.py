@@ -16,8 +16,8 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Scheduled backup support
 """
 
-from typing import Optional, List, Dict, Any
-from datetime import datetime, timedelta
+from typing import Optional, List
+from datetime import timedelta
 from uuid import UUID, uuid4
 import json
 import hashlib
@@ -29,7 +29,11 @@ from django.http import HttpResponse
 from ninja import Router, Schema
 
 from somabrain.saas.models import (
-    Tenant, TenantUser, APIKey, Webhook, AuditLog, ActorType
+    Tenant,
+    TenantUser,
+    Webhook,
+    AuditLog,
+    ActorType,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
@@ -42,12 +46,13 @@ router = Router(tags=["Backup"])
 # BACKUP JOB STORAGE
 # =============================================================================
 
+
 def get_backup_key(backup_id: str) -> str:
     """Retrieve backup key.
 
-        Args:
-            backup_id: The backup_id.
-        """
+    Args:
+        backup_id: The backup_id.
+    """
 
     return f"backup:{backup_id}"
 
@@ -55,9 +60,9 @@ def get_backup_key(backup_id: str) -> str:
 def get_tenant_backups_key(tenant_id: str) -> str:
     """Retrieve tenant backups key.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     return f"backups:tenant:{tenant_id}"
 
@@ -82,16 +87,16 @@ def create_backup_record(
         "error": None,
         "expires_at": (timezone.now() + timedelta(days=30)).isoformat(),
     }
-    
+
     cache.set(get_backup_key(backup_id), backup, timeout=86400 * 30)
-    
+
     # Add to tenant backups list
     tenant_key = get_tenant_backups_key(tenant_id)
     backups = cache.get(tenant_key, [])
     backups.insert(0, backup_id)
     backups = backups[:50]  # Keep last 50
     cache.set(tenant_key, backups, timeout=86400 * 30)
-    
+
     return backup
 
 
@@ -108,9 +113,9 @@ def update_backup(backup_id: str, **updates) -> Optional[dict]:
 def get_backup(backup_id: str) -> Optional[dict]:
     """Retrieve backup.
 
-        Args:
-            backup_id: The backup_id.
-        """
+    Args:
+        backup_id: The backup_id.
+    """
 
     return cache.get(get_backup_key(backup_id))
 
@@ -119,8 +124,10 @@ def get_backup(backup_id: str) -> Optional[dict]:
 # SCHEMAS
 # =============================================================================
 
+
 class BackupOut(Schema):
     """Backup output."""
+
     id: str
     type: str
     status: str
@@ -133,6 +140,7 @@ class BackupOut(Schema):
 
 class BackupRequest(Schema):
     """Create backup request."""
+
     type: str = "full"  # full, incremental
     include_users: bool = True
     include_api_keys: bool = False  # Secret data, excluded by default
@@ -142,6 +150,7 @@ class BackupRequest(Schema):
 
 class RestoreRequest(Schema):
     """Restore from backup request."""
+
     backup_id: str
     overwrite: bool = False
     components: Optional[List[str]] = None  # users, webhooks, etc.
@@ -149,6 +158,7 @@ class RestoreRequest(Schema):
 
 class BackupStats(Schema):
     """Backup statistics."""
+
     total_backups: int
     total_size_bytes: int
     oldest_backup: Optional[str]
@@ -160,6 +170,7 @@ class BackupStats(Schema):
 # BACKUP ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/list", response=List[BackupOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
@@ -170,32 +181,35 @@ def list_backups(
 ):
     """
     List all backups for a tenant.
-    
+
     🎨 UX: Backup history view
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     backup_ids = cache.get(get_tenant_backups_key(str(tenant_id)), [])
     backups = []
-    
+
     for bid in backup_ids[:limit]:
         backup = get_backup(bid)
         if backup:
-            backups.append(BackupOut(
-                id=backup["id"],
-                type=backup["type"],
-                status=backup["status"],
-                created_at=backup["created_at"],
-                completed_at=backup.get("completed_at"),
-                size_bytes=backup.get("size_bytes", 0),
-                checksum=backup.get("checksum"),
-                expires_at=backup["expires_at"],
-            ))
-    
+            backups.append(
+                BackupOut(
+                    id=backup["id"],
+                    type=backup["type"],
+                    status=backup["status"],
+                    created_at=backup["created_at"],
+                    completed_at=backup.get("completed_at"),
+                    size_bytes=backup.get("size_bytes", 0),
+                    checksum=backup.get("checksum"),
+                    expires_at=backup["expires_at"],
+                )
+            )
+
     return backups
 
 
@@ -209,7 +223,7 @@ def create_backup(
 ):
     """
     Create a new backup.
-    
+
     🚨 SRE: Disaster recovery
     💾 DBA: Data serialization
     """
@@ -217,17 +231,18 @@ def create_backup(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # Create backup record
     backup = create_backup_record(
         tenant_id=str(tenant_id),
         backup_type=data.type,
         created_by=str(request.user_id),
     )
-    
+
     try:
         # Build backup data
         backup_data = {
@@ -243,7 +258,7 @@ def create_backup(
                 "version": "1.0",
             },
         }
-        
+
         if data.include_users:
             users = TenantUser.objects.filter(tenant=tenant)
             backup_data["users"] = [
@@ -257,7 +272,7 @@ def create_backup(
                 }
                 for u in users
             ]
-        
+
         if data.include_webhooks:
             webhooks = Webhook.objects.filter(tenant=tenant)
             backup_data["webhooks"] = [
@@ -270,15 +285,15 @@ def create_backup(
                 }
                 for w in webhooks
             ]
-        
+
         # Serialize and calculate checksum
         json_data = json.dumps(backup_data, indent=2)
         size = len(json_data.encode("utf-8"))
         checksum = hashlib.sha256(json_data.encode()).hexdigest()
-        
+
         # Store backup data
         cache.set(f"backup_data:{backup['id']}", backup_data, timeout=86400 * 30)
-        
+
         # Update backup record
         update_backup(
             backup["id"],
@@ -287,7 +302,7 @@ def create_backup(
             size_bytes=size,
             checksum=checksum,
         )
-        
+
         # Audit log
         AuditLog.log(
             action="backup.created",
@@ -298,11 +313,11 @@ def create_backup(
             tenant=tenant,
             details={"type": data.type, "size": size},
         )
-        
+
     except Exception as e:
         update_backup(backup["id"], status="failed", error=str(e))
         raise
-    
+
     return BackupOut(
         id=backup["id"],
         type=backup["type"],
@@ -325,34 +340,39 @@ def download_backup(
 ):
     """
     Download a backup file.
-    
+
     🔒 Security: Authorized download
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     backup = get_backup(backup_id)
     if not backup:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Backup not found")
-    
+
     if backup["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(403, "Backup does not belong to this tenant")
-    
+
     backup_data = cache.get(f"backup_data:{backup_id}")
     if not backup_data:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Backup data not found or expired")
-    
+
     response = HttpResponse(
-        json.dumps(backup_data, indent=2),
-        content_type="application/json"
+        json.dumps(backup_data, indent=2), content_type="application/json"
     )
-    response["Content-Disposition"] = f'attachment; filename="backup_{tenant_id}_{backup_id}.json"'
+    response["Content-Disposition"] = (
+        f'attachment; filename="backup_{tenant_id}_{backup_id}.json"'
+    )
     return response
 
 
@@ -366,7 +386,7 @@ def restore_backup(
 ):
     """
     Restore from a backup.
-    
+
     🧪 QA: Restore verification
     🚨 SRE: Recovery operations
     """
@@ -374,37 +394,41 @@ def restore_backup(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     backup = get_backup(data.backup_id)
-    
+
     if not backup:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Backup not found")
-    
+
     if backup["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(403, "Backup does not belong to this tenant")
-    
+
     backup_data = cache.get(f"backup_data:{data.backup_id}")
     if not backup_data:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Backup data not found or expired")
-    
+
     restored = {"users": 0, "webhooks": 0}
     components = data.components or ["users", "webhooks"]
-    
+
     # Restore users
     if "users" in components and "users" in backup_data:
         for user_data in backup_data["users"]:
             existing = TenantUser.objects.filter(
                 tenant=tenant, email=user_data["email"]
             ).first()
-            
+
             if existing and not data.overwrite:
                 continue
-            
+
             if existing:
                 existing.display_name = user_data.get("display_name", "")
                 existing.role = user_data.get("role", "member")
@@ -420,17 +444,17 @@ def restore_backup(
                     is_active=user_data.get("is_active", True),
                 )
             restored["users"] += 1
-    
+
     # Restore webhooks
     if "webhooks" in components and "webhooks" in backup_data:
         for webhook_data in backup_data["webhooks"]:
             existing = Webhook.objects.filter(
                 tenant=tenant, url=webhook_data["url"]
             ).first()
-            
+
             if existing and not data.overwrite:
                 continue
-            
+
             if not existing:
                 Webhook.objects.create(
                     tenant=tenant,
@@ -440,7 +464,7 @@ def restore_backup(
                     is_active=webhook_data.get("is_active", True),
                 )
                 restored["webhooks"] += 1
-    
+
     # Audit log
     AuditLog.log(
         action="backup.restored",
@@ -451,7 +475,7 @@ def restore_backup(
         tenant=tenant,
         details=restored,
     )
-    
+
     return {
         "success": True,
         "backup_id": data.backup_id,
@@ -472,21 +496,24 @@ def delete_backup(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     backup = get_backup(backup_id)
     if not backup:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Backup not found")
-    
+
     if backup["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(403, "Backup does not belong to this tenant")
-    
+
     # Delete backup data and record
     cache.delete(f"backup_data:{backup_id}")
     cache.delete(get_backup_key(backup_id))
-    
+
     return {"success": True, "deleted": backup_id}
 
 
@@ -501,29 +528,30 @@ def get_backup_stats(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     backup_ids = cache.get(get_tenant_backups_key(str(tenant_id)), [])
-    
+
     total_size = 0
     oldest = None
     newest = None
     last_successful = None
-    
+
     for bid in backup_ids:
         backup = get_backup(bid)
         if backup:
             total_size += backup.get("size_bytes", 0)
-            
+
             created = backup["created_at"]
             if oldest is None or created < oldest:
                 oldest = created
             if newest is None or created > newest:
                 newest = created
-            
+
             if backup["status"] == "completed" and last_successful is None:
                 last_successful = created
-    
+
     return BackupStats(
         total_backups=len(backup_ids),
         total_size_bytes=total_size,

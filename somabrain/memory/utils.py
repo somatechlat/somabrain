@@ -16,7 +16,9 @@ if TYPE_CHECKING:
     import httpx
 
 
-def get_tenant_namespace(cfg: Any, override_namespace: str | None = None) -> tuple[str, str]:
+def get_tenant_namespace(
+    cfg: Any, override_namespace: str | None = None
+) -> tuple[str, str]:
     """Resolve tenant and namespace from cfg/settings with hard requirements.
 
     The namespace string may be in format 'base:tenant:namespace' or just 'namespace'.
@@ -36,8 +38,10 @@ def get_tenant_namespace(cfg: Any, override_namespace: str | None = None) -> tup
         tenant = str(tenant).strip()
 
     # Get namespace from override, config, or settings
-    namespace = override_namespace or getattr(cfg, "namespace", None) or getattr(
-        settings, "namespace", "public"
+    namespace = (
+        override_namespace
+        or getattr(cfg, "namespace", None)
+        or getattr(settings, "namespace", "public")
     )
     namespace = str(namespace or "public").strip()
 

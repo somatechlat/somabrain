@@ -17,20 +17,15 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 from uuid import UUID, uuid4
 import time
-import json
 
 from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from django.core.cache import cache
-from django.http import HttpResponse
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, TenantUser, APIKey, AuditLog
+from somabrain.saas.models import Tenant, TenantUser, APIKey
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
 
 
 router = Router(tags=["API Playground"])
@@ -40,12 +35,13 @@ router = Router(tags=["API Playground"])
 # PLAYGROUND STORAGE
 # =============================================================================
 
+
 def get_history_key(user_id: str) -> str:
     """Retrieve history key.
 
-        Args:
-            user_id: The user_id.
-        """
+    Args:
+        user_id: The user_id.
+    """
 
     return f"playground:history:{user_id}"
 
@@ -70,8 +66,10 @@ def get_request_history(user_id: str, limit: int = 20) -> List[dict]:
 # SCHEMAS
 # =============================================================================
 
+
 class PlaygroundRequest(Schema):
     """Playground request."""
+
     method: str
     path: str
     headers: Optional[Dict[str, str]] = None
@@ -81,6 +79,7 @@ class PlaygroundRequest(Schema):
 
 class PlaygroundResponse(Schema):
     """Playground response."""
+
     id: str
     status_code: int
     headers: Dict[str, str]
@@ -91,6 +90,7 @@ class PlaygroundResponse(Schema):
 
 class SavedRequest(Schema):
     """Saved request for snippets."""
+
     id: str
     name: str
     method: str
@@ -102,6 +102,7 @@ class SavedRequest(Schema):
 
 class EndpointDoc(Schema):
     """Endpoint documentation."""
+
     method: str
     path: str
     summary: str
@@ -114,6 +115,7 @@ class EndpointDoc(Schema):
 # PLAYGROUND ENDPOINTS
 # =============================================================================
 
+
 @router.post("/{tenant_id}/execute", response=PlaygroundResponse)
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def execute_request(
@@ -123,18 +125,19 @@ def execute_request(
 ):
     """
     Execute an API request in the playground.
-    
+
     🧪 QA: Real test execution
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     request_id = str(uuid4())
     start_time = time.time()
-    
+
     # Execute real request based on method and path
     response_data = _execute_internal_request(
         tenant_id=str(tenant_id),
@@ -144,9 +147,9 @@ def execute_request(
         body=data.body,
         params=data.params or {},
     )
-    
+
     response_time = int((time.time() - start_time) * 1000)
-    
+
     # Create response
     response = PlaygroundResponse(
         id=request_id,
@@ -156,14 +159,17 @@ def execute_request(
         response_time_ms=response_time,
         timestamp=timezone.now().isoformat(),
     )
-    
+
     # Save to history
-    save_request_history(str(request.user_id), {
-        "id": request_id,
-        "request": data.dict(),
-        "response": response.dict(),
-    })
-    
+    save_request_history(
+        str(request.user_id),
+        {
+            "id": request_id,
+            "request": data.dict(),
+            "response": response.dict(),
+        },
+    )
+
     return response
 
 
@@ -176,7 +182,7 @@ def _execute_internal_request(
     params: Dict[str, str],
 ) -> dict:
     """Execute internal API request with real data."""
-    
+
     # Route to real handlers based on path
     if path.startswith("/api/v1/health"):
         return {
@@ -184,7 +190,7 @@ def _execute_internal_request(
             "headers": {"Content-Type": "application/json"},
             "body": {"status": "healthy", "timestamp": timezone.now().isoformat()},
         }
-    
+
     elif path.startswith("/api/v1/tenants"):
         try:
             tenant = Tenant.objects.get(id=tenant_id)
@@ -204,7 +210,7 @@ def _execute_internal_request(
                 "headers": {"Content-Type": "application/json"},
                 "body": {"error": "Tenant not found"},
             }
-    
+
     elif path.startswith("/api/v1/users"):
         users = TenantUser.objects.filter(tenant_id=tenant_id)[:10]
         return {
@@ -212,13 +218,12 @@ def _execute_internal_request(
             "headers": {"Content-Type": "application/json"},
             "body": {
                 "users": [
-                    {"id": str(u.id), "email": u.email, "role": u.role}
-                    for u in users
+                    {"id": str(u.id), "email": u.email, "role": u.role} for u in users
                 ],
                 "count": users.count(),
             },
         }
-    
+
     elif path.startswith("/api/v1/api-keys"):
         keys = APIKey.objects.filter(tenant_id=tenant_id, is_active=True)[:10]
         return {
@@ -232,7 +237,7 @@ def _execute_internal_request(
                 "count": keys.count(),
             },
         }
-    
+
     else:
         return {
             "status_code": 200,
@@ -245,6 +250,7 @@ def _execute_internal_request(
 # HISTORY ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/history")
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_history(
@@ -254,15 +260,16 @@ def get_history(
 ):
     """
     Get user's request history.
-    
+
     🎨 UX: Request history
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     history = get_request_history(str(request.user_id), limit)
     return {"history": history, "count": len(history)}
 
@@ -278,8 +285,9 @@ def clear_history(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     cache.delete(get_history_key(str(request.user_id)))
     return {"success": True}
 
@@ -287,6 +295,7 @@ def clear_history(
 # =============================================================================
 # SAVED REQUESTS / SNIPPETS
 # =============================================================================
+
 
 @router.get("/{tenant_id}/saved", response=List[SavedRequest])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
@@ -296,15 +305,16 @@ def list_saved_requests(
 ):
     """
     List saved request snippets.
-    
+
     🎨 UX: Saved snippets
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     saved = cache.get(f"playground:saved:{request.user_id}", [])
     return [SavedRequest(**s) for s in saved]
 
@@ -319,15 +329,16 @@ def save_request(
 ):
     """
     Save a request as a snippet.
-    
+
     🎨 UX: Save snippets
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     saved_id = str(uuid4())
     saved_request = {
         "id": saved_id,
@@ -338,12 +349,12 @@ def save_request(
         "body": data.body,
         "created_at": timezone.now().isoformat(),
     }
-    
+
     saved = cache.get(f"playground:saved:{request.user_id}", [])
     saved.insert(0, saved_request)
     saved = saved[:20]  # Keep last 20
     cache.set(f"playground:saved:{request.user_id}", saved, timeout=86400 * 30)
-    
+
     return SavedRequest(**saved_request)
 
 
@@ -359,12 +370,13 @@ def delete_saved_request(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     saved = cache.get(f"playground:saved:{request.user_id}", [])
     saved = [s for s in saved if s["id"] != saved_id]
     cache.set(f"playground:saved:{request.user_id}", saved, timeout=86400 * 30)
-    
+
     return {"success": True, "deleted": saved_id}
 
 
@@ -372,11 +384,12 @@ def delete_saved_request(
 # DOCUMENTATION ENDPOINTS
 # =============================================================================
 
+
 @router.get("/endpoints")
 def list_available_endpoints():
     """
     List available API endpoints for playground.
-    
+
     📚 Technical Writer: Endpoint docs
     """
     return {
@@ -386,7 +399,11 @@ def list_available_endpoints():
             {"method": "GET", "path": "/api/v1/users", "summary": "List users"},
             {"method": "GET", "path": "/api/v1/api-keys", "summary": "List API keys"},
             {"method": "GET", "path": "/api/v1/webhooks", "summary": "List webhooks"},
-            {"method": "GET", "path": "/api/v1/notifications", "summary": "List notifications"},
+            {
+                "method": "GET",
+                "path": "/api/v1/notifications",
+                "summary": "List notifications",
+            },
             {"method": "GET", "path": "/api/v1/audit", "summary": "Audit logs"},
         ]
     }
@@ -396,7 +413,7 @@ def list_available_endpoints():
 def get_request_examples():
     """
     Get example requests.
-    
+
     📚 Technical Writer: Examples
     """
     return {
@@ -419,8 +436,14 @@ def get_request_examples():
                 "name": "Create Webhook",
                 "method": "POST",
                 "path": "/api/v1/webhooks",
-                "headers": {"Authorization": "Bearer {{token}}", "Content-Type": "application/json"},
-                "body": {"url": "https://example.com/webhook", "events": ["user.created"]},
+                "headers": {
+                    "Authorization": "Bearer {{token}}",
+                    "Content-Type": "application/json",
+                },
+                "body": {
+                    "url": "https://example.com/webhook",
+                    "events": ["user.created"],
+                },
             },
         ]
     }

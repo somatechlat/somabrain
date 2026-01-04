@@ -16,8 +16,7 @@ from somabrain import metrics as _m
 
 def snapshot() -> Dict[str, Any]:
     # Build a small mapping of metric name -> {type, value}
-    """Execute snapshot.
-        """
+    """Execute snapshot."""
 
     out: Dict[str, Any] = {}
     # The metrics module exposes objects; we access them directly
@@ -55,9 +54,9 @@ def snapshot() -> Dict[str, Any]:
 def dump(path: str):
     """Execute dump.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     s = snapshot()
     with open(path, "w") as fh:

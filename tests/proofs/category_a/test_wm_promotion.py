@@ -233,10 +233,10 @@ class TestWMLTMPromoter:
             async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
                 """Execute aremember.
 
-                    Args:
-                        key: The key.
-                        payload: The payload.
-                    """
+                Args:
+                    key: The key.
+                    payload: The payload.
+                """
 
                 self._stored[key] = payload
                 return (1.0, 2.0, 3.0)  # Return coordinate
@@ -274,10 +274,10 @@ class TestWMLTMPromoter:
             async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
                 """Execute aremember.
 
-                    Args:
-                        key: The key.
-                        payload: The payload.
-                    """
+                Args:
+                    key: The key.
+                    payload: The payload.
+                """
 
                 self._stored[key] = payload
                 return (1.0, 2.0, 3.0)
@@ -296,8 +296,7 @@ class TestWMLTMPromoter:
 
         async def test_promotion():
             # Promote item
-            """Execute test promotion.
-                """
+            """Execute test promotion."""
 
             result = await promoter.promote(item_id, vector, payload)
             return result
@@ -340,10 +339,10 @@ class TestWMLTMPromoter:
             async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
                 """Execute aremember.
 
-                    Args:
-                        key: The key.
-                        payload: The payload.
-                    """
+                Args:
+                    key: The key.
+                    payload: The payload.
+                """
 
                 self.last_payload = payload
                 return (1.0, 2.0, 3.0)
@@ -359,8 +358,7 @@ class TestWMLTMPromoter:
         payload = {"content": "original content"}
 
         async def test_promotion():
-            """Execute test promotion.
-                """
+            """Execute test promotion."""
 
             await promoter.promote(item_id, vector, payload)
 

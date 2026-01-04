@@ -59,8 +59,7 @@ class TrialResult:
 
 
 def _now_tag() -> str:
-    """Execute now tag.
-        """
+    """Execute now tag."""
 
     return time.strftime("%Y%m%d_%H%M%S", time.gmtime())
 
@@ -68,9 +67,9 @@ def _now_tag() -> str:
 def _ensure_dirs(ts: str) -> Tuple[Path, Path]:
     """Execute ensure dirs.
 
-        Args:
-            ts: The ts.
-        """
+    Args:
+        ts: The ts.
+    """
 
     base = Path("benchmarks")
     res = base / "results" / "diffusion_predictors" / ts
@@ -85,14 +84,14 @@ def _predict(
 ) -> Tuple[NDArray[np.float_], float]:
     """Execute predict.
 
-        Args:
-            method: The method.
-            L: The L.
-            x0: The x0.
-            t: The t.
-            K: The K.
-            m: The m.
-        """
+    Args:
+        method: The method.
+        L: The L.
+        x0: The x0.
+        t: The t.
+        K: The K.
+        m: The m.
+    """
 
     n = L.shape[0]
     cfg = PredictorConfig(diffusion_t=t, chebyshev_K=K, lanczos_m=m)
@@ -110,11 +109,11 @@ def _exact(
 ) -> NDArray[np.float_]:
     """Execute exact.
 
-        Args:
-            L: The L.
-            x0: The x0.
-            t: The t.
-        """
+    Args:
+        L: The L.
+        x0: The x0.
+        t: The t.
+    """
 
     return expm(-t * L) @ x0
 
@@ -122,10 +121,10 @@ def _exact(
 def accuracy_sweep(res_dir: Path, plots_dir: Path) -> Dict[str, List[TrialResult]]:
     """Execute accuracy sweep.
 
-        Args:
-            res_dir: The res_dir.
-            plots_dir: The plots_dir.
-        """
+    Args:
+        res_dir: The res_dir.
+        plots_dir: The plots_dir.
+    """
 
     methods = ["chebyshev", "lanczos"]
     ns = [16, 32]
@@ -181,10 +180,10 @@ def accuracy_sweep(res_dir: Path, plots_dir: Path) -> Dict[str, List[TrialResult
 def runtime_sweep(res_dir: Path, plots_dir: Path) -> List[TrialResult]:
     """Execute runtime sweep.
 
-        Args:
-            res_dir: The res_dir.
-            plots_dir: The plots_dir.
-        """
+    Args:
+        res_dir: The res_dir.
+        plots_dir: The plots_dir.
+    """
 
     ns = [16, 32, 64, 128]
     t = 0.3
@@ -223,10 +222,10 @@ def runtime_sweep(res_dir: Path, plots_dir: Path) -> List[TrialResult]:
 def example_heatmap(res_dir: Path, plots_dir: Path) -> None:
     """Execute example heatmap.
 
-        Args:
-            res_dir: The res_dir.
-            plots_dir: The plots_dir.
-        """
+    Args:
+        res_dir: The res_dir.
+        plots_dir: The plots_dir.
+    """
 
     n = 32
     t = 0.3
@@ -248,8 +247,7 @@ def example_heatmap(res_dir: Path, plots_dir: Path) -> None:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     ts = _now_tag()
     res_dir, plots_dir = _ensure_dirs(ts)

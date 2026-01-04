@@ -17,9 +17,9 @@ OUT = Path(__file__).resolve().parent / "results_stress.json"
 def run_stress(metrics_sink: str | None = None):
     """Execute run stress.
 
-        Args:
-            metrics_sink: The metrics_sink.
-        """
+    Args:
+        metrics_sink: The metrics_sink.
+    """
 
     D_list = [128, 256]
     snr_db_list = [40.0, 20.0, 10.0, 0.0, -10.0, -20.0, -30.0]

@@ -6,7 +6,6 @@ Service management, outbox, quota, and feature flag endpoints.
 
 from __future__ import annotations
 
-import inspect
 import logging
 from typing import Optional
 from xmlrpc.client import Error as XMLRPCError, ServerProxy
@@ -16,11 +15,17 @@ from django.http import HttpRequest
 from ninja.errors import HttpError
 
 from django.conf import settings
-from somabrain import metrics as M, schemas as S
+from somabrain import metrics as M
 from somabrain.schemas import (
-    OutboxListResponse, OutboxEventModel, OutboxReplayRequest, OutboxReplayResponse,
-    QuotaStatus, QuotaListResponse, FeatureFlagsResponse, FeatureFlagsUpdateRequest,
-    FeatureFlagsUpdateResponse
+    OutboxListResponse,
+    OutboxEventModel,
+    OutboxReplayRequest,
+    OutboxReplayResponse,
+    QuotaStatus,
+    QuotaListResponse,
+    FeatureFlagsResponse,
+    FeatureFlagsUpdateRequest,
+    FeatureFlagsUpdateResponse,
 )
 from somabrain.api.auth import admin_auth
 from somabrain.db import outbox as outbox_db
@@ -34,7 +39,7 @@ router = Router(tags=["admin"])
 # Supervisor helpers
 def _get_supervisor_url() -> str:
     """Get the supervisor XML-RPC URL from settings."""
-    url = getattr(settings, 'SUPERVISOR_URL', None)
+    url = getattr(settings, "SUPERVISOR_URL", None)
     if not url:
         user = settings.SUPERVISOR_HTTP_USER
         pwd = settings.SUPERVISOR_HTTP_PASS
@@ -111,7 +116,9 @@ def service_restart(request: HttpRequest, name: str):
         try:
             s.supervisor.stopProcess(name, False)
         except Exception as stop_exc:
-            logger.debug("Stop before restart failed (expected if not running): %s", stop_exc)
+            logger.debug(
+                "Stop before restart failed (expected if not running): %s", stop_exc
+            )
         res = s.supervisor.startProcess(name, False)
         return {"ok": bool(res), "action": "restart", "service": name}
     except XMLRPCError as e:
@@ -144,7 +151,9 @@ def admin_list_outbox(
 
     if status.lower().strip() == "failed":
         for ev in events:
-            tenant_label = (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            tenant_label = (
+                (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            )
             try:
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
             except Exception as metric_exc:
@@ -169,14 +178,16 @@ def admin_replay_outbox(request: HttpRequest, body: OutboxReplayRequest):
         except Exception:
             pass
         raise exc
-    
+
     if count == 0:
         try:
-            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(len(body.event_ids))
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(
+                len(body.event_ids)
+            )
         except Exception:
             pass
         raise HttpError(404, "No matching events to replay")
-    
+
     try:
         M.OUTBOX_REPLAY_TRIGGERED.labels(result="success").inc(count)
     except Exception:
@@ -198,9 +209,11 @@ def admin_list_quotas(
     try:
         quota_manager = QuotaManager(QuotaConfig())
         all_quotas = quota_manager.get_all_quotas()
-        
+
         if tenant_filter and isinstance(tenant_filter, str):
-            all_quotas = [q for q in all_quotas if q.tenant_id.startswith(tenant_filter)]
+            all_quotas = [
+                q for q in all_quotas if q.tenant_id.startswith(tenant_filter)
+            ]
 
         total_count = len(all_quotas)
         paginated_quotas = all_quotas[offset : offset + limit]
@@ -229,8 +242,7 @@ def admin_list_quotas(
 def admin_features_state(request: HttpRequest) -> FeatureFlagsResponse:
     """Return current feature-flag status."""
     return FeatureFlagsResponse(
-        status=FeatureFlags.get_status(), 
-        overrides=FeatureFlags.get_overrides()
+        status=FeatureFlags.get_status(), overrides=FeatureFlags.get_overrides()
     )
 
 

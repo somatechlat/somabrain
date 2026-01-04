@@ -70,8 +70,7 @@ class GlobalFrameCtx:
 
 
 def _bootstrap() -> str:
-    """Execute bootstrap.
-        """
+    """Execute bootstrap."""
 
     url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "") or getattr(
         settings, "kafka_bootstrap", ""
@@ -86,10 +85,10 @@ def _parse_global_frame(
 ) -> Optional[GlobalFrameCtx]:
     """Execute parse global frame.
 
-        Args:
-            raw: The raw.
-            serde: The serde.
-        """
+    Args:
+        raw: The raw.
+        serde: The serde.
+    """
 
     try:
         data: Dict[str, Any]
@@ -126,10 +125,10 @@ def _parse_segment_boundary(
 ) -> Optional[Dict[str, Any]]:
     """Execute parse segment boundary.
 
-        Args:
-            raw: The raw.
-            serde: The serde.
-        """
+    Args:
+        raw: The raw.
+        serde: The serde.
+    """
 
     try:
         if serde is not None:
@@ -179,8 +178,7 @@ class OrchestratorService:
             logger.debug("Health server initialization skipped: %s", e)
 
     def _start_health_server(self) -> None:
-        """Execute start health server.
-            """
+        """Execute start health server."""
 
         try:
             from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -190,8 +188,7 @@ class OrchestratorService:
                 """Handler class implementation."""
 
                 def do_GET(self):
-                    """Execute do GET.
-                        """
+                    """Execute do GET."""
 
                     if self.path not in ("/health", "/healthz", "/ready"):
                         self.send_response(404)
@@ -206,9 +203,9 @@ class OrchestratorService:
                 def log_message(self, format, *args):  # noqa: N802
                     """Execute log message.
 
-                        Args:
-                            format: The format.
-                        """
+                    Args:
+                        format: The format.
+                    """
 
                     return
 
@@ -223,14 +220,14 @@ class OrchestratorService:
     def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
         """Execute remember snapshot.
 
-            Args:
-                tenant: The tenant.
-                boundary: The boundary.
-            """
+        Args:
+            tenant: The tenant.
+            boundary: The boundary.
+        """
 
         gf = self._ctx.get(tenant)
         # Compose a minimal episodic payload for memory
-        key = f"segment:{boundary.get('boundary_ts') or int(time.time()*1000)}"
+        key = f"segment:{boundary.get('boundary_ts') or int(time.time() * 1000)}"
         value: Dict[str, Any] = {
             "memory_type": "episodic",
             "segment": {
@@ -284,8 +281,7 @@ class OrchestratorService:
             )
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
-        """Execute run forever.
-            """
+        """Execute run forever."""
 
         consumer = CKConsumer(
             {
@@ -332,8 +328,7 @@ class OrchestratorService:
 
 
 def main() -> None:  # pragma: no cover - entrypoint
-    """Execute main.
-        """
+    """Execute main."""
 
     if not feature_enabled("orchestrator"):
         import logging

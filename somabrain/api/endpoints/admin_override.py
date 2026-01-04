@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional
-from datetime import datetime, timedelta
 from uuid import UUID
 
 from django.utils import timezone
@@ -28,11 +27,11 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain.saas.models import (
-    Tenant, 
+    Tenant,
     TenantUser,
     SubscriptionTier,
     APIKey,
-    AuditLog, 
+    AuditLog,
     ActorType,
     TenantStatus,
 )
@@ -47,8 +46,10 @@ router = Router(tags=["Admin Override"])
 # SCHEMAS
 # =============================================================================
 
+
 class OverrideResult(Schema):
     """Override operation result."""
+
     success: bool
     action: str
     target_id: str
@@ -59,6 +60,7 @@ class OverrideResult(Schema):
 
 class TenantOverride(Schema):
     """Tenant override data."""
+
     tenant_id: str
     tenant_name: str
     status: str
@@ -69,6 +71,7 @@ class TenantOverride(Schema):
 
 class MaintenanceMode(Schema):
     """Maintenance mode status."""
+
     enabled: bool
     message: str
     started_at: Optional[str]
@@ -78,6 +81,7 @@ class MaintenanceMode(Schema):
 # =============================================================================
 # TENANT OVERRIDE ENDPOINTS
 # =============================================================================
+
 
 @router.post("/tenant/{tenant_id}/suspend")
 @require_auth(roles=["super-admin"])
@@ -89,19 +93,19 @@ def suspend_tenant(
 ):
     """
     Suspend a tenant (super admin).
-    
+
     🔒 Security: Super admin only
-    
+
     REAL database update.
     """
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # REAL suspension
     old_status = tenant.status
     tenant.status = TenantStatus.SUSPENDED
     tenant.suspension_reason = reason
     tenant.save(update_fields=["status", "suspension_reason", "updated_at"])
-    
+
     # Audit log - REAL
     AuditLog.log(
         action="admin.tenant_suspended",
@@ -112,7 +116,7 @@ def suspend_tenant(
         tenant=tenant,
         details={"old_status": old_status, "reason": reason},
     )
-    
+
     return OverrideResult(
         success=True,
         action="suspend",
@@ -132,16 +136,16 @@ def activate_tenant(
 ):
     """
     Activate a suspended tenant.
-    
+
     REAL database update.
     """
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     old_status = tenant.status
     tenant.status = TenantStatus.ACTIVE
     tenant.suspension_reason = None
     tenant.save(update_fields=["status", "suspension_reason", "updated_at"])
-    
+
     # Audit log - REAL
     AuditLog.log(
         action="admin.tenant_activated",
@@ -152,7 +156,7 @@ def activate_tenant(
         tenant=tenant,
         details={"old_status": old_status},
     )
-    
+
     return OverrideResult(
         success=True,
         action="activate",
@@ -173,18 +177,18 @@ def change_tenant_tier(
 ):
     """
     Change tenant subscription tier.
-    
+
     REAL tier change.
     """
     tenant = get_object_or_404(Tenant, id=tenant_id)
     new_tier = get_object_or_404(SubscriptionTier, slug=tier_slug, is_active=True)
-    
+
     old_tier = tenant.subscription_tier
     old_tier_name = old_tier.name if old_tier else "None"
-    
+
     tenant.subscription_tier = new_tier
     tenant.save(update_fields=["subscription_tier", "updated_at"])
-    
+
     # Audit log - REAL
     AuditLog.log(
         action="admin.tier_changed",
@@ -195,7 +199,7 @@ def change_tenant_tier(
         tenant=tenant,
         details={"old_tier": old_tier_name, "new_tier": new_tier.name},
     )
-    
+
     return OverrideResult(
         success=True,
         action="change_tier",
@@ -216,17 +220,17 @@ def delete_tenant(
 ):
     """
     Delete a tenant permanently.
-    
+
     🔒 Security: Requires confirmation
-    
+
     REAL deletion with cascade.
     """
     if not confirm:
         raise HttpError(400, "Confirmation required: set confirm=true")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     tenant_name = tenant.name
-    
+
     # Audit log BEFORE deletion
     AuditLog.log(
         action="admin.tenant_deleted",
@@ -236,7 +240,7 @@ def delete_tenant(
         actor_type=ActorType.ADMIN,
         details={"tenant_name": tenant_name},
     )
-    
+
     # REAL deletion
     with transaction.atomic():
         # Delete related users first
@@ -245,7 +249,7 @@ def delete_tenant(
         APIKey.objects.filter(tenant_id=tenant_id).delete()
         # Delete tenant
         tenant.delete()
-    
+
     return OverrideResult(
         success=True,
         action="delete",
@@ -260,6 +264,7 @@ def delete_tenant(
 # USER OVERRIDE ENDPOINTS
 # =============================================================================
 
+
 @router.post("/user/{user_id}/disable")
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
@@ -270,10 +275,10 @@ def disable_user(
 ):
     """Disable a user account."""
     user = get_object_or_404(TenantUser, id=user_id)
-    
+
     user.is_active = False
     user.save(update_fields=["is_active", "updated_at"])
-    
+
     # Audit log - REAL
     AuditLog.log(
         action="admin.user_disabled",
@@ -284,7 +289,7 @@ def disable_user(
         tenant=user.tenant,
         details={"email": user.email, "reason": reason},
     )
-    
+
     return OverrideResult(
         success=True,
         action="disable",
@@ -304,10 +309,10 @@ def enable_user(
 ):
     """Enable a disabled user account."""
     user = get_object_or_404(TenantUser, id=user_id)
-    
+
     user.is_active = True
     user.save(update_fields=["is_active", "updated_at"])
-    
+
     # Audit log - REAL
     AuditLog.log(
         action="admin.user_enabled",
@@ -318,7 +323,7 @@ def enable_user(
         tenant=user.tenant,
         details={"email": user.email},
     )
-    
+
     return OverrideResult(
         success=True,
         action="enable",
@@ -333,6 +338,7 @@ def enable_user(
 # SYSTEM OVERRIDE ENDPOINTS
 # =============================================================================
 
+
 @router.post("/revoke-all-api-keys/{tenant_id}")
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
@@ -342,19 +348,18 @@ def revoke_all_api_keys(
 ):
     """
     Revoke all API keys for a tenant.
-    
+
     🔒 Security: Emergency key revocation
-    
+
     REAL bulk update.
     """
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # REAL bulk update
-    count = APIKey.objects.filter(
-        tenant_id=tenant_id,
-        is_active=True
-    ).update(is_active=False, updated_at=timezone.now())
-    
+    count = APIKey.objects.filter(tenant_id=tenant_id, is_active=True).update(
+        is_active=False, updated_at=timezone.now()
+    )
+
     # Audit log - REAL
     AuditLog.log(
         action="admin.api_keys_revoked",
@@ -365,7 +370,7 @@ def revoke_all_api_keys(
         tenant=tenant,
         details={"revoked_count": count},
     )
-    
+
     return OverrideResult(
         success=True,
         action="revoke_api_keys",
@@ -385,16 +390,16 @@ def list_all_tenants(
 ):
     """
     List all tenants (admin view).
-    
+
     REAL tenant data.
     """
     queryset = Tenant.objects.all()
-    
+
     if status:
         queryset = queryset.filter(status=status)
-    
+
     tenants = queryset.order_by("-created_at")[:limit]
-    
+
     return [
         TenantOverride(
             tenant_id=str(t.id),
@@ -417,15 +422,15 @@ def get_admin_audit_log(
 ):
     """
     Get admin override audit log.
-    
+
     🚨 SRE: Override auditing
-    
+
     REAL audit log data.
     """
-    logs = AuditLog.objects.filter(
-        action__startswith="admin."
-    ).order_by("-timestamp")[:limit]
-    
+    logs = AuditLog.objects.filter(action__startswith="admin.").order_by("-timestamp")[
+        :limit
+    ]
+
     return {
         "logs": [
             {

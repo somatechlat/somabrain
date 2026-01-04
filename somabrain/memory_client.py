@@ -48,7 +48,9 @@ from somabrain.memory.hybrid import (
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
 debug_memory_client = (
-    bool(getattr(settings, "SOMABRAIN_DEBUG_MEMORY_CLIENT", False)) if settings else False
+    bool(getattr(settings, "SOMABRAIN_DEBUG_MEMORY_CLIENT", False))
+    if settings
+    else False
 )
 if debug_memory_client and not logger.handlers:
     h = logging.StreamHandler()
@@ -100,8 +102,7 @@ class MemoryClient:
         self._transport = self._create_transport()
 
     def _init_local(self) -> None:
-        """Execute init local.
-            """
+        """Execute init local."""
 
         return
 
@@ -110,24 +111,21 @@ class MemoryClient:
         return create_memory_transport(self.cfg, logger)
 
     def _get_http_client(self) -> Optional[httpx.Client]:
-        """Execute get http client.
-            """
+        """Execute get http client."""
 
         if self._transport is None:
             return None
         return self._transport.client
 
     def _get_http_async_client(self) -> Optional[httpx.AsyncClient]:
-        """Execute get http async client.
-            """
+        """Execute get http async client."""
 
         if self._transport is None:
             return None
         return self._transport.async_client
 
     def _init_redis(self) -> None:
-        """Execute init redis.
-            """
+        """Execute init redis."""
 
         return
 
@@ -153,11 +151,11 @@ class MemoryClient:
     ) -> tuple[bool, int, Any]:
         """Execute http post with retries sync.
 
-            Args:
-                endpoint: The endpoint.
-                body: The body.
-                headers: The headers.
-            """
+        Args:
+            endpoint: The endpoint.
+            body: The body.
+            headers: The headers.
+        """
 
         from somabrain.memory.http_helpers import http_post_with_retries_sync
 
@@ -182,11 +180,11 @@ class MemoryClient:
     ) -> tuple[bool, int, Any]:
         """Execute http post with retries async.
 
-            Args:
-                endpoint: The endpoint.
-                body: The body.
-                headers: The headers.
-            """
+        Args:
+            endpoint: The endpoint.
+            body: The body.
+            headers: The headers.
+        """
 
         from somabrain.memory.http_helpers import http_post_with_retries_async
 
@@ -203,10 +201,10 @@ class MemoryClient:
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         """Execute store http sync.
 
-            Args:
-                body: The body.
-                headers: The headers.
-            """
+        Args:
+            body: The body.
+            headers: The headers.
+        """
 
         from somabrain.memory.http_helpers import store_http_sync
 
@@ -217,10 +215,10 @@ class MemoryClient:
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
         """Execute store http async.
 
-            Args:
-                body: The body.
-                headers: The headers.
-            """
+        Args:
+            body: The body.
+            headers: The headers.
+        """
 
         from somabrain.memory.http_helpers import store_http_async
 
@@ -233,10 +231,10 @@ class MemoryClient:
     ) -> tuple[bool, int, Any]:
         """Execute store bulk http sync.
 
-            Args:
-                batch_request: The batch_request.
-                headers: The headers.
-            """
+        Args:
+            batch_request: The batch_request.
+            headers: The headers.
+        """
 
         from somabrain.memory.http_helpers import store_bulk_http_sync
 
@@ -249,10 +247,10 @@ class MemoryClient:
     ) -> tuple[bool, int, Any]:
         """Execute store bulk http async.
 
-            Args:
-                batch_request: The batch_request.
-                headers: The headers.
-            """
+        Args:
+            batch_request: The batch_request.
+            headers: The headers.
+        """
 
         from somabrain.memory.http_helpers import store_bulk_http_async
 
@@ -273,12 +271,12 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Execute memories search sync.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-                universe: The universe.
-                request_id: The request_id.
-            """
+        Args:
+            query: The query.
+            top_k: The top_k.
+            universe: The universe.
+            request_id: The request_id.
+        """
 
         from somabrain.memory.recall_ops import memories_search_sync
 
@@ -303,12 +301,12 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Execute memories search async.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-                universe: The universe.
-                request_id: The request_id.
-            """
+        Args:
+            query: The query.
+            top_k: The top_k.
+            universe: The universe.
+            request_id: The request_id.
+        """
 
         from somabrain.memory.recall_ops import memories_search_async
 
@@ -330,12 +328,12 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Execute http recall aggregate sync.
 
-            Args:
-                q: The q.
-                k: The k.
-                u: The u.
-                r: The r.
-            """
+        Args:
+            q: The q.
+            k: The k.
+            u: The u.
+            r: The r.
+        """
 
         return self._memories_search_sync(q, k, u, r)
 
@@ -344,12 +342,12 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Execute http recall aggregate async.
 
-            Args:
-                q: The q.
-                k: The k.
-                u: The u.
-                r: The r.
-            """
+        Args:
+            q: The q.
+            k: The k.
+            u: The u.
+            r: The r.
+        """
 
         return self._memories_search_async(q, k, u, r)
 
@@ -358,10 +356,10 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Execute filter hits by keyword.
 
-            Args:
-                hits: The hits.
-                keyword: The keyword.
-            """
+        Args:
+            hits: The hits.
+            keyword: The keyword.
+        """
 
         from somabrain.memory.recall_ops import filter_hits_by_keyword
 
@@ -369,14 +367,12 @@ class MemoryClient:
 
     # Scoring/recency helpers
     def _recency_normalisation(self) -> tuple[float, float]:
-        """Execute recency normalisation.
-            """
+        """Execute recency normalisation."""
 
         return get_recency_normalisation(self.cfg)
 
     def _recency_profile(self) -> tuple[float, float, float, float]:
-        """Execute recency profile.
-            """
+        """Execute recency profile."""
 
         return get_recency_profile(self.cfg)
 
@@ -385,19 +381,19 @@ class MemoryClient:
     ) -> tuple[float | None, float]:
         """Execute recency features.
 
-            Args:
-                ts_epoch: The ts_epoch.
-                now_ts: The now_ts.
-            """
+        Args:
+            ts_epoch: The ts_epoch.
+            now_ts: The now_ts.
+        """
 
         return compute_recency_features(ts_epoch, now_ts, self.cfg)
 
     def _density_factor(self, margin: float | None) -> float:
         """Execute density factor.
 
-            Args:
-                margin: The margin.
-            """
+        Args:
+            margin: The margin.
+        """
 
         return compute_density_factor(margin, self.cfg)
 
@@ -406,10 +402,10 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Execute rescore and rank hits.
 
-            Args:
-                hits: The hits.
-                query: The query.
-            """
+        Args:
+            hits: The hits.
+            query: The query.
+        """
 
         return rescore_and_rank_hits(
             hits, query, self.cfg, self._scorer, self._embedder
@@ -420,33 +416,34 @@ class MemoryClient:
     ) -> tuple[dict, str, dict]:
         """Execute compat enrich payload.
 
-            Args:
-                payload: The payload.
-                coord_key: The coord_key.
-            """
+        Args:
+            payload: The payload.
+            coord_key: The coord_key.
+        """
 
         tenant, namespace = self._tenant_namespace()
         return enrich_payload(payload, coord_key, namespace, tenant=tenant)
 
     def _tenant_namespace(self) -> tuple[str, str]:
-        """Execute tenant namespace.
-            """
+        """Execute tenant namespace."""
 
         from somabrain.memory.utils import get_tenant_namespace
 
-        return get_tenant_namespace(self.cfg, override_namespace=self._namespace_override)
+        return get_tenant_namespace(
+            self.cfg, override_namespace=self._namespace_override
+        )
 
     def _record_http_metrics(
         self, operation: str, success: bool, status: int, duration: float
     ) -> None:
         """Execute record http metrics.
 
-            Args:
-                operation: The operation.
-                success: The success.
-                status: The status.
-                duration: The duration.
-            """
+        Args:
+            operation: The operation.
+            success: The success.
+            status: The status.
+            duration: The duration.
+        """
 
         from somabrain.memory.http_helpers import record_http_metrics
 
@@ -482,7 +479,9 @@ class MemoryClient:
 
         # Check fast-ack mode for sync callers
         fast_ack = (
-            bool(getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK", False)) if settings else False
+            bool(getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK", False))
+            if settings
+            else False
         )
         if fast_ack:
             try:

@@ -119,8 +119,7 @@ class SegmentationService:
         )
 
     def _create_consumer(self) -> CKConsumer:
-        """Execute create consumer.
-            """
+        """Execute create consumer."""
 
         cfg = {
             "bootstrap.servers": self.bootstrap,
@@ -135,9 +134,9 @@ class SegmentationService:
     def _gradient_boundaries(self, values: List[float]) -> List[int]:
         """Execute gradient boundaries.
 
-            Args:
-                values: The values.
-            """
+        Args:
+            values: The values.
+        """
 
         if len(values) < 2:
             return []
@@ -149,9 +148,9 @@ class SegmentationService:
     def _run_hmm(self, values: List[float]) -> List[int]:
         """Execute run hmm.
 
-            Args:
-                values: The values.
-            """
+        Args:
+            values: The values.
+        """
 
         if not values:
             return []
@@ -170,16 +169,13 @@ class SegmentationService:
         return detect_boundaries(probs, threshold=thresh)
 
     def _serve_health(self) -> None:
-
-        """Execute serve health.
-            """
+        """Execute serve health."""
 
         class _Handler(BaseHTTPRequestHandler):
             """Handler class implementation."""
 
             def do_GET(self):
-                """Execute do GET.
-                    """
+                """Execute do GET."""
 
                 if self.path not in ("/health", "/healthz", "/ready"):
                     self.send_response(404)
@@ -194,9 +190,9 @@ class SegmentationService:
             def log_message(self, format, *args):  # noqa: N802
                 """Execute log message.
 
-                    Args:
-                        format: The format.
-                    """
+                Args:
+                    format: The format.
+                """
 
                 return
 
@@ -207,8 +203,7 @@ class SegmentationService:
             raise RuntimeError(f"Segmentation health server failed: {exc}") from exc
 
     def run(self) -> None:  # pragma: no cover (I/O loop)
-        """Execute run.
-            """
+        """Execute run."""
 
         logger.info("SegmentationService consuming %s", CONSUME_TOPIC)
         try:

@@ -17,8 +17,8 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Rate limit configuration
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from typing import List
+from datetime import timedelta
 from uuid import UUID
 
 from django.utils import timezone
@@ -28,11 +28,9 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain.saas.models import (
-    Tenant, 
-    TenantUser,
+    Tenant,
     SubscriptionTier,
-    APIKey,
-    AuditLog, 
+    AuditLog,
     ActorType,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
@@ -45,6 +43,7 @@ router = Router(tags=["Rate Limits"])
 # =============================================================================
 # RATE LIMIT STORAGE (Real Django Cache)
 # =============================================================================
+
 
 def get_rate_key(tenant_id: str, endpoint: str, window: str) -> str:
     """Generate rate limit key for REAL cache."""
@@ -81,8 +80,10 @@ def get_tenant_limit(tenant_id: str) -> int:
 # SCHEMAS
 # =============================================================================
 
+
 class RateLimitStatus(Schema):
     """Current rate limit status."""
+
     tenant_id: str
     limit: int
     remaining: int
@@ -93,6 +94,7 @@ class RateLimitStatus(Schema):
 
 class RateLimitEndpoint(Schema):
     """Per-endpoint rate limit."""
+
     endpoint: str
     method: str
     limit: int
@@ -102,6 +104,7 @@ class RateLimitEndpoint(Schema):
 
 class RateLimitViolation(Schema):
     """Rate limit violation record."""
+
     id: str
     tenant_id: str
     endpoint: str
@@ -113,6 +116,7 @@ class RateLimitViolation(Schema):
 
 class RateLimitConfig(Schema):
     """Rate limit configuration."""
+
     tier_name: str
     requests_per_minute: int
     requests_per_hour: int
@@ -124,6 +128,7 @@ class RateLimitConfig(Schema):
 # RATE LIMIT STATUS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/status", response=RateLimitStatus)
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_rate_limit_status(
@@ -132,29 +137,29 @@ def get_rate_limit_status(
 ):
     """
     Get current rate limit status for tenant.
-    
+
     📊 Performance: REAL cache counters
-    
+
     REAL data from Django cache.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Get REAL limit from subscription tier
     limit = get_tenant_limit(str(tenant_id))
-    
+
     # Get REAL current count from cache
     used = get_current_count(str(tenant_id))
-    
+
     remaining = max(0, limit - used)
     percentage = (used / limit * 100) if limit > 0 else 0
-    
+
     # Calculate reset time (next minute)
     now = timezone.now()
     reset_at = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
-    
+
     return RateLimitStatus(
         tenant_id=str(tenant_id),
         limit=limit,
@@ -173,18 +178,18 @@ def get_endpoint_limits(
 ):
     """
     Get per-endpoint rate limit usage.
-    
+
     📊 Performance: Endpoint-level metrics
-    
+
     REAL cache data.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     limit = get_tenant_limit(str(tenant_id))
-    
+
     # Common endpoints
     endpoints = [
         ("GET", "/api/v1/memories"),
@@ -193,20 +198,22 @@ def get_endpoint_limits(
         ("POST", "/api/v1/search"),
         ("GET", "/api/v1/analytics"),
     ]
-    
+
     result = []
     for method, path in endpoints:
         endpoint_key = f"{method}:{path}"
         used = get_current_count(str(tenant_id), endpoint_key)
-        
-        result.append(RateLimitEndpoint(
-            endpoint=path,
-            method=method,
-            limit=limit,
-            used=used,
-            remaining=max(0, limit - used),
-        ))
-    
+
+        result.append(
+            RateLimitEndpoint(
+                endpoint=path,
+                method=method,
+                limit=limit,
+                used=used,
+                remaining=max(0, limit - used),
+            )
+        )
+
     return result
 
 
@@ -218,24 +225,24 @@ def get_rate_limit_config(
 ):
     """
     Get rate limit configuration for tenant.
-    
+
     🔒 Security: Tier-based limits
-    
+
     REAL tier data.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     tier = tenant.subscription_tier
-    
+
     if not tier:
         raise HttpError(503, "No subscription tier configured")
-    
+
     rpm = tier.rate_limit_rpm or 100
-    
+
     return RateLimitConfig(
         tier_name=tier.name,
         requests_per_minute=rpm,
@@ -249,6 +256,7 @@ def get_rate_limit_config(
 # VIOLATIONS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/violations", response=List[RateLimitViolation])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_rate_limit_violations(
@@ -258,22 +266,22 @@ def list_rate_limit_violations(
 ):
     """
     List recent rate limit violations.
-    
+
     🚨 SRE: Violation monitoring
-    
+
     REAL audit log data.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Get REAL violations from audit log
     violations = AuditLog.objects.filter(
         tenant_id=tenant_id,
         action="rate_limit.exceeded",
     ).order_by("-timestamp")[:limit]
-    
+
     return [
         RateLimitViolation(
             id=str(v.id),
@@ -297,23 +305,23 @@ def count_violations(
 ):
     """
     Count rate limit violations.
-    
+
     📊 Performance: REAL counts
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     since = timezone.now() - timedelta(days=days)
-    
+
     # REAL count from database
     count = AuditLog.objects.filter(
         tenant_id=tenant_id,
         action="rate_limit.exceeded",
         timestamp__gte=since,
     ).count()
-    
+
     return {
         "tenant_id": str(tenant_id),
         "violations": count,
@@ -325,21 +333,22 @@ def count_violations(
 # ADMIN ENDPOINTS
 # =============================================================================
 
+
 @router.get("/admin/thresholds")
 @require_auth(roles=["super-admin"])
 def list_tier_thresholds(request: AuthenticatedRequest):
     """
     List rate limits by tier (admin).
-    
+
     🛠️ DevOps: Tier configuration
-    
+
     REAL tier data.
     """
     tiers = SubscriptionTier.objects.filter(is_active=True).order_by("display_order")
-    
+
     if not tiers.exists():
         raise HttpError(503, "No subscription tiers configured")
-    
+
     return {
         "tiers": [
             {
@@ -363,30 +372,34 @@ def get_top_consumers(
 ):
     """
     Get top API consumers (admin).
-    
+
     📊 Performance: Platform-wide metrics
-    
+
     REAL data from cache and database.
     """
     # Get all active tenants - REAL
     tenants = Tenant.objects.filter(status="active")[:50]
-    
+
     consumers = []
     for tenant in tenants:
         used = get_current_count(str(tenant.id))
         tier_limit = get_tenant_limit(str(tenant.id))
-        
-        consumers.append({
-            "tenant_id": str(tenant.id),
-            "tenant_name": tenant.name,
-            "requests_minute": used,
-            "limit": tier_limit,
-            "usage_percent": round((used / tier_limit * 100), 2) if tier_limit > 0 else 0,
-        })
-    
+
+        consumers.append(
+            {
+                "tenant_id": str(tenant.id),
+                "tenant_name": tenant.name,
+                "requests_minute": used,
+                "limit": tier_limit,
+                "usage_percent": round((used / tier_limit * 100), 2)
+                if tier_limit > 0
+                else 0,
+            }
+        )
+
     # Sort by usage
     consumers.sort(key=lambda x: x["requests_minute"], reverse=True)
-    
+
     return {"consumers": consumers[:limit]}
 
 
@@ -399,17 +412,17 @@ def reset_rate_limit(
 ):
     """
     Reset rate limit counter for tenant (admin).
-    
+
     🛠️ DevOps: Manual reset
-    
+
     REAL cache update.
     """
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # Clear REAL cache counters
     minute_key = get_rate_key(str(tenant_id), "global", "minute")
     cache.delete(minute_key)
-    
+
     # Audit log - REAL
     AuditLog.log(
         action="rate_limit.reset",
@@ -419,5 +432,5 @@ def reset_rate_limit(
         actor_type=ActorType.ADMIN,
         tenant=tenant,
     )
-    
+
     return {"success": True, "tenant_id": str(tenant_id)}

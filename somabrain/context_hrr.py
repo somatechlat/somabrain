@@ -36,16 +36,14 @@ class CleanupResult:
     second_score: float
 
     def __iter__(self):  # allow tuple unpacking for legacy callers
-        """Execute iter  .
-            """
+        """Execute iter  ."""
 
         yield self.best_id
         yield self.best_score
 
     @property
     def margin(self) -> float:
-        """Execute margin.
-            """
+        """Execute margin."""
 
         return max(0.0, float(self.best_score) - float(self.second_score))
 
@@ -106,8 +104,7 @@ class HRRContext:
         self._context_timestamp = target_time
 
     def _record_state_metrics(self) -> None:
-        """Execute record state metrics.
-            """
+        """Execute record state metrics."""
 
         anchor_count = len(self._anchors)
         capacity = (
@@ -132,9 +129,9 @@ class HRRContext:
     def _normalize(self, vec: np.ndarray) -> np.ndarray:
         """Execute normalize.
 
-            Args:
-                vec: The vec.
-            """
+        Args:
+            vec: The vec.
+        """
 
         from somabrain.math import normalize_vector
 
@@ -169,9 +166,9 @@ class HRRContext:
     def novelty(self, vec: np.ndarray) -> float:
         """Execute novelty.
 
-            Args:
-                vec: The vec.
-            """
+        Args:
+            vec: The vec.
+        """
 
         self._apply_decay(self._now())
         return max(0.0, 1.0 - self.q.cosine(vec, self.context))
@@ -179,10 +176,10 @@ class HRRContext:
     def _evaluate_cleanup(self, query_vec: np.ndarray, now: float) -> CleanupResult:
         """Execute evaluate cleanup.
 
-            Args:
-                query_vec: The query_vec.
-                now: The now.
-            """
+        Args:
+            query_vec: The query_vec.
+            now: The now.
+        """
 
         best_id = ""
         best_score = -1.0
@@ -214,9 +211,9 @@ class HRRContext:
     def analyze(self, query: np.ndarray) -> CleanupResult:
         """Execute analyze.
 
-            Args:
-                query: The query.
-            """
+        Args:
+            query: The query.
+        """
 
         now = self._now()
         self._apply_decay(now)
@@ -233,9 +230,9 @@ class HRRContext:
     def cleanup(self, query: np.ndarray) -> Tuple[str, float]:
         """Execute cleanup.
 
-            Args:
-                query: The query.
-            """
+        Args:
+            query: The query.
+        """
 
         result = self.analyze(query)
         if result.best_score < self._min_confidence:

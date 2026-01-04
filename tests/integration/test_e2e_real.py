@@ -92,9 +92,9 @@ class TestE2EHealth:
 
             # Verify response structure - actual API uses 'components' not 'backends'
             # and may not have 'status' at top level
-            assert (
-                "components" in data or "backends" in data or "healthy" in data
-            ), "Health response missing expected structure"
+            assert "components" in data or "backends" in data or "healthy" in data, (
+                "Health response missing expected structure"
+            )
 
             # If components present, verify structure
             if "components" in data:
@@ -102,9 +102,9 @@ class TestE2EHealth:
                 # Memory component should be present
                 if "memory" in components:
                     memory = components["memory"]
-                    assert "healthy" in memory or isinstance(
-                        memory, dict
-                    ), "Memory component should have health info"
+                    assert "healthy" in memory or isinstance(memory, dict), (
+                        "Memory component should have health info"
+                    )
 
     def test_healthz_endpoint_returns_ok(self) -> None:
         """Verify /healthz endpoint returns OK."""
@@ -180,9 +180,9 @@ class TestE2EMemoryFlow:
                 )
 
             remember_data = remember_resp.json()
-            assert (
-                "coord" in remember_data or "coordinate" in remember_data
-            ), "Remember response missing coordinate"
+            assert "coord" in remember_data or "coordinate" in remember_data, (
+                "Remember response missing coordinate"
+            )
 
             # Step 2: Recall
             recall_resp = client.post(
@@ -194,13 +194,15 @@ class TestE2EMemoryFlow:
                 },
             )
 
-            assert (
-                recall_resp.status_code == 200
-            ), f"Recall failed: {recall_resp.status_code}"
+            assert recall_resp.status_code == 200, (
+                f"Recall failed: {recall_resp.status_code}"
+            )
 
             recall_data = recall_resp.json()
             assert (
-                "results" in recall_data or "wm_hits" in recall_data or "ltm_hits" in recall_data
+                "results" in recall_data
+                or "wm_hits" in recall_data
+                or "ltm_hits" in recall_data
             ), "Recall response missing memory results"
 
     def test_recall_with_empty_query(self) -> None:
@@ -229,9 +231,9 @@ class TestE2EMemoryFlow:
             # If 200, verify response structure
             if resp.status_code == 200:
                 data = resp.json()
-                assert (
-                    "results" in data or "wm_hits" in data or "ltm_hits" in data
-                ), "Recall response missing expected fields"
+                assert "results" in data or "wm_hits" in data or "ltm_hits" in data, (
+                    "Recall response missing expected fields"
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -257,9 +259,9 @@ class TestE2ENeuromodulators:
                 headers=_get_test_headers(),
             )
 
-            assert (
-                resp.status_code == 200
-            ), f"Get neuromodulators failed: {resp.status_code}"
+            assert resp.status_code == 200, (
+                f"Get neuromodulators failed: {resp.status_code}"
+            )
 
             data = resp.json()
 
@@ -372,9 +374,9 @@ class TestE2EMetrics:
             content = resp.text
 
             # Should contain some standard metrics
-            assert (
-                "# HELP" in content or "# TYPE" in content or "_total" in content
-            ), "Metrics response doesn't look like Prometheus format"
+            assert "# HELP" in content or "# TYPE" in content or "_total" in content, (
+                "Metrics response doesn't look like Prometheus format"
+            )
 
 
 # ---------------------------------------------------------------------------

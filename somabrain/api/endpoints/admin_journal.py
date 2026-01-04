@@ -12,8 +12,6 @@ from ninja import Router
 from django.http import HttpRequest
 from ninja.errors import HttpError
 
-from django.conf import settings
-from django.conf import settings
 from somabrain.schemas import JournalReplayRequest
 from somabrain.api.auth import admin_auth
 from somabrain.db import outbox_journal
@@ -66,9 +64,9 @@ def replay_journal_events(
             event_ids=body.event_ids if hasattr(body, "event_ids") else [],
             tenant_id=body.tenant_id if hasattr(body, "tenant_id") else None,
         )
-        
+
         logger.info(f"Replayed {count} journal events")
-        
+
         return {
             "replayed": count,
             "success": True,
@@ -88,9 +86,11 @@ def cleanup_journal(
         deleted_count = outbox_journal.cleanup_old_journal_events(
             older_than_days=older_than_days
         )
-        
-        logger.info(f"Cleaned up {deleted_count} old journal events (older than {older_than_days} days)")
-        
+
+        logger.info(
+            f"Cleaned up {deleted_count} old journal events (older than {older_than_days} days)"
+        )
+
         return {
             "deleted": deleted_count,
             "success": True,

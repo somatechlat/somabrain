@@ -23,9 +23,9 @@ import asyncio
 async def _run_async(iterations: int):
     """Execute run async.
 
-        Args:
-            iterations: The iterations.
-        """
+    Args:
+        iterations: The iterations.
+    """
 
     req = RetrievalRequest(query="benchmark test", top_k=10)
 
@@ -50,9 +50,9 @@ async def _run_async(iterations: int):
 def run(iterations: int):
     """Execute run.
 
-        Args:
-            iterations: The iterations.
-        """
+    Args:
+        iterations: The iterations.
+    """
 
     asyncio.run(_run_async(iterations))
 

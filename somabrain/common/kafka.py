@@ -46,10 +46,10 @@ class _KafkaProducerAdapter:
     def send(self, topic: str, value: bytes):  # mimic kafka-python
         """Execute send.
 
-            Args:
-                topic: The topic.
-                value: The value.
-            """
+        Args:
+            topic: The topic.
+            value: The value.
+        """
 
         if isinstance(value, (bytes, bytearray)):
             payload = value
@@ -65,9 +65,9 @@ class _KafkaProducerAdapter:
             def get(self, timeout: float | int = 5):
                 """Execute get.
 
-                    Args:
-                        timeout: The timeout.
-                    """
+                Args:
+                    timeout: The timeout.
+                """
 
                 remaining = ck.flush(timeout)
                 if remaining != 0:
@@ -80,15 +80,14 @@ class _KafkaProducerAdapter:
     def flush(self, timeout: float | int = 5):
         """Execute flush.
 
-            Args:
-                timeout: The timeout.
-            """
+        Args:
+            timeout: The timeout.
+        """
 
         return self._ck.flush(timeout)
 
     def close(self):
-        """Execute close.
-            """
+        """Execute close."""
 
         try:
             self._ck.flush(5)
@@ -98,8 +97,7 @@ class _KafkaProducerAdapter:
 
 def make_producer() -> _KafkaProducerAdapter:  # pragma: no cover - integration path
     # Strict: no disable flag pathway; Kafka must be reachable.
-    """Execute make producer.
-        """
+    """Execute make producer."""
 
     ck = CKProducer({"bootstrap.servers": _bootstrap_url(), "compression.type": "none"})
     return _KafkaProducerAdapter(ck)

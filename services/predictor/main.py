@@ -90,11 +90,11 @@ DOMAIN_CONFIG = {
 def _calibrated(domain: str, tenant: str, confidence: float) -> float:
     """Execute calibrated.
 
-        Args:
-            domain: The domain.
-            tenant: The tenant.
-            confidence: The confidence.
-        """
+    Args:
+        domain: The domain.
+        tenant: The tenant.
+        confidence: The confidence.
+    """
 
     if _calib is None:
         return confidence
@@ -111,8 +111,8 @@ def _get_runtime():
     """Load the runtime configuration.
 
     In production environments the ``somabrain.runtime_config`` module must be
-    importable. The predictor enforces strict external-backend usage 
-    (see ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS``). A clear ``RuntimeError`` 
+    importable. The predictor enforces strict external-backend usage
+    (see ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS``). A clear ``RuntimeError``
     is raised if the import fails, preventing silent fallback to default values.
     """
     try:
@@ -127,8 +127,7 @@ def _get_runtime():
 
 
 def _metrics_handles():  # pragma: no cover
-    """Execute metrics handles.
-        """
+    """Execute metrics handles."""
 
     if _metrics is None:
         return {}, None, None
@@ -152,7 +151,7 @@ def _metrics_handles():  # pragma: no cover
 
 def run_forever() -> None:  # pragma: no cover
     """Run the predictor loop forever.
-    
+
     This function initializes tracing and runs the prediction loop.
     Health checks are provided via Django's built-in health endpoints
     (see somabrain/api/endpoints/health.py).

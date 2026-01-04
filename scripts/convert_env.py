@@ -135,9 +135,9 @@ def replace_getenv_calls(content: str) -> str:
     def repl(match: re.Match) -> str:
         """Execute repl.
 
-            Args:
-                match: The match.
-            """
+        Args:
+            match: The match.
+        """
 
         env_name = match.group(1)
         attr = ENV_TO_ATTR.get(env_name)
@@ -163,8 +163,7 @@ def process_file(path: pathlib.Path) -> bool:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     repo_root = pathlib.Path(__file__).resolve().parent.parent
     py_files: List[pathlib.Path] = list(repo_root.rglob("*.py"))

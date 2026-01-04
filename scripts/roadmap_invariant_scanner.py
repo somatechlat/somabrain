@@ -35,8 +35,7 @@ class RoadmapInvariantScanner:
         self.violations: List[Tuple[str, int, str, str]] = []
 
     def scan(self) -> List[Tuple[str, int, str, str]]:
-        """Execute scan.
-            """
+        """Execute scan."""
 
         for file_path in self.root_path.rglob("*.py"):
             if not self._in_scope(file_path):
@@ -59,18 +58,18 @@ class RoadmapInvariantScanner:
     def _in_scope(self, file_path: Path) -> bool:
         """Execute in scope.
 
-            Args:
-                file_path: The file_path.
-            """
+        Args:
+            file_path: The file_path.
+        """
 
         return any(part in SCOPED_PREFIXES for part in file_path.parts)
 
     def _should_skip_file(self, file_path: Path) -> bool:
         """Execute should skip file.
 
-            Args:
-                file_path: The file_path.
-            """
+        Args:
+            file_path: The file_path.
+        """
 
         skip_parts = {
             "tests",
@@ -86,10 +85,10 @@ class RoadmapInvariantScanner:
     def _check_banned_keywords(self, file_path: Path, lines: List[str]) -> None:
         """Execute check banned keywords.
 
-            Args:
-                file_path: The file_path.
-                lines: The lines.
-            """
+        Args:
+            file_path: The file_path.
+            lines: The lines.
+        """
 
         for lineno, line in enumerate(lines, 1):
             stripped = re.sub(r"#.*$", "", line)
@@ -102,10 +101,10 @@ class RoadmapInvariantScanner:
     def _check_banned_identifiers(self, file_path: Path, content: str) -> None:
         """Execute check banned identifiers.
 
-            Args:
-                file_path: The file_path.
-                content: The content.
-            """
+        Args:
+            file_path: The file_path.
+            content: The content.
+        """
 
         for ident in BANNED_IDENTIFIERS:
             if re.search(rf"\\b{re.escape(ident)}\\b", content):
@@ -114,10 +113,10 @@ class RoadmapInvariantScanner:
     def _check_ast_patterns(self, file_path: Path, content: str) -> None:
         """Execute check ast patterns.
 
-            Args:
-                file_path: The file_path.
-                content: The content.
-            """
+        Args:
+            file_path: The file_path.
+            content: The content.
+        """
 
         try:
             tree = ast.parse(content)
@@ -135,9 +134,9 @@ class RoadmapInvariantScanner:
             def visit_Name(self, node: ast.Name) -> None:  # noqa: N802
                 """Execute visit Name.
 
-                    Args:
-                        node: The node.
-                    """
+                Args:
+                    node: The node.
+                """
 
                 if node.id in BANNED_IDENTIFIERS:
                     self.found = True
@@ -153,18 +152,17 @@ class RoadmapInvariantScanner:
     ) -> None:
         """Execute record violation.
 
-            Args:
-                file_path: The file_path.
-                lineno: The lineno.
-                typ: The typ.
-                detail: The detail.
-            """
+        Args:
+            file_path: The file_path.
+            lineno: The lineno.
+            typ: The typ.
+            detail: The detail.
+        """
 
         self.violations.append((str(file_path), lineno, typ, detail))
 
     def report(self) -> str:
-        """Execute report.
-            """
+        """Execute report."""
 
         if not self.violations:
             return "✅ Roadmap invariants satisfied"
@@ -175,8 +173,7 @@ class RoadmapInvariantScanner:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     scanner = RoadmapInvariantScanner()
     scanner.scan()

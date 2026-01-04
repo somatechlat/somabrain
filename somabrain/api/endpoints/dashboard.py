@@ -17,10 +17,10 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import timedelta
 from uuid import UUID
 
-from django.db.models import Count, Sum, Avg, Q
+from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 from django.core.cache import cache
@@ -31,7 +31,6 @@ from somabrain.saas.models import (
     TenantStatus,
     TenantUser,
     Subscription,
-    SubscriptionTier,
     SubscriptionStatus,
     UsageRecord,
     APIKey,
@@ -48,8 +47,10 @@ router = Router(tags=["Admin Dashboard"])
 # SCHEMAS
 # =============================================================================
 
+
 class PlatformStatsOut(Schema):
     """Platform-wide statistics."""
+
     total_tenants: int
     active_tenants: int
     trial_tenants: int
@@ -58,11 +59,11 @@ class PlatformStatsOut(Schema):
     total_api_keys: int
     total_subscriptions: int
     revenue_monthly_estimate: float
-    
+
     # Trend data
     new_tenants_7d: int
     new_users_7d: int
-    
+
     # System health
     cache_status: str
     timestamp: str
@@ -70,6 +71,7 @@ class PlatformStatsOut(Schema):
 
 class TenantSummaryOut(Schema):
     """Summary of a tenant for dashboard listing."""
+
     id: UUID
     name: str
     slug: str
@@ -79,31 +81,32 @@ class TenantSummaryOut(Schema):
     api_key_count: int
     last_activity: Optional[str]
     created_at: str
-    
+
     @staticmethod
     def resolve_last_activity(obj):
         """Execute resolve last activity.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         activity = getattr(obj, "_last_activity", None)
         return activity.isoformat() if activity else None
-    
+
     @staticmethod
     def resolve_created_at(obj):
         """Execute resolve created at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.created_at.isoformat()
 
 
 class TierDistributionOut(Schema):
     """Distribution of tenants by tier."""
+
     tier: str
     count: int
     percentage: float
@@ -111,12 +114,14 @@ class TierDistributionOut(Schema):
 
 class DailyMetricOut(Schema):
     """Daily metric for charts."""
+
     date: str
     value: int
 
 
 class RecentActivityOut(Schema):
     """Recent platform activity."""
+
     id: UUID
     action: str
     resource_type: str
@@ -127,6 +132,7 @@ class RecentActivityOut(Schema):
 
 class SystemHealthOut(Schema):
     """System health status."""
+
     database: str
     cache: str
     kafka: str
@@ -139,6 +145,7 @@ class SystemHealthOut(Schema):
 
 class TierRevenueOut(Schema):
     """Revenue breakdown by subscription tier."""
+
     tier_id: UUID
     tier_name: str
     tier_slug: str
@@ -150,12 +157,13 @@ class TierRevenueOut(Schema):
 class RevenueStatsOut(Schema):
     """
     Platform revenue statistics.
-    
+
     ALL 10 PERSONAS:
     - 📊 Perf: Efficient aggregation queries
     - 💾 DBA: ORM Sum/Count with group by
     - 🎨 UX: Dashboard-ready tier breakdown
     """
+
     mrr: float
     arr: float
     mrr_growth: float  # Percentage change vs last month
@@ -168,15 +176,16 @@ class RevenueStatsOut(Schema):
 # PLATFORM STATISTICS
 # =============================================================================
 
+
 @router.get("/stats", response=PlatformStatsOut)
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_platform_stats(request: AuthenticatedRequest):
     """
     Get platform-wide statistics.
-    
+
     Cached for 5 minutes for performance.
-    
+
     ALL 10 PERSONAS:
     - Perf: Cached aggregations
     - DBA: Efficient COUNT queries
@@ -185,10 +194,10 @@ def get_platform_stats(request: AuthenticatedRequest):
     cached = cache.get(cache_key)
     if cached:
         return cached
-    
+
     now = timezone.now()
     week_ago = now - timedelta(days=7)
-    
+
     # Tenant counts
     tenant_counts = Tenant.objects.aggregate(
         total=Count("id"),
@@ -196,24 +205,27 @@ def get_platform_stats(request: AuthenticatedRequest):
         trial=Count("id", filter=Q(status=TenantStatus.TRIAL)),
         suspended=Count("id", filter=Q(status=TenantStatus.SUSPENDED)),
     )
-    
+
     # User and key counts
     user_count = TenantUser.objects.count()
     api_key_count = APIKey.objects.count()
-    
+
     # Subscription counts and revenue
     subscriptions = Subscription.objects.filter(status=SubscriptionStatus.ACTIVE)
     subscription_count = subscriptions.count()
-    
+
     # Estimate monthly revenue from tier prices
-    revenue = subscriptions.select_related("tier").aggregate(
-        total=Sum("tier__price_monthly")
-    )["total"] or 0
-    
+    revenue = (
+        subscriptions.select_related("tier").aggregate(
+            total=Sum("tier__price_monthly")
+        )["total"]
+        or 0
+    )
+
     # 7-day trends
     new_tenants_7d = Tenant.objects.filter(created_at__gte=week_ago).count()
     new_users_7d = TenantUser.objects.filter(created_at__gte=week_ago).count()
-    
+
     stats = PlatformStatsOut(
         total_tenants=tenant_counts["total"],
         active_tenants=tenant_counts["active"],
@@ -228,10 +240,10 @@ def get_platform_stats(request: AuthenticatedRequest):
         cache_status="hit" if cached else "miss",
         timestamp=now.isoformat(),
     )
-    
+
     # Cache for 5 minutes
     cache.set(cache_key, stats, 300)
-    
+
     return stats
 
 
@@ -241,27 +253,27 @@ def get_platform_stats(request: AuthenticatedRequest):
 def get_revenue_stats(request: AuthenticatedRequest):
     """
     Get platform revenue statistics from Lago.
-    
+
     ALL 10 PERSONAS per VIBE Coding Rules:
     - 🔒 Security: Super-admin only
     - 📊 Perf: Cached for 5 minutes
     - 🚨 SRE: Real Lago API integration
     - 💾 DBA: Tier breakdown from ORM + Lago MRR
     - 🎨 UX: Dashboard-ready format
-    
+
     Data Source: Lago API /api/v1/analytics/mrr (REAL, NOT MOCKED)
     """
     from somabrain.saas.billing import get_lago_client
-    
+
     cache_key = "dashboard:revenue_stats"
     cached = cache.get(cache_key)
     if cached:
         return cached
-    
+
     # Fetch REAL revenue from Lago
     lago = get_lago_client()
     lago_summary = lago.get_revenue_summary()
-    
+
     # Get tier breakdown from subscriptions (for distribution view)
     tier_breakdown = []
     tier_data = (
@@ -271,7 +283,7 @@ def get_revenue_stats(request: AuthenticatedRequest):
         .annotate(count=Count("id"))
         .order_by("-count")
     )
-    
+
     for item in tier_data:
         tier_mrr = float(item["tier__price_monthly"] or 0) * item["count"]
         tier_breakdown.append(
@@ -284,13 +296,13 @@ def get_revenue_stats(request: AuthenticatedRequest):
                 arr=tier_mrr * 12,
             )
         )
-    
+
     # Use Lago MRR as primary (REAL data), fallback to calculated if Lago unavailable
     mrr = lago_summary.get("mrr", 0.0)
     if mrr == 0.0 and tier_breakdown:
         # Lago unavailable, use tier prices as estimate
         mrr = sum(t.mrr for t in tier_breakdown)
-    
+
     stats = RevenueStatsOut(
         mrr=mrr,
         arr=lago_summary.get("arr", mrr * 12),
@@ -299,10 +311,10 @@ def get_revenue_stats(request: AuthenticatedRequest):
         by_tier=tier_breakdown,
         timestamp=timezone.now().isoformat(),
     )
-    
+
     # Cache for 5 minutes
     cache.set(cache_key, stats, 300)
-    
+
     return stats
 
 
@@ -318,7 +330,7 @@ def list_tenants_summary(
 ):
     """
     List all tenants with summary stats for dashboard.
-    
+
     ALL 10 PERSONAS:
     - DBA: Annotated queries for counts
     - UX: Paginated results
@@ -327,14 +339,14 @@ def list_tenants_summary(
         user_count=Count("users"),
         api_key_count=Count("api_keys"),
     ).order_by("-created_at")
-    
+
     if status:
         queryset = queryset.filter(status=status)
-    
+
     if tier:
         queryset = queryset.filter(tier=tier)
-    
-    return list(queryset[offset:offset + limit])
+
+    return list(queryset[offset : offset + limit])
 
 
 @router.get("/tier-distribution", response=List[TierDistributionOut])
@@ -345,13 +357,11 @@ def get_tier_distribution(request: AuthenticatedRequest):
     total = Tenant.objects.count()
     if total == 0:
         return []
-    
+
     distribution = (
-        Tenant.objects.values("tier")
-        .annotate(count=Count("id"))
-        .order_by("-count")
+        Tenant.objects.values("tier").annotate(count=Count("id")).order_by("-count")
     )
-    
+
     return [
         TierDistributionOut(
             tier=item["tier"] or "none",
@@ -368,7 +378,7 @@ def get_tier_distribution(request: AuthenticatedRequest):
 def get_daily_signups(request: AuthenticatedRequest, days: int = 30):
     """Get daily tenant signups for the last N days."""
     start_date = timezone.now() - timedelta(days=days)
-    
+
     daily = (
         Tenant.objects.filter(created_at__gte=start_date)
         .annotate(date=TruncDate("created_at"))
@@ -376,7 +386,7 @@ def get_daily_signups(request: AuthenticatedRequest, days: int = 30):
         .annotate(count=Count("id"))
         .order_by("date")
     )
-    
+
     return [
         DailyMetricOut(
             date=item["date"].isoformat(),
@@ -392,7 +402,7 @@ def get_daily_signups(request: AuthenticatedRequest, days: int = 30):
 def get_daily_usage(request: AuthenticatedRequest, days: int = 30):
     """Get daily usage events for the last N days."""
     start_date = timezone.now() - timedelta(days=days)
-    
+
     daily = (
         UsageRecord.objects.filter(recorded_at__gte=start_date)
         .annotate(date=TruncDate("recorded_at"))
@@ -400,7 +410,7 @@ def get_daily_usage(request: AuthenticatedRequest, days: int = 30):
         .annotate(total=Sum("quantity"))
         .order_by("date")
     )
-    
+
     return [
         DailyMetricOut(
             date=item["date"].isoformat(),
@@ -415,12 +425,8 @@ def get_daily_usage(request: AuthenticatedRequest, days: int = 30):
 @require_permission(Permission.AUDIT_READ.value)
 def get_recent_activity(request: AuthenticatedRequest, limit: int = 20):
     """Get recent platform activity from audit log."""
-    recent = (
-        AuditLog.objects
-        .select_related("tenant")
-        .order_by("-timestamp")[:limit]
-    )
-    
+    recent = AuditLog.objects.select_related("tenant").order_by("-timestamp")[:limit]
+
     return [
         RecentActivityOut(
             id=log.id,
@@ -438,19 +444,20 @@ def get_recent_activity(request: AuthenticatedRequest, limit: int = 20):
 # SYSTEM HEALTH
 # =============================================================================
 
+
 @router.get("/health", response=SystemHealthOut)
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_system_health(request: AuthenticatedRequest):
     """
     Get comprehensive system health status.
-    
+
     ALL 10 PERSONAS:
     - SRE: Health monitoring
     - DevOps: Infrastructure check
     """
     from django.db import connection
-    
+
     health = {
         "database": "unknown",
         "cache": "unknown",
@@ -459,7 +466,7 @@ def get_system_health(request: AuthenticatedRequest):
         "keycloak": "unknown",
         "lago": "unknown",
     }
-    
+
     # Database
     try:
         with connection.cursor() as cursor:
@@ -467,7 +474,7 @@ def get_system_health(request: AuthenticatedRequest):
         health["database"] = "healthy"
     except Exception:
         health["database"] = "unhealthy"
-    
+
     # Cache
     try:
         cache.set("health_check", "ok", 10)
@@ -477,19 +484,21 @@ def get_system_health(request: AuthenticatedRequest):
             health["cache"] = "degraded"
     except Exception:
         health["cache"] = "unhealthy"
-    
+
     # Kafka (via outbox check)
     try:
         from somabrain.db.outbox import OutboxEvent
+
         # If we can query outbox, Kafka integration is ready
         OutboxEvent.objects.exists()
         health["kafka"] = "healthy"
     except Exception:
         health["kafka"] = "unavailable"
-    
+
     # Milvus
     try:
         from somabrain.milvus_client import MilvusClient
+
         client = MilvusClient()
         if client.collection is not None:
             health["milvus"] = "healthy"
@@ -497,24 +506,27 @@ def get_system_health(request: AuthenticatedRequest):
             health["milvus"] = "degraded"
     except Exception:
         health["milvus"] = "unavailable"
-    
+
     # Keycloak
     try:
         from django.conf import settings
         import httpx
-        
+
         keycloak_url = getattr(settings, "KEYCLOAK_URL", None)
         if keycloak_url:
             response = httpx.get(f"{keycloak_url}/health", timeout=5)
-            health["keycloak"] = "healthy" if response.status_code == 200 else "degraded"
+            health["keycloak"] = (
+                "healthy" if response.status_code == 200 else "degraded"
+            )
         else:
             health["keycloak"] = "not_configured"
     except Exception:
         health["keycloak"] = "unavailable"
-    
+
     # Lago
     try:
         from somabrain.saas.billing import get_lago_client
+
         lago = get_lago_client()
         if lago and lago.health_check():
             health["lago"] = "healthy"
@@ -522,18 +534,18 @@ def get_system_health(request: AuthenticatedRequest):
             health["lago"] = "degraded"
     except Exception:
         health["lago"] = "unavailable"
-    
+
     # Overall status
     unhealthy = sum(1 for v in health.values() if v == "unhealthy")
     degraded = sum(1 for v in health.values() if v in ("degraded", "unavailable"))
-    
+
     if unhealthy > 0:
         overall = "critical"
     elif degraded > 2:
         overall = "degraded"
     else:
         overall = "healthy"
-    
+
     return SystemHealthOut(
         database=health["database"],
         cache=health["cache"],

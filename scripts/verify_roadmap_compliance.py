@@ -37,9 +37,9 @@ class RoadmapComplianceVerifier:
 
         # Verify vector normalization
         normalized = test_vector / norm
-        assert (
-            abs(np.linalg.norm(normalized) - 1.0) < 1e-6
-        ), "Vector normalization failed"
+        assert abs(np.linalg.norm(normalized) - 1.0) < 1e-6, (
+            "Vector normalization failed"
+        )
 
         print("✅ BHDC foundations verified")
         return True
@@ -68,9 +68,9 @@ class RoadmapComplianceVerifier:
 
         # Verify weights sum to 1
         assert abs(sum(final_weights.values()) - 1.0) < 1e-6, "Weights don't sum to 1"
-        assert all(
-            0 <= w <= 1 for w in final_weights.values()
-        ), "Weight bounds violated"
+        assert all(0 <= w <= 1 for w in final_weights.values()), (
+            "Weight bounds violated"
+        )
 
         print("✅ Fusion normalization verified")
         return True
@@ -159,10 +159,10 @@ class RoadmapComplianceVerifier:
         def kl_divergence(d1, d2):
             """Execute kl divergence.
 
-                Args:
-                    d1: The d1.
-                    d2: The d2.
-                """
+            Args:
+                d1: The d1.
+                d2: The d2.
+            """
 
             total = 0.0
             for k in d1.keys():
@@ -195,9 +195,9 @@ class RoadmapComplianceVerifier:
         entropy = -sum(p * math.log(p) for p in probs if p > 0)
         normalized_entropy = entropy / math.log(len(weights))
 
-        assert (
-            0 <= normalized_entropy <= 1
-        ), f"Normalized entropy {normalized_entropy} out of bounds"
+        assert 0 <= normalized_entropy <= 1, (
+            f"Normalized entropy {normalized_entropy} out of bounds"
+        )
 
         print("✅ Drift detection verified")
         return True

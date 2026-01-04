@@ -17,11 +17,9 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 from uuid import UUID, uuid4
 
 from django.utils import timezone
-from django.db.models import Q, Count
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from ninja import Router, Schema
@@ -38,12 +36,13 @@ router = Router(tags=["Teams"])
 # TEAM STORAGE (Cache-backed, would be Django model in production)
 # =============================================================================
 
+
 def get_teams_key(tenant_id: str) -> str:
     """Retrieve teams key.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     return f"teams:tenant:{tenant_id}"
 
@@ -51,9 +50,9 @@ def get_teams_key(tenant_id: str) -> str:
 def get_team_key(team_id: str) -> str:
     """Retrieve team key.
 
-        Args:
-            team_id: The team_id.
-        """
+    Args:
+        team_id: The team_id.
+    """
 
     return f"team:{team_id}"
 
@@ -61,9 +60,9 @@ def get_team_key(team_id: str) -> str:
 def get_user_teams_key(user_id: str) -> str:
     """Retrieve user teams key.
 
-        Args:
-            user_id: The user_id.
-        """
+    Args:
+        user_id: The user_id.
+    """
 
     return f"teams:user:{user_id}"
 
@@ -84,25 +83,25 @@ def create_team(tenant_id: str, name: str, description: str, created_by: str) ->
             "allow_self_join": False,
         },
     }
-    
+
     # Store team
     cache.set(get_team_key(team_id), team, timeout=86400 * 30)
-    
+
     # Add to tenant teams list
     tenant_key = get_teams_key(tenant_id)
     teams = cache.get(tenant_key, [])
     teams.append(team_id)
     cache.set(tenant_key, teams, timeout=86400 * 30)
-    
+
     return team
 
 
 def get_team(team_id: str) -> Optional[dict]:
     """Retrieve team.
 
-        Args:
-            team_id: The team_id.
-        """
+    Args:
+        team_id: The team_id.
+    """
 
     return cache.get(get_team_key(team_id))
 
@@ -110,9 +109,9 @@ def get_team(team_id: str) -> Optional[dict]:
 def update_team(team_id: str, **updates) -> Optional[dict]:
     """Execute update team.
 
-        Args:
-            team_id: The team_id.
-        """
+    Args:
+        team_id: The team_id.
+    """
 
     key = get_team_key(team_id)
     team = cache.get(key)
@@ -137,8 +136,10 @@ def get_tenant_teams(tenant_id: str) -> List[dict]:
 # SCHEMAS
 # =============================================================================
 
+
 class TeamOut(Schema):
     """Team output."""
+
     id: str
     name: str
     description: Optional[str]
@@ -150,6 +151,7 @@ class TeamOut(Schema):
 
 class TeamDetailOut(Schema):
     """Detailed team output."""
+
     id: str
     name: str
     description: Optional[str]
@@ -161,6 +163,7 @@ class TeamDetailOut(Schema):
 
 class TeamCreate(Schema):
     """Create team request."""
+
     name: str
     description: Optional[str] = None
     is_private: bool = False
@@ -169,6 +172,7 @@ class TeamCreate(Schema):
 
 class TeamUpdate(Schema):
     """Update team request."""
+
     name: Optional[str] = None
     description: Optional[str] = None
     is_private: Optional[bool] = None
@@ -177,12 +181,14 @@ class TeamUpdate(Schema):
 
 class TeamMemberAdd(Schema):
     """Add team member request."""
+
     user_id: str
     role: str = "member"  # owner, admin, member
 
 
 class TeamMemberOut(Schema):
     """Team member output."""
+
     user_id: str
     email: str
     display_name: Optional[str]
@@ -194,6 +200,7 @@ class TeamMemberOut(Schema):
 # TEAM CRUD ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/teams", response=List[TeamOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_teams(
@@ -203,34 +210,37 @@ def list_teams(
 ):
     """
     List all teams in a tenant.
-    
+
     🎨 UX: Team discovery
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     teams = get_tenant_teams(str(tenant_id))
-    
+
     result = []
     for team in teams:
         # Filter private teams unless admin
         if team.get("settings", {}).get("private", False) and not include_private:
             if not request.is_super_admin and request.role != "tenant-admin":
                 continue
-        
-        result.append(TeamOut(
-            id=team["id"],
-            name=team["name"],
-            description=team.get("description"),
-            member_count=len(team.get("members", [])),
-            created_at=team["created_at"],
-            created_by=team.get("created_by"),
-            is_private=team.get("settings", {}).get("private", False),
-        ))
-    
+
+        result.append(
+            TeamOut(
+                id=team["id"],
+                name=team["name"],
+                description=team.get("description"),
+                member_count=len(team.get("members", [])),
+                created_at=team["created_at"],
+                created_by=team.get("created_by"),
+                is_private=team.get("settings", {}).get("private", False),
+            )
+        )
+
     return result
 
 
@@ -244,37 +254,40 @@ def create_new_team(
 ):
     """
     Create a new team.
-    
+
     🔒 Security: Admin team creation
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     team = create_team(
         tenant_id=str(tenant_id),
         name=data.name,
         description=data.description or "",
         created_by=str(request.user_id),
     )
-    
+
     # Update settings
     team["settings"] = {
         "private": data.is_private,
         "allow_self_join": data.allow_self_join,
     }
     update_team(team["id"], settings=team["settings"])
-    
+
     # Add creator as owner
-    team["members"] = [{
-        "user_id": str(request.user_id),
-        "role": "owner",
-        "joined_at": timezone.now().isoformat(),
-    }]
+    team["members"] = [
+        {
+            "user_id": str(request.user_id),
+            "role": "owner",
+            "joined_at": timezone.now().isoformat(),
+        }
+    ]
     update_team(team["id"], members=team["members"])
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -286,7 +299,7 @@ def create_new_team(
         tenant=tenant,
         details={"name": data.name},
     )
-    
+
     return TeamDetailOut(
         id=team["id"],
         name=team["name"],
@@ -307,20 +320,22 @@ def get_team_detail(
 ):
     """
     Get team details.
-    
+
     📊 Performance: Team view
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     team = get_team(team_id)
     if not team or team["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Team not found")
-    
+
     return TeamDetailOut(
         id=team["id"],
         name=team["name"],
@@ -343,20 +358,22 @@ def update_team_info(
 ):
     """
     Update team information.
-    
+
     🔒 Security: Admin update
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     team = get_team(team_id)
     if not team or team["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Team not found")
-    
+
     if data.name is not None:
         team["name"] = data.name
     if data.description is not None:
@@ -365,9 +382,9 @@ def update_team_info(
         team["settings"]["private"] = data.is_private
     if data.allow_self_join is not None:
         team["settings"]["allow_self_join"] = data.allow_self_join
-    
+
     update_team(team_id, **team)
-    
+
     return TeamDetailOut(
         id=team["id"],
         name=team["name"],
@@ -389,29 +406,31 @@ def delete_team(
 ):
     """
     Delete a team.
-    
+
     🔒 Security: Admin deletion
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     team = get_team(team_id)
     if not team or team["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Team not found")
-    
+
     # Remove from cache
     cache.delete(get_team_key(team_id))
-    
+
     # Remove from tenant list
     tenant_key = get_teams_key(str(tenant_id))
     teams = cache.get(tenant_key, [])
     teams = [t for t in teams if t != team_id]
     cache.set(tenant_key, teams, timeout=86400 * 30)
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -422,13 +441,14 @@ def delete_team(
         actor_type=ActorType.ADMIN,
         tenant=tenant,
     )
-    
+
     return {"success": True, "deleted": team_id}
 
 
 # =============================================================================
 # TEAM MEMBERSHIP
 # =============================================================================
+
 
 @router.get("/{tenant_id}/teams/{team_id}/members", response=List[TeamMemberOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
@@ -439,34 +459,38 @@ def list_team_members(
 ):
     """
     List team members.
-    
+
     🎨 UX: Member view
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     team = get_team(team_id)
     if not team or team["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Team not found")
-    
+
     members = []
     for m in team.get("members", []):
         try:
             user = TenantUser.objects.get(id=m["user_id"])
-            members.append(TeamMemberOut(
-                user_id=m["user_id"],
-                email=user.email,
-                display_name=user.display_name,
-                role=m["role"],
-                joined_at=m["joined_at"],
-            ))
+            members.append(
+                TeamMemberOut(
+                    user_id=m["user_id"],
+                    email=user.email,
+                    display_name=user.display_name,
+                    role=m["role"],
+                    joined_at=m["joined_at"],
+                )
+            )
         except TenantUser.DoesNotExist:
             continue
-    
+
     return members
 
 
@@ -481,38 +505,43 @@ def add_team_member(
 ):
     """
     Add a member to a team.
-    
+
     🔒 Security: Membership management
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     team = get_team(team_id)
     if not team or team["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Team not found")
-    
+
     # Verify user exists
     user = get_object_or_404(TenantUser, id=data.user_id, tenant_id=tenant_id)
-    
+
     # Check if already a member
     for m in team.get("members", []):
         if m["user_id"] == data.user_id:
             from ninja.errors import HttpError
+
             raise HttpError(400, "User is already a team member")
-    
+
     # Add member
     members = team.get("members", [])
-    members.append({
-        "user_id": data.user_id,
-        "role": data.role,
-        "joined_at": timezone.now().isoformat(),
-    })
+    members.append(
+        {
+            "user_id": data.user_id,
+            "role": data.role,
+            "joined_at": timezone.now().isoformat(),
+        }
+    )
     update_team(team_id, members=members)
-    
+
     return {"success": True, "user_id": data.user_id, "team_id": team_id}
 
 
@@ -527,24 +556,26 @@ def remove_team_member(
 ):
     """
     Remove a member from a team.
-    
+
     🔒 Security: Membership removal
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     team = get_team(team_id)
     if not team or team["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Team not found")
-    
+
     # Remove member
     members = [m for m in team.get("members", []) if m["user_id"] != user_id]
     update_team(team_id, members=members)
-    
+
     return {"success": True, "removed": user_id}
 
 
@@ -552,29 +583,32 @@ def remove_team_member(
 # USER'S TEAMS
 # =============================================================================
 
+
 @router.get("/my-teams", response=List[TeamOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_my_teams(request: AuthenticatedRequest):
     """
     Get teams the current user belongs to.
-    
+
     🎨 UX: Personal team view
     """
     teams = get_tenant_teams(str(request.tenant_id))
     my_teams = []
-    
+
     for team in teams:
         for m in team.get("members", []):
             if m["user_id"] == str(request.user_id):
-                my_teams.append(TeamOut(
-                    id=team["id"],
-                    name=team["name"],
-                    description=team.get("description"),
-                    member_count=len(team.get("members", [])),
-                    created_at=team["created_at"],
-                    created_by=team.get("created_by"),
-                    is_private=team.get("settings", {}).get("private", False),
-                ))
+                my_teams.append(
+                    TeamOut(
+                        id=team["id"],
+                        name=team["name"],
+                        description=team.get("description"),
+                        member_count=len(team.get("members", [])),
+                        created_at=team["created_at"],
+                        created_by=team.get("created_by"),
+                        is_private=team.get("settings", {}).get("private", False),
+                    )
+                )
                 break
-    
+
     return my_teams

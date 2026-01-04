@@ -28,10 +28,10 @@ import requests
 def post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Execute post json.
 
-        Args:
-            url: The url.
-            payload: The payload.
-        """
+    Args:
+        url: The url.
+        payload: The payload.
+    """
 
     r = requests.post(url, json=payload, timeout=10)
     r.raise_for_status()
@@ -44,14 +44,14 @@ def post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 def run_smoke(base_url: str, universe: str | None = None) -> None:
     """Execute run smoke.
 
-        Args:
-            base_url: The base_url.
-            universe: The universe.
-        """
+    Args:
+        base_url: The base_url.
+        universe: The universe.
+    """
 
     remember_url = f"{base_url}/memory/remember"
     recall_url = f"{base_url}/memory/recall"
-    key_text = f"devprod smoke task {int(time.time()*1000)}"
+    key_text = f"devprod smoke task {int(time.time() * 1000)}"
     payload = {
         "coord": None,
         "payload": {
@@ -99,8 +99,7 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=get_api_base_url())

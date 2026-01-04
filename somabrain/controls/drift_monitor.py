@@ -88,9 +88,9 @@ class DriftMonitor:
     def update(self, x: np.ndarray) -> dict:
         """Execute update.
 
-            Args:
-                x: The x.
-            """
+        Args:
+            x: The x.
+        """
 
         x = np.asarray(x, dtype=np.float64)
         if x.shape[-1] != self.dim:

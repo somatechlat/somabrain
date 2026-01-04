@@ -16,13 +16,11 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Version lifecycle management
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime, timedelta
-from uuid import UUID
 from enum import Enum
 
 from django.utils import timezone
-from django.core.cache import cache
 from ninja import Router, Schema
 
 from somabrain.saas.models import AuditLog, ActorType
@@ -37,8 +35,10 @@ router = Router(tags=["API Versioning"])
 # API VERSION DEFINITIONS
 # =============================================================================
 
+
 class APIStatus(str, Enum):
     """API version status."""
+
     CURRENT = "current"
     DEPRECATED = "deprecated"
     SUNSET = "sunset"
@@ -116,8 +116,10 @@ CHANGELOG = {
 # SCHEMAS
 # =============================================================================
 
+
 class APIVersionOut(Schema):
     """API version output."""
+
     version: str
     status: str
     released_at: str
@@ -129,6 +131,7 @@ class APIVersionOut(Schema):
 
 class DeprecatedEndpointOut(Schema):
     """Deprecated endpoint output."""
+
     endpoint: str
     deprecated_at: str
     sunset_at: str
@@ -138,12 +141,14 @@ class DeprecatedEndpointOut(Schema):
 
 class ChangelogEntry(Schema):
     """Changelog entry."""
+
     type: str  # added, changed, deprecated, removed, fixed, security
     description: str
 
 
 class ChangelogVersion(Schema):
     """Changelog for a version."""
+
     version: str
     date: str
     changes: List[ChangelogEntry]
@@ -151,6 +156,7 @@ class ChangelogVersion(Schema):
 
 class CompatibilityCheck(Schema):
     """Compatibility check result."""
+
     compatible: bool
     current_version: str
     requested_version: str
@@ -162,11 +168,12 @@ class CompatibilityCheck(Schema):
 # VERSION ENDPOINTS
 # =============================================================================
 
+
 @router.get("/versions", response=List[APIVersionOut])
 def list_api_versions():
     """
     List all API versions with their status.
-    
+
     📚 Technical Writer: Version documentation
     """
     return [
@@ -197,9 +204,10 @@ def get_current_version():
                 description=v["description"],
                 changelog_url=v["changelog_url"],
             )
-    
+
     # VIBE RULES: No fallbacks - require current version to exist
     from ninja.errors import HttpError
+
     raise HttpError(500, "No current API version configured")
 
 
@@ -207,41 +215,41 @@ def get_current_version():
 def list_deprecated_endpoints():
     """
     List all deprecated endpoints.
-    
+
     🚨 SRE: Deprecation monitoring
     """
-    return [
-        DeprecatedEndpointOut(**d)
-        for d in DEPRECATED_ENDPOINTS
-    ]
+    return [DeprecatedEndpointOut(**d) for d in DEPRECATED_ENDPOINTS]
 
 
 @router.get("/deprecations/upcoming")
 def list_upcoming_sunsets():
     """
     List endpoints with upcoming sunset dates.
-    
+
     🛠️ DevOps: Migration planning
     """
     now = timezone.now()
     upcoming = []
-    
+
     for dep in DEPRECATED_ENDPOINTS:
         if dep.get("sunset_at"):
             sunset = datetime.fromisoformat(dep["sunset_at"])
             if sunset > now and sunset < now + timedelta(days=90):
                 days_left = (sunset - now).days
-                upcoming.append({
-                    **dep,
-                    "days_until_sunset": days_left,
-                })
-    
+                upcoming.append(
+                    {
+                        **dep,
+                        "days_until_sunset": days_left,
+                    }
+                )
+
     return sorted(upcoming, key=lambda x: x["days_until_sunset"])
 
 
 # =============================================================================
 # CHANGELOG ENDPOINTS
 # =============================================================================
+
 
 @router.get("/changelog/{version}", response=List[ChangelogVersion])
 def get_changelog(
@@ -250,11 +258,11 @@ def get_changelog(
 ):
     """
     Get changelog for a specific API version.
-    
+
     📚 Technical Writer: Change documentation
     """
     entries = CHANGELOG.get(version, [])
-    
+
     return [
         ChangelogVersion(
             version=e["version"],
@@ -269,23 +277,26 @@ def get_changelog(
 def get_latest_changes(limit: int = 5):
     """Get the most recent changes across all versions."""
     all_changes = []
-    
+
     for version, entries in CHANGELOG.items():
         for entry in entries:
-            all_changes.append({
-                "api_version": version,
-                **entry,
-            })
-    
+            all_changes.append(
+                {
+                    "api_version": version,
+                    **entry,
+                }
+            )
+
     # Sort by date descending
     all_changes.sort(key=lambda x: x["date"], reverse=True)
-    
+
     return all_changes[:limit]
 
 
 # =============================================================================
 # COMPATIBILITY ENDPOINTS
 # =============================================================================
+
 
 @router.get("/compatibility/check", response=CompatibilityCheck)
 def check_compatibility(
@@ -294,15 +305,15 @@ def check_compatibility(
 ):
     """
     Check compatibility between API versions.
-    
+
     🧪 QA: Compatibility testing
     """
     warnings = []
     breaking = []
-    
+
     current_info = API_VERSIONS.get(current)
     target_info = API_VERSIONS.get(target)
-    
+
     if not current_info:
         return CompatibilityCheck(
             compatible=False,
@@ -311,7 +322,7 @@ def check_compatibility(
             warnings=["Current version not found"],
             breaking_changes=[],
         )
-    
+
     if not target_info:
         return CompatibilityCheck(
             compatible=False,
@@ -320,7 +331,7 @@ def check_compatibility(
             warnings=["Target version not found"],
             breaking_changes=[],
         )
-    
+
     # Check status
     if target_info["status"] == APIStatus.SUNSET:
         breaking.append("Target version has been sunset")
@@ -330,14 +341,14 @@ def check_compatibility(
         warnings.append("Target version is in alpha - expect breaking changes")
     elif target_info["status"] == APIStatus.BETA:
         warnings.append("Target version is in beta - may have breaking changes")
-    
+
     # Check deprecated endpoints when upgrading
     for dep in DEPRECATED_ENDPOINTS:
         if current in dep.get("endpoint", ""):
             warnings.append(f"Endpoint {dep['endpoint']} is deprecated")
-    
+
     compatible = len(breaking) == 0
-    
+
     return CompatibilityCheck(
         compatible=compatible,
         current_version=current,
@@ -351,6 +362,7 @@ def check_compatibility(
 # ADMIN ENDPOINTS
 # =============================================================================
 
+
 @router.post("/deprecations/add")
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
@@ -363,7 +375,7 @@ def add_deprecation(
 ):
     """
     Add a new deprecated endpoint.
-    
+
     🔒 Security: Admin only
     """
     deprecation = {
@@ -373,9 +385,9 @@ def add_deprecation(
         "replacement": replacement,
         "reason": reason,
     }
-    
+
     DEPRECATED_ENDPOINTS.append(deprecation)
-    
+
     # Audit log
     AuditLog.log(
         action="api.endpoint_deprecated",
@@ -385,7 +397,7 @@ def add_deprecation(
         actor_type=ActorType.ADMIN,
         details=deprecation,
     )
-    
+
     return {"success": True, "deprecation": deprecation}
 
 
@@ -394,7 +406,7 @@ def add_deprecation(
 def get_version_stats(request: AuthenticatedRequest):
     """
     Get API version usage statistics.
-    
+
     📊 Performance: Usage analytics
     """
     # In production, this would come from metrics
@@ -422,7 +434,7 @@ def get_version_stats(request: AuthenticatedRequest):
 def get_migration_guide(from_version: str, to_version: str):
     """
     Get migration guide between versions.
-    
+
     📚 Technical Writer: Migration documentation
     """
     return {

@@ -58,11 +58,11 @@ class RetrievalWeights:
 def _clamp(value: float, lower: float, upper: float) -> float:
     """Execute clamp.
 
-        Args:
-            value: The value.
-            lower: The lower.
-            upper: The upper.
-        """
+    Args:
+        value: The value.
+        lower: The lower.
+        upper: The upper.
+    """
 
     return min(max(value, lower), upper)
 
@@ -132,9 +132,9 @@ class AdaptationEngine:
     ) -> AdaptationConstraints:
         """Execute init constraints.
 
-            Args:
-                constraints: The constraints.
-            """
+        Args:
+            constraints: The constraints.
+        """
 
         if isinstance(constraints, AdaptationConstraints):
             return constraints
@@ -162,9 +162,9 @@ class AdaptationEngine:
     def _build_constraints_dict(self, bounds: AdaptationConstraints) -> dict:
         """Execute build constraints dict.
 
-            Args:
-                bounds: The bounds.
-            """
+        Args:
+            bounds: The bounds.
+        """
 
         return {
             "alpha": (bounds.alpha_min, bounds.alpha_max),
@@ -177,9 +177,9 @@ class AdaptationEngine:
     def _init_dynamic_lr(self, enable_dynamic_lr: bool) -> bool:
         """Execute init dynamic lr.
 
-            Args:
-                enable_dynamic_lr: The enable_dynamic_lr.
-            """
+        Args:
+            enable_dynamic_lr: The enable_dynamic_lr.
+        """
 
         dyn_lr = bool(enable_dynamic_lr)
         if settings is not None:
@@ -199,8 +199,7 @@ class AdaptationEngine:
         return dyn_lr
 
     def _init_tau_metric(self) -> None:
-        """Execute init tau metric.
-            """
+        """Execute init tau metric."""
 
         try:
             from somabrain.metrics import tau_gauge
@@ -213,8 +212,7 @@ class AdaptationEngine:
             pass
 
     def _maybe_load_state(self) -> None:
-        """Execute maybe load state.
-            """
+        """Execute maybe load state."""
 
         if (
             self._redis
@@ -230,9 +228,9 @@ class AdaptationEngine:
     def set_constraints(self, constraints: AdaptationConstraints) -> None:
         """Set constraints.
 
-            Args:
-                constraints: The constraints.
-            """
+        Args:
+            constraints: The constraints.
+        """
 
         self._constraint_bounds = constraints
         self._constraints = self._build_constraints_dict(constraints)
@@ -240,18 +238,18 @@ class AdaptationEngine:
     def set_gains(self, gains: AdaptationGains) -> None:
         """Set gains.
 
-            Args:
-                gains: The gains.
-            """
+        Args:
+            gains: The gains.
+        """
 
         self._gains = gains
 
     def set_base_learning_rate(self, base_lr: float) -> None:
         """Set base learning rate.
 
-            Args:
-                base_lr: The base_lr.
-            """
+        Args:
+            base_lr: The base_lr.
+        """
 
         try:
             self._base_lr = float(base_lr)
@@ -268,30 +266,34 @@ class AdaptationEngine:
     ) -> None:
         """Execute reset.
 
-            Args:
-                retrieval_defaults: The retrieval_defaults.
-                utility_defaults: The utility_defaults.
-                base_lr: The base_lr.
-                clear_history: The clear_history.
-            """
+        Args:
+            retrieval_defaults: The retrieval_defaults.
+            utility_defaults: The utility_defaults.
+            base_lr: The base_lr.
+            clear_history: The clear_history.
+        """
 
         if retrieval_defaults is not None:
-            self._retrieval.alpha, self._retrieval.beta = float(
-                retrieval_defaults.alpha
-            ), float(retrieval_defaults.beta)
-            self._retrieval.gamma, self._retrieval.tau = float(
-                retrieval_defaults.gamma
-            ), float(retrieval_defaults.tau)
+            self._retrieval.alpha, self._retrieval.beta = (
+                float(retrieval_defaults.alpha),
+                float(retrieval_defaults.beta),
+            )
+            self._retrieval.gamma, self._retrieval.tau = (
+                float(retrieval_defaults.gamma),
+                float(retrieval_defaults.tau),
+            )
         else:
             try:
                 from somabrain.context.builder import RetrievalWeights as _RW
 
                 rw = _RW()
-                self._retrieval.alpha, self._retrieval.beta = float(rw.alpha), float(
-                    rw.beta
+                self._retrieval.alpha, self._retrieval.beta = (
+                    float(rw.alpha),
+                    float(rw.beta),
                 )
-                self._retrieval.gamma, self._retrieval.tau = float(rw.gamma), float(
-                    rw.tau
+                self._retrieval.gamma, self._retrieval.tau = (
+                    float(rw.gamma),
+                    float(rw.tau),
                 )
             except Exception:
                 (
@@ -318,22 +320,19 @@ class AdaptationEngine:
         self._persist_state()
 
     def save_state(self) -> None:
-        """Execute save state.
-            """
+        """Execute save state."""
 
         self._persist_state()
 
     def load_state(self) -> dict:
-        """Execute load state.
-            """
+        """Execute load state."""
 
         self._load_state()
         return self._state
 
     @property
     def _state(self) -> dict:
-        """Execute state.
-            """
+        """Execute state."""
 
         return {
             "tenant_id": self._tenant_id,
@@ -354,43 +353,37 @@ class AdaptationEngine:
 
     @property
     def retrieval_weights(self) -> RetrievalWeights:
-        """Execute retrieval weights.
-            """
+        """Execute retrieval weights."""
 
         return self._retrieval
 
     @property
     def utility_weights(self) -> UtilityWeights:
-        """Execute utility weights.
-            """
+        """Execute utility weights."""
 
         return self._utility
 
     @property
     def tenant_id(self) -> str:
-        """Execute tenant id.
-            """
+        """Execute tenant id."""
 
         return self._tenant_id
 
     @property
     def learning_rate(self) -> float:
-        """Execute learning rate.
-            """
+        """Execute learning rate."""
 
         return float(getattr(self, "_lr", self._base_lr))
 
     @property
     def tau(self) -> float:
-        """Execute tau.
-            """
+        """Execute tau."""
 
         return float(self._retrieval.tau)
 
     @property
     def alpha(self) -> float:
-        """Execute alpha.
-            """
+        """Execute alpha."""
 
         return float(self._retrieval.alpha)
 
@@ -399,10 +392,10 @@ class AdaptationEngine:
     ) -> bool:
         """Execute apply feedback.
 
-            Args:
-                utility: The utility.
-                reward: The reward.
-            """
+        Args:
+            utility: The utility.
+            reward: The reward.
+        """
 
         if hasattr(utility, "score"):
             utility_val = float(getattr(utility, "score"))
@@ -413,8 +406,9 @@ class AdaptationEngine:
             return False
         self._update_learning_rate()
         self._save_history()
-        semantic_signal, utility_signal = float(signal), (
-            float(reward) if reward is not None else float(signal)
+        semantic_signal, utility_signal = (
+            float(signal),
+            (float(reward) if reward is not None else float(signal)),
         )
         self._apply_weight_updates(semantic_signal, utility_signal)
         self._apply_tau_and_entropy()
@@ -427,8 +421,7 @@ class AdaptationEngine:
         return True
 
     def _update_learning_rate(self) -> None:
-        """Execute update learning rate.
-            """
+        """Execute update learning rate."""
 
         dyn_lr_active = (
             self._enable_dynamic_lr and self._gains == AdaptationGains.from_settings()
@@ -446,10 +439,10 @@ class AdaptationEngine:
     ) -> None:
         """Execute apply weight updates.
 
-            Args:
-                semantic_signal: The semantic_signal.
-                utility_signal: The utility_signal.
-            """
+        Args:
+            semantic_signal: The semantic_signal.
+            utility_signal: The utility_signal.
+        """
 
         self._retrieval.alpha = self._constrain(
             "alpha",
@@ -476,8 +469,7 @@ class AdaptationEngine:
         )
 
     def _apply_tau_and_entropy(self) -> None:
-        """Execute apply tau and entropy.
-            """
+        """Execute apply tau and entropy."""
 
         if (
             not hasattr(self, "_tenant_override")
@@ -508,8 +500,7 @@ class AdaptationEngine:
         )
 
     def _get_dopamine_level(self) -> float:
-        """Execute get dopamine level.
-            """
+        """Execute get dopamine level."""
 
         try:
             from somabrain.neuromodulators import PerTenantNeuromodulators
@@ -521,10 +512,10 @@ class AdaptationEngine:
     def _constrain(self, name: str, value: float) -> float:
         """Execute constrain.
 
-            Args:
-                name: The name.
-                value: The value.
-            """
+        Args:
+            name: The name.
+            value: The value.
+        """
 
         lower, upper = self._constraints.get(name, (None, None))
         if lower is not None and value < lower:
@@ -534,8 +525,7 @@ class AdaptationEngine:
         return value
 
     def _save_history(self) -> None:
-        """Execute save history.
-            """
+        """Execute save history."""
 
         if len(self._history) >= self._max_history:
             self._history.pop(0)
@@ -556,8 +546,7 @@ class AdaptationEngine:
         )
 
     def rollback(self) -> bool:
-        """Execute rollback.
-            """
+        """Execute rollback."""
 
         if not self._history:
             return False
@@ -578,8 +567,7 @@ class AdaptationEngine:
         return True
 
     def _update_metrics(self) -> None:
-        """Execute update metrics.
-            """
+        """Execute update metrics."""
 
         try:
             from somabrain import metrics as _metrics
@@ -607,16 +595,14 @@ class AdaptationEngine:
             pass
 
     def _persist_if_enabled(self) -> None:
-        """Execute persist if enabled.
-            """
+        """Execute persist if enabled."""
 
         if is_persistence_enabled():
             self._redis = get_redis()
             self._persist_state()
 
     def _persist_state(self) -> None:
-        """Execute persist state.
-            """
+        """Execute persist state."""
 
         if not self._redis:
             return
@@ -639,20 +625,21 @@ class AdaptationEngine:
         )
 
     def _load_state(self) -> None:
-        """Execute load state.
-            """
+        """Execute load state."""
 
         state = load_state(self._redis, self._tenant_id)
         if not state:
             return
         if "retrieval" in state:
             r = state["retrieval"]
-            self._retrieval.alpha, self._retrieval.beta = r.get(
-                "alpha", self._retrieval.alpha
-            ), r.get("beta", self._retrieval.beta)
-            self._retrieval.gamma, self._retrieval.tau = r.get(
-                "gamma", self._retrieval.gamma
-            ), r.get("tau", self._retrieval.tau)
+            self._retrieval.alpha, self._retrieval.beta = (
+                r.get("alpha", self._retrieval.alpha),
+                r.get("beta", self._retrieval.beta),
+            )
+            self._retrieval.gamma, self._retrieval.tau = (
+                r.get("gamma", self._retrieval.gamma),
+                r.get("tau", self._retrieval.tau),
+            )
         if "utility" in state:
             u = state["utility"]
             self._utility.lambda_, self._utility.mu, self._utility.nu = (
@@ -666,32 +653,33 @@ class AdaptationEngine:
     def optimize_hyperparameters(self, search_space: dict, n_trials: int = 10) -> dict:
         """Execute optimize hyperparameters.
 
-            Args:
-                search_space: The search_space.
-                n_trials: The n_trials.
-            """
+        Args:
+            search_space: The search_space.
+            n_trials: The n_trials.
+        """
 
-        lr_opts, tau_opts = list(
-            search_space.get("learning_rate", [self._base_lr])
-        ), list(search_space.get("tau", [self._retrieval.tau]))
+        lr_opts, tau_opts = (
+            list(search_space.get("learning_rate", [self._base_lr])),
+            list(search_space.get("tau", [self._retrieval.tau])),
+        )
         return {"learning_rate": float(lr_opts[0]), "tau": float(tau_opts[0])}
 
     def transfer_parameters(self, source_task: str, target_task: str) -> None:
         """Execute transfer parameters.
 
-            Args:
-                source_task: The source_task.
-                target_task: The target_task.
-            """
+        Args:
+            source_task: The source_task.
+            target_task: The target_task.
+        """
 
         self._task_type = str(target_task)
 
     def set_curriculum_stage(self, stage: str) -> None:
         """Set curriculum stage.
 
-            Args:
-                stage: The stage.
-            """
+        Args:
+            stage: The stage.
+        """
 
         key, base = str(stage).strip().lower(), float(self._base_lr)
         if key == "easy":
@@ -704,9 +692,9 @@ class AdaptationEngine:
     def _monitor_performance(self, metrics: dict) -> None:
         """Execute monitor performance.
 
-            Args:
-                metrics: The metrics.
-            """
+        Args:
+            metrics: The metrics.
+        """
 
         try:
             performance_history = getattr(self, "performance_history", [])
@@ -722,9 +710,9 @@ class AdaptationEngine:
     def update_parameters(self, feedback: dict) -> None:
         """Execute update parameters.
 
-            Args:
-                feedback: The feedback.
-            """
+        Args:
+            feedback: The feedback.
+        """
 
         reward, error = 0.0, 0.0
         try:
@@ -746,9 +734,9 @@ class AdaptationEngine:
     def update_from_experience(self, exp: dict) -> None:
         """Execute update from experience.
 
-            Args:
-                exp: The exp.
-            """
+        Args:
+            exp: The exp.
+        """
 
         try:
             self.total_experiences = int(getattr(self, "total_experiences", 0) + 1)
@@ -763,9 +751,9 @@ class AdaptationEngine:
     def initialize_from_prior(self, prior_params: dict) -> None:
         """Execute initialize from prior.
 
-            Args:
-                prior_params: The prior_params.
-            """
+        Args:
+            prior_params: The prior_params.
+        """
 
         if not isinstance(prior_params, dict):
             return
@@ -781,22 +769,22 @@ class AdaptationEngine:
     def linear_decay(self, tau_0: float, tau_min: float, alpha: float, t: int) -> float:
         """Execute linear decay.
 
-            Args:
-                tau_0: The tau_0.
-                tau_min: The tau_min.
-                alpha: The alpha.
-                t: The t.
-            """
+        Args:
+            tau_0: The tau_0.
+            tau_min: The tau_min.
+            alpha: The alpha.
+            t: The t.
+        """
 
         return linear_decay(tau_0, tau_min, alpha, t)
 
     def exponential_decay(self, tau_0: float, gamma: float, t: int) -> float:
         """Execute exponential decay.
 
-            Args:
-                tau_0: The tau_0.
-                gamma: The gamma.
-                t: The t.
-            """
+        Args:
+            tau_0: The tau_0.
+            gamma: The gamma.
+            t: The t.
+        """
 
         return exponential_decay(tau_0, gamma, t)

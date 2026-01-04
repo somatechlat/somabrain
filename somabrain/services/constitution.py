@@ -2,13 +2,12 @@
 
 from typing import Optional
 from somabrain.constitution import ConstitutionEngine
-from django.conf import settings
 
 _engine: Optional[ConstitutionEngine] = None
 
+
 def get_constitution_engine() -> ConstitutionEngine:
-    """Retrieve constitution engine.
-        """
+    """Retrieve constitution engine."""
 
     global _engine
     if _engine is None:
@@ -18,7 +17,7 @@ def get_constitution_engine() -> ConstitutionEngine:
         _engine = ConstitutionEngine()
         # Optionally load initial state
         try:
-             _engine.load()
+            _engine.load()
         except Exception:
-             pass # Fail silent on load as per original pattern or log warning
+            pass  # Fail silent on load as per original pattern or log warning
     return _engine

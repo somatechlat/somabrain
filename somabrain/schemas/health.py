@@ -7,7 +7,6 @@ feature flags, migration, outbox management, and quota operations.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -179,6 +178,7 @@ class OutboxEventModel(BaseModel):
 
 class NeuromodAdjustRequest(BaseModel):
     """Request schema for adjusting neuromodulator levels."""
+
     dopamine: Optional[float] = Field(None, ge=0.0, le=1.0)
     serotonin: Optional[float] = Field(None, ge=0.0, le=1.0)
     noradrenaline: Optional[float] = Field(None, ge=0.0, le=1.0)
@@ -187,6 +187,7 @@ class NeuromodAdjustRequest(BaseModel):
 
 class ProxyRequest(BaseModel):
     """Request schema for proxying requests to external services."""
+
     service: str
     endpoint: str
     target_url: Optional[str] = None
@@ -195,6 +196,7 @@ class ProxyRequest(BaseModel):
 
 class ConfigResponse(BaseModel):
     """Response schema for configuration endpoint."""
+
     tenant_id: str
     namespace: str
     features: Dict[str, bool]
@@ -203,6 +205,7 @@ class ConfigResponse(BaseModel):
 
 class JournalReplayRequest(BaseModel):
     """Request to replay specific journal events."""
+
     event_ids: List[int] = Field(..., min_length=1, max_length=1000)
     tenant_id: Optional[str] = None
     dedupe_key: str

@@ -24,9 +24,9 @@ class WorkingMemoryBuffer:
             return
         if session_id not in self._store:
             self._store[session_id] = []
-        
+
         self._store[session_id].append(item)
-        
+
         # Enforce capacity limit
         if len(self._store[session_id]) > self._max_items:
             self._store[session_id].pop(0)

@@ -134,21 +134,21 @@ class TestTenantIsolation:
 
         # Verify tenant A state unchanged
         retrieved_a = store.get_state(tenant_a)
-        assert (
-            abs(retrieved_a.dopamine - dopamine_a) < 1e-10
-        ), f"Tenant A dopamine changed: {retrieved_a.dopamine} != {dopamine_a}"
-        assert (
-            abs(retrieved_a.serotonin - serotonin_a) < 1e-10
-        ), f"Tenant A serotonin changed: {retrieved_a.serotonin} != {serotonin_a}"
+        assert abs(retrieved_a.dopamine - dopamine_a) < 1e-10, (
+            f"Tenant A dopamine changed: {retrieved_a.dopamine} != {dopamine_a}"
+        )
+        assert abs(retrieved_a.serotonin - serotonin_a) < 1e-10, (
+            f"Tenant A serotonin changed: {retrieved_a.serotonin} != {serotonin_a}"
+        )
 
         # Verify tenant B state is different
         retrieved_b = store.get_state(tenant_b)
-        assert (
-            abs(retrieved_b.dopamine - dopamine_b) < 1e-10
-        ), f"Tenant B dopamine wrong: {retrieved_b.dopamine} != {dopamine_b}"
-        assert (
-            abs(retrieved_b.serotonin - serotonin_b) < 1e-10
-        ), f"Tenant B serotonin wrong: {retrieved_b.serotonin} != {serotonin_b}"
+        assert abs(retrieved_b.dopamine - dopamine_b) < 1e-10, (
+            f"Tenant B dopamine wrong: {retrieved_b.dopamine} != {dopamine_b}"
+        )
+        assert abs(retrieved_b.serotonin - serotonin_b) < 1e-10, (
+            f"Tenant B serotonin wrong: {retrieved_b.serotonin} != {serotonin_b}"
+        )
 
     @given(
         tenant_id=tenant_id_strategy,
@@ -221,12 +221,12 @@ class TestTenantIsolation:
         # Verify all states are correct
         for tid, (expected_da, expected_ser) in states.items():
             retrieved = store.get_state(tid)
-            assert (
-                abs(retrieved.dopamine - expected_da) < 1e-10
-            ), f"Tenant {tid} dopamine mismatch"
-            assert (
-                abs(retrieved.serotonin - expected_ser) < 1e-10
-            ), f"Tenant {tid} serotonin mismatch"
+            assert abs(retrieved.dopamine - expected_da) < 1e-10, (
+                f"Tenant {tid} dopamine mismatch"
+            )
+            assert abs(retrieved.serotonin - expected_ser) < 1e-10, (
+                f"Tenant {tid} serotonin mismatch"
+            )
 
 
 class TestSerializationRoundTrip:
@@ -401,9 +401,9 @@ class TestTimestampNormalization:
     def test_float_timestamp_passthrough(self, timestamp: float) -> None:
         """Verify float timestamps pass through unchanged."""
         result = coerce_to_epoch_seconds(timestamp)
-        assert (
-            abs(result - timestamp) < 1e-10
-        ), f"Float timestamp changed: {result} != {timestamp}"
+        assert abs(result - timestamp) < 1e-10, (
+            f"Float timestamp changed: {result} != {timestamp}"
+        )
 
     @given(
         timestamp=st.integers(min_value=0, max_value=2000000000),
@@ -423,9 +423,9 @@ class TestTimestampNormalization:
         """Verify numeric string timestamps are parsed correctly."""
         timestamp_str = str(timestamp)
         result = coerce_to_epoch_seconds(timestamp_str)
-        assert (
-            abs(result - timestamp) < 1e-6
-        ), f"Numeric string parsing failed: {result} != {timestamp}"
+        assert abs(result - timestamp) < 1e-6, (
+            f"Numeric string parsing failed: {result} != {timestamp}"
+        )
 
     @given(
         year=st.integers(min_value=1970, max_value=2030),
@@ -453,9 +453,9 @@ class TestTimestampNormalization:
         result = coerce_to_epoch_seconds(iso_str)
         expected = dt.timestamp()
 
-        assert (
-            abs(result - expected) < 1.0
-        ), f"ISO-8601 parsing failed: {result} != {expected} for {iso_str}"
+        assert abs(result - expected) < 1.0, (
+            f"ISO-8601 parsing failed: {result} != {expected} for {iso_str}"
+        )
 
     @given(
         year=st.integers(min_value=1970, max_value=2030),
@@ -485,9 +485,9 @@ class TestTimestampNormalization:
         result = coerce_to_epoch_seconds(iso_str)
         expected = dt.timestamp()
 
-        assert (
-            abs(result - expected) < 1.0
-        ), f"ISO-8601 Z suffix parsing failed: {result} != {expected} for {iso_str}"
+        assert abs(result - expected) < 1.0, (
+            f"ISO-8601 Z suffix parsing failed: {result} != {expected} for {iso_str}"
+        )
 
     @given(
         year=st.integers(min_value=1970, max_value=2030),
@@ -513,9 +513,9 @@ class TestTimestampNormalization:
         result = coerce_to_epoch_seconds(dt)
         expected = dt.timestamp()
 
-        assert (
-            abs(result - expected) < 1e-6
-        ), f"Datetime conversion failed: {result} != {expected}"
+        assert abs(result - expected) < 1e-6, (
+            f"Datetime conversion failed: {result} != {expected}"
+        )
 
     @given(
         year=st.integers(min_value=1970, max_value=2030),
@@ -531,9 +531,9 @@ class TestTimestampNormalization:
         result = coerce_to_epoch_seconds(dt_naive)
         expected = dt_utc.timestamp()
 
-        assert (
-            abs(result - expected) < 1e-6
-        ), f"Naive datetime not treated as UTC: {result} != {expected}"
+        assert abs(result - expected) < 1e-6, (
+            f"Naive datetime not treated as UTC: {result} != {expected}"
+        )
 
     def test_invalid_timestamp_raises(self) -> None:
         """Verify invalid timestamps raise ValueError."""
@@ -565,6 +565,6 @@ class TestTimestampNormalization:
         result = coerce_to_epoch_seconds(iso_str)
 
         # Should be close (microsecond precision loss acceptable)
-        assert (
-            abs(result - timestamp) < 1.0
-        ), f"Round-trip failed: {result} != {timestamp}"
+        assert abs(result - timestamp) < 1.0, (
+            f"Round-trip failed: {result} != {timestamp}"
+        )

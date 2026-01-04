@@ -51,7 +51,9 @@ class MTWMConfig:
     per_tenant_capacity: int = field(
         default_factory=lambda: max(1, int(settings.SOMABRAIN_WM_PER_TENANT_CAPACITY))
     )
-    max_tenants: int = field(default_factory=lambda: int(settings.SOMABRAIN_MTWM_MAX_TENANTS))
+    max_tenants: int = field(
+        default_factory=lambda: int(settings.SOMABRAIN_MTWM_MAX_TENANTS)
+    )
     recency_time_scale: float = field(
         default_factory=lambda: float(settings.SOMABRAIN_WM_RECENCY_TIME_SCALE)
     )
@@ -164,10 +166,10 @@ class MultiTenantWM:
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
         """Execute novelty.
 
-            Args:
-                tenant_id: The tenant_id.
-                vec: The vec.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            vec: The vec.
+        """
 
         with self._lock:
             return self._ensure(tenant_id).novelty(vec)
@@ -175,10 +177,10 @@ class MultiTenantWM:
     def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
         """Execute items.
 
-            Args:
-                tenant_id: The tenant_id.
-                limit: The limit.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            limit: The limit.
+        """
 
         with self._lock:
             wm = self._ensure(tenant_id)
@@ -188,8 +190,7 @@ class MultiTenantWM:
         return data
 
     def tenants(self) -> List[str]:
-        """Execute tenants.
-            """
+        """Execute tenants."""
 
         with self._lock:
             return list(self._wms.keys())

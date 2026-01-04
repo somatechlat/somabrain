@@ -28,14 +28,11 @@ from somabrain.saas.auth import APIKeyAuth, log_api_action, require_scope
 from somabrain.saas.billing import get_lago_client
 from somabrain.saas.models import (
     APIKey,
-    AuditLog,
     Subscription,
     SubscriptionStatus,
     SubscriptionTier,
     Tenant,
     TenantStatus,
-    TenantUser,
-    UserRole,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,8 +50,10 @@ router = Router(tags=["SaaS Admin"])
 
 # --- Tenant Schemas ---
 
+
 class TenantCreateSchema(Schema):
     """Create tenant request."""
+
     name: str
     slug: str
     tier_slug: str = "free"
@@ -65,6 +64,7 @@ class TenantCreateSchema(Schema):
 
 class TenantUpdateSchema(Schema):
     """Update tenant request."""
+
     name: Optional[str] = None
     admin_email: Optional[str] = None
     billing_email: Optional[str] = None
@@ -74,6 +74,7 @@ class TenantUpdateSchema(Schema):
 
 class TenantResponseSchema(Schema):
     """Tenant response."""
+
     id: UUID
     name: str
     slug: str
@@ -86,6 +87,7 @@ class TenantResponseSchema(Schema):
 
 class TenantListSchema(Schema):
     """Paginated tenant list."""
+
     tenants: List[TenantResponseSchema]
     total: int
     page: int
@@ -94,8 +96,10 @@ class TenantListSchema(Schema):
 
 # --- API Key Schemas ---
 
+
 class APIKeyCreateSchema(Schema):
     """Create API key request."""
+
     name: str
     scopes: List[str] = ["read:memory", "write:memory"]
     expires_days: Optional[int] = None
@@ -104,6 +108,7 @@ class APIKeyCreateSchema(Schema):
 
 class APIKeyResponseSchema(Schema):
     """API key response (without full key)."""
+
     id: UUID
     name: str
     key_prefix: str
@@ -116,6 +121,7 @@ class APIKeyResponseSchema(Schema):
 
 class APIKeyCreatedSchema(Schema):
     """Response when API key is created (includes full key ONCE)."""
+
     id: UUID
     name: str
     key: str  # Full key - only shown once!
@@ -125,8 +131,10 @@ class APIKeyCreatedSchema(Schema):
 
 # --- Subscription Tier Schemas ---
 
+
 class SubscriptionTierCreateSchema(Schema):
     """Create subscription tier request."""
+
     name: str
     slug: str
     price_monthly: float
@@ -140,6 +148,7 @@ class SubscriptionTierCreateSchema(Schema):
 
 class SubscriptionTierUpdateSchema(Schema):
     """Update subscription tier request."""
+
     name: Optional[str] = None
     price_monthly: Optional[float] = None
     features: Optional[dict] = None
@@ -149,6 +158,7 @@ class SubscriptionTierUpdateSchema(Schema):
 
 class SubscriptionTierResponseSchema(Schema):
     """Subscription tier details."""
+
     id: UUID
     name: str
     slug: str
@@ -160,8 +170,10 @@ class SubscriptionTierResponseSchema(Schema):
 
 # --- Subscription Schemas ---
 
+
 class SubscriptionResponseSchema(Schema):
     """Subscription response."""
+
     id: UUID
     tier_name: str
     tier_slug: str
@@ -172,12 +184,14 @@ class SubscriptionResponseSchema(Schema):
 
 class SubscriptionChangeSchema(Schema):
     """Change subscription tier."""
+
     tier_slug: str
 
 
 # =============================================================================
 # TENANT ENDPOINTS
 # =============================================================================
+
 
 @router.get("/tenants", response=TenantListSchema, auth=APIKeyAuth())
 @require_scope("admin:tenants")
@@ -189,18 +203,18 @@ def list_tenants(
 ):
     """
     List all tenants (paginated).
-    
+
     Requires: admin:tenants scope
     """
     queryset = Tenant.objects.select_related("tier").all()
-    
+
     if status:
         queryset = queryset.filter(status=status)
-    
+
     total = queryset.count()
     offset = (page - 1) * page_size
-    tenants = queryset[offset:offset + page_size]
-    
+    tenants = queryset[offset : offset + page_size]
+
     return {
         "tenants": [
             {
@@ -226,9 +240,9 @@ def list_tenants(
 def create_tenant(request, data: TenantCreateSchema):
     """
     Create a new tenant.
-    
+
     Requires: admin:tenants scope
-    
+
     Automatically:
     - Creates Lago customer
     - Creates subscription
@@ -239,11 +253,11 @@ def create_tenant(request, data: TenantCreateSchema):
         tier = SubscriptionTier.objects.get(slug=data.tier_slug, is_active=True)
     except SubscriptionTier.DoesNotExist:
         raise HttpError(400, f"Unknown tier: {data.tier_slug}")
-    
+
     # Check slug uniqueness
     if Tenant.objects.filter(slug=data.slug).exists():
         raise HttpError(400, f"Slug already exists: {data.slug}")
-    
+
     with transaction.atomic():
         # Create tenant
         tenant = Tenant.objects.create(
@@ -256,7 +270,7 @@ def create_tenant(request, data: TenantCreateSchema):
             config=data.config or {},
             created_by=str(request.auth.get("api_key_id")),
         )
-        
+
         # Create subscription
         Subscription.objects.create(
             tenant=tenant,
@@ -264,7 +278,7 @@ def create_tenant(request, data: TenantCreateSchema):
             status=SubscriptionStatus.ACTIVE,
             current_period_start=datetime.now(timezone.utc),
         )
-        
+
         # Log
         log_api_action(
             request,
@@ -273,7 +287,7 @@ def create_tenant(request, data: TenantCreateSchema):
             resource_id=tenant.id,
             details={"name": data.name, "tier": data.tier_slug},
         )
-    
+
     # Sync to Lago (async/background - don't block)
     try:
         lago = get_lago_client()
@@ -281,7 +295,7 @@ def create_tenant(request, data: TenantCreateSchema):
         lago.create_subscription(tenant, tier)
     except Exception as e:
         logger.warning(f"Lago sync failed for tenant {tenant.slug}: {e}")
-    
+
     return {
         "id": tenant.id,
         "name": tenant.name,
@@ -299,7 +313,7 @@ def create_tenant(request, data: TenantCreateSchema):
 def get_tenant(request, tenant_id: UUID):
     """Get tenant by ID."""
     tenant = get_object_or_404(Tenant.objects.select_related("tier"), id=tenant_id)
-    
+
     return {
         "id": tenant.id,
         "name": tenant.name,
@@ -317,7 +331,7 @@ def get_tenant(request, tenant_id: UUID):
 def update_tenant(request, tenant_id: UUID, data: TenantUpdateSchema):
     """Update tenant details."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     if data.name:
         tenant.name = data.name
     if data.admin_email:
@@ -328,16 +342,16 @@ def update_tenant(request, tenant_id: UUID, data: TenantUpdateSchema):
         tenant.config.update(data.config)
     if data.quota_overrides:
         tenant.quota_overrides.update(data.quota_overrides)
-    
+
     tenant.save()
-    
+
     log_api_action(
         request,
         action="tenant.updated",
         resource_type="tenant",
         resource_id=tenant.id,
     )
-    
+
     return {
         "id": tenant.id,
         "name": tenant.name,
@@ -355,9 +369,9 @@ def update_tenant(request, tenant_id: UUID, data: TenantUpdateSchema):
 def suspend_tenant(request, tenant_id: UUID, reason: str = "Administrative action"):
     """Suspend a tenant."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     tenant.suspend(reason=reason)
-    
+
     log_api_action(
         request,
         action="tenant.suspended",
@@ -365,7 +379,7 @@ def suspend_tenant(request, tenant_id: UUID, reason: str = "Administrative actio
         resource_id=tenant.id,
         details={"reason": reason},
     )
-    
+
     return {"status": "suspended", "tenant_id": str(tenant_id)}
 
 
@@ -374,16 +388,16 @@ def suspend_tenant(request, tenant_id: UUID, reason: str = "Administrative actio
 def activate_tenant(request, tenant_id: UUID):
     """Activate a suspended tenant."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     tenant.activate()
-    
+
     log_api_action(
         request,
         action="tenant.activated",
         resource_type="tenant",
         resource_id=tenant.id,
     )
-    
+
     return {"status": "active", "tenant_id": str(tenant_id)}
 
 
@@ -392,16 +406,16 @@ def activate_tenant(request, tenant_id: UUID):
 def delete_tenant(request, tenant_id: UUID, hard_delete: bool = False):
     """
     Delete a tenant.
-    
+
     By default, soft delete (set status=DISABLED).
     Use hard_delete=true to permanently remove.
     """
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     if hard_delete:
         tenant_slug = tenant.slug
         tenant.delete()
-        
+
         log_api_action(
             request,
             action="tenant.deleted.hard",
@@ -409,19 +423,19 @@ def delete_tenant(request, tenant_id: UUID, hard_delete: bool = False):
             resource_id=tenant_id,
             details={"slug": tenant_slug},
         )
-        
+
         return {"status": "deleted", "tenant_id": str(tenant_id)}
     else:
         tenant.status = TenantStatus.DISABLED
         tenant.save()
-        
+
         log_api_action(
             request,
             action="tenant.deleted.soft",
             resource_type="tenant",
             resource_id=tenant_id,
         )
-        
+
         return {"status": "disabled", "tenant_id": str(tenant_id)}
 
 
@@ -429,14 +443,19 @@ def delete_tenant(request, tenant_id: UUID, hard_delete: bool = False):
 # API KEY ENDPOINTS
 # =============================================================================
 
-@router.get("/tenants/{tenant_id}/api-keys", response=List[APIKeyResponseSchema], auth=APIKeyAuth())
+
+@router.get(
+    "/tenants/{tenant_id}/api-keys",
+    response=List[APIKeyResponseSchema],
+    auth=APIKeyAuth(),
+)
 @require_scope("admin:tenants")
 def list_api_keys(request, tenant_id: UUID):
     """List API keys for a tenant."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     keys = APIKey.objects.filter(tenant=tenant).order_by("-created_at")
-    
+
     return [
         {
             "id": k.id,
@@ -452,25 +471,28 @@ def list_api_keys(request, tenant_id: UUID):
     ]
 
 
-@router.post("/tenants/{tenant_id}/api-keys", response=APIKeyCreatedSchema, auth=APIKeyAuth())
+@router.post(
+    "/tenants/{tenant_id}/api-keys", response=APIKeyCreatedSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:tenants")
 def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
     """
     Create a new API key for a tenant.
-    
+
     ⚠️ The full key is only returned ONCE in this response!
     """
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # Generate key
     full_key, prefix, key_hash = APIKey.generate_key(is_test=data.is_test)
-    
+
     # Calculate expiration
     expires_at = None
     if data.expires_days:
         from datetime import timedelta
+
         expires_at = datetime.now(timezone.utc) + timedelta(days=data.expires_days)
-    
+
     # Create key
     api_key = APIKey.objects.create(
         tenant=tenant,
@@ -481,7 +503,7 @@ def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
         is_test=data.is_test,
         expires_at=expires_at,
     )
-    
+
     log_api_action(
         request,
         action="api_key.created",
@@ -490,7 +512,7 @@ def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
         tenant=tenant,
         details={"name": data.name, "scopes": data.scopes},
     )
-    
+
     return {
         "id": api_key.id,
         "name": api_key.name,
@@ -505,9 +527,9 @@ def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
 def revoke_api_key(request, tenant_id: UUID, key_id: UUID):
     """Revoke an API key."""
     api_key = get_object_or_404(APIKey, id=key_id, tenant_id=tenant_id)
-    
+
     api_key.revoke()
-    
+
     log_api_action(
         request,
         action="api_key.revoked",
@@ -515,7 +537,7 @@ def revoke_api_key(request, tenant_id: UUID, key_id: UUID):
         resource_id=key_id,
         tenant=api_key.tenant,
     )
-    
+
     return {"status": "revoked", "key_id": str(key_id)}
 
 
@@ -523,12 +545,17 @@ def revoke_api_key(request, tenant_id: UUID, key_id: UUID):
 # SUBSCRIPTION ENDPOINTS
 # =============================================================================
 
-@router.get("/tenants/{tenant_id}/subscription", response=SubscriptionResponseSchema, auth=APIKeyAuth())
+
+@router.get(
+    "/tenants/{tenant_id}/subscription",
+    response=SubscriptionResponseSchema,
+    auth=APIKeyAuth(),
+)
 @require_scope("admin:tenants")
 def get_subscription(request, tenant_id: UUID):
     """Get tenant subscription."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     try:
         sub = tenant.subscription
         return {
@@ -543,28 +570,32 @@ def get_subscription(request, tenant_id: UUID):
         raise HttpError(404, "No subscription found")
 
 
-@router.post("/tenants/{tenant_id}/subscription/change", response=SubscriptionResponseSchema, auth=APIKeyAuth())
+@router.post(
+    "/tenants/{tenant_id}/subscription/change",
+    response=SubscriptionResponseSchema,
+    auth=APIKeyAuth(),
+)
 @require_scope("admin:tenants")
 def change_subscription(request, tenant_id: UUID, data: SubscriptionChangeSchema):
     """Change tenant subscription tier."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     new_tier = get_object_or_404(SubscriptionTier, slug=data.tier_slug, is_active=True)
-    
+
     try:
         sub = tenant.subscription
         old_tier = sub.tier.slug
         sub.tier = new_tier
         sub.save()
-        
+
         # Update tenant tier reference
         tenant.tier = new_tier
         tenant.save()
-        
+
         # Sync to Lago
         lago = get_lago_client()
         lago.change_subscription_plan(str(tenant.id), new_tier.slug)
-        
+
         log_api_action(
             request,
             action="subscription.changed",
@@ -573,7 +604,7 @@ def change_subscription(request, tenant_id: UUID, data: SubscriptionChangeSchema
             tenant=tenant,
             details={"from": old_tier, "to": data.tier_slug},
         )
-        
+
         return {
             "id": sub.id,
             "tier_name": sub.tier.name,
@@ -593,6 +624,7 @@ def change_subscription(request, tenant_id: UUID, data: SubscriptionChangeSchema
 # =============================================================================
 # SUBSCRIPTION TIER ENDPOINTS (Mixed Access)
 # =============================================================================
+
 
 @router.get("/tiers", response=List[SubscriptionTierResponseSchema])
 def list_tiers(request):
@@ -630,9 +662,11 @@ def create_tier(request, data: SubscriptionTierCreateSchema):
         storage_limit_mb=data.storage_limit_mb or 100,
         is_active=data.is_active,
     )
-    
-    log_api_action(request, "tier.created", "tier", tier.id, details={"slug": tier.slug})
-    
+
+    log_api_action(
+        request, "tier.created", "tier", tier.id, details={"slug": tier.slug}
+    )
+
     return {
         "id": tier.id,
         "name": tier.name,
@@ -644,7 +678,9 @@ def create_tier(request, data: SubscriptionTierCreateSchema):
     }
 
 
-@router.get("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@router.get(
+    "/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:billing")
 def get_tier(request, tier_id: UUID):
     """Get subscription tier details."""
@@ -660,21 +696,28 @@ def get_tier(request, tier_id: UUID):
     }
 
 
-@router.patch("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@router.patch(
+    "/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:billing")
 def update_tier(request, tier_id: UUID, data: SubscriptionTierUpdateSchema):
     """Update subscription tier."""
     tier = get_object_or_404(SubscriptionTier, id=tier_id)
-    
-    if data.name: tier.name = data.name
-    if data.price_monthly is not None: tier.price_monthly = data.price_monthly
-    if data.features is not None: tier.features = data.features
-    if data.api_calls_limit is not None: tier.api_calls_limit = data.api_calls_limit
-    if data.is_active is not None: tier.is_active = data.is_active
-    
+
+    if data.name:
+        tier.name = data.name
+    if data.price_monthly is not None:
+        tier.price_monthly = data.price_monthly
+    if data.features is not None:
+        tier.features = data.features
+    if data.api_calls_limit is not None:
+        tier.api_calls_limit = data.api_calls_limit
+    if data.is_active is not None:
+        tier.is_active = data.is_active
+
     tier.save()
     log_api_action(request, "tier.updated", "tier", tier.id)
-    
+
     return {
         "id": tier.id,
         "name": tier.name,
@@ -690,8 +733,10 @@ def update_tier(request, tier_id: UUID, data: SubscriptionTierUpdateSchema):
 # USAGE REPORT ENDPOINT (For SFM Integration)
 # =============================================================================
 
+
 class UsageEventSchema(Schema):
     """Single usage event."""
+
     code: str
     properties: dict
     timestamp: str
@@ -699,6 +744,7 @@ class UsageEventSchema(Schema):
 
 class UsageReportSchema(Schema):
     """Usage report from external service."""
+
     tenant_id: str
     source: str
     events: List[UsageEventSchema]
@@ -709,18 +755,18 @@ class UsageReportSchema(Schema):
 def report_usage(request, data: UsageReportSchema):
     """
     Receive usage report from SomaFractalMemory.
-    
+
     Forwards events to Lago for billing.
     """
     try:
         tenant = Tenant.objects.get(id=data.tenant_id)
     except Tenant.DoesNotExist:
         raise HttpError(404, f"Tenant not found: {data.tenant_id}")
-    
+
     # Forward to Lago
     lago = get_lago_client()
     success_count = 0
-    
+
     for event in data.events:
         if lago.report_usage(
             tenant=tenant,
@@ -728,7 +774,7 @@ def report_usage(request, data: UsageReportSchema):
             properties=event.properties,
         ):
             success_count += 1
-    
+
     log_api_action(
         request,
         action="usage.reported",
@@ -741,7 +787,7 @@ def report_usage(request, data: UsageReportSchema):
             "success_count": success_count,
         },
     )
-    
+
     return {
         "status": "processed",
         "tenant_id": data.tenant_id,

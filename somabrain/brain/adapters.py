@@ -26,7 +26,9 @@ class FractalClientAdapter:
 
         self.client = client
 
-    def encode_fractal(self, content: Dict[str, Any], importance: float = 1.0) -> List[Any]:
+    def encode_fractal(
+        self, content: Dict[str, Any], importance: float = 1.0
+    ) -> List[Any]:
         """Persist content via the Memory Service.
 
         Translates the Brain's 'fractal encoding' request into a standard 'remember' call.
@@ -42,7 +44,7 @@ class FractalClientAdapter:
         # We use a deterministic key based on content or uuid if not present
         # In a real fractal system we'd generate a specific key, here we trust the Service
         key = content.get("id") or content.get("task_id") or "fractal_trace"
-        
+
         # Enrich payload with 'fractal' specific metadata if needed
         payload = content.copy()
         payload["_system"] = "unified_brain_fractal"
@@ -50,13 +52,15 @@ class FractalClientAdapter:
 
         # PERSIST: Single Point of Access call
         coord = self.client.remember(str(key), payload)
-        
-        # UnifiedBrainCore expects a list of 'nodes'. 
+
+        # UnifiedBrainCore expects a list of 'nodes'.
         # We return the coordinate as a single 'node' trace.
         # This adapts the interface without changing the Brain's logic flow yet.
         return [coord]
 
-    def retrieve_fractal(self, query: Dict[str, Any], top_k: int = 3) -> List[Tuple[Any, float]]:
+    def retrieve_fractal(
+        self, query: Dict[str, Any], top_k: int = 3
+    ) -> List[Tuple[Any, float]]:
         """Retrieve memories via the Memory Service.
 
         Translates Brain's 'retrieve_fractal' to 'recall'.
@@ -84,7 +88,7 @@ class FractalClientAdapter:
             # Checking UnifiedBrainCore._combine_results:
             #   for i, (node, resonance) in enumerate(fractal_results):
             #       combined.append({"content": node.memory_trace, ...})
-            
+
             # So 'node' must be an object with 'memory_trace' attribute.
             class AdapterNode:
                 """Adapternode class implementation."""
@@ -93,7 +97,7 @@ class FractalClientAdapter:
                     """Initialize the instance."""
 
                     self.memory_trace = p
-            
+
             results.append((AdapterNode(hit.payload), hit.score))
-            
+
         return results

@@ -32,7 +32,6 @@ try:
 except ImportError as e:
     raise RuntimeError(f"State predictor requires confluent-kafka: {e}")
 
-from django.conf import settings
 
 # Logging setup
 logger = logging.getLogger("somabrain.services.state_predictor")

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Check markdown links in documentation."""
+
 import re
 import sys
 from pathlib import Path

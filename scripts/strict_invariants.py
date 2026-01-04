@@ -49,9 +49,9 @@ MAX_SIZE = 1_000_000
 def is_text(path: Path) -> bool:
     """Check if text.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     try:
         with open(path, "rb") as f:
@@ -65,8 +65,7 @@ def is_text(path: Path) -> bool:
 
 
 def main() -> int:
-    """Execute main.
-        """
+    """Execute main."""
 
     violations: list[tuple[str, str]] = []
     for dirpath, dirnames, filenames in os.walk(ROOT):

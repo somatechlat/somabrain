@@ -17,18 +17,14 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import uuid4
 from enum import Enum
 
 from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, TenantUser, AuditLog, ActorType
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
 
 
 router = Router(tags=["Changelog"])
@@ -38,8 +34,10 @@ router = Router(tags=["Changelog"])
 # CHANGELOG TYPES
 # =============================================================================
 
+
 class ChangeType(str, Enum):
     """Change types."""
+
     FEATURE = "feature"
     IMPROVEMENT = "improvement"
     FIX = "fix"
@@ -50,6 +48,7 @@ class ChangeType(str, Enum):
 
 class ReleaseStatus(str, Enum):
     """Release status."""
+
     DRAFT = "draft"
     PUBLISHED = "published"
     ARCHIVED = "archived"
@@ -59,9 +58,9 @@ class ReleaseStatus(str, Enum):
 # CHANGELOG STORAGE
 # =============================================================================
 
+
 def get_releases_key() -> str:
-    """Retrieve releases key.
-        """
+    """Retrieve releases key."""
 
     return "changelog:releases"
 
@@ -69,9 +68,9 @@ def get_releases_key() -> str:
 def get_release_key(release_id: str) -> str:
     """Retrieve release key.
 
-        Args:
-            release_id: The release_id.
-        """
+    Args:
+        release_id: The release_id.
+    """
 
     return f"changelog:release:{release_id}"
 
@@ -79,9 +78,9 @@ def get_release_key(release_id: str) -> str:
 def get_user_read_key(user_id: str) -> str:
     """Retrieve user read key.
 
-        Args:
-            user_id: The user_id.
-        """
+    Args:
+        user_id: The user_id.
+    """
 
     return f"changelog:read:{user_id}"
 
@@ -106,23 +105,23 @@ def create_release(
         "created_at": timezone.now().isoformat(),
         "published_at": None,
     }
-    
+
     cache.set(get_release_key(release_id), release, timeout=86400 * 365)
-    
+
     # Add to releases list
     releases = cache.get(get_releases_key(), [])
     releases.insert(0, release_id)
     cache.set(get_releases_key(), releases, timeout=86400 * 365)
-    
+
     return release
 
 
 def get_release(release_id: str) -> Optional[dict]:
     """Retrieve release.
 
-        Args:
-            release_id: The release_id.
-        """
+    Args:
+        release_id: The release_id.
+    """
 
     return cache.get(get_release_key(release_id))
 
@@ -130,9 +129,9 @@ def get_release(release_id: str) -> Optional[dict]:
 def update_release(release_id: str, **updates) -> Optional[dict]:
     """Execute update release.
 
-        Args:
-            release_id: The release_id.
-        """
+    Args:
+        release_id: The release_id.
+    """
 
     key = get_release_key(release_id)
     release = cache.get(key)
@@ -143,8 +142,7 @@ def update_release(release_id: str, **updates) -> Optional[dict]:
 
 
 def get_all_releases() -> List[dict]:
-    """Retrieve all releases.
-        """
+    """Retrieve all releases."""
 
     release_ids = cache.get(get_releases_key(), [])
     releases = []
@@ -159,8 +157,10 @@ def get_all_releases() -> List[dict]:
 # SCHEMAS
 # =============================================================================
 
+
 class ChangeEntry(Schema):
     """Single change entry."""
+
     type: str  # feature, improvement, fix, deprecation, breaking, security
     title: str
     description: Optional[str] = None
@@ -169,6 +169,7 @@ class ChangeEntry(Schema):
 
 class ReleaseOut(Schema):
     """Release output."""
+
     id: str
     version: str
     title: str
@@ -180,6 +181,7 @@ class ReleaseOut(Schema):
 
 class ReleaseDetailOut(Schema):
     """Detailed release output."""
+
     id: str
     version: str
     title: str
@@ -193,6 +195,7 @@ class ReleaseDetailOut(Schema):
 
 class ReleaseCreate(Schema):
     """Create release request."""
+
     version: str
     title: str
     description: Optional[str] = None
@@ -201,6 +204,7 @@ class ReleaseCreate(Schema):
 
 class ReleaseUpdate(Schema):
     """Update release request."""
+
     title: Optional[str] = None
     description: Optional[str] = None
     changes: Optional[List[ChangeEntry]] = None
@@ -208,6 +212,7 @@ class ReleaseUpdate(Schema):
 
 class UnreadChangelog(Schema):
     """Unread changelog info."""
+
     has_unread: bool
     unread_count: int
     latest_version: Optional[str]
@@ -217,6 +222,7 @@ class UnreadChangelog(Schema):
 # PUBLIC CHANGELOG ENDPOINTS
 # =============================================================================
 
+
 @router.get("/releases", response=List[ReleaseOut])
 def list_releases(
     status: Optional[str] = "published",
@@ -224,14 +230,14 @@ def list_releases(
 ):
     """
     List changelog releases (public).
-    
+
     📚 Technical Writer: Public changelog
     """
     releases = get_all_releases()
-    
+
     if status:
         releases = [r for r in releases if r["status"] == status]
-    
+
     return [
         ReleaseOut(
             id=r["id"],
@@ -250,14 +256,15 @@ def list_releases(
 def get_release_detail(release_id: str):
     """
     Get release details (public).
-    
+
     📚 Technical Writer: Release details
     """
     release = get_release(release_id)
     if not release:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Release not found")
-    
+
     return ReleaseDetailOut(
         id=release["id"],
         version=release["version"],
@@ -275,15 +282,15 @@ def get_release_detail(release_id: str):
 def get_latest_release():
     """
     Get latest published release.
-    
+
     📚 Technical Writer: Latest version
     """
     releases = get_all_releases()
     published = [r for r in releases if r["status"] == "published"]
-    
+
     if not published:
         return {"latest": None}
-    
+
     latest = published[0]
     return {
         "latest": {
@@ -299,6 +306,7 @@ def get_latest_release():
 # ADMIN CHANGELOG MANAGEMENT
 # =============================================================================
 
+
 @router.post("/admin/releases", response=ReleaseDetailOut)
 @require_auth(roles=["super-admin"], any_role=True)
 def create_release_admin(
@@ -307,7 +315,7 @@ def create_release_admin(
 ):
     """
     Create a new changelog release (admin only).
-    
+
     🛠️ DevOps: Release management
     """
     release = create_release(
@@ -317,7 +325,7 @@ def create_release_admin(
         changes=[c.dict() for c in data.changes],
         created_by=str(request.user_id),
     )
-    
+
     return ReleaseDetailOut(
         id=release["id"],
         version=release["version"],
@@ -342,17 +350,18 @@ def update_release_admin(
     release = get_release(release_id)
     if not release:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Release not found")
-    
+
     if data.title is not None:
         release["title"] = data.title
     if data.description is not None:
         release["description"] = data.description
     if data.changes is not None:
         release["changes"] = [c.dict() for c in data.changes]
-    
+
     update_release(release_id, **release)
-    
+
     return ReleaseDetailOut(
         id=release["id"],
         version=release["version"],
@@ -374,20 +383,21 @@ def publish_release(
 ):
     """
     Publish a changelog release.
-    
+
     🛠️ DevOps: Release publishing
     """
     release = get_release(release_id)
     if not release:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Release not found")
-    
+
     update_release(
         release_id,
         status=ReleaseStatus.PUBLISHED,
         published_at=timezone.now().isoformat(),
     )
-    
+
     return {"success": True, "status": "published"}
 
 
@@ -401,14 +411,15 @@ def delete_release_admin(
     release = get_release(release_id)
     if not release:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Release not found")
-    
+
     cache.delete(get_release_key(release_id))
-    
+
     releases = cache.get(get_releases_key(), [])
     releases = [r for r in releases if r != release_id]
     cache.set(get_releases_key(), releases, timeout=86400 * 365)
-    
+
     return {"success": True, "deleted": release_id}
 
 
@@ -416,20 +427,21 @@ def delete_release_admin(
 # USER UNREAD TRACKING
 # =============================================================================
 
+
 @router.get("/unread", response=UnreadChangelog)
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_unread_changelog(request: AuthenticatedRequest):
     """
     Check if user has unread changelog entries.
-    
+
     🎨 UX: Update notifications
     """
     read_releases = cache.get(get_user_read_key(str(request.user_id)), [])
     releases = get_all_releases()
     published = [r for r in releases if r["status"] == "published"]
-    
+
     unread = [r for r in published if r["id"] not in read_releases]
-    
+
     return UnreadChangelog(
         has_unread=len(unread) > 0,
         unread_count=len(unread),
@@ -445,12 +457,12 @@ def mark_changelog_read(
 ):
     """
     Mark changelog entries as read.
-    
+
     🎨 UX: Dismiss notifications
     """
     key = get_user_read_key(str(request.user_id))
     read_releases = cache.get(key, [])
-    
+
     if release_id:
         if release_id not in read_releases:
             read_releases.append(release_id)
@@ -459,15 +471,16 @@ def mark_changelog_read(
         releases = get_all_releases()
         published = [r for r in releases if r["status"] == "published"]
         read_releases = [r["id"] for r in published]
-    
+
     cache.set(key, read_releases, timeout=86400 * 365)
-    
+
     return {"success": True, "marked_read": len(read_releases)}
 
 
 # =============================================================================
 # SEARCH AND FILTER
 # =============================================================================
+
 
 @router.get("/search")
 def search_changelog(
@@ -477,30 +490,32 @@ def search_changelog(
 ):
     """
     Search changelog entries.
-    
+
     📚 Technical Writer: Changelog search
     """
     releases = get_all_releases()
     published = [r for r in releases if r["status"] == "published"]
-    
+
     results = []
     q_lower = q.lower()
-    
+
     for release in published:
         for change in release.get("changes", []):
             # Filter by type if specified
             if change_type and change.get("type") != change_type:
                 continue
-            
+
             # Search in title and description
             title = change.get("title", "").lower()
             desc = change.get("description", "").lower()
-            
+
             if q_lower in title or q_lower in desc:
-                results.append({
-                    "version": release["version"],
-                    "release_id": release["id"],
-                    "change": change,
-                })
-    
+                results.append(
+                    {
+                        "version": release["version"],
+                        "release_id": release["id"],
+                        "change": change,
+                    }
+                )
+
     return {"results": results[:limit], "total": len(results)}

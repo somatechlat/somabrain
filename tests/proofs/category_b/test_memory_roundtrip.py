@@ -80,9 +80,9 @@ class TestMemoryRoundTripIntegrity:
             json=test_payload,
             timeout=30.0,
         )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        assert remember_response.status_code == 200, (
+            f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        )
 
         # Small delay for indexing
         time.sleep(0.5)
@@ -100,9 +100,9 @@ class TestMemoryRoundTripIntegrity:
             json=recall_payload,
             timeout=30.0,
         )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        assert recall_response.status_code == 200, (
+            f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        )
 
         recall_data = recall_response.json()
 
@@ -163,9 +163,9 @@ class TestMemoryRoundTripIntegrity:
             json=test_payload,
             timeout=30.0,
         )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        assert remember_response.status_code == 200, (
+            f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        )
 
         time.sleep(0.5)
 
@@ -182,9 +182,9 @@ class TestMemoryRoundTripIntegrity:
             json=recall_payload,
             timeout=30.0,
         )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        assert recall_response.status_code == 200, (
+            f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        )
 
         recall_data = recall_response.json()
         results = (
@@ -228,9 +228,9 @@ class TestMemoryRoundTripIntegrity:
             json=test_payload,
             timeout=30.0,
         )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        assert remember_response.status_code == 200, (
+            f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        )
 
         # Verify response contains coordinate info
         remember_data = remember_response.json()
@@ -296,9 +296,9 @@ class TestTenantMemoryIsolation:
             json=test_payload,
             timeout=30.0,
         )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        assert remember_response.status_code == 200, (
+            f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        )
 
         time.sleep(0.5)
 
@@ -315,9 +315,9 @@ class TestTenantMemoryIsolation:
             json=recall_payload,
             timeout=30.0,
         )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        assert recall_response.status_code == 200, (
+            f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        )
 
         recall_data = recall_response.json()
         results = (
@@ -329,9 +329,9 @@ class TestTenantMemoryIsolation:
         # Verify tenant B does NOT see tenant A's memory
         for result in results:
             content = str(result)
-            assert (
-                unique_content not in content
-            ), f"ISOLATION VIOLATION: Tenant B saw Tenant A's memory: {content}"
+            assert unique_content not in content, (
+                f"ISOLATION VIOLATION: Tenant B saw Tenant A's memory: {content}"
+            )
 
     def test_cross_tenant_query_returns_empty(self) -> None:
         """D1.2: Cross-tenant query returns empty results.
@@ -371,9 +371,9 @@ class TestTenantMemoryIsolation:
             json=test_payload,
             timeout=30.0,
         )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        assert remember_response.status_code == 200, (
+            f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        )
 
         time.sleep(0.5)
 
@@ -390,9 +390,9 @@ class TestTenantMemoryIsolation:
             json=recall_payload,
             timeout=30.0,
         )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        assert recall_response.status_code == 200, (
+            f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        )
 
         recall_data = recall_response.json()
         results = (
@@ -404,9 +404,9 @@ class TestTenantMemoryIsolation:
         # Verify tenant A does NOT see tenant B's memory
         for result in results:
             content = str(result)
-            assert (
-                unique_content not in content
-            ), "ISOLATION VIOLATION: Tenant A saw Tenant B's memory"
+            assert unique_content not in content, (
+                "ISOLATION VIOLATION: Tenant A saw Tenant B's memory"
+            )
 
     def test_coordinate_deterministic(self) -> None:
         """B3.2: Coordinate generation is deterministic.
@@ -462,9 +462,9 @@ class TestTenantMemoryIsolation:
         # Note: Some systems may generate new coords, but key should be same
         if coord1 and coord2:
             # At minimum, the key should be preserved
-            assert unique_key in str(data1) or unique_key in str(
-                data2
-            ), "Key should be preserved in response"
+            assert unique_key in str(data1) or unique_key in str(data2), (
+                "Key should be preserved in response"
+            )
 
     def test_metadata_preserved(self) -> None:
         """B3.5: Metadata is preserved through round-trip.
@@ -505,9 +505,9 @@ class TestTenantMemoryIsolation:
             json=test_payload,
             timeout=30.0,
         )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        assert remember_response.status_code == 200, (
+            f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        )
 
         time.sleep(0.5)
 
@@ -524,9 +524,9 @@ class TestTenantMemoryIsolation:
             json=recall_payload,
             timeout=30.0,
         )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        assert recall_response.status_code == 200, (
+            f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        )
 
         recall_data = recall_response.json()
         results = (

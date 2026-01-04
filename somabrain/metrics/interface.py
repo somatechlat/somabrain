@@ -131,15 +131,14 @@ class _NoOpMetric:
     def __getattr__(self, name: str) -> Callable[..., "_NoOpMetric"]:
         """Execute getattr  .
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         return lambda *args, **kwargs: self
 
     def __call__(self, *args: Any, **kwargs: Any) -> "_NoOpMetric":
-        """Execute call  .
-            """
+        """Execute call  ."""
 
         return self
 

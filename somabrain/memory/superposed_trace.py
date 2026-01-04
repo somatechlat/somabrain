@@ -56,8 +56,7 @@ class TraceConfig:
     epsilon: float = 1e-12
 
     def validate(self) -> "TraceConfig":
-        """Execute validate.
-            """
+        """Execute validate."""
 
         dim = int(self.dim)
         if dim <= 0:
@@ -260,9 +259,9 @@ class SuperposedTrace:
     def _prepare_key(self, key: np.ndarray) -> np.ndarray:
         """Execute prepare key.
 
-            Args:
-                key: The key.
-            """
+        Args:
+            key: The key.
+        """
 
         vec = self._ensure_vector(key, "key")
         if self._rotation is not None:
@@ -272,9 +271,9 @@ class SuperposedTrace:
     def _decayed_update(self, binding: np.ndarray) -> np.ndarray:
         """Execute decayed update.
 
-            Args:
-                binding: The binding.
-            """
+        Args:
+            binding: The binding.
+        """
 
         new_state = (1.0 - self._eta) * self._state + self._eta * binding
         norm = float(np.linalg.norm(new_state))
@@ -285,9 +284,9 @@ class SuperposedTrace:
     def _cleanup(self, query: np.ndarray) -> Tuple[Optional[str], float, float]:
         """Execute cleanup.
 
-            Args:
-                query: The query.
-            """
+        Args:
+            query: The query.
+        """
 
         if not self._anchors:
             logger.debug("SuperposedTrace.cleanup: no anchors registered")
@@ -326,10 +325,10 @@ class SuperposedTrace:
     def _ensure_vector(self, vec: np.ndarray, name: str) -> np.ndarray:
         """Execute ensure vector.
 
-            Args:
-                vec: The vec.
-                name: The name.
-            """
+        Args:
+            vec: The vec.
+            name: The name.
+        """
 
         if not isinstance(vec, np.ndarray):
             raise TypeError(f"{name} must be a numpy.ndarray")
@@ -358,37 +357,36 @@ __all__ = ["TraceConfig", "SuperposedTrace", "CleanupIndex"]
 
 
 class CleanupIndex(Protocol):
-        """Execute upsert.
-
-            Args:
-                anchor_id: The anchor_id.
-                vector: The vector.
-            """
-
     """Cleanupindex class implementation."""
 
-    def upsert(self, anchor_id: str, vector: np.ndarray) -> None: ...
+    def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
+        """Execute upsert.
 
+        Args:
+            anchor_id: The anchor_id.
+            vector: The vector.
+        """
+        ...
+
+    def remove(self, anchor_id: str) -> None:
         """Execute remove.
 
-            Args:
-                anchor_id: The anchor_id.
-            """
+        Args:
+            anchor_id: The anchor_id.
+        """
+        ...
 
-    def remove(self, anchor_id: str) -> None: ...
-
+    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
         """Execute search.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-            """
-
-    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]: ...
+        Args:
+            query: The query.
+            top_k: The top_k.
+        """
+        ...
 
     def configure(
         self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
-        """Execute configure.
-            """
-
-    ) -> None: ...
+    ) -> None:
+        """Execute configure."""
+        ...

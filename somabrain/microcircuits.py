@@ -48,16 +48,21 @@ from django.conf import settings
 class MCConfig:
     """Mcconfig class implementation."""
 
-    columns: int = field(default_factory=lambda: max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS)))
+    columns: int = field(
+        default_factory=lambda: max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS))
+    )
     per_col_capacity: int = field(
         default_factory=lambda: max(
-            int(settings.SOMABRAIN_WM_PER_COL_MIN_CAPACITY), int(settings.SOMABRAIN_WM_SIZE)
+            int(settings.SOMABRAIN_WM_PER_COL_MIN_CAPACITY),
+            int(settings.SOMABRAIN_WM_SIZE),
         )
     )
     vote_temperature: float = field(
         default_factory=lambda: float(settings.SOMABRAIN_MICRO_VOTE_TEMPERATURE)
     )
-    max_tenants: int = field(default_factory=lambda: int(settings.SOMABRAIN_MICRO_MAX_TENANTS))
+    max_tenants: int = field(
+        default_factory=lambda: int(settings.SOMABRAIN_MICRO_MAX_TENANTS)
+    )
     recency_time_scale: float = field(
         default_factory=lambda: float(settings.SOMABRAIN_WM_RECENCY_TIME_SCALE)
     )
@@ -86,9 +91,9 @@ class MultiColumnWM:
     def _ensure(self, tenant_id: str) -> List[WorkingMemory]:
         """Execute ensure.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         cols = self._tenants.get(tenant_id)
         if cols is None:
@@ -142,11 +147,11 @@ class MultiColumnWM:
     ) -> None:
         """Execute admit.
 
-            Args:
-                tenant_id: The tenant_id.
-                vec: The vec.
-                payload: The payload.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            vec: The vec.
+            payload: The payload.
+        """
 
         cols = self._ensure(tenant_id)
         idx = self._choose_column(payload, len(cols))
@@ -161,11 +166,11 @@ class MultiColumnWM:
     ) -> List[Tuple[float, dict]]:
         """Execute recall.
 
-            Args:
-                tenant_id: The tenant_id.
-                vec: The vec.
-                top_k: The top_k.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            vec: The vec.
+            top_k: The top_k.
+        """
 
         cols = self._ensure(tenant_id)
         per_col: List[List[Tuple[float, dict]]] = []
@@ -182,7 +187,9 @@ class MultiColumnWM:
         except Exception as metric_exc:
             logger.debug("Failed to record micro_column_best metric: %s", metric_exc)
         # softmax weights over best scores
-        T = max(settings.SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR, float(self.cfg.vote_temperature))
+        T = max(
+            settings.SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR, float(self.cfg.vote_temperature)
+        )
         xs = [b / T for b in bests]
         m = max(xs) if xs else 0.0
         exps = [math.exp(x - m) for x in xs]
@@ -203,10 +210,10 @@ class MultiColumnWM:
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
         """Execute novelty.
 
-            Args:
-                tenant_id: The tenant_id.
-                vec: The vec.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            vec: The vec.
+        """
 
         cols = self._ensure(tenant_id)
         best = 0.0
@@ -219,10 +226,10 @@ class MultiColumnWM:
     def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
         """Execute items.
 
-            Args:
-                tenant_id: The tenant_id.
-                limit: The limit.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            limit: The limit.
+        """
 
         cols = self._ensure(tenant_id)
         data: List[dict] = []
@@ -235,9 +242,9 @@ class MultiColumnWM:
     def stats(self, tenant_id: str) -> Dict[str, int]:
         """Execute stats.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         cols = self._ensure(tenant_id)
         return {f"col_{i}": len(wm._items) for i, wm in enumerate(cols)}

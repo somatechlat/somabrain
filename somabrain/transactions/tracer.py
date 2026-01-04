@@ -5,12 +5,12 @@ Every operation gets a trace_id that follows it through the entire system.
 
 Usage:
     from somabrain.transactions import trace_transaction, get_tracer
-    
+
     # Decorator usage
     @trace_transaction(TransactionType.MEMORY_STORE)
     async def store_memory(coord, payload):
         ...
-    
+
     # Context manager usage
     tracer = get_tracer()
     with tracer.span("memory.store") as span:
@@ -27,17 +27,15 @@ from __future__ import annotations
 
 import functools
 import logging
-import time
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Generator, Optional, TypeVar, Union
+from typing import Any, Callable, Dict, Generator, Optional, TypeVar
 
 from somabrain.transactions.event_store import (
     TransactionEvent,
-    TransactionStatus,
     TransactionType,
     get_event_store,
 )
@@ -56,41 +54,43 @@ T = TypeVar("T")
 @dataclass
 class Span:
     """A span represents a single operation within a trace.
-    
+
     Spans can be nested to represent hierarchical operations.
     """
-    
+
     span_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     trace_id: str = ""
     parent_span_id: Optional[str] = None
     operation: str = ""
-    
+
     start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     end_time: Optional[datetime] = None
     duration_ms: Optional[float] = None
-    
+
     attributes: Dict[str, Any] = field(default_factory=dict)
     events: list = field(default_factory=list)
     status: str = "ok"
     error: Optional[str] = None
-    
+
     def set_attribute(self, key: str, value: Any) -> None:
         """Set a span attribute."""
         self.attributes[key] = value
-    
+
     def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
         """Add an event to the span."""
-        self.events.append({
-            "name": name,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "attributes": attributes or {},
-        })
-    
+        self.events.append(
+            {
+                "name": name,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "attributes": attributes or {},
+            }
+        )
+
     def set_error(self, error: str) -> None:
         """Mark span as errored."""
         self.status = "error"
         self.error = error
-    
+
     def finish(self) -> None:
         """Finish the span and calculate duration."""
         self.end_time = datetime.now(timezone.utc)
@@ -99,13 +99,13 @@ class Span:
 
 class TransactionTracer:
     """Distributed transaction tracer for SomaBrain.
-    
+
     Provides:
     - Trace ID propagation across services
     - Span creation and nesting
     - Automatic event store integration
     - OpenTelemetry compatibility
-    
+
     VIBE Compliance:
         - Real tracing (no mocks)
         - Full correlation chain
@@ -125,21 +125,21 @@ class TransactionTracer:
             from opentelemetry import trace
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.resources import Resource
-            
+
             # Check if already configured
             if trace.get_tracer_provider().__class__.__name__ != "ProxyTracerProvider":
                 self._otel_tracer = trace.get_tracer("somabrain.transactions")
                 self._initialized = True
                 logger.info("🔍 Transaction tracer connected to OpenTelemetry")
                 return
-            
+
             # Configure basic tracer
             resource = Resource.create({"service.name": "somabrain"})
             provider = TracerProvider(resource=resource)
             trace.set_tracer_provider(provider)
             self._otel_tracer = trace.get_tracer("somabrain.transactions")
             self._initialized = True
-            
+
         except ImportError:
             logger.debug("OpenTelemetry not available, using basic tracing")
         except Exception as e:
@@ -181,12 +181,12 @@ class TransactionTracer:
         attributes: Optional[Dict[str, Any]] = None,
     ) -> Generator[Span, None, None]:
         """Create a traced span for an operation.
-        
+
         Args:
             operation: Name of the operation
             transaction_type: Type of transaction
             attributes: Initial span attributes
-            
+
         Yields:
             Span object for adding attributes and events
         """
@@ -195,23 +195,23 @@ class TransactionTracer:
         if not trace_id:
             trace_id = self.new_trace_id()
             _current_trace_id.set(trace_id)
-        
+
         # Get parent span
         parent_span_id = _current_span_id.get()
-        
+
         # Create span
         span = Span(
             trace_id=trace_id,
             parent_span_id=parent_span_id,
             operation=operation,
         )
-        
+
         if attributes:
             span.attributes.update(attributes)
-        
+
         # Set as current span
         token = _current_span_id.set(span.span_id)
-        
+
         # Create transaction event
         event = TransactionEvent(
             trace_id=trace_id,
@@ -222,7 +222,7 @@ class TransactionTracer:
             persona_id=_current_persona_id.get(),
             input_data=attributes or {},
         )
-        
+
         try:
             # OpenTelemetry span if available
             otel_span = None
@@ -231,32 +231,32 @@ class TransactionTracer:
                 if attributes:
                     for k, v in attributes.items():
                         otel_span.set_attribute(k, str(v))
-            
+
             yield span
-            
+
             # Success
             span.finish()
             event.mark_committed(output_data=span.attributes)
-            
+
             if otel_span:
                 otel_span.end()
-            
+
         except Exception as e:
             # Error
             span.set_error(str(e))
             span.finish()
             event.mark_failed(str(e))
-            
+
             if otel_span:
                 otel_span.record_exception(e)
                 otel_span.end()
-            
+
             raise
-        
+
         finally:
             # Restore parent span
             _current_span_id.reset(token)
-            
+
             # Store event
             try:
                 event_store = get_event_store()
@@ -271,29 +271,29 @@ class TransactionTracer:
         persona_id: Optional[str] = None,
     ):
         """Context manager to set trace context.
-        
+
         Args:
             trace_id: Trace ID to use (generates new if None)
             tenant_id: Tenant ID for the context
             persona_id: Persona ID for the context
         """
+
         @contextmanager
         def _context():
             # Save current values
-            """Execute context.
-                """
+            """Execute context."""
 
             old_trace = _current_trace_id.get()
             old_tenant = _current_tenant_id.get()
             old_persona = _current_persona_id.get()
-            
+
             # Set new values
             _current_trace_id.set(trace_id or self.new_trace_id())
             if tenant_id:
                 _current_tenant_id.set(tenant_id)
             if persona_id:
                 _current_persona_id.set(persona_id)
-            
+
             try:
                 yield
             finally:
@@ -301,15 +301,15 @@ class TransactionTracer:
                 _current_trace_id.set(old_trace)
                 _current_tenant_id.set(old_tenant)
                 _current_persona_id.set(old_persona)
-        
+
         return _context()
 
     def extract_context(self, headers: Dict[str, str]) -> Dict[str, Optional[str]]:
         """Extract trace context from HTTP headers.
-        
+
         Args:
             headers: HTTP headers dict
-            
+
         Returns:
             Dict with trace_id, tenant_id, persona_id
         """
@@ -321,25 +321,25 @@ class TransactionTracer:
 
     def inject_context(self, headers: Dict[str, str]) -> Dict[str, str]:
         """Inject trace context into HTTP headers.
-        
+
         Args:
             headers: HTTP headers dict to modify
-            
+
         Returns:
             Modified headers dict
         """
         trace_id = _current_trace_id.get()
         if trace_id:
             headers["x-trace-id"] = trace_id
-        
+
         tenant_id = _current_tenant_id.get()
         if tenant_id:
             headers["x-tenant-id"] = tenant_id
-        
+
         persona_id = _current_persona_id.get()
         if persona_id:
             headers["x-persona-id"] = persona_id
-        
+
         return headers
 
 
@@ -350,34 +350,34 @@ def trace_transaction(
     capture_result: bool = True,
 ):
     """Decorator to trace a function as a transaction.
-    
+
     Args:
         transaction_type: Type of transaction
         operation: Operation name (defaults to function name)
         capture_args: Whether to capture function arguments
         capture_result: Whether to capture return value
-        
+
     Usage:
         @trace_transaction(TransactionType.MEMORY_STORE)
         async def store_memory(coord, payload):
             ...
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         """Execute decorator.
 
-            Args:
-                func: The func.
-            """
+        Args:
+            func: The func.
+        """
 
         op_name = operation or f"{func.__module__}.{func.__name__}"
-        
+
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs) -> T:
-            """Execute sync wrapper.
-                """
+            """Execute sync wrapper."""
 
             tracer = get_tracer()
-            
+
             # Build attributes from args
             attributes = {}
             if capture_args:
@@ -385,43 +385,43 @@ def trace_transaction(
                 for k, v in kwargs.items():
                     if _is_serializable(v):
                         attributes[f"arg.{k}"] = v
-            
+
             with tracer.span(op_name, transaction_type, attributes) as span:
                 result = func(*args, **kwargs)
-                
+
                 if capture_result and _is_serializable(result):
                     span.set_attribute("result", result)
-                
+
                 return result
-        
+
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs) -> T:
-            """Execute async wrapper.
-                """
+            """Execute async wrapper."""
 
             tracer = get_tracer()
-            
+
             # Build attributes from args
             attributes = {}
             if capture_args:
                 for k, v in kwargs.items():
                     if _is_serializable(v):
                         attributes[f"arg.{k}"] = v
-            
+
             with tracer.span(op_name, transaction_type, attributes) as span:
                 result = await func(*args, **kwargs)
-                
+
                 if capture_result and _is_serializable(result):
                     span.set_attribute("result", result)
-                
+
                 return result
-        
+
         # Return appropriate wrapper
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
-    
+
     return decorator
 
 
@@ -434,16 +434,14 @@ def _is_serializable(value: Any) -> bool:
     if isinstance(value, (list, tuple)):
         return all(_is_serializable(v) for v in value)
     if isinstance(value, dict):
-        return all(
-            isinstance(k, str) and _is_serializable(v)
-            for k, v in value.items()
-        )
+        return all(isinstance(k, str) and _is_serializable(v) for k, v in value.items())
     return False
 
 
 # ---------------------------------------------------------------------------
 # DI Container Integration
 # ---------------------------------------------------------------------------
+
 
 def _create_tracer() -> TransactionTracer:
     """Factory function for DI container."""
@@ -452,13 +450,13 @@ def _create_tracer() -> TransactionTracer:
 
 def get_tracer() -> TransactionTracer:
     """Get the tracer instance from DI container.
-    
+
     VIBE Compliance:
         - Uses DI container for singleton management
         - Thread-safe lazy instantiation
     """
     from somabrain.core.container import container
-    
+
     if not container.has("transaction_tracer"):
         container.register("transaction_tracer", _create_tracer)
     return container.get("transaction_tracer")

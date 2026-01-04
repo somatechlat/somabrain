@@ -58,11 +58,11 @@ class NullMetrics:
     ) -> None:
         """Execute inc counter.
 
-            Args:
-                name: The name.
-                labels: The labels.
-                value: The value.
-            """
+        Args:
+            name: The name.
+            labels: The labels.
+            value: The value.
+        """
 
         pass
 
@@ -71,11 +71,11 @@ class NullMetrics:
     ) -> None:
         """Execute observe histogram.
 
-            Args:
-                name: The name.
-                value: The value.
-                labels: The labels.
-            """
+        Args:
+            name: The name.
+            value: The value.
+            labels: The labels.
+        """
 
         pass
 
@@ -84,11 +84,11 @@ class NullMetrics:
     ) -> None:
         """Set gauge.
 
-            Args:
-                name: The name.
-                value: The value.
-                labels: The labels.
-            """
+        Args:
+            name: The name.
+            value: The value.
+            labels: The labels.
+        """
 
         pass
 

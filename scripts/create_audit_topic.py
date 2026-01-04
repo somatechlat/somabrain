@@ -2,14 +2,14 @@
 """Create soma.audit topic using kafka-python. Intended for CI and local setup.
 Usage: python scripts/create_audit_topic.py --bootstrap-server 127.0.0.1:9092 --partitions 6 --replication 1
 """
+
 import argparse
 
 from kafka import KafkaAdminClient, NewTopic
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     p = argparse.ArgumentParser()
     p.add_argument("--bootstrap-server", default="127.0.0.1:9092")

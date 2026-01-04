@@ -27,14 +27,14 @@ def run(
 ):
     """Execute run.
 
-        Args:
-            out: The out.
-            Ds: The Ds.
-            ks: The ks.
-            trials: The trials.
-            dtype: The dtype.
-            accuracy_thresholds: The accuracy_thresholds.
-        """
+    Args:
+        out: The out.
+        Ds: The Ds.
+        ks: The ks.
+        trials: The trials.
+        dtype: The dtype.
+        accuracy_thresholds: The accuracy_thresholds.
+    """
 
     results = {
         "meta": {

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import time
 from threading import Lock
-from typing import Any, Awaitable, Callable, Iterable
+from typing import Any, Callable, Iterable
 
 from somabrain.metrics.core import (
     CONTENT_TYPE_LATEST,
@@ -142,17 +142,17 @@ class PrometheusTimingMiddleware:
     def __call__(self, request: Any) -> Any:
         """Execute call  .
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         start = time.perf_counter()
         response = self.get_response(request)
-        
+
         elapsed = max(0.0, time.perf_counter() - start)
         path = request.path
         method = request.method
-        
+
         try:
             HTTP_LATENCY.labels(method=method, path=path).observe(elapsed)
             status = str(response.status_code)

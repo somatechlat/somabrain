@@ -11,8 +11,7 @@ import requests
 
 
 def check_health():
-    """Execute check health.
-        """
+    """Execute check health."""
 
     try:
         from django.conf import settings
@@ -32,12 +31,12 @@ def check_health():
 def run_chaos_scenario(description, chaos_action, recovery_action=None, wait=10):
     """Execute run chaos scenario.
 
-        Args:
-            description: The description.
-            chaos_action: The chaos_action.
-            recovery_action: The recovery_action.
-            wait: The wait.
-        """
+    Args:
+        description: The description.
+        chaos_action: The chaos_action.
+        recovery_action: The recovery_action.
+        wait: The wait.
+    """
 
     print(f"\n=== CHAOS: {description} ===")
     print("[1] Checking system health before chaos...")
@@ -60,8 +59,7 @@ def run_chaos_scenario(description, chaos_action, recovery_action=None, wait=10)
 
 def main():
     # Example: Broker failure (manual)
-    """Execute main.
-        """
+    """Execute main."""
 
     run_chaos_scenario(
         "Kafka broker failure (simulate by stopping broker container)",

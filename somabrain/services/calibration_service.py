@@ -19,7 +19,9 @@ from somabrain.calibration.calibration_metrics import CalibrationTracker
 class CalibrationService:
     """Service for managing predictor calibration."""
 
-    enabled: bool = field(default_factory=lambda: getattr(settings, "CALIBRATION_ENABLED", False))
+    enabled: bool = field(
+        default_factory=lambda: getattr(settings, "CALIBRATION_ENABLED", False)
+    )
     trackers: Dict[str, CalibrationTracker] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)
@@ -30,12 +32,12 @@ class CalibrationService:
     ) -> None:
         """Execute record prediction.
 
-            Args:
-                domain: The domain.
-                tenant: The tenant.
-                confidence: The confidence.
-                correct: The correct.
-            """
+        Args:
+            domain: The domain.
+            tenant: The tenant.
+            confidence: The confidence.
+            correct: The correct.
+        """
 
         if not self.enabled:
             return
@@ -50,10 +52,10 @@ class CalibrationService:
     def get_calibration_status(self, domain: str, tenant: str) -> dict:
         """Retrieve calibration status.
 
-            Args:
-                domain: The domain.
-                tenant: The tenant.
-            """
+        Args:
+            domain: The domain.
+            tenant: The tenant.
+        """
 
         key = (domain, tenant)
         with self._lock:
@@ -64,8 +66,7 @@ class CalibrationService:
             }
 
     def get_all_calibration_status(self) -> dict:
-        """Retrieve all calibration status.
-            """
+        """Retrieve all calibration status."""
 
         with self._lock:
             return {
@@ -84,12 +85,14 @@ class CalibrationService:
 # Lazy-load singleton to avoid import-time failures
 _calibration_service_instance = None
 
+
 def get_calibration_service() -> CalibrationService:
     """Get or create the calibration service singletonمیں"""
     global _calibration_service_instance
     if _calibration_service_instance is None:
         _calibration_service_instance = CalibrationService()
     return _calibration_service_instance
+
 
 # For backwards compatibility
 calibration_service = property(lambda self: get_calibration_service())

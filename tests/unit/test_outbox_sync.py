@@ -14,9 +14,9 @@ from somabrain.services.outbox_sync import _send_event
 def _memory_available(url: str) -> bool:
     """Execute memory available.
 
-        Args:
-            url: The url.
-        """
+    Args:
+        url: The url.
+    """
 
     try:
         resp = httpx.get(url.rstrip("/") + "/health", timeout=2.0)
@@ -31,10 +31,10 @@ MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
 
 @pytest.fixture
 def auth_settings():
-    """Execute auth settings.
-        """
+    """Execute auth settings."""
 
     from tests.integration.infra_config import AUTH
+
     class ConfigProxy:
         """Configproxy class implementation."""
 
@@ -45,8 +45,10 @@ def auth_settings():
             self.memory_http_token = AUTH["api_token"]
             self.memory_http_endpoint = "http://127.0.0.1:10101"
             # Keep prefixed versions just in case other parts use them
-            self.SOMABRAIN_MEMORY_HTTP_ENDPOINT = "http://127.0.0.1:10101" 
+            self.SOMABRAIN_MEMORY_HTTP_ENDPOINT = "http://127.0.0.1:10101"
+
     return ConfigProxy()
+
 
 @pytest.mark.asyncio
 @pytest.mark.integration
@@ -54,7 +56,7 @@ async def test_send_event_success(auth_settings) -> None:
     """When the client reports success, ``_send_event`` returns ``True``."""
     if not _memory_available("http://127.0.0.1:10101"):
         pytest.skip("Memory service not reachable for outbox sync tests")
-    
+
     # Needs a valid payload structure: {coord, payload, memory_type}
     # But _send_event might wrap it? No, OutboxEvent payload IS the body.
     # Updated Payload for SFM v0.2
@@ -64,7 +66,7 @@ async def test_send_event_success(auth_settings) -> None:
         payload={
             "coord": "0,0,0",
             "payload": {"content": "outbox_test"},
-            "memory_type": "episodic"
+            "memory_type": "episodic",
         },
         dedupe_key="key-1",
         tenant_id="test",

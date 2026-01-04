@@ -34,9 +34,9 @@ class MultiTenantMemory:
     def for_namespace(self, namespace: str) -> MemoryClient:
         """Execute for namespace.
 
-            Args:
-                namespace: The namespace.
-            """
+        Args:
+            namespace: The namespace.
+        """
 
         ns = str(namespace)
         if ns not in self._pool:
@@ -49,10 +49,7 @@ class MultiTenantMemory:
             # memory operations. This ensures consistency across tenants and aligns
             # with the roadmap's Phase 0 goal of eliminating any fallback behavior.
             client = MemoryClient(
-                self.cfg, 
-                scorer=self._scorer, 
-                embedder=self._embedder, 
-                namespace=ns
+                self.cfg, scorer=self._scorer, embedder=self._embedder, namespace=ns
             )
             self._pool[ns] = client
 

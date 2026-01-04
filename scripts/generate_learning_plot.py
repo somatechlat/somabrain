@@ -23,9 +23,9 @@ TENANT_HEADERS: Dict[str, str] = {
 def _get(path: str) -> requests.Response:
     """Execute get.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     resp = requests.get(f"{BASE_URL}/{path.lstrip('/')}", timeout=5)
     resp.raise_for_status()
@@ -37,11 +37,11 @@ def _post(
 ) -> requests.Response:
     """Execute post.
 
-        Args:
-            path: The path.
-            payload: The payload.
-            headers: The headers.
-        """
+    Args:
+        path: The path.
+        payload: The payload.
+        headers: The headers.
+    """
 
     resp = requests.post(
         f"{BASE_URL}/{path.lstrip('/')}",
@@ -54,15 +54,13 @@ def _post(
 
 
 def fetch_adaptation_state() -> dict:
-    """Execute fetch adaptation state.
-        """
+    """Execute fetch adaptation state."""
 
     return _get("context/adaptation/state").json()
 
 
 def prime_memory() -> None:
-    """Execute prime memory.
-        """
+    """Execute prime memory."""
 
     payload = {
         "coord": None,
@@ -79,9 +77,9 @@ def prime_memory() -> None:
 def run_learning_iterations(iterations: int = 6) -> dict:
     """Execute run learning iterations.
 
-        Args:
-            iterations: The iterations.
-        """
+    Args:
+        iterations: The iterations.
+    """
 
     session_id = f"learn-{uuid.uuid4().hex[:16]}"
     headers = {**TENANT_HEADERS, "X-Session-ID": session_id}
@@ -97,9 +95,9 @@ def run_learning_iterations(iterations: int = 6) -> dict:
     def record_state(state: dict) -> None:
         """Execute record state.
 
-            Args:
-                state: The state.
-            """
+        Args:
+            state: The state.
+        """
 
         lambda_vals.append(state["utility"]["lambda_"])
         alpha_vals.append(state["retrieval"]["alpha"])
@@ -135,9 +133,9 @@ def plot_learning_curves(data: dict) -> pathlib.Path:
     # Create figure and primary axis for utility lambda (blue)
     """Execute plot learning curves.
 
-        Args:
-            data: The data.
-        """
+    Args:
+        data: The data.
+    """
 
     fig, ax1 = plt.subplots(figsize=(8, 4.5))
     ax1.plot(
@@ -181,8 +179,7 @@ def plot_learning_curves(data: dict) -> pathlib.Path:
 
 
 def main() -> pathlib.Path:
-    """Execute main.
-        """
+    """Execute main."""
 
     prime_memory()
     data = run_learning_iterations()

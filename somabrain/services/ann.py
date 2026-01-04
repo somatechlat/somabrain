@@ -31,8 +31,7 @@ class AnnConfig:
     hnsw_ef_search: int = 128
 
     def with_updates(self, **kwargs: object) -> "AnnConfig":
-        """Execute with updates.
-            """
+        """Execute with updates."""
 
         return replace(self, **kwargs)
 
@@ -63,10 +62,10 @@ class SimpleAnnIndex(CleanupIndex):
     def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
         """Execute upsert.
 
-            Args:
-                anchor_id: The anchor_id.
-                vector: The vector.
-            """
+        Args:
+            anchor_id: The anchor_id.
+            vector: The vector.
+        """
 
         vec = _normalize(vector, self._dim)
         with self._lock:
@@ -75,9 +74,9 @@ class SimpleAnnIndex(CleanupIndex):
     def remove(self, anchor_id: str) -> None:
         """Execute remove.
 
-            Args:
-                anchor_id: The anchor_id.
-            """
+        Args:
+            anchor_id: The anchor_id.
+        """
 
         with self._lock:
             self._vectors.pop(anchor_id, None)
@@ -85,10 +84,10 @@ class SimpleAnnIndex(CleanupIndex):
     def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
         """Execute search.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-            """
+        Args:
+            query: The query.
+            top_k: The top_k.
+        """
 
         vec = _normalize(query, self._dim)
         with self._lock:
@@ -103,8 +102,7 @@ class SimpleAnnIndex(CleanupIndex):
         self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
     ) -> None:
         # Simple backend does not require tuning.
-        """Execute configure.
-            """
+        """Execute configure."""
 
         return None
 
@@ -133,10 +131,10 @@ class HNSWAnnIndex(CleanupIndex):
     def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
         """Execute upsert.
 
-            Args:
-                anchor_id: The anchor_id.
-                vector: The vector.
-            """
+        Args:
+            anchor_id: The anchor_id.
+            vector: The vector.
+        """
 
         vec = _normalize(vector, self._dim)
         arr = vec.reshape(1, -1)
@@ -151,9 +149,9 @@ class HNSWAnnIndex(CleanupIndex):
     def remove(self, anchor_id: str) -> None:
         """Execute remove.
 
-            Args:
-                anchor_id: The anchor_id.
-            """
+        Args:
+            anchor_id: The anchor_id.
+        """
 
         with self._lock:
             idx = self._ids.pop(anchor_id, None)
@@ -163,10 +161,10 @@ class HNSWAnnIndex(CleanupIndex):
     def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
         """Execute search.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-            """
+        Args:
+            query: The query.
+            top_k: The top_k.
+        """
 
         vec = _normalize(query, self._dim)
         k = max(1, int(top_k))
@@ -191,8 +189,7 @@ class HNSWAnnIndex(CleanupIndex):
     def configure(
         self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
     ) -> None:
-        """Execute configure.
-            """
+        """Execute configure."""
 
         if ef_search is None:
             return
@@ -244,10 +241,10 @@ def create_cleanup_index(
 def _normalize(vec: np.ndarray | Iterable[float], dim: int) -> np.ndarray:
     """Execute normalize.
 
-        Args:
-            vec: The vec.
-            dim: The dim.
-        """
+    Args:
+        vec: The vec.
+        dim: The dim.
+    """
 
     from somabrain.math import normalize_vector
 

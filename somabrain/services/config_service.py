@@ -77,9 +77,9 @@ class ConfigService:
     async def patch_global(self, patch: Dict[str, Any], *, actor: str) -> ConfigEvent:
         """Execute patch global.
 
-            Args:
-                patch: The patch.
-            """
+        Args:
+            patch: The patch.
+        """
 
         return await self._apply_patch("global", patch, actor, "", "")
 
@@ -88,10 +88,10 @@ class ConfigService:
     ) -> ConfigEvent:
         """Execute patch tenant.
 
-            Args:
-                tenant: The tenant.
-                patch: The patch.
-            """
+        Args:
+            tenant: The tenant.
+            patch: The patch.
+        """
 
         if not tenant:
             raise ConfigMergeError("tenant must be provided")
@@ -107,19 +107,18 @@ class ConfigService:
     ) -> ConfigEvent:
         """Execute patch namespace.
 
-            Args:
-                tenant: The tenant.
-                namespace: The namespace.
-                patch: The patch.
-            """
+        Args:
+            tenant: The tenant.
+            namespace: The namespace.
+            patch: The patch.
+        """
 
         if not tenant or not namespace:
             raise ConfigMergeError("tenant and namespace must be provided")
         return await self._apply_patch("namespace", patch, actor, tenant, namespace)
 
     def subscribe(self, *, max_queue: int = 128) -> asyncio.Queue[ConfigEvent]:
-        """Execute subscribe.
-            """
+        """Execute subscribe."""
 
         queue: asyncio.Queue[ConfigEvent] = asyncio.Queue(max_queue)
         self._subscribers.append(queue)
@@ -128,9 +127,9 @@ class ConfigService:
     def audit_log(self, limit: Optional[int] = None) -> List[AuditRecord]:
         """Execute audit log.
 
-            Args:
-                limit: The limit.
-            """
+        Args:
+            limit: The limit.
+        """
 
         if limit is None or limit >= len(self._audit_log):
             return list(self._audit_log)
@@ -139,10 +138,10 @@ class ConfigService:
     def effective_config(self, tenant: str, namespace: str) -> Dict[str, Any]:
         """Execute effective config.
 
-            Args:
-                tenant: The tenant.
-                namespace: The namespace.
-            """
+        Args:
+            tenant: The tenant.
+            namespace: The namespace.
+        """
 
         base_cfg = self._config_to_dict(self._base_supplier())
         merged = self._deep_merge(copy.deepcopy(base_cfg), self._global_layer)
@@ -170,13 +169,13 @@ class ConfigService:
     ) -> ConfigEvent:
         """Execute apply patch.
 
-            Args:
-                scope: The scope.
-                patch: The patch.
-                actor: The actor.
-                tenant: The tenant.
-                namespace: The namespace.
-            """
+        Args:
+            scope: The scope.
+            patch: The patch.
+            actor: The actor.
+            tenant: The tenant.
+            namespace: The namespace.
+        """
 
         async with self._lock:
             target_dict, before = self._target_and_before(scope, tenant, namespace)
@@ -216,11 +215,11 @@ class ConfigService:
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """Execute target and before.
 
-            Args:
-                scope: The scope.
-                tenant: The tenant.
-                namespace: The namespace.
-            """
+        Args:
+            scope: The scope.
+            tenant: The tenant.
+            namespace: The namespace.
+        """
 
         if scope == "global":
             return self._global_layer, copy.deepcopy(self._global_layer)
@@ -238,12 +237,12 @@ class ConfigService:
     ) -> None:
         """Execute set layer.
 
-            Args:
-                scope: The scope.
-                tenant: The tenant.
-                namespace: The namespace.
-                data: The data.
-            """
+        Args:
+            scope: The scope.
+            tenant: The tenant.
+            namespace: The namespace.
+            data: The data.
+        """
 
         if scope == "global":
             self._global_layer = data
@@ -256,10 +255,10 @@ class ConfigService:
     def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
         """Execute deep merge.
 
-            Args:
-                base: The base.
-                patch: The patch.
-            """
+        Args:
+            base: The base.
+            patch: The patch.
+        """
 
         for key, value in patch.items():
             if isinstance(value, dict) and isinstance(base.get(key), dict):
@@ -274,9 +273,9 @@ class ConfigService:
     def _config_to_dict(cfg: Config) -> Dict[str, Any]:
         """Execute config to dict.
 
-            Args:
-                cfg: The cfg.
-            """
+        Args:
+            cfg: The cfg.
+        """
 
         try:
             return asdict(cfg)
@@ -288,17 +287,17 @@ class ConfigService:
         # Minimal validation: ensure numeric values are finite when present.
         """Execute validate.
 
-            Args:
-                data: The data.
-            """
+        Args:
+            data: The data.
+        """
 
         def _walk(obj: Any, path: str = "") -> None:
             """Execute walk.
 
-                Args:
-                    obj: The obj.
-                    path: The path.
-                """
+            Args:
+                obj: The obj.
+                path: The path.
+            """
 
             if isinstance(obj, dict):
                 for k, v in obj.items():

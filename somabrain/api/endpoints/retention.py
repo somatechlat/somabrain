@@ -16,8 +16,8 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Automated cleanup scheduling
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from typing import List, Optional, Dict
+from datetime import timedelta
 from uuid import UUID, uuid4
 from enum import Enum
 
@@ -38,8 +38,10 @@ router = Router(tags=["Data Retention"])
 # RETENTION TYPES
 # =============================================================================
 
+
 class DataType(str, Enum):
     """Data types for retention."""
+
     AUDIT_LOGS = "audit_logs"
     MEMORIES = "memories"
     API_LOGS = "api_logs"
@@ -51,6 +53,7 @@ class DataType(str, Enum):
 
 class RetentionAction(str, Enum):
     """Retention actions."""
+
     DELETE = "delete"
     ARCHIVE = "archive"
     ANONYMIZE = "anonymize"
@@ -60,12 +63,13 @@ class RetentionAction(str, Enum):
 # RETENTION POLICY STORAGE
 # =============================================================================
 
+
 def get_policies_key(tenant_id: str) -> str:
     """Retrieve policies key.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     return f"retention:policies:{tenant_id}"
 
@@ -73,9 +77,9 @@ def get_policies_key(tenant_id: str) -> str:
 def get_policy_key(policy_id: str) -> str:
     """Retrieve policy key.
 
-        Args:
-            policy_id: The policy_id.
-        """
+    Args:
+        policy_id: The policy_id.
+    """
 
     return f"retention:policy:{policy_id}"
 
@@ -147,9 +151,9 @@ def get_tenant_policies(tenant_id: str) -> List[dict]:
 def update_policy(policy_id: str, **updates) -> Optional[dict]:
     """Execute update policy.
 
-        Args:
-            policy_id: The policy_id.
-        """
+    Args:
+        policy_id: The policy_id.
+    """
 
     key = get_policy_key(policy_id)
     policy = cache.get(key)
@@ -163,8 +167,10 @@ def update_policy(policy_id: str, **updates) -> Optional[dict]:
 # SCHEMAS
 # =============================================================================
 
+
 class RetentionPolicyOut(Schema):
     """Retention policy output."""
+
     id: str
     data_type: str
     retention_days: int
@@ -176,6 +182,7 @@ class RetentionPolicyOut(Schema):
 
 class RetentionPolicyUpdate(Schema):
     """Update retention policy."""
+
     retention_days: Optional[int] = None
     action: Optional[str] = None
     enabled: Optional[bool] = None
@@ -183,6 +190,7 @@ class RetentionPolicyUpdate(Schema):
 
 class RetentionStats(Schema):
     """Retention statistics."""
+
     total_policies: int
     enabled_policies: int
     last_cleanup_at: Optional[str]
@@ -193,6 +201,7 @@ class RetentionStats(Schema):
 
 class CleanupResult(Schema):
     """Cleanup result."""
+
     policy_id: str
     data_type: str
     records_deleted: int
@@ -204,6 +213,7 @@ class CleanupResult(Schema):
 # POLICY ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/policies", response=List[RetentionPolicyOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
@@ -213,17 +223,18 @@ def list_retention_policies(
 ):
     """
     List all retention policies for a tenant.
-    
+
     🛠️ DevOps: Policy management
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     policies = get_tenant_policies(str(tenant_id))
-    
+
     return [
         RetentionPolicyOut(
             id=p["id"],
@@ -251,13 +262,15 @@ def get_retention_policy(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     policy = cache.get(get_policy_key(policy_id))
     if not policy or policy["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Policy not found")
-    
+
     return RetentionPolicyOut(
         id=policy["id"],
         data_type=policy["data_type"],
@@ -280,29 +293,31 @@ def update_retention_policy(
 ):
     """
     Update a retention policy.
-    
+
     🔒 Security: Policy modification
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     policy = cache.get(get_policy_key(policy_id))
     if not policy or policy["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Policy not found")
-    
+
     if data.retention_days is not None:
         policy["retention_days"] = data.retention_days
     if data.action is not None:
         policy["action"] = data.action
     if data.enabled is not None:
         policy["enabled"] = data.enabled
-    
+
     update_policy(policy_id, **policy)
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -314,7 +329,7 @@ def update_retention_policy(
         tenant=tenant,
         details=data.dict(exclude_unset=True),
     )
-    
+
     return RetentionPolicyOut(
         id=policy["id"],
         data_type=policy["data_type"],
@@ -330,6 +345,7 @@ def update_retention_policy(
 # CLEANUP EXECUTION
 # =============================================================================
 
+
 @router.post("/{tenant_id}/cleanup/run", response=List[CleanupResult])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_UPDATE.value)
@@ -340,46 +356,46 @@ def run_cleanup(
 ):
     """
     Run retention cleanup.
-    
+
     🚨 SRE: Manual cleanup trigger
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     policies = get_tenant_policies(str(tenant_id))
     results = []
-    
+
     for policy in policies:
         if not policy["enabled"]:
             continue
-        
+
         # Real cleanup using Django ORM
         import time
+
         start_time = time.time()
-        
+
         cutoff = timezone.now() - timedelta(days=policy["retention_days"])
         deleted = 0
-        
+
         if not dry_run:
             # Execute real deletion based on data type
             if policy["data_type"] == DataType.AUDIT_LOGS:
                 deleted, _ = AuditLog.objects.filter(
-                    tenant_id=tenant_id,
-                    created_at__lt=cutoff
+                    tenant_id=tenant_id, created_at__lt=cutoff
                 ).delete()
         else:
             # Count records that would be deleted
             if policy["data_type"] == DataType.AUDIT_LOGS:
                 deleted = AuditLog.objects.filter(
-                    tenant_id=tenant_id,
-                    created_at__lt=cutoff
+                    tenant_id=tenant_id, created_at__lt=cutoff
                 ).count()
-        
+
         duration_ms = int((time.time() - start_time) * 1000)
-        
+
         result = CleanupResult(
             policy_id=policy["id"],
             data_type=policy["data_type"],
@@ -388,14 +404,14 @@ def run_cleanup(
             success=True,
         )
         results.append(result)
-        
+
         if not dry_run:
             update_policy(
                 policy["id"],
                 last_run_at=timezone.now().isoformat(),
                 last_run_deleted=deleted,
             )
-    
+
     return results
 
 
@@ -408,44 +424,45 @@ def preview_cleanup(
 ):
     """
     Preview what data will be cleaned up.
-    
+
     🎨 UX: Cleanup preview
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     policies = get_tenant_policies(str(tenant_id))
     preview = {}
-    
+
     for policy in policies:
         if not policy["enabled"]:
             continue
-        
+
         cutoff = timezone.now() - timedelta(days=policy["retention_days"])
-        
+
         # Real counts from Django ORM
         estimated = 0
         if policy["data_type"] == DataType.AUDIT_LOGS:
             estimated = AuditLog.objects.filter(
-                tenant_id=tenant_id,
-                created_at__lt=cutoff
+                tenant_id=tenant_id, created_at__lt=cutoff
             ).count()
-        
+
         preview[policy["data_type"]] = {
             "cutoff_date": cutoff.isoformat(),
             "estimated_records": estimated,
             "action": policy["action"],
         }
-    
+
     return preview
 
 
 # =============================================================================
 # STATISTICS
 # =============================================================================
+
 
 @router.get("/{tenant_id}/stats", response=RetentionStats)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -455,30 +472,29 @@ def get_retention_stats(
 ):
     """
     Get retention statistics.
-    
+
     📊 Performance: Stats dashboard
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     policies = get_tenant_policies(str(tenant_id))
-    
+
     enabled = sum(1 for p in policies if p["enabled"])
     last_runs = [p.get("last_run_at") for p in policies if p.get("last_run_at")]
     last_cleanup = max(last_runs) if last_runs else None
-    
+
     return RetentionStats(
         total_policies=len(policies),
         enabled_policies=enabled,
         last_cleanup_at=last_cleanup,
         data_deleted_today=sum(p.get("last_run_deleted", 0) for p in policies),
         data_deleted_week=sum(p.get("last_run_deleted", 0) for p in policies) * 7,
-        upcoming_deletions={
-            p["data_type"]: 50 for p in policies if p["enabled"]
-        },
+        upcoming_deletions={p["data_type"]: 50 for p in policies if p["enabled"]},
     )
 
 
@@ -491,19 +507,20 @@ def reset_policies(
 ):
     """
     Reset policies to defaults.
-    
+
     🛠️ DevOps: Reset configuration
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Clear existing
     cache.delete(get_policies_key(str(tenant_id)))
-    
+
     # Regenerate defaults
     policies = get_tenant_policies(str(tenant_id))
-    
+
     return {"success": True, "policies_count": len(policies)}

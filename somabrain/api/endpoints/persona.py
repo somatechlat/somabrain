@@ -1,14 +1,13 @@
 """Module persona."""
 
-from typing import Dict, Optional, Any
+from typing import Dict, Any
 import time
 import hashlib
 import json
 from types import SimpleNamespace
 
-from ninja import Router, Schema
+from ninja import Router
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404
 from ninja.errors import HttpError
 
 from somabrain.auth import require_auth
@@ -27,15 +26,17 @@ except ImportError:
 
 router = Router(tags=["persona"])
 
+
 def _compute_etag(payload: Dict[str, Any]) -> str:
     """Execute compute etag.
 
-        Args:
-            payload: The payload.
-        """
+    Args:
+        payload: The payload.
+    """
 
     j = json.dumps(payload or {}, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(j.encode("utf-8")).hexdigest()
+
 
 @router.put("/{pid}")
 async def put_persona(
@@ -55,14 +56,14 @@ async def put_persona(
     # In V2 we should clean this up to proper DI
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
-    
+
     mem_backend = getattr(_rt, "mt_memory", None)
     if mem_backend is None:
         # VIBE RULES: No fallbacks - throw error if backend not available
         raise HttpError(503, "Memory backend not initialized. Service unavailable.")
 
-    if not _MS: # Should handle import error
-         raise HttpError(500, "MemoryService not available")
+    if not _MS:  # Should handle import error
+        raise HttpError(500, "MemoryService not available")
 
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
@@ -98,24 +99,27 @@ async def put_persona(
     try:
         ms.remember(key, payload)
     except Exception as e:
-         raise HttpError(500, str(e))
+        raise HttpError(500, str(e))
 
     # Sync PersonalityStore - Ignoring for now as it's best effort in original code
-    
+
     new_etag = _compute_etag(payload)
     # Ninja doesn't have a direct 'Response' object injection in args the same way for headers
     # We return a specific response or modify headers on the response object if we return one.
-    # For now, we'll return the dict and let Ninja handle JSON, 
+    # For now, we'll return the dict and let Ninja handle JSON,
     # but strictly speaking we lose ETag header unless we use `HttpResponse` or similar.
     # However, to be "Production Grade" per VIBE, we should set the header.
-    
+
     # Returning a tuple (status_code, data) is possible, but headers...
     # We can use the response object from `request`? No, that's Django.
     # We return an HttpResponse if we want full control.
-    
-    response = HttpResponse(json.dumps({"ok": True, "persona": payload}), content_type="application/json")
+
+    response = HttpResponse(
+        json.dumps({"ok": True, "persona": payload}), content_type="application/json"
+    )
     response["ETag"] = new_etag
     return response
+
 
 @router.get("/{pid}")
 async def get_persona(request: HttpRequest, pid: str):
@@ -128,7 +132,7 @@ async def get_persona(request: HttpRequest, pid: str):
 
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
-    
+
     # ... (Same backend resolution logic as above) ...
     mem_backend = getattr(_rt, "mt_memory", None)
     # VIBE RULES: No fallbacks - throw error if backend not available
@@ -138,11 +142,11 @@ async def get_persona(request: HttpRequest, pid: str):
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
     coord = ms.coord_for_key(key)
-    
+
     try:
         hits = ms.fetch_by_coord(coord) or []
     except Exception as e:
-         raise HttpError(500, str(e))
+        raise HttpError(500, str(e))
 
     for p in reversed(hits):
         if isinstance(p, dict) and p.get("fact") == "persona":
@@ -152,6 +156,7 @@ async def get_persona(request: HttpRequest, pid: str):
             return response
 
     raise HttpError(404, "persona not found")
+
 
 @router.delete("/{pid}")
 async def delete_persona(request: HttpRequest, pid: str):
@@ -164,7 +169,7 @@ async def delete_persona(request: HttpRequest, pid: str):
 
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
-    
+
     mem_backend = getattr(_rt, "mt_memory", None)
     # VIBE RULES: No fallbacks - throw error if backend not available
     if mem_backend is None:
@@ -172,7 +177,7 @@ async def delete_persona(request: HttpRequest, pid: str):
 
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
-    
+
     tomb = {
         "id": pid,
         "fact": "persona_tombstone",
@@ -182,6 +187,6 @@ async def delete_persona(request: HttpRequest, pid: str):
     try:
         ms.remember(key, tomb)
     except Exception as e:
-         raise HttpError(500, str(e))
-         
+        raise HttpError(500, str(e))
+
     return {"ok": True}

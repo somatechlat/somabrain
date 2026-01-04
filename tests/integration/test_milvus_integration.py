@@ -143,7 +143,10 @@ def test_settings_configuration() -> bool:
             f"  tiered_memory_cleanup_backend: {getattr(settings, 'SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND', None)}"
         )
 
-        if getattr(settings, "SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND", None) != "milvus":
+        if (
+            getattr(settings, "SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND", None)
+            != "milvus"
+        ):
             print(
                 f"  ✗ Expected cleanup backend 'milvus', got '{getattr(settings, 'SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND', None)}'"
             )

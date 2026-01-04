@@ -13,7 +13,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
+
+
 async def startup_mode_banner(app: Any) -> None:
     """Log mode, derived flags, and deprecation notices on boot.
 
@@ -241,8 +243,7 @@ async def start_milvus_reconciliation_task() -> None:
         return
 
     async def _runner() -> None:
-        """Execute runner.
-            """
+        """Execute runner."""
 
         log = logging.getLogger("somabrain")
         while True:
@@ -271,7 +272,9 @@ async def startup_diagnostics(cfg: Any) -> None:
         # Use shared settings for diagnostics
         from django.conf import settings
 
-        mem_ep = str(getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "") or "").strip()
+        mem_ep = str(
+            getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "") or ""
+        ).strip()
         token_present = bool(getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None))
 
         # Use centralized Settings flag for Docker detection

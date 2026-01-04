@@ -43,9 +43,9 @@ class TestNormalizationIdempotence:
         once = normalize_vector(v)
         twice = normalize_vector(once)
 
-        assert np.allclose(
-            once, twice, atol=1e-6
-        ), f"Idempotence violated: max diff = {np.max(np.abs(once - twice))}"
+        assert np.allclose(once, twice, atol=1e-6), (
+            f"Idempotence violated: max diff = {np.max(np.abs(once - twice))}"
+        )
 
     @given(
         dim=st.integers(min_value=2, max_value=512),
@@ -225,9 +225,9 @@ class TestScaleInvariance:
         norm_v = normalize_vector(v)
         norm_kv = normalize_vector(v * scale)
 
-        assert np.allclose(
-            norm_v, norm_kv, atol=1e-5
-        ), f"Scale invariance violated: max diff = {np.max(np.abs(norm_v - norm_kv))}"
+        assert np.allclose(norm_v, norm_kv, atol=1e-5), (
+            f"Scale invariance violated: max diff = {np.max(np.abs(norm_v - norm_kv))}"
+        )
 
 
 class TestSafeNormalize:
@@ -243,9 +243,9 @@ class TestSafeNormalize:
         normalized, norm = safe_normalize(v)
         expected_norm = np.linalg.norm(v)
 
-        assert (
-            abs(norm - expected_norm) < 1e-10
-        ), f"Returned norm {norm} != expected {expected_norm}"
+        assert abs(norm - expected_norm) < 1e-10, (
+            f"Returned norm {norm} != expected {expected_norm}"
+        )
 
     @given(dim=dim_strategy)
     @hyp_settings(max_examples=100, deadline=5000)

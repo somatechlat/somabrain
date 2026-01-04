@@ -7,20 +7,21 @@ It verifies:
 2. Admin status
 3. Cognitive availability
 """
+
 import sys
 import time
 import requests
-import json
 
 BASE_URL = "http://localhost:9696"
+
 
 def log(msg, success=None):
     """Execute log.
 
-        Args:
-            msg: The msg.
-            success: The success.
-        """
+    Args:
+        msg: The msg.
+        success: The success.
+    """
 
     if success is True:
         print(f"✅ {msg}")
@@ -29,15 +30,15 @@ def log(msg, success=None):
     else:
         print(f"ℹ️  {msg}")
 
+
 def check_health():
-    """Execute check health.
-        """
+    """Execute check health."""
 
     url = f"{BASE_URL}/api/health/health"
     log(f"Checking {url}...")
     try:
         # Retry loop for startup
-        for i in range(12): # 60 seconds max
+        for i in range(12):  # 60 seconds max
             try:
                 resp = requests.get(url, timeout=5)
                 if resp.status_code == 200:
@@ -45,18 +46,21 @@ def check_health():
                     log(f"Health OK: {data}", success=True)
                     return True
                 else:
-                    log(f"Health returned {resp.status_code}: {resp.text}", success=False)
+                    log(
+                        f"Health returned {resp.status_code}: {resp.text}",
+                        success=False,
+                    )
             except requests.exceptions.ConnectionError:
-                log(f"Connection failed (attempt {i+1}/12)...")
+                log(f"Connection failed (attempt {i + 1}/12)...")
             time.sleep(5)
         return False
     except Exception as e:
         log(f"Health check exception: {e}", success=False)
         return False
 
+
 def check_admin_status():
-    """Execute check admin status.
-        """
+    """Execute check admin status."""
 
     url = f"{BASE_URL}/api/admin/status"
     log(f"Checking {url}...")
@@ -73,21 +77,22 @@ def check_admin_status():
         log(f"Admin check exception: {e}", success=False)
         return False
 
+
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     log("Starting deployment verification...")
-    
+
     if not check_health():
         log("Health check failed. Aborting.", success=False)
         sys.exit(1)
-        
+
     if not check_admin_status():
         log("Admin check failed.", success=False)
         # Don't exit, clean failure
-        
+
     log("Deployment verification passed!", success=True)
+
 
 if __name__ == "__main__":
     main()

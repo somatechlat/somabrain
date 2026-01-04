@@ -20,15 +20,14 @@ class Command(BaseCommand):
     help = "Seed system roles and default field permissions"
 
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         self.stdout.write("Seeding system roles...")
-        
+
         # =================================================================
         # SYSTEM ROLES
         # =================================================================
-        
+
         roles_data = [
             {
                 "name": "Super Admin",
@@ -59,7 +58,7 @@ class Command(BaseCommand):
                 "is_system": True,
             },
         ]
-        
+
         created_roles = {}
         for role_data in roles_data:
             role, created = Role.objects.update_or_create(
@@ -69,15 +68,15 @@ class Command(BaseCommand):
             created_roles[role.slug] = role
             status = "Created" if created else "Updated"
             self.stdout.write(f"  {status} role: {role.name}")
-        
+
         # =================================================================
         # FIELD PERMISSIONS FOR TENANT-ADMIN
         # =================================================================
-        
+
         self.stdout.write("\nSeeding field permissions for Tenant Admin...")
-        
+
         tenant_admin = created_roles["tenant-admin"]
-        
+
         # Define what Tenant Admin can view/edit
         tenant_admin_permissions = [
             # Tenant: Can view most, edit some
@@ -89,26 +88,22 @@ class Command(BaseCommand):
             ("Tenant", "billing_email", True, True),
             ("Tenant", "config", True, True),
             ("Tenant", "quota_overrides", True, False),  # View only
-            
             # TenantUser: Full access
             ("TenantUser", "email", True, True),
             ("TenantUser", "role", True, True),
             ("TenantUser", "display_name", True, True),
             ("TenantUser", "is_active", True, True),
             ("TenantUser", "is_primary", True, False),
-            
             # Subscription: View only
             ("Subscription", "tier", True, False),
             ("Subscription", "status", True, False),
             ("Subscription", "current_period_start", True, False),
             ("Subscription", "current_period_end", True, False),
-            
             # APIKey: Full access
             ("APIKey", "name", True, True),
             ("APIKey", "scopes", True, True),
             ("APIKey", "is_active", True, True),
             ("APIKey", "expires_at", True, True),
-            
             # IdentityProvider: View for tenant-level, can manage their own
             ("IdentityProvider", "name", True, True),
             ("IdentityProvider", "provider_type", True, False),
@@ -116,7 +111,7 @@ class Command(BaseCommand):
             ("IdentityProvider", "is_enabled", True, True),
             ("IdentityProvider", "is_default", True, True),
         ]
-        
+
         for model, field, can_view, can_edit in tenant_admin_permissions:
             perm, created = FieldPermission.objects.update_or_create(
                 role=tenant_admin,
@@ -129,30 +124,28 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f"    Created: {model}.{field}")
-        
+
         # =================================================================
         # FIELD PERMISSIONS FOR TENANT-USER
         # =================================================================
-        
+
         self.stdout.write("\nSeeding field permissions for Tenant User...")
-        
+
         tenant_user = created_roles["tenant-user"]
-        
+
         # Tenant users have very limited access
         tenant_user_permissions = [
             # Tenant: Basic info only
             ("Tenant", "name", True, False),
             ("Tenant", "slug", True, False),
-            
             # TenantUser: Own profile only (enforced at runtime)
             ("TenantUser", "email", True, False),
             ("TenantUser", "display_name", True, True),  # Can edit own name
-            
             # Subscription: Basic view
             ("Subscription", "tier", True, False),
             ("Subscription", "status", True, False),
         ]
-        
+
         for model, field, can_view, can_edit in tenant_user_permissions:
             perm, created = FieldPermission.objects.update_or_create(
                 role=tenant_user,
@@ -165,15 +158,15 @@ class Command(BaseCommand):
             )
             if created:
                 self.stdout.write(f"    Created: {model}.{field}")
-        
+
         # =================================================================
         # SUMMARY
         # =================================================================
-        
-        self.stdout.write(self.style.SUCCESS(
-            f"\n✅ Seeded {len(roles_data)} roles and permissions"
-        ))
-        
+
+        self.stdout.write(
+            self.style.SUCCESS(f"\n✅ Seeded {len(roles_data)} roles and permissions")
+        )
+
         # Show stats
         total_perms = FieldPermission.objects.count()
         self.stdout.write(f"Total field permissions: {total_perms}")

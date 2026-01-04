@@ -478,7 +478,6 @@ class TenantRegistry:
                 and metadata.expires_at <= current_time
                 and metadata.tier != TenantTier.SYSTEM
             ):
-
                 if await self.delete_tenant(tenant_id):
                     cleaned_count += 1
 

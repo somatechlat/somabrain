@@ -8,16 +8,14 @@ import time
 
 
 def _bootstrap() -> str:
-    """Execute bootstrap.
-        """
+    """Execute bootstrap."""
 
     url = settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30001"
     return str(url).replace("kafka://", "")
 
 
 def main() -> int:
-    """Execute main.
-        """
+    """Execute main."""
 
     try:
         from kafka import KafkaConsumer

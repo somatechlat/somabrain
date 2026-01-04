@@ -226,10 +226,10 @@ class LearnerService:
         def _delivery_report(err: Optional[Exception], msg: Any) -> None:
             """Execute delivery report.
 
-                Args:
-                    err: The err.
-                    msg: The msg.
-                """
+            Args:
+                err: The err.
+                msg: The msg.
+            """
 
             if err is not None:
                 logger.error("Failed to deliver config update: %s", err)

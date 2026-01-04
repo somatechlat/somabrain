@@ -18,11 +18,9 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 from enum import Enum
 import hashlib
-import hmac
 
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
@@ -31,8 +29,8 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain.saas.models import (
-    Tenant, 
-    AuditLog, 
+    Tenant,
+    AuditLog,
     ActorType,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
@@ -45,6 +43,7 @@ router = Router(tags=["Webhooks Dashboard"])
 # =============================================================================
 # WEBHOOK STATUS
 # =============================================================================
+
 
 class DeliveryStatus(str, Enum):
     """Deliverystatus class implementation."""
@@ -59,12 +58,13 @@ class DeliveryStatus(str, Enum):
 # CACHE KEYS (Real Django Cache)
 # =============================================================================
 
+
 def get_webhook_config_key(tenant_id: str) -> str:
     """Retrieve webhook config key.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     return f"webhook:config:{tenant_id}"
 
@@ -72,9 +72,9 @@ def get_webhook_config_key(tenant_id: str) -> str:
 def get_deliveries_key(tenant_id: str) -> str:
     """Retrieve deliveries key.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     return f"webhook:deliveries:{tenant_id}"
 
@@ -82,9 +82,9 @@ def get_deliveries_key(tenant_id: str) -> str:
 def get_delivery_key(delivery_id: str) -> str:
     """Retrieve delivery key.
 
-        Args:
-            delivery_id: The delivery_id.
-        """
+    Args:
+        delivery_id: The delivery_id.
+    """
 
     return f"webhook:delivery:{delivery_id}"
 
@@ -93,8 +93,10 @@ def get_delivery_key(delivery_id: str) -> str:
 # SCHEMAS
 # =============================================================================
 
+
 class WebhookConfig(Schema):
     """Webhook configuration."""
+
     id: str
     url: str
     events: List[str]
@@ -105,6 +107,7 @@ class WebhookConfig(Schema):
 
 class WebhookDelivery(Schema):
     """Webhook delivery record."""
+
     id: str
     event: str
     url: str
@@ -119,6 +122,7 @@ class WebhookDelivery(Schema):
 
 class WebhookStats(Schema):
     """Webhook statistics."""
+
     total_deliveries: int
     successful: int
     failed: int
@@ -129,6 +133,7 @@ class WebhookStats(Schema):
 
 class WebhookEvent(Schema):
     """Available webhook event."""
+
     name: str
     description: str
     sample_payload: Dict[str, Any]
@@ -138,6 +143,7 @@ class WebhookEvent(Schema):
 # WEBHOOK CONFIGURATION
 # =============================================================================
 
+
 @router.get("/{tenant_id}/config", response=List[WebhookConfig])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_webhook_configs(
@@ -146,25 +152,27 @@ def list_webhook_configs(
 ):
     """
     List webhook configurations.
-    
+
     🛠️ DevOps: Webhook management
-    
+
     REAL data from Django cache.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     configs = cache.get(get_webhook_config_key(str(tenant_id)), [])
-    
+
     return [
         WebhookConfig(
             id=c["id"],
             url=c.get("url", ""),
             events=c.get("events", []),
             is_active=c.get("is_active", True),
-            secret_masked="****" + c.get("secret", "")[-4:] if c.get("secret") else "****",
+            secret_masked="****" + c.get("secret", "")[-4:]
+            if c.get("secret")
+            else "****",
             created_at=c.get("created_at", ""),
         )
         for c in configs
@@ -182,19 +190,21 @@ def create_webhook_config(
 ):
     """
     Create webhook configuration.
-    
+
     🔒 Security: Generate secure secret
-    
+
     REAL cache storage.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     config_id = str(uuid4())
-    secret = hashlib.sha256(f"{config_id}:{timezone.now().isoformat()}".encode()).hexdigest()[:32]
-    
+    secret = hashlib.sha256(
+        f"{config_id}:{timezone.now().isoformat()}".encode()
+    ).hexdigest()[:32]
+
     config = {
         "id": config_id,
         "url": url,
@@ -203,12 +213,12 @@ def create_webhook_config(
         "is_active": True,
         "created_at": timezone.now().isoformat(),
     }
-    
+
     # Store in REAL cache
     configs = cache.get(get_webhook_config_key(str(tenant_id)), [])
     configs.append(config)
     cache.set(get_webhook_config_key(str(tenant_id)), configs, timeout=86400 * 30)
-    
+
     # Audit log - REAL
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -220,7 +230,7 @@ def create_webhook_config(
         tenant=tenant,
         details={"url": url, "events": events},
     )
-    
+
     return {
         "success": True,
         "config_id": config_id,
@@ -241,17 +251,18 @@ def delete_webhook_config(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     configs = cache.get(get_webhook_config_key(str(tenant_id)), [])
     configs = [c for c in configs if c["id"] != config_id]
     cache.set(get_webhook_config_key(str(tenant_id)), configs, timeout=86400 * 30)
-    
+
     return {"deleted": True}
 
 
 # =============================================================================
 # WEBHOOK DELIVERIES
 # =============================================================================
+
 
 @router.get("/{tenant_id}/deliveries", response=List[WebhookDelivery])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -263,37 +274,39 @@ def list_deliveries(
 ):
     """
     List webhook deliveries.
-    
+
     🚨 SRE: Delivery monitoring
-    
+
     REAL delivery data from cache.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     delivery_ids = cache.get(get_deliveries_key(str(tenant_id)), [])
     deliveries = []
-    
+
     for did in delivery_ids[:limit]:
         delivery = cache.get(get_delivery_key(did))
         if delivery:
             if status and delivery.get("status") != status:
                 continue
-            deliveries.append(WebhookDelivery(
-                id=delivery["id"],
-                event=delivery.get("event", ""),
-                url=delivery.get("url", ""),
-                status=delivery.get("status", "pending"),
-                status_code=delivery.get("status_code"),
-                attempt=delivery.get("attempt", 1),
-                max_attempts=delivery.get("max_attempts", 3),
-                created_at=delivery.get("created_at", ""),
-                delivered_at=delivery.get("delivered_at"),
-                response_time_ms=delivery.get("response_time_ms"),
-            ))
-    
+            deliveries.append(
+                WebhookDelivery(
+                    id=delivery["id"],
+                    event=delivery.get("event", ""),
+                    url=delivery.get("url", ""),
+                    status=delivery.get("status", "pending"),
+                    status_code=delivery.get("status_code"),
+                    attempt=delivery.get("attempt", 1),
+                    max_attempts=delivery.get("max_attempts", 3),
+                    created_at=delivery.get("created_at", ""),
+                    delivered_at=delivery.get("delivered_at"),
+                    response_time_ms=delivery.get("response_time_ms"),
+                )
+            )
+
     return deliveries
 
 
@@ -309,11 +322,11 @@ def get_delivery(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     delivery = cache.get(get_delivery_key(delivery_id))
     if not delivery:
         raise HttpError(404, "Delivery not found")
-    
+
     return WebhookDelivery(
         id=delivery["id"],
         event=delivery.get("event", ""),
@@ -337,31 +350,32 @@ def retry_delivery(
 ):
     """
     Retry a failed delivery.
-    
+
     🛠️ DevOps: Manual retry
-    
+
     REAL cache update.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     delivery = cache.get(get_delivery_key(delivery_id))
     if not delivery:
         raise HttpError(404, "Delivery not found")
-    
+
     # Update status for retry
     delivery["status"] = "retrying"
     delivery["attempt"] = delivery.get("attempt", 1) + 1
     cache.set(get_delivery_key(delivery_id), delivery, timeout=86400 * 7)
-    
+
     return {"success": True, "new_attempt": delivery["attempt"]}
 
 
 # =============================================================================
 # WEBHOOK STATISTICS
 # =============================================================================
+
 
 @router.get("/{tenant_id}/stats", response=WebhookStats)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -371,22 +385,22 @@ def get_webhook_stats(
 ):
     """
     Get webhook statistics.
-    
+
     📊 Performance: REAL aggregated stats
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     delivery_ids = cache.get(get_deliveries_key(str(tenant_id)), [])
-    
+
     total = 0
     successful = 0
     failed = 0
     pending = 0
     total_response_time = 0
-    
+
     for did in delivery_ids[:500]:  # Analyze up to 500
         delivery = cache.get(get_delivery_key(did))
         if delivery:
@@ -400,10 +414,10 @@ def get_webhook_stats(
                 failed += 1
             else:
                 pending += 1
-    
+
     success_rate = (successful / total * 100) if total > 0 else 0
     avg_response = (total_response_time / successful) if successful > 0 else 0
-    
+
     return WebhookStats(
         total_deliveries=total,
         successful=successful,
@@ -418,11 +432,12 @@ def get_webhook_stats(
 # WEBHOOK EVENTS
 # =============================================================================
 
+
 @router.get("/events", response=List[WebhookEvent])
 def list_available_events():
     """
     List available webhook events.
-    
+
     📚 Docs: Event documentation
     """
     events = [
@@ -464,22 +479,22 @@ def test_webhook(
 ):
     """
     Test webhook configuration.
-    
+
     🧪 QA: Webhook testing
-    
+
     Creates a test delivery record.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     configs = cache.get(get_webhook_config_key(str(tenant_id)), [])
     config = next((c for c in configs if c["id"] == config_id), None)
-    
+
     if not config:
         raise HttpError(404, "Config not found")
-    
+
     # Create test delivery
     delivery_id = str(uuid4())
     delivery = {
@@ -492,12 +507,12 @@ def test_webhook(
         "created_at": timezone.now().isoformat(),
         "is_test": True,
     }
-    
+
     cache.set(get_delivery_key(delivery_id), delivery, timeout=86400)
-    
+
     # Add to deliveries list
     delivery_ids = cache.get(get_deliveries_key(str(tenant_id)), [])
     delivery_ids.insert(0, delivery_id)
     cache.set(get_deliveries_key(str(tenant_id)), delivery_ids[:100], timeout=86400 * 7)
-    
+
     return {"success": True, "delivery_id": delivery_id}

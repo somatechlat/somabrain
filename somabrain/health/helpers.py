@@ -51,23 +51,23 @@ _cached_mt_memory = None
 
 def get_mt_memory():
     """Get the multi-tenant memory singleton or verify SFM is reachable.
-    
+
     Uses Django bootstrap pattern instead of runtime.py loading.
     Per VIBE rules: real implementations, no stubs.
-    
+
     For health checks, we verify SFM is reachable via /healthz endpoint.
     """
     global _cached_mt_memory
     if _cached_mt_memory is not None:
         return _cached_mt_memory
-    
+
     # First try runtime module (if loaded by other code)
     rt = get_runtime()
     if rt:
         _cached_mt_memory = getattr(rt, "mt_memory", None)
         if _cached_mt_memory is not None:
             return _cached_mt_memory
-    
+
     # Fallback: verify SFM is reachable for health checks
     try:
         memory_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)
@@ -80,36 +80,37 @@ def get_mt_memory():
                 return {"sfm_endpoint": memory_endpoint, "status": "reachable"}
     except Exception:
         pass
-    
+
     return None
 
 
 def get_embedder():
     """Get the embedder singleton.
-    
+
     Uses Django bootstrap pattern with lazy initialization.
     Per VIBE rules: real implementations, no stubs.
     """
     global _cached_embedder
     if _cached_embedder is not None:
         return _cached_embedder
-    
+
     # First try runtime module (if loaded by other code)
     rt = get_runtime()
     if rt:
         _cached_embedder = getattr(rt, "embedder", None)
         if _cached_embedder is not None:
             return _cached_embedder
-    
+
     # Fallback: create via Django bootstrap factories
     try:
         from somabrain.bootstrap.singletons import make_embedder_with_dim
+
         embedder, _ = make_embedder_with_dim(settings, quantum=None)
         _cached_embedder = embedder
         return _cached_embedder
     except Exception:
         pass
-    
+
     return None
 
 
@@ -139,9 +140,9 @@ def milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
     def _read(gauge, **labels) -> Optional[float]:
         """Execute read.
 
-            Args:
-                gauge: The gauge.
-            """
+        Args:
+            gauge: The gauge.
+        """
 
         try:
             child = gauge.labels(**labels)

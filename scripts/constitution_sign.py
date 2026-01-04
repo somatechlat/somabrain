@@ -16,8 +16,7 @@ from somabrain.storage import db
 
 
 def parse_args() -> argparse.Namespace:
-    """Execute parse args.
-        """
+    """Execute parse args."""
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -51,8 +50,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     args = parse_args()
     if not args.private_key:

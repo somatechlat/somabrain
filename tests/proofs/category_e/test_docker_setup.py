@@ -86,9 +86,9 @@ class TestDockerInfrastructureSetup:
             if not _check_tcp_port("localhost", port):
                 failed_services.append(f"{name}:{port}")
 
-        assert (
-            not failed_services
-        ), f"Services not reachable: {', '.join(failed_services)}"
+        assert not failed_services, (
+            f"Services not reachable: {', '.join(failed_services)}"
+        )
 
     def test_redis_accessible_with_persistence(self) -> None:
         """E1.2: Redis is accessible with persistence enabled.

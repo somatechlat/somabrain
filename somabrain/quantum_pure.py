@@ -55,10 +55,10 @@ class PureQuantumLayer:
     def _ensure_vector(self, v: object, name: str = "vector") -> np.ndarray:
         """Execute ensure vector.
 
-            Args:
-                v: The v.
-                name: The name.
-            """
+        Args:
+            v: The v.
+            name: The name.
+        """
 
         if isinstance(v, np.ndarray):
             arr = v
@@ -78,17 +78,16 @@ class PureQuantumLayer:
     def _renorm(self, v: np.ndarray) -> np.ndarray:
         """Execute renorm.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         if not self.cfg.renorm:
             return v.astype(self.cfg.dtype, copy=False)
         return normalize_array(v, axis=-1, keepdims=False, dtype=self.cfg.dtype)
 
     def random_vector(self) -> np.ndarray:
-        """Execute random vector.
-            """
+        """Execute random vector."""
 
         v = self._rng.normal(0.0, 1.0, size=self.cfg.dim)
         return self._renorm(v)
@@ -96,9 +95,9 @@ class PureQuantumLayer:
     def encode_text(self, text: str) -> np.ndarray:
         """Execute encode text.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         seed64 = seed_to_uint64(text) ^ int(self.cfg.seed)
         rng = np.random.default_rng(np.uint64(seed64))
@@ -106,8 +105,7 @@ class PureQuantumLayer:
         return self._renorm(v)
 
     def superpose(self, *vectors) -> np.ndarray:
-        """Execute superpose.
-            """
+        """Execute superpose."""
 
         s = None
         for v in vectors:
@@ -125,10 +123,10 @@ class PureQuantumLayer:
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Execute bind.
 
-            Args:
-                a: The a.
-                b: The b.
-            """
+        Args:
+            a: The a.
+            b: The b.
+        """
 
         a = self._ensure_vector(a, name="bind.a")
         b = self._ensure_vector(b, name="bind.b")
@@ -141,10 +139,10 @@ class PureQuantumLayer:
     def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Execute unbind.
 
-            Args:
-                c: The c.
-                b: The b.
-            """
+        Args:
+            c: The c.
+            b: The b.
+        """
 
         c = self._ensure_vector(c, name="unbind.c")
         b = self._ensure_vector(b, name="unbind.b")
@@ -167,10 +165,10 @@ class PureQuantumLayer:
     def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
         """Execute permute.
 
-            Args:
-                a: The a.
-                times: The times.
-            """
+        Args:
+            a: The a.
+            times: The times.
+        """
 
         a = self._ensure_vector(a, name="permute.a")
         if times >= 0:
@@ -193,10 +191,10 @@ class PureQuantumLayer:
     ) -> Tuple[str, float]:
         """Execute cleanup.
 
-            Args:
-                q: The q.
-                anchors: The anchors.
-            """
+        Args:
+            q: The q.
+            anchors: The anchors.
+        """
 
         q = self._ensure_vector(q, name="cleanup.query")
         best_id = ""

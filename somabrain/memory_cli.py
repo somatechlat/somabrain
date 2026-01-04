@@ -30,10 +30,10 @@ HEADERS = {"Content-Type": "application/json"}
 def _post(endpoint: str, payload: dict):
     """Execute post.
 
-        Args:
-            endpoint: The endpoint.
-            payload: The payload.
-        """
+    Args:
+        endpoint: The endpoint.
+        payload: The payload.
+    """
 
     url = urljoin(BASE_URL + "/", endpoint.lstrip("/"))
     try:
@@ -48,9 +48,9 @@ def _post(endpoint: str, payload: dict):
 def _get(endpoint: str):
     """Execute get.
 
-        Args:
-            endpoint: The endpoint.
-        """
+    Args:
+        endpoint: The endpoint.
+    """
 
     url = urljoin(BASE_URL + "/", endpoint.lstrip("/"))
     try:
@@ -68,9 +68,9 @@ def _get(endpoint: str):
 def cmd_remember(args):
     """Execute cmd remember.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     payload = {"payload": {"text": args.text}}
     result = _post("/memory/remember", payload)
@@ -80,9 +80,9 @@ def cmd_remember(args):
 def cmd_recall(args):
     """Execute cmd recall.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     payload = {"query": args.query}
     result = _post("/memory/recall", payload)
@@ -92,9 +92,9 @@ def cmd_recall(args):
 def cmd_get(args):
     """Execute cmd get.
 
-        Args:
-            args: The args.
-        """
+    Args:
+        args: The args.
+    """
 
     result = _get(f"/memory/{args.key}")
     print(json.dumps(result, indent=2))
@@ -104,8 +104,7 @@ def cmd_get(args):
 # Argument parser
 # ----------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
-    """Execute build parser.
-        """
+    """Execute build parser."""
 
     parser = argparse.ArgumentParser(
         prog="memory_cli",
@@ -129,8 +128,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     parser = build_parser()
     args = parser.parse_args()

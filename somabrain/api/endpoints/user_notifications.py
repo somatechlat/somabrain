@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional
-from datetime import datetime, timedelta
 from uuid import UUID, uuid4
 from enum import Enum
 
@@ -29,9 +28,9 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain.saas.models import (
-    Tenant, 
+    Tenant,
     TenantUser,
-    AuditLog, 
+    AuditLog,
     ActorType,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
@@ -44,6 +43,7 @@ router = Router(tags=["Notifications"])
 # =============================================================================
 # NOTIFICATION TYPES
 # =============================================================================
+
 
 class NotificationType(str, Enum):
     """Notificationtype class implementation."""
@@ -69,12 +69,13 @@ class NotificationPriority(str, Enum):
 # NOTIFICATION STORAGE (Real Django Cache)
 # =============================================================================
 
+
 def get_notifications_key(user_id: str) -> str:
     """Retrieve notifications key.
 
-        Args:
-            user_id: The user_id.
-        """
+    Args:
+        user_id: The user_id.
+    """
 
     return f"notifications:user:{user_id}"
 
@@ -82,9 +83,9 @@ def get_notifications_key(user_id: str) -> str:
 def get_notification_key(notification_id: str) -> str:
     """Retrieve notification key.
 
-        Args:
-            notification_id: The notification_id.
-        """
+    Args:
+        notification_id: The notification_id.
+    """
 
     return f"notification:{notification_id}"
 
@@ -100,7 +101,7 @@ def create_notification(
 ) -> dict:
     """Create REAL notification in Django cache."""
     notification_id = str(uuid4())
-    
+
     notification = {
         "id": notification_id,
         "user_id": user_id,
@@ -114,16 +115,16 @@ def create_notification(
         "created_at": timezone.now().isoformat(),
         "read_at": None,
     }
-    
+
     # Store in REAL Django cache
     cache.set(get_notification_key(notification_id), notification, timeout=86400 * 7)
-    
+
     # Add to user's notification list
     user_notifications = cache.get(get_notifications_key(user_id), [])
     user_notifications.insert(0, notification_id)  # Newest first
     user_notifications = user_notifications[:100]  # Keep last 100
     cache.set(get_notifications_key(user_id), user_notifications, timeout=86400 * 7)
-    
+
     return notification
 
 
@@ -131,14 +132,14 @@ def get_user_notifications(user_id: str, unread_only: bool = False) -> List[dict
     """Get notifications from REAL Django cache."""
     notification_ids = cache.get(get_notifications_key(user_id), [])
     notifications = []
-    
+
     for nid in notification_ids:
         notification = cache.get(get_notification_key(nid))
         if notification:
             if unread_only and notification.get("is_read"):
                 continue
             notifications.append(notification)
-    
+
     return notifications
 
 
@@ -148,7 +149,9 @@ def mark_notification_read(notification_id: str) -> bool:
     if notification:
         notification["is_read"] = True
         notification["read_at"] = timezone.now().isoformat()
-        cache.set(get_notification_key(notification_id), notification, timeout=86400 * 7)
+        cache.set(
+            get_notification_key(notification_id), notification, timeout=86400 * 7
+        )
         return True
     return False
 
@@ -157,8 +160,10 @@ def mark_notification_read(notification_id: str) -> bool:
 # SCHEMAS
 # =============================================================================
 
+
 class NotificationOut(Schema):
     """Notification output."""
+
     id: str
     title: str
     message: str
@@ -172,6 +177,7 @@ class NotificationOut(Schema):
 
 class NotificationCreate(Schema):
     """Create notification input."""
+
     title: str
     message: str
     type: str = "info"
@@ -181,6 +187,7 @@ class NotificationCreate(Schema):
 
 class NotificationStats(Schema):
     """Notification statistics."""
+
     total: int
     unread: int
     by_type: dict
@@ -190,6 +197,7 @@ class NotificationStats(Schema):
 # =============================================================================
 # USER ENDPOINTS
 # =============================================================================
+
 
 @router.get("/{tenant_id}/notifications", response=List[NotificationOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
@@ -201,18 +209,18 @@ def list_notifications(
 ):
     """
     List current user's notifications.
-    
+
     🎨 UX: Notification inbox
-    
+
     REAL data from Django cache.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     notifications = get_user_notifications(str(request.user_id), unread_only)
-    
+
     return [
         NotificationOut(
             id=n["id"],
@@ -240,9 +248,9 @@ def get_unread_count(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     notifications = get_user_notifications(str(request.user_id), unread_only=True)
-    
+
     return {"unread_count": len(notifications)}
 
 
@@ -258,15 +266,18 @@ def get_notification(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     notification = cache.get(get_notification_key(notification_id))
     if not notification:
         raise HttpError(404, "Notification not found")
-    
+
     # User can only see their own notifications
-    if notification.get("user_id") != str(request.user_id) and not request.is_super_admin:
+    if (
+        notification.get("user_id") != str(request.user_id)
+        and not request.is_super_admin
+    ):
         raise HttpError(403, "Access denied")
-    
+
     return NotificationOut(
         id=notification["id"],
         title=notification.get("title", ""),
@@ -292,16 +303,19 @@ def mark_as_read(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     notification = cache.get(get_notification_key(notification_id))
     if not notification:
         raise HttpError(404, "Notification not found")
-    
-    if notification.get("user_id") != str(request.user_id) and not request.is_super_admin:
+
+    if (
+        notification.get("user_id") != str(request.user_id)
+        and not request.is_super_admin
+    ):
         raise HttpError(403, "Access denied")
-    
+
     success = mark_notification_read(notification_id)
-    
+
     return {"success": success}
 
 
@@ -316,14 +330,14 @@ def mark_all_as_read(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     notifications = get_user_notifications(str(request.user_id), unread_only=True)
     count = 0
-    
+
     for n in notifications:
         if mark_notification_read(n["id"]):
             count += 1
-    
+
     return {"marked_count": count}
 
 
@@ -339,29 +353,37 @@ def delete_notification(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     notification = cache.get(get_notification_key(notification_id))
     if not notification:
         raise HttpError(404, "Notification not found")
-    
-    if notification.get("user_id") != str(request.user_id) and not request.is_super_admin:
+
+    if (
+        notification.get("user_id") != str(request.user_id)
+        and not request.is_super_admin
+    ):
         raise HttpError(403, "Access denied")
-    
+
     # Delete from cache
     cache.delete(get_notification_key(notification_id))
-    
+
     # Remove from user's list
     user_notifications = cache.get(get_notifications_key(str(request.user_id)), [])
     if notification_id in user_notifications:
         user_notifications.remove(notification_id)
-        cache.set(get_notifications_key(str(request.user_id)), user_notifications, timeout=86400 * 7)
-    
+        cache.set(
+            get_notifications_key(str(request.user_id)),
+            user_notifications,
+            timeout=86400 * 7,
+        )
+
     return {"deleted": True}
 
 
 # =============================================================================
 # ADMIN ENDPOINTS
 # =============================================================================
+
 
 @router.post("/{tenant_id}/admin/notifications/send")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -374,19 +396,19 @@ def send_notification(
 ):
     """
     Send notification to a user (admin).
-    
+
     🛠️ DevOps: Admin notifications
-    
+
     REAL cache storage.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Verify user exists - REAL check
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     notification = create_notification(
         user_id=str(user.id),
         tenant_id=str(tenant_id),
@@ -396,7 +418,7 @@ def send_notification(
         priority=data.priority,
         action_url=data.action_url,
     )
-    
+
     # Audit log - REAL
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -408,7 +430,7 @@ def send_notification(
         tenant=tenant,
         details={"recipient": str(user.id), "title": data.title},
     )
-    
+
     return {"success": True, "notification_id": notification["id"]}
 
 
@@ -422,19 +444,19 @@ def broadcast_notification(
 ):
     """
     Broadcast notification to all tenant users.
-    
+
     🚨 SRE: System announcements
-    
+
     REAL broadcast to all users.
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Get all REAL users in tenant
     users = TenantUser.objects.filter(tenant_id=tenant_id, is_active=True)
-    
+
     sent_count = 0
     for user in users[:100]:  # Limit to 100 users
         create_notification(
@@ -447,7 +469,7 @@ def broadcast_notification(
             action_url=data.action_url,
         )
         sent_count += 1
-    
+
     # Audit log - REAL
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -459,7 +481,7 @@ def broadcast_notification(
         tenant=tenant,
         details={"title": data.title, "sent_count": sent_count},
     )
-    
+
     return {"success": True, "sent_count": sent_count}
 
 
@@ -471,35 +493,35 @@ def get_notification_stats(
 ):
     """
     Get notification statistics for tenant.
-    
+
     📊 Performance: REAL aggregated stats
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
-    
+
     # Get all REAL users in tenant
     users = TenantUser.objects.filter(tenant_id=tenant_id, is_active=True)[:50]
-    
+
     total = 0
     unread = 0
     by_type = {}
     by_priority = {}
-    
+
     for user in users:
         notifications = get_user_notifications(str(user.id))
         for n in notifications:
             total += 1
             if not n.get("is_read"):
                 unread += 1
-            
+
             n_type = n.get("type", "info")
             by_type[n_type] = by_type.get(n_type, 0) + 1
-            
+
             n_priority = n.get("priority", "normal")
             by_priority[n_priority] = by_priority.get(n_priority, 0) + 1
-    
+
     return NotificationStats(
         total=total,
         unread=unread,

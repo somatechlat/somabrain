@@ -11,12 +11,12 @@ def build_next_event(
 ) -> Dict[str, object]:
     """Execute build next event.
 
-        Args:
-            domain: The domain.
-            tenant: The tenant.
-            confidence: The confidence.
-            predicted_state: The predicted_state.
-        """
+    Args:
+        domain: The domain.
+        tenant: The tenant.
+        confidence: The confidence.
+        predicted_state: The predicted_state.
+    """
 
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     regret = max(0.0, min(1.0, 1.0 - float(confidence)))

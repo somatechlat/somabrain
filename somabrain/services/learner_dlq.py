@@ -40,10 +40,10 @@ class LearnerDLQ:
     def record(self, event: Dict[str, Any], reason: str) -> None:
         """Execute record.
 
-            Args:
-                event: The event.
-                reason: The reason.
-            """
+        Args:
+            event: The event.
+            reason: The reason.
+        """
 
         payload = {
             "ts": time.time(),

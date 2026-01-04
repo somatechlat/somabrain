@@ -91,8 +91,7 @@ class FDSalienceSketch:
         return residual_ratio, self.capture_ratio
 
     def _apply_decay(self) -> None:
-        """Execute apply decay.
-            """
+        """Execute apply decay."""
 
         if self.decay >= 0.9999:
             return
@@ -104,9 +103,9 @@ class FDSalienceSketch:
     def _residual_energy(self, vector: np.ndarray) -> float:
         """Execute residual energy.
 
-            Args:
-                vector: The vector.
-            """
+        Args:
+            vector: The vector.
+        """
 
         if self._basis is None or self._alpha is None:
             return float(np.dot(vector, vector))
@@ -118,8 +117,7 @@ class FDSalienceSketch:
         return max(0.0, total - captured)
 
     def _refresh_low_rank(self) -> None:
-        """Execute refresh low rank.
-            """
+        """Execute refresh low rank."""
 
         if self._fd.S.size == 0:
             self._basis = None
@@ -167,8 +165,7 @@ class FDSalienceSketch:
 
     @property
     def capture_ratio(self) -> float:
-        """Execute capture ratio.
-            """
+        """Execute capture ratio."""
 
         if self._total_energy <= EPS:
             return 1.0
@@ -197,29 +194,25 @@ class FDSalienceSketch:
 
     @property
     def total_energy(self) -> float:
-        """Execute total energy.
-            """
+        """Execute total energy."""
 
         return float(self._total_energy)
 
     @property
     def captured_energy(self) -> float:
-        """Execute captured energy.
-            """
+        """Execute captured energy."""
 
         return float(self._captured_energy)
 
     @property
     def trace_norm_error(self) -> float:
-        """Execute trace norm error.
-            """
+        """Execute trace norm error."""
 
         return float(self._trace_norm_error)
 
     @property
     def psd_ok(self) -> bool:
-        """Execute psd ok.
-            """
+        """Execute psd ok."""
 
         return bool(self._psd_ok)
 

@@ -88,9 +88,9 @@ class TestBindSpectralInvariant:
         # The key spectral invariant for BHDC binding: result is normalized
         # This ensures energy conservation (Parseval's theorem: ||x||^2 = (1/D)||X||^2)
         result_norm = np.linalg.norm(result)
-        assert (
-            0.99 <= result_norm <= 1.01
-        ), f"Bind result norm {result_norm} outside [0.99, 1.01]"
+        assert 0.99 <= result_norm <= 1.01, (
+            f"Bind result norm {result_norm} outside [0.99, 1.01]"
+        )
 
         # Verify FFT energy conservation (Parseval's theorem)
         fft_result = np.fft.fft(result)
@@ -98,9 +98,9 @@ class TestBindSpectralInvariant:
         time_energy = np.sum(result**2)
 
         # Parseval: sum|X_k|^2 / D = sum|x_n|^2
-        assert (
-            abs(fft_energy - time_energy) < 1e-5
-        ), f"Parseval's theorem violated: FFT energy {fft_energy} != time energy {time_energy}"
+        assert abs(fft_energy - time_energy) < 1e-5, (
+            f"Parseval's theorem violated: FFT energy {fft_energy} != time energy {time_energy}"
+        )
 
 
 class TestUnitaryRoleNorm:
@@ -135,9 +135,9 @@ class TestUnitaryRoleNorm:
 
         # Verify unit norm
         norm = float(np.linalg.norm(role))
-        assert (
-            abs(norm - 1.0) < 1e-6
-        ), f"Role norm {norm} deviates from 1.0 by more than 1e-6"
+        assert abs(norm - 1.0) < 1e-6, (
+            f"Role norm {norm} deviates from 1.0 by more than 1e-6"
+        )
 
     @given(
         dim=dim_strategy,
@@ -153,9 +153,9 @@ class TestUnitaryRoleNorm:
         for token in tokens:
             role = ql.make_unitary_role(token)
             norm = float(np.linalg.norm(role))
-            assert (
-                abs(norm - 1.0) < 1e-6
-            ), f"Role '{token}' norm {norm} deviates from 1.0"
+            assert abs(norm - 1.0) < 1e-6, (
+                f"Role '{token}' norm {norm} deviates from 1.0"
+            )
 
 
 class TestBindingRoundTrip:
@@ -224,9 +224,9 @@ class TestBindingRoundTrip:
         # Compute cosine similarity
         cosine_sim = ql.cosine(a, recovered)
 
-        assert (
-            cosine_sim >= 0.99
-        ), f"Unitary round-trip cosine similarity {cosine_sim} < 0.99"
+        assert cosine_sim >= 0.99, (
+            f"Unitary round-trip cosine similarity {cosine_sim} < 0.99"
+        )
 
 
 class TestTinyFloorFormula:
@@ -255,9 +255,9 @@ class TestTinyFloorFormula:
         tiny_min = 1e-6  # TINY_MIN for float32
         expected = max(expected, tiny_min)
 
-        assert (
-            abs(result - expected) < 1e-12
-        ), f"Tiny floor {result} != expected {expected} for dim={dim}"
+        assert abs(result - expected) < 1e-12, (
+            f"Tiny floor {result} != expected {expected} for dim={dim}"
+        )
 
     @given(
         dim=st.integers(min_value=1, max_value=10000),
@@ -275,9 +275,9 @@ class TestTinyFloorFormula:
         tiny_min = 1e-12  # TINY_MIN for float64
         expected = max(expected, tiny_min)
 
-        assert (
-            abs(result - expected) < 1e-18
-        ), f"Tiny floor {result} != expected {expected} for dim={dim}"
+        assert abs(result - expected) < 1e-18, (
+            f"Tiny floor {result} != expected {expected} for dim={dim}"
+        )
 
     @given(
         dim=st.integers(min_value=1, max_value=10000),
@@ -298,9 +298,9 @@ class TestTinyFloorFormula:
         tiny_min = 1e-6
         expected = max(base, tiny_min)
 
-        assert (
-            abs(result - expected) < 1e-10
-        ), f"Scaled tiny floor {result} != expected {expected}"
+        assert abs(result - expected) < 1e-10, (
+            f"Scaled tiny floor {result} != expected {expected}"
+        )
 
 
 class TestBHDCSparsityCount:
@@ -432,9 +432,9 @@ class TestBHDCSparsityCount:
         vec1 = encoder.vector_for_key(key)
         vec2 = encoder.vector_for_key(key)
 
-        assert np.allclose(
-            vec1, vec2
-        ), "vector_for_key is not deterministic for the same key"
+        assert np.allclose(vec1, vec2), (
+            "vector_for_key is not deterministic for the same key"
+        )
 
     @given(
         dim=dim_strategy,
@@ -500,6 +500,6 @@ class TestNormalizationInvariants:
         for text in texts:
             vec = ql.encode_text(text)
             norm = float(np.linalg.norm(vec))
-            assert (
-                abs(norm - 1.0) < 1e-5
-            ), f"encode_text('{text}') norm {norm} deviates from 1.0"
+            assert abs(norm - 1.0) < 1e-5, (
+                f"encode_text('{text}') norm {norm} deviates from 1.0"
+            )

@@ -79,12 +79,12 @@ class UnifiedScorer:
     def _clamp(self, component: str, value: float, lo: float, hi: float) -> float:
         """Execute clamp.
 
-            Args:
-                component: The component.
-                value: The value.
-                lo: The lo.
-                hi: The hi.
-            """
+        Args:
+            component: The component.
+            value: The value.
+            lo: The lo.
+            hi: The hi.
+        """
 
         v = float(value)
         if v < lo:
@@ -105,10 +105,10 @@ class UnifiedScorer:
     def _fd_component(self, query: np.ndarray, candidate: np.ndarray) -> float:
         """Execute fd component.
 
-            Args:
-                query: The query.
-                candidate: The candidate.
-            """
+        Args:
+            query: The query.
+            candidate: The candidate.
+        """
 
         if self._fd is None:
             return 0.0
@@ -120,9 +120,9 @@ class UnifiedScorer:
     def _recency_component(self, recency_steps: Optional[int]) -> float:
         """Execute recency component.
 
-            Args:
-                recency_steps: The recency_steps.
-            """
+        Args:
+            recency_steps: The recency_steps.
+        """
 
         if recency_steps is None:
             return 0.0
@@ -141,10 +141,10 @@ class UnifiedScorer:
     ) -> float:
         """Execute score.
 
-            Args:
-                query: The query.
-                candidate: The candidate.
-            """
+        Args:
+            query: The query.
+            candidate: The candidate.
+        """
 
         q = np.asarray(query, dtype=float).reshape(-1)
         c = np.asarray(candidate, dtype=float).reshape(-1)
@@ -170,8 +170,7 @@ class UnifiedScorer:
         return total_score
 
     def stats(self) -> dict[str, float | dict[str, float | bool]]:
-        """Execute stats.
-            """
+        """Execute stats."""
 
         info: dict[str, float | dict[str, float | bool]] = {
             "w_cosine": self._weights.w_cosine,

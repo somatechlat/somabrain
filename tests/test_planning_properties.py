@@ -22,7 +22,9 @@ from hypothesis import given, settings, strategies as st
 
 
 @given(
-    strengths=st.lists(st.floats(min_value=0.0, max_value=1.0), min_size=2, max_size=10),
+    strengths=st.lists(
+        st.floats(min_value=0.0, max_value=1.0), min_size=2, max_size=10
+    ),
     seed=st.integers(min_value=0, max_value=1000),
 )
 @settings(max_examples=100)
@@ -44,9 +46,9 @@ def test_bfs_deterministic_ordering(strengths: list, seed: int) -> None:
     def sort_key(n):
         """Execute sort key.
 
-            Args:
-                n: The n.
-            """
+        Args:
+            n: The n.
+        """
 
         coord_str = ",".join(f"{c:.6f}" for c in n["coord"])
         return (-n["strength"], coord_str)
@@ -90,9 +92,9 @@ def test_rwr_deterministic_ordering(probs: list) -> None:
     def sort_key(x):
         """Execute sort key.
 
-            Args:
-                x: The x.
-            """
+        Args:
+            x: The x.
+        """
 
         return (-x[1], x[2])
 
@@ -167,7 +169,9 @@ def test_focus_digest_determinism(vec_values: list) -> None:
     ),
 )
 @settings(max_examples=100)
-def test_predictor_comparison_nonzero_error(prev_values: list, curr_values: list) -> None:
+def test_predictor_comparison_nonzero_error(
+    prev_values: list, curr_values: list
+) -> None:
     """
     **Feature: unified-planning-kernel, Property 3: Predictor Comparison Correctness**
     **Validates: Requirement 3.3**

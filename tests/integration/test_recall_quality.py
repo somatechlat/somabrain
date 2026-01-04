@@ -26,8 +26,7 @@ API_URL = settings.SOMABRAIN_API_URL or "http://localhost:9696"
 
 
 def _memory_available() -> bool:
-    """Execute memory available.
-        """
+    """Execute memory available."""
 
     try:
         headers = {"Authorization": f"Bearer {MEM_TOKEN}"} if MEM_TOKEN else {}
@@ -43,8 +42,7 @@ def _memory_available() -> bool:
 
 
 def _api_available() -> bool:
-    """Execute api available.
-        """
+    """Execute api available."""
 
     try:
         base = API_URL or "http://localhost:9696"
@@ -59,8 +57,7 @@ def _api_available() -> bool:
 
 @pytest.fixture(scope="session")
 def http_client() -> httpx.Client:
-    """Execute http client.
-        """
+    """Execute http client."""
 
     if not MEM_TOKEN:
         pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN must be set for workbench tests")
@@ -79,11 +76,11 @@ def http_client() -> httpx.Client:
 def _remember(client: httpx.Client, tenant: str, text: str) -> None:
     """Execute remember.
 
-        Args:
-            client: The client.
-            tenant: The tenant.
-            text: The text.
-        """
+    Args:
+        client: The client.
+        tenant: The tenant.
+        text: The text.
+    """
 
     payload = {"payload": {"task": text, "content": text, "memory_type": "episodic"}}
     r = client.post("/memory/remember", headers={"X-Tenant-ID": tenant}, json=payload)
@@ -93,12 +90,12 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
     """Execute recall texts.
 
-        Args:
-            client: The client.
-            tenant: The tenant.
-            query: The query.
-            k: The k.
-        """
+    Args:
+        client: The client.
+        tenant: The tenant.
+        query: The query.
+        k: The k.
+    """
 
     r = client.post(
         "/memory/recall",
@@ -115,9 +112,9 @@ def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List
 def test_recall_quality_basic(http_client: httpx.Client) -> None:
     """Execute test recall quality basic.
 
-        Args:
-            http_client: The http_client.
-        """
+    Args:
+        http_client: The http_client.
+    """
 
     tenant = "workbench-quality"
     corpus = {
@@ -160,9 +157,9 @@ def test_recall_quality_basic(http_client: httpx.Client) -> None:
 def test_multi_tenant_isolation(http_client: httpx.Client) -> None:
     """Execute test multi tenant isolation.
 
-        Args:
-            http_client: The http_client.
-        """
+    Args:
+        http_client: The http_client.
+    """
 
     tenant_a = "workbench-tenant-a"
     tenant_b = "workbench-tenant-b"
@@ -183,9 +180,9 @@ def test_multi_tenant_isolation(http_client: httpx.Client) -> None:
 def test_recall_includes_degraded_flag(http_client: httpx.Client) -> None:
     """Execute test recall includes degraded flag.
 
-        Args:
-            http_client: The http_client.
-        """
+    Args:
+        http_client: The http_client.
+    """
 
     tenant = "workbench-degraded"
     r = http_client.post(

@@ -15,8 +15,7 @@ from somabrain.wm import WorkingMemory
 
 
 def test_mcconfig_defaults_follow_settings() -> None:
-    """Execute test mcconfig defaults follow settings.
-        """
+    """Execute test mcconfig defaults follow settings."""
 
     cfg = MCConfig()
     assert cfg.columns == max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS))
@@ -27,19 +26,19 @@ def test_mcconfig_defaults_follow_settings() -> None:
 
 
 def test_mtwm_defaults_follow_settings() -> None:
-    """Execute test mtwm defaults follow settings.
-        """
+    """Execute test mtwm defaults follow settings."""
 
     cfg = MTWMConfig()
     assert cfg.max_tenants == settings.SOMABRAIN_MTWM_MAX_TENANTS
-    assert cfg.per_tenant_capacity == max(1, int(settings.SOMABRAIN_WM_PER_TENANT_CAPACITY))
+    assert cfg.per_tenant_capacity == max(
+        1, int(settings.SOMABRAIN_WM_PER_TENANT_CAPACITY)
+    )
     assert cfg.recency_time_scale == settings.SOMABRAIN_WM_RECENCY_TIME_SCALE
     assert cfg.recency_max_steps == settings.SOMABRAIN_WM_RECENCY_MAX_STEPS
 
 
 def test_working_memory_defaults_use_settings() -> None:
-    """Execute test working memory defaults use settings.
-        """
+    """Execute test working memory defaults use settings."""
 
     wm = WorkingMemory(capacity=4, dim=2)
     assert wm.alpha == settings.SOMABRAIN_WM_ALPHA
@@ -50,16 +49,14 @@ def test_working_memory_defaults_use_settings() -> None:
 
 
 def test_budgeted_predictor_uses_settings_timeout() -> None:
-    """Execute test budgeted predictor uses settings timeout.
-        """
+    """Execute test budgeted predictor uses settings timeout."""
 
     bp = BudgetedPredictor(SlowPredictor())
     assert bp.timeout_ms == settings.predictor_timeout_ms
 
 
 def test_rwr_plan_respects_settings_limits() -> None:
-    """Execute test rwr plan respects settings limits.
-        """
+    """Execute test rwr plan respects settings limits."""
 
     class _Mem:
         """Mem class implementation."""
@@ -72,21 +69,21 @@ def test_rwr_plan_respects_settings_limits() -> None:
         def coord_for_key(self, task_key, universe=None):
             """Execute coord for key.
 
-                Args:
-                    task_key: The task_key.
-                    universe: The universe.
-                """
+            Args:
+                task_key: The task_key.
+                universe: The universe.
+            """
 
             return (0.0, 0.0, 0.0)
 
         def links_from(self, coord, type_filter=None, limit=None):
             """Execute links from.
 
-                Args:
-                    coord: The coord.
-                    type_filter: The type_filter.
-                    limit: The limit.
-                """
+            Args:
+                coord: The coord.
+                type_filter: The type_filter.
+                limit: The limit.
+            """
 
             assert limit == max(1, int(settings.planner_rwr_edges_per_node))
             return []
@@ -94,10 +91,10 @@ def test_rwr_plan_respects_settings_limits() -> None:
         def payloads_for_coords(self, coords, universe=None):
             """Execute payloads for coords.
 
-                Args:
-                    coords: The coords.
-                    universe: The universe.
-                """
+            Args:
+                coords: The coords.
+                universe: The universe.
+            """
 
             self.calls += 1
             return []
@@ -108,8 +105,7 @@ def test_rwr_plan_respects_settings_limits() -> None:
 
 
 def test_no_direct_getenv_outside_settings() -> None:
-    """Execute test no direct getenv outside settings.
-        """
+    """Execute test no direct getenv outside settings."""
 
     root = Path(__file__).resolve().parents[1]
     offenders: list[str] = []

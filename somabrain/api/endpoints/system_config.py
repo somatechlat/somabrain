@@ -16,9 +16,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Runtime configuration
 """
 
-from typing import Optional, Dict, Any, List
-from datetime import datetime
-from uuid import UUID
+from typing import Optional, Dict, Any
 
 from django.conf import settings
 from django.utils import timezone
@@ -73,8 +71,10 @@ def set_system_config(config: Dict[str, Any]):
 # SCHEMAS
 # =============================================================================
 
+
 class SystemConfigOut(Schema):
     """System configuration output."""
+
     maintenance_mode: bool
     maintenance_message: Optional[str]
     max_tenants: int
@@ -91,6 +91,7 @@ class SystemConfigOut(Schema):
 
 class SystemConfigUpdate(Schema):
     """Update system configuration."""
+
     maintenance_mode: Optional[bool] = None
     maintenance_message: Optional[str] = None
     max_tenants: Optional[int] = None
@@ -103,6 +104,7 @@ class SystemConfigUpdate(Schema):
 
 class MaintenanceMode(Schema):
     """Maintenance mode settings."""
+
     enabled: bool
     message: Optional[str] = None
     scheduled_end: Optional[str] = None
@@ -110,6 +112,7 @@ class MaintenanceMode(Schema):
 
 class SystemStatsOut(Schema):
     """System statistics output."""
+
     total_tenants: int
     active_tenants: int
     total_users: int
@@ -123,6 +126,7 @@ class SystemStatsOut(Schema):
 
 class DatabaseStatsOut(Schema):
     """Database statistics."""
+
     database_name: str
     database_size_mb: float
     tables_count: int
@@ -133,18 +137,20 @@ class DatabaseStatsOut(Schema):
 # SYSTEM CONFIG ENDPOINTS
 # =============================================================================
 
+
 @router.get("/config", response=SystemConfigOut)
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_config(request: AuthenticatedRequest):
     """
     Get system configuration.
-    
+
     🔒 Security: Super-admin only
     """
     config = get_system_config()
-    return SystemConfigOut(**{k: v for k, v in config.items() 
-                             if k in SystemConfigOut.__fields__})
+    return SystemConfigOut(
+        **{k: v for k, v in config.items() if k in SystemConfigOut.__fields__}
+    )
 
 
 @router.patch("/config", response=SystemConfigOut)
@@ -156,18 +162,18 @@ def update_config(
 ):
     """
     Update system configuration.
-    
+
     🚨 SRE: Audit logging for config changes
     """
     config = get_system_config()
-    
+
     # Update provided fields
     for field, value in data.dict(exclude_unset=True).items():
         if value is not None:
             config[field] = value
-    
+
     set_system_config(config)
-    
+
     # Audit log
     AuditLog.log(
         action="system.config_updated",
@@ -177,25 +183,30 @@ def update_config(
         actor_type=ActorType.ADMIN,
         details=data.dict(exclude_unset=True),
     )
-    
-    return SystemConfigOut(**{k: v for k, v in config.items() 
-                             if k in SystemConfigOut.__fields__})
+
+    return SystemConfigOut(
+        **{k: v for k, v in config.items() if k in SystemConfigOut.__fields__}
+    )
 
 
 # =============================================================================
 # MAINTENANCE MODE
 # =============================================================================
 
+
 @router.get("/maintenance")
 @require_auth(roles=["super-admin"])
 def get_maintenance_status(request: AuthenticatedRequest):
     """Get current maintenance mode status."""
-    maintenance = cache.get(MAINTENANCE_KEY, {
-        "enabled": False,
-        "message": "",
-        "scheduled_end": None,
-        "started_at": None,
-    })
+    maintenance = cache.get(
+        MAINTENANCE_KEY,
+        {
+            "enabled": False,
+            "message": "",
+            "scheduled_end": None,
+            "started_at": None,
+        },
+    )
     return maintenance
 
 
@@ -208,7 +219,7 @@ def enable_maintenance(
 ):
     """
     Enable maintenance mode.
-    
+
     🛠️ DevOps: Maintenance operations
     """
     maintenance = {
@@ -219,13 +230,13 @@ def enable_maintenance(
         "started_by": str(request.user_id),
     }
     cache.set(MAINTENANCE_KEY, maintenance, timeout=86400)
-    
+
     # Update system config
     config = get_system_config()
     config["maintenance_mode"] = True
     config["maintenance_message"] = maintenance["message"]
     set_system_config(config)
-    
+
     # Audit log
     AuditLog.log(
         action="system.maintenance_enabled",
@@ -235,7 +246,7 @@ def enable_maintenance(
         actor_type=ActorType.ADMIN,
         details={"message": maintenance["message"]},
     )
-    
+
     return maintenance
 
 
@@ -251,13 +262,13 @@ def disable_maintenance(request: AuthenticatedRequest):
         "started_at": None,
     }
     cache.set(MAINTENANCE_KEY, maintenance, timeout=86400)
-    
+
     # Update system config
     config = get_system_config()
     config["maintenance_mode"] = False
     config["maintenance_message"] = ""
     set_system_config(config)
-    
+
     # Audit log
     AuditLog.log(
         action="system.maintenance_disabled",
@@ -266,7 +277,7 @@ def disable_maintenance(request: AuthenticatedRequest):
         actor_id=str(request.user_id),
         actor_type=ActorType.ADMIN,
     )
-    
+
     return {"success": True, "maintenance_mode": False}
 
 
@@ -274,35 +285,37 @@ def disable_maintenance(request: AuthenticatedRequest):
 # SYSTEM STATS
 # =============================================================================
 
+
 @router.get("/stats", response=SystemStatsOut)
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_system_stats(request: AuthenticatedRequest):
     """
     Get platform-wide statistics.
-    
+
     📊 Performance: Cached stats
     """
     from somabrain.saas.models import TenantUser, APIKey, Webhook, Notification
     from django.db.models import Count
-    
+
     # Tenant stats
     tenant_stats = Tenant.objects.aggregate(
         total=Count("id"),
         active=Count("id", filter=models.Q(status="active")),
     )
-    
+
     # Other counts
     total_users = TenantUser.objects.count()
     total_keys = APIKey.objects.count()
     total_webhooks = Webhook.objects.count()
     total_notifications = Notification.objects.count()
     audit_count = AuditLog.objects.count()
-    
+
     # Uptime (from cache or process start)
     import time
-    uptime = int(time.time() - getattr(settings, 'START_TIME', time.time()))
-    
+
+    uptime = int(time.time() - getattr(settings, "START_TIME", time.time()))
+
     return SystemStatsOut(
         total_tenants=tenant_stats["total"],
         active_tenants=tenant_stats["active"],
@@ -322,29 +335,31 @@ def get_system_stats(request: AuthenticatedRequest):
 def get_database_stats(request: AuthenticatedRequest):
     """
     Get database statistics.
-    
+
     💾 DBA: Database monitoring
     """
     from django.db import connection
-    
+
     with connection.cursor() as cursor:
         # PostgreSQL specific queries
         try:
             cursor.execute("SELECT pg_database_size(current_database())")
             db_size = cursor.fetchone()[0] / (1024 * 1024)  # MB
-            
+
             cursor.execute("""
                 SELECT count(*) FROM information_schema.tables 
                 WHERE table_schema = 'public'
             """)
             tables = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'")
+
+            cursor.execute(
+                "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
+            )
             connections = cursor.fetchone()[0]
-            
+
             cursor.execute("SELECT current_database()")
             db_name = cursor.fetchone()[0]
-            
+
             return {
                 "database_name": db_name,
                 "database_size_mb": round(db_size, 2),
@@ -359,6 +374,7 @@ def get_database_stats(request: AuthenticatedRequest):
 # CACHE MANAGEMENT
 # =============================================================================
 
+
 @router.post("/cache/clear")
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
@@ -368,15 +384,15 @@ def clear_cache(
 ):
     """
     Clear cache entries.
-    
+
     📊 Performance: Cache management
     """
     if pattern:
         # Would need pattern-based clearing
         return {"success": False, "error": "Pattern clearing not supported"}
-    
+
     cache.clear()
-    
+
     # Audit log
     AuditLog.log(
         action="system.cache_cleared",
@@ -385,7 +401,7 @@ def clear_cache(
         actor_id=str(request.user_id),
         actor_type=ActorType.ADMIN,
     )
-    
+
     return {"success": True, "message": "Cache cleared"}
 
 
@@ -393,11 +409,13 @@ def clear_cache(
 # FEATURE FLAGS (System-wide)
 # =============================================================================
 
+
 @router.get("/features")
 @require_auth(roles=["super-admin"])
 def list_system_features(request: AuthenticatedRequest):
     """List system-wide feature flags."""
     from somabrain.api.endpoints.feature_flags import get_all_flags
+
     return {"features": list(get_all_flags().values())}
 
 

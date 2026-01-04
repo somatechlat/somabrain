@@ -30,15 +30,15 @@ class SecurityMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         """Execute call  .
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         path = request.path
         method = request.method
         # Django headers can be accessed via request.headers (case insensitive)
         # But for iteration/search we might want dict
-        
+
         if self._is_suspicious_request(path, method, request.headers):
             logger.warning(f"🚨 Suspicious request blocked: {method} {path}")
             return JsonResponse(

@@ -29,8 +29,7 @@ ARTIFACT_PATH = (
 
 
 def ensure_uv_lock() -> None:
-    """Execute ensure uv lock.
-        """
+    """Execute ensure uv lock."""
 
     if not UV_LOCK.exists():
         raise FileNotFoundError(
@@ -39,8 +38,7 @@ def ensure_uv_lock() -> None:
 
 
 def run_uv_sync() -> tuple[float, subprocess.CompletedProcess[str]]:
-    """Execute run uv sync.
-        """
+    """Execute run uv sync."""
 
     cmd = ["uv", "sync", "--locked", "--all-extras"]
     start = time.perf_counter()
@@ -54,8 +52,7 @@ def run_uv_sync() -> tuple[float, subprocess.CompletedProcess[str]]:
 
 
 def count_locked_packages() -> int:
-    """Execute count locked packages.
-        """
+    """Execute count locked packages."""
 
     count = 0
     with UV_LOCK.open("r", encoding="utf-8") as fp:
@@ -68,10 +65,10 @@ def count_locked_packages() -> int:
 def write_metrics(duration: float, package_count: int) -> None:
     """Execute write metrics.
 
-        Args:
-            duration: The duration.
-            package_count: The package_count.
-        """
+    Args:
+        duration: The duration.
+        package_count: The package_count.
+    """
 
     ARTIFACT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -100,8 +97,7 @@ def write_metrics(duration: float, package_count: int) -> None:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     ensure_uv_lock()
     duration, _ = run_uv_sync()

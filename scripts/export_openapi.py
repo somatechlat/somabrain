@@ -8,7 +8,6 @@ It uses Django's setup mechanics to properly initialize the application.
 from __future__ import annotations
 
 import os
-import sys
 import json
 from pathlib import Path
 
@@ -16,6 +15,7 @@ from pathlib import Path
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
 
 import django
+
 django.setup()
 
 from somabrain.api import api  # Django Ninja API instance

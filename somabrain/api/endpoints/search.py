@@ -17,16 +17,18 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import UUID
 
 from django.db.models import Q, Count
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
 from somabrain.saas.models import (
-    Tenant, TenantUser, APIKey, Webhook, Notification, AuditLog
+    Tenant,
+    TenantUser,
+    APIKey,
+    Webhook,
+    AuditLog,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
@@ -39,8 +41,10 @@ router = Router(tags=["Search"])
 # SCHEMAS - ALL 10 PERSONAS
 # =============================================================================
 
+
 class SearchRequest(Schema):
     """Unified search request."""
+
     query: str
     types: Optional[List[str]] = None  # users, api_keys, webhooks, audit_logs
     limit: int = 20
@@ -49,6 +53,7 @@ class SearchRequest(Schema):
 
 class SearchResultItem(Schema):
     """Individual search result."""
+
     type: str
     id: str
     title: str
@@ -60,6 +65,7 @@ class SearchResultItem(Schema):
 
 class SearchResponse(Schema):
     """Unified search response."""
+
     query: str
     total_results: int
     results: List[SearchResultItem]
@@ -69,6 +75,7 @@ class SearchResponse(Schema):
 
 class FilterRequest(Schema):
     """Filter request."""
+
     field: str
     operator: str  # eq, ne, gt, lt, gte, lte, contains, in
     value: Any
@@ -76,6 +83,7 @@ class FilterRequest(Schema):
 
 class AdvancedSearchRequest(Schema):
     """Advanced search with filters."""
+
     query: Optional[str] = None
     filters: Optional[List[Dict[str, Any]]] = None
     sort_by: Optional[str] = None
@@ -88,15 +96,15 @@ class AdvancedSearchRequest(Schema):
 # SEARCH FUNCTIONS - ALL 10 PERSONAS
 # =============================================================================
 
+
 def search_users(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
     """Search users within a tenant."""
-    users = TenantUser.objects.filter(
-        tenant_id=tenant_id
-    ).filter(
-        Q(email__icontains=query) |
-        Q(display_name__icontains=query)
-    ).order_by("-created_at")[:limit]
-    
+    users = (
+        TenantUser.objects.filter(tenant_id=tenant_id)
+        .filter(Q(email__icontains=query) | Q(display_name__icontains=query))
+        .order_by("-created_at")[:limit]
+    )
+
     return [
         {
             "type": "user",
@@ -113,13 +121,12 @@ def search_users(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
 
 def search_api_keys(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
     """Search API keys within a tenant."""
-    keys = APIKey.objects.filter(
-        tenant_id=tenant_id
-    ).filter(
-        Q(name__icontains=query) |
-        Q(key_prefix__icontains=query)
-    ).order_by("-created_at")[:limit]
-    
+    keys = (
+        APIKey.objects.filter(tenant_id=tenant_id)
+        .filter(Q(name__icontains=query) | Q(key_prefix__icontains=query))
+        .order_by("-created_at")[:limit]
+    )
+
     return [
         {
             "type": "api_key",
@@ -136,13 +143,12 @@ def search_api_keys(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
 
 def search_webhooks(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
     """Search webhooks within a tenant."""
-    webhooks = Webhook.objects.filter(
-        tenant_id=tenant_id
-    ).filter(
-        Q(name__icontains=query) |
-        Q(url__icontains=query)
-    ).order_by("-created_at")[:limit]
-    
+    webhooks = (
+        Webhook.objects.filter(tenant_id=tenant_id)
+        .filter(Q(name__icontains=query) | Q(url__icontains=query))
+        .order_by("-created_at")[:limit]
+    )
+
     return [
         {
             "type": "webhook",
@@ -159,14 +165,16 @@ def search_webhooks(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
 
 def search_audit_logs(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
     """Search audit logs within a tenant."""
-    logs = AuditLog.objects.filter(
-        tenant_id=tenant_id
-    ).filter(
-        Q(action__icontains=query) |
-        Q(resource_type__icontains=query) |
-        Q(resource_id__icontains=query)
-    ).order_by("-timestamp")[:limit]
-    
+    logs = (
+        AuditLog.objects.filter(tenant_id=tenant_id)
+        .filter(
+            Q(action__icontains=query)
+            | Q(resource_type__icontains=query)
+            | Q(resource_id__icontains=query)
+        )
+        .order_by("-timestamp")[:limit]
+    )
+
     return [
         {
             "type": "audit_log",
@@ -185,6 +193,7 @@ def search_audit_logs(tenant_id: str, query: str, limit: int = 20) -> List[dict]
 # SEARCH ENDPOINTS - ALL 10 PERSONAS
 # =============================================================================
 
+
 @router.post("/{tenant_id}/search", response=SearchResponse)
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def unified_search(
@@ -194,53 +203,55 @@ def unified_search(
 ):
     """
     Unified search across all tenant resources.
-    
+
     🔒 Security: Tenant isolation
     📊 Performance: Parallel search with facets
     """
     import time
+
     start_time = time.time()
-    
+
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     results = []
     facets = {}
-    
+
     # Determine which types to search
     types = data.types or ["users", "api_keys", "webhooks", "audit_logs"]
-    
+
     if "users" in types:
         user_results = search_users(str(tenant_id), data.query, data.limit)
         results.extend(user_results)
         facets["users"] = len(user_results)
-    
+
     if "api_keys" in types:
         key_results = search_api_keys(str(tenant_id), data.query, data.limit)
         results.extend(key_results)
         facets["api_keys"] = len(key_results)
-    
+
     if "webhooks" in types:
         webhook_results = search_webhooks(str(tenant_id), data.query, data.limit)
         results.extend(webhook_results)
         facets["webhooks"] = len(webhook_results)
-    
+
     if "audit_logs" in types:
         log_results = search_audit_logs(str(tenant_id), data.query, data.limit)
         results.extend(log_results)
         facets["audit_logs"] = len(log_results)
-    
+
     # Sort by relevance
     results.sort(key=lambda x: x["relevance"], reverse=True)
-    
+
     # Apply pagination
-    paginated = results[data.offset:data.offset + data.limit]
-    
+    paginated = results[data.offset : data.offset + data.limit]
+
     search_time = int((time.time() - start_time) * 1000)
-    
+
     return SearchResponse(
         query=data.query,
         total_results=len(results),
@@ -262,29 +273,28 @@ def search_tenant_users(
 ):
     """
     Search users with filters.
-    
+
     🎨 UX: Faceted filtering
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     queryset = TenantUser.objects.filter(tenant_id=tenant_id)
-    
+
     if q:
-        queryset = queryset.filter(
-            Q(email__icontains=q) | Q(display_name__icontains=q)
-        )
-    
+        queryset = queryset.filter(Q(email__icontains=q) | Q(display_name__icontains=q))
+
     if role:
         queryset = queryset.filter(role=role)
     if is_active is not None:
         queryset = queryset.filter(is_active=is_active)
-    
+
     users = queryset.order_by("-created_at")[:limit]
-    
+
     return {
         "query": q,
         "filters": {"role": role, "is_active": is_active},
@@ -318,24 +328,25 @@ def search_audit_trail(
 ):
     """
     Search audit logs with advanced filters.
-    
+
     🚨 SRE: Audit trail analysis
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     queryset = AuditLog.objects.filter(tenant_id=tenant_id)
-    
+
     if q:
         queryset = queryset.filter(
-            Q(action__icontains=q) |
-            Q(resource_type__icontains=q) |
-            Q(resource_id__icontains=q)
+            Q(action__icontains=q)
+            | Q(resource_type__icontains=q)
+            | Q(resource_id__icontains=q)
         )
-    
+
     if action:
         queryset = queryset.filter(action__icontains=action)
     if resource_type:
@@ -346,15 +357,16 @@ def search_audit_trail(
         queryset = queryset.filter(timestamp__gte=datetime.fromisoformat(start_date))
     if end_date:
         queryset = queryset.filter(timestamp__lte=datetime.fromisoformat(end_date))
-    
+
     logs = queryset.order_by("-timestamp")[:limit]
-    
+
     # Get facets
     action_facets = dict(
-        queryset.values("action").annotate(count=Count("id"))
+        queryset.values("action")
+        .annotate(count=Count("id"))
         .values_list("action", "count")[:10]
     )
-    
+
     return {
         "query": q,
         "results": [
@@ -377,6 +389,7 @@ def search_audit_trail(
 # PLATFORM-WIDE SEARCH (Super Admin)
 # =============================================================================
 
+
 @router.post("/platform/search")
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
@@ -388,48 +401,56 @@ def platform_search(
 ):
     """
     Search across all tenants (super admin only).
-    
+
     🔒 Security: Super admin only
     """
     import time
+
     start_time = time.time()
-    
+
     results = []
     types = types or ["tenants", "users"]
-    
+
     if "tenants" in types:
         tenants = Tenant.objects.filter(
             Q(name__icontains=q) | Q(slug__icontains=q) | Q(admin_email__icontains=q)
         )[:limit]
-        
+
         for t in tenants:
-            results.append({
-                "type": "tenant",
-                "id": str(t.id),
-                "title": t.name,
-                "subtitle": t.slug,
-                "relevance": 1.0 if q.lower() in t.name.lower() else 0.5,
-                "metadata": {"status": t.status, "tier": str(t.tier) if t.tier else None},
-            })
-    
+            results.append(
+                {
+                    "type": "tenant",
+                    "id": str(t.id),
+                    "title": t.name,
+                    "subtitle": t.slug,
+                    "relevance": 1.0 if q.lower() in t.name.lower() else 0.5,
+                    "metadata": {
+                        "status": t.status,
+                        "tier": str(t.tier) if t.tier else None,
+                    },
+                }
+            )
+
     if "users" in types:
         users = TenantUser.objects.filter(
             Q(email__icontains=q) | Q(display_name__icontains=q)
         ).select_related("tenant")[:limit]
-        
+
         for u in users:
-            results.append({
-                "type": "user",
-                "id": str(u.id),
-                "title": u.email,
-                "subtitle": f"Tenant: {u.tenant.name}",
-                "relevance": 1.0 if q.lower() in u.email.lower() else 0.5,
-                "metadata": {"tenant_id": str(u.tenant_id), "role": u.role},
-            })
-    
+            results.append(
+                {
+                    "type": "user",
+                    "id": str(u.id),
+                    "title": u.email,
+                    "subtitle": f"Tenant: {u.tenant.name}",
+                    "relevance": 1.0 if q.lower() in u.email.lower() else 0.5,
+                    "metadata": {"tenant_id": str(u.tenant_id), "role": u.role},
+                }
+            )
+
     # Sort by relevance
     results.sort(key=lambda x: x["relevance"], reverse=True)
-    
+
     return {
         "query": q,
         "total_results": len(results),
@@ -448,29 +469,30 @@ def get_search_suggestions(
 ):
     """
     Get autocomplete suggestions for search.
-    
+
     🎨 UX: Autocomplete
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     suggestions = []
-    
+
     # User suggestions
     users = TenantUser.objects.filter(
-        tenant_id=tenant_id,
-        email__istartswith=q
-    ).values_list("email", flat=True)[:limit//2]
+        tenant_id=tenant_id, email__istartswith=q
+    ).values_list("email", flat=True)[: limit // 2]
     suggestions.extend([{"type": "user", "value": u} for u in users])
-    
+
     # Action suggestions from audit logs
-    actions = AuditLog.objects.filter(
-        tenant_id=tenant_id,
-        action__istartswith=q
-    ).values_list("action", flat=True).distinct()[:limit//2]
+    actions = (
+        AuditLog.objects.filter(tenant_id=tenant_id, action__istartswith=q)
+        .values_list("action", flat=True)
+        .distinct()[: limit // 2]
+    )
     suggestions.extend([{"type": "action", "value": a} for a in actions])
-    
+
     return {"query": q, "suggestions": suggestions[:limit]}

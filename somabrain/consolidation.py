@@ -54,11 +54,11 @@ def _episodics_from_wm(
 ) -> List[dict]:
     """Execute episodics from wm.
 
-        Args:
-            mtwm: The mtwm.
-            tenant_id: The tenant_id.
-            limit: The limit.
-        """
+    Args:
+        mtwm: The mtwm.
+        tenant_id: The tenant_id.
+        limit: The limit.
+    """
 
     items = mtwm.items(tenant_id, limit=limit)
     return [p for p in items if (p.get("memory_type") == "episodic")]
@@ -69,10 +69,10 @@ def _coords_for_payloads(
 ) -> List[Tuple[float, float, float]]:
     """Execute coords for payloads.
 
-        Args:
-            mem: The mem.
-            payloads: The payloads.
-        """
+    Args:
+        mem: The mem.
+        payloads: The payloads.
+    """
 
     coords: List[Tuple[float, float, float]] = []
     for p in payloads:
@@ -94,7 +94,7 @@ def run_nrem(
     max_summaries: int = 3,
 ) -> dict:
     """Execute NREM consolidation phase.
-    
+
     Args:
         tenant_id: The tenant to consolidate
         cfg: Config object (settings)
@@ -108,14 +108,14 @@ def run_nrem(
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if not episodics:
         return {"created": 0, "reinforced": 0}
-    
+
     # Time budget guard
     _t0 = _time.perf_counter()
     _budget = float(getattr(settings, "SOMABRAIN_CONSOLIDATION_TIMEOUT_S", 0.0) or 0.0)
-    
+
     episodics.sort(key=lambda p: int(p.get("importance", 1)), reverse=True)
     batch = episodics[: max(1, int(top_k))]
-    
+
     # Summarize batch and store semantic
     texts = [str(p.get("task") or "") for p in batch]
     keys = top_keywords(texts, k=8)
@@ -139,7 +139,7 @@ def run_rem(
     max_summaries: int = 2,
 ) -> dict:
     """Execute REM consolidation phase.
-    
+
     Args:
         tenant_id: The tenant to consolidate
         cfg: Config object (settings)
@@ -153,13 +153,13 @@ def run_rem(
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if len(episodics) < 2:
         return {"created": 0}
-        
+
     # Sample pairs for recombination
     n_pairs = max(0, int(recomb_rate * len(episodics)))
     created = 0
     _t0 = _time.perf_counter()
     _budget = float(getattr(settings, "SOMABRAIN_CONSOLIDATION_TIMEOUT_S", 0.0) or 0.0)
-    
+
     for _ in range(min(n_pairs, max_summaries)):
         if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
             break
@@ -172,14 +172,13 @@ def run_rem(
         memsvc.remember(synth, payload)
         REM_SYNTHESIZED.inc()
         created += 1
-        
+
     CONSOLIDATION_RUNS.labels(phase="REM").inc()
     return {"created": created}
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     parser = argparse.ArgumentParser(description="SomaBrain Sleep Cycle")
     parser.add_argument("sleep", nargs="?", help="sleep command", default="sleep")
@@ -192,7 +191,7 @@ def main():
     tenant = args.tenant
     mtwm = MultiTenantWM(dim=getattr(settings, "SOMABRAIN_EMBED_DIM", 256), cfg=None)
     mtmem = MultiTenantMemory(settings)
-    
+
     if args.nrem:
         stats = run_nrem(
             tenant,
@@ -203,7 +202,7 @@ def main():
             max_summaries=getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3),
         )
         print("NREM:", stats)
-        
+
     if args.rem:
         stats = run_rem(
             tenant,

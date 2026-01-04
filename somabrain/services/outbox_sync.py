@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import List
 
 from django.conf import settings
 from somabrain.memory_client import MemoryClient
@@ -50,12 +49,13 @@ async def _send_event(client: MemoryClient, event: OutboxEvent) -> bool:
         # MemoryClient.remember is synchronous, but we are in async def.
         # Ideally, MemoryClient should have async methods or we wrap it.
         # For this migration, we assume standard usage is acceptable or wrap in sync_to_async if needed.
-        # However, checking memory_client code, it uses httpx or similar usually. 
+        # However, checking memory_client code, it uses httpx or similar usually.
         # If it's blocking, it blocks the loop. But _send_event is async defined.
-        # The previous code called client.remember(). 
+        # The previous code called client.remember().
         # We will keep it as is, assuming it's fast enough or eventually we add aremember.
         # Actually, let's use sync_to_async to be safe if client is blocking.
         from asgiref.sync import sync_to_async
+
         await sync_to_async(client.remember)(key, payload)
         return True
     except Exception as exc:  # pragma: no cover – unexpected errors are logged
@@ -78,15 +78,17 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
     # Ensure the client is healthy before entering the loop – otherwise we
     # would generate a flood of failed attempts.
     backoff = poll_interval
-    
+
     while True:
         try:
             # -----------------------------------------------------------------
             # 1️⃣ Fetch pending events (limit can be tuned via env var later).
             # -----------------------------------------------------------------
             # Using Django Async ORM
-            pending_qs = OutboxEvent.objects.filter(status="pending").order_by("created_at")[:200]
-            
+            pending_qs = OutboxEvent.objects.filter(status="pending").order_by(
+                "created_at"
+            )[:200]
+
             # Evaluate queryset asynchronously to get list
             pending_events = []
             async for ev in pending_qs:
@@ -123,7 +125,7 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
                     ev.last_error = "delivery_failed"
                     if ev.retries >= max_retries:
                         ev.status = "failed"
-                
+
                 # Save changes asynchronously
                 await ev.asave()
 

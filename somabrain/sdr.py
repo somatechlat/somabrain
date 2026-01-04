@@ -61,7 +61,9 @@ class SDREncoder:
             1,
             int(
                 self.dim
-                * float(density if density is not None else settings.SOMABRAIN_SDR_SPARSITY)
+                * float(
+                    density if density is not None else settings.SOMABRAIN_SDR_SPARSITY
+                )
             ),
         )
 

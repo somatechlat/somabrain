@@ -37,10 +37,12 @@ def create_mt_wm(cfg, scorer: "UnifiedScorer"):
         cfg=MTWMConfig(
             per_tenant_capacity=max(
                 getattr(settings, "SOMABRAIN_WM_PER_TENANT_CAPACITY", 1024),
-                getattr(settings, "SOMABRAIN_WM_SIZE", 512)
+                getattr(settings, "SOMABRAIN_WM_SIZE", 512),
             ),
             max_tenants=getattr(settings, "SOMABRAIN_MTWM_MAX_TENANTS", 100),
-            recency_time_scale=getattr(settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600),
+            recency_time_scale=getattr(
+                settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
+            ),
             recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 100),
         ),
         scorer=scorer,
@@ -72,7 +74,9 @@ def create_mc_wm(cfg, scorer: "UnifiedScorer"):
             per_col_capacity=per_col_capacity,
             vote_temperature=getattr(settings, "SOMABRAIN_MICRO_VOTE_TEMPERATURE", 0.5),
             max_tenants=getattr(settings, "SOMABRAIN_MICRO_MAX_TENANTS", 100),
-            recency_time_scale=getattr(settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600),
+            recency_time_scale=getattr(
+                settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
+            ),
             recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 100),
         ),
         scorer=scorer,
@@ -100,7 +104,9 @@ def create_mt_ctx(cfg, quantum: Optional["QuantumLayer"]):
         HRRContextConfig(
             max_anchors=getattr(settings, "SOMABRAIN_HRR_ANCHORS_MAX", 256),
             decay_lambda=getattr(settings, "SOMABRAIN_HRR_DECAY_LAMBDA", 0.05),
-            min_confidence=getattr(settings, "SOMABRAIN_HRR_CLEANUP_MIN_CONFIDENCE", 0.1),
+            min_confidence=getattr(
+                settings, "SOMABRAIN_HRR_CLEANUP_MIN_CONFIDENCE", 0.1
+            ),
         ),
         max_tenants=1000,
     )
@@ -118,7 +124,9 @@ def create_quotas(cfg):
     from somabrain.quotas import QuotaConfig, QuotaManager
 
     return QuotaManager(
-        QuotaConfig(daily_writes=getattr(settings, "SOMABRAIN_WRITE_DAILY_LIMIT", 10000))
+        QuotaConfig(
+            daily_writes=getattr(settings, "SOMABRAIN_WRITE_DAILY_LIMIT", 10000)
+        )
     )
 
 
@@ -136,7 +144,7 @@ def create_rate_limiter(cfg):
     return RateLimiter(
         RateConfig(
             rps=getattr(settings, "SOMABRAIN_RATE_RPS", 100),
-            burst=getattr(settings, "SOMABRAIN_RATE_BURST", 20)
+            burst=getattr(settings, "SOMABRAIN_RATE_BURST", 20),
         )
     )
 
@@ -157,14 +165,20 @@ def create_amygdala(cfg, fd_sketch: Any = None):
         SalienceConfig(
             w_novelty=getattr(settings, "SOMABRAIN_SALIENCE_W_NOVELTY", 0.5),
             w_error=getattr(settings, "SOMABRAIN_SALIENCE_W_ERROR", 0.3),
-            threshold_store=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.6),
+            threshold_store=getattr(
+                settings, "SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.6
+            ),
             threshold_act=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_ACT", 0.4),
             hysteresis=getattr(settings, "SOMABRAIN_SALIENCE_HYSTERESIS", 0.05),
             use_soft=getattr(settings, "SOMABRAIN_USE_SOFT_SALIENCE", True),
-            soft_temperature=getattr(settings, "SOMABRAIN_SOFT_SALIENCE_TEMPERATURE", 1.0),
+            soft_temperature=getattr(
+                settings, "SOMABRAIN_SOFT_SALIENCE_TEMPERATURE", 1.0
+            ),
             method=getattr(settings, "SOMABRAIN_SALIENCE_METHOD", "hybrid"),
             w_fd=getattr(settings, "SOMABRAIN_SALIENCE_FD_WEIGHT", 0.1),
-            fd_energy_floor=getattr(settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.01),
+            fd_energy_floor=getattr(
+                settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.01
+            ),
         ),
         fd_backend=fd_sketch,
     )
@@ -198,7 +212,7 @@ def create_supervisor(cfg):
     return Supervisor(
         SupervisorConfig(
             gain=getattr(settings, "SOMABRAIN_META_GAIN", 0.1),
-            limit=getattr(settings, "SOMABRAIN_META_LIMIT", 1.0)
+            limit=getattr(settings, "SOMABRAIN_META_LIMIT", 1.0),
         )
     )
 
@@ -220,7 +234,9 @@ def create_exec_controller(cfg):
     return ExecutiveController(
         ExecConfig(
             window=getattr(settings, "SOMABRAIN_EXEC_WINDOW", 64),
-            conflict_threshold=getattr(settings, "SOMABRAIN_EXEC_CONFLICT_THRESHOLD", 0.4),
+            conflict_threshold=getattr(
+                settings, "SOMABRAIN_EXEC_CONFLICT_THRESHOLD", 0.4
+            ),
             explore_boost_k=getattr(settings, "SOMABRAIN_EXEC_EXPLORE_BOOST_K", 1.2),
             use_bandits=bool(getattr(settings, "SOMABRAIN_EXEC_USE_BANDITS", False)),
             bandit_eps=getattr(settings, "SOMABRAIN_EXEC_BANDIT_EPS", 0.1),
@@ -246,7 +262,7 @@ def create_drift_monitor(cfg):
         getattr(settings, "EMBED_DIM", 256),
         DriftConfig(
             window=getattr(settings, "SOMABRAIN_DRIFT_WINDOW", 256),
-            threshold=getattr(settings, "SOMABRAIN_DRIFT_THRESHOLD", 0.3)
+            threshold=getattr(settings, "SOMABRAIN_DRIFT_THRESHOLD", 0.3),
         ),
     )
 
@@ -267,7 +283,7 @@ def create_sdr_encoder(cfg):
 
     return SDREncoder(
         dim=getattr(settings, "SOMABRAIN_SDR_DIM", 2048),
-        density=getattr(settings, "SOMABRAIN_SDR_DENSITY", 0.02)
+        density=getattr(settings, "SOMABRAIN_SDR_DENSITY", 0.02),
     )
 
 
@@ -326,17 +342,17 @@ def create_fractal_memory(cfg):
         FractalClientAdapter: VIBE-compliant interface to the memory system.
     """
     from somabrain.brain.adapters import FractalClientAdapter
-    # We need a memory client instance. 
+
+    # We need a memory client instance.
     # In strictly layered architecture, we might create a dedicated one here
     # or access the global one. For bootstrap, we instantiate a client.
     from somabrain.memory_client import MemoryClient
-    
-    # Instantiate client configured for the specific namespace if needed, 
+
+    # Instantiate client configured for the specific namespace if needed,
     # or standard config.
     client = MemoryClient(settings)
-    
-    return FractalClientAdapter(client)
 
+    return FractalClientAdapter(client)
 
 
 def create_fnom_memory(cfg, embedder):
@@ -352,27 +368,27 @@ def create_fnom_memory(cfg, embedder):
     from somabrain.brain.fnom import PersistentFNOM
     from somafractalmemory.implementations.postgres_kv import PostgresKeyValueStore
     from somafractalmemory.implementations.milvus_vector import MilvusVectorStore
-    
+
     # Reuse valid connection parameters for shared persistence layer
     # Segregate data via explicit namespacing
     kv_store = PostgresKeyValueStore(
         dsn=getattr(
             settings,
             "SOMABRAIN_POSTGRES_DSN",
-            "postgresql://vibe:vibe@localhost/somabrain"
+            "postgresql://vibe:vibe@localhost/somabrain",
         ),
-        table_name="fnom_kv"
+        table_name="fnom_kv",
     )
 
     vector_store = MilvusVectorStore(
         host=getattr(settings, "MILVUS_HOST", "localhost"),
         port=getattr(settings, "MILVUS_PORT", "19530"),
-        collection_name="soma_fnom_memory"
+        collection_name="soma_fnom_memory",
     )
 
     return PersistentFNOM(
         kv_store=kv_store,
         vector_store=vector_store,
         namespace="fnom",
-        embedder=embedder
+        embedder=embedder,
     )
