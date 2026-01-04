@@ -10,14 +10,18 @@ Auto-generated API documentation for SomaBrain.
 
    somabrain.api.endpoints
 
-Module Index
-============
+   auth
+   memory_client
+   saas/index
 
-.. autosummary::
-   :toctree: _autosummary
-   :recursive:
+.. note::
+   Full module documentation is available below.
 
-   somabrain.api
-   somabrain.auth
+.. toctree::
+   :maxdepth: 1
+   :caption: Internal Modules
+
+   somabrain.amygdala
+   somabrain.hippocampus
    somabrain.memory_client
-   somabrain.saas
+

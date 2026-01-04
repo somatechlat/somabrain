@@ -2,6 +2,7 @@
 Hippocampal consolidation module that writes to the real memory backend.
 
 This module provides:
+
 - ``ConsolidationConfig``: tunable parameters for buffering and consolidation.
 - ``Hippocampus``: accepts episodic payloads, persists them via the configured
   MultiTenantMemory client, and can run NREM/REM style consolidation using the

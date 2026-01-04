@@ -56,12 +56,12 @@ class SalienceConfig:
         Whether to use soft gating (default: False).
     soft_temperature : float, optional
         Temperature for soft gating sigmoid (default from Settings).
-        method : str, optional
-            Salience pathway to use: ``"dense"`` (default) or ``"fd"``.
-        w_fd : float, optional
-            Weight for FD residual energy when ``method="fd"``.
-        fd_energy_floor : float, optional
-            Minimum acceptable energy capture before adding corrective boost (default from Settings).
+    method : str, optional
+        Salience pathway to use: ``"dense"`` (default) or ``"fd"``.
+    w_fd : float, optional
+        Weight for FD residual energy when ``method="fd"``.
+    fd_energy_floor : float, optional
+        Minimum acceptable energy capture before adding corrective boost (default from Settings).
     """
 
     w_novelty: float

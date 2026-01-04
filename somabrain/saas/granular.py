@@ -451,7 +451,7 @@ def require_permission(*permissions: str, require_all: bool = True):
         *permissions: Permission strings (e.g., "cognitive:create", "memory:read")
         require_all: If True, all permissions required. If False, any one sufficient.
 
-    Usage:
+    Example:
         @router.post("/cognitive")
         @require_permission("cognitive:create")
         def example_endpoint(request):

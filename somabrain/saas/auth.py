@@ -40,7 +40,7 @@ class APIKeyAuth(HttpBearer):
     Validates sbk_live_* or sbk_test_* API keys.
     Extracts tenant context for downstream handlers.
 
-    Usage:
+    Example:
         @api.get("/endpoint", auth=APIKeyAuth())
         def endpoint(request):
             tenant = request.auth["tenant"]
@@ -304,7 +304,7 @@ def require_scope(scope: str):
     """
     Decorator to require a specific API key scope.
 
-    Usage:
+    Example:
         @api.get("/memories", auth=APIKeyAuth())
         @require_scope("read:memory")
         def list_memories(request):
@@ -421,7 +421,7 @@ def require_auth(roles: list = None, any_role: bool = False):
         roles: List of required roles (e.g., ["super-admin", "tenant-admin"])
         any_role: If True, any matching role is sufficient. If False, all required.
 
-    Usage:
+    Example:
         @router.get("/admin/tenants")
         @require_auth(roles=["super-admin"])
         def list_tenants(request: AuthenticatedRequest):
@@ -499,7 +499,7 @@ class FieldPermissionChecker:
     - Performance: Cached permission lookups
     - Architect: Clean separation of concerns
 
-    Usage:
+    Example:
         checker = FieldPermissionChecker(user_roles)
 
         # Check if user can view a field
