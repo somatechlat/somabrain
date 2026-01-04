@@ -68,7 +68,7 @@ def scan_repo(root_dir):
     for root, dirs, files in os.walk(root_dir):
         # Modify dirs in-place to skip excluded directories
         # print(f"DEBUG: Checking {root}, Dirs: {dirs}")
-        original_dirs = list(dirs)
+        list(dirs)
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
         # if len(dirs) != len(original_dirs):
         #    print(f"DEBUG: Excluded {[d for d in original_dirs if d not in dirs]}")

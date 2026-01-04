@@ -47,12 +47,11 @@ def health(request: HttpRequest) -> Dict[str, Any]:
 
     cfg = _get_app_config()
     mt_memory = _get_mt_memory()
-    embedder = _get_embedder()
+    _get_embedder()
     app_state = _get_app_state()
 
     # Synchronous tenant extraction (removed await)
     ctx = get_tenant(request, cfg.namespace)
-    tenant_id = ctx.tenant_id
     ns_mem = mt_memory.for_namespace(ctx.namespace) if mt_memory else None
     cb = get_cb()
 
@@ -229,7 +228,7 @@ def diagnostics(request: HttpRequest) -> Dict[str, Any]:
     """Detailed diagnostics endpoint."""
     cfg = _get_app_config()
     mt_memory = _get_mt_memory()
-    app_state = _get_app_state()
+    _get_app_state()
 
     ctx = get_tenant(request, cfg.namespace)
 

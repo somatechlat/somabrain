@@ -21,7 +21,7 @@ def run_debug():
     try:
         url = client._transport.client.base_url
         print(f"DEBUG: Checking Health... Target: {url}")
-    except:
+    except Exception:
         print("DEBUG: Checking Health... (URL Unknown)")
     try:
         health = client.health()

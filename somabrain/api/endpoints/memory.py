@@ -76,10 +76,10 @@ def recall_memory(request: HttpRequest, payload: dict):
 
     # Get memory service for tenant
     namespace = ctx.namespace
-    memsvc = MemoryService(pool, namespace)
+    MemoryService(pool, namespace)
 
     # Extract query parameters
-    query = payload.get("query", "")
+    payload.get("query", "")
     top_k = int(payload.get("top_k", 10))
     layer = payload.get("layer", "both")
 

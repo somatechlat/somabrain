@@ -150,7 +150,7 @@ def health_view(request):
                 "version": info.get("redis_version"),
                 "used_memory": info.get("used_memory_human"),
             }
-        except:
+        except Exception:
             return {"connected": ok}
 
     health["infrastructure"]["redis"] = timed_check("Redis", check_redis)

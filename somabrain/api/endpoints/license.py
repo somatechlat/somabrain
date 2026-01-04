@@ -235,7 +235,7 @@ def get_tenant_usage(
         if str(request.tenant_id) != str(tenant_id):
             raise HttpError(403, "Access denied")
 
-    tenant = get_object_or_404(Tenant, id=tenant_id)
+    get_object_or_404(Tenant, id=tenant_id)
 
     # REAL counts from database
     users_total = TenantUser.objects.filter(tenant_id=tenant_id).count()

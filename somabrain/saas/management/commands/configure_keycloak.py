@@ -181,7 +181,7 @@ class Command(BaseCommand):
     def _build_clients(self, realm_name: str) -> list:
         """Build Keycloak client configurations."""
         frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
-        api_url = getattr(settings, "API_URL", "http://localhost:8000")
+        getattr(settings, "API_URL", "http://localhost:8000")
 
         return [
             # Eye of God Admin SPA (public client with PKCE)

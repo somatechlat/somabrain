@@ -77,7 +77,6 @@ async def verify_adapter_flow():
         await asyncio.sleep(5)
 
         # This calls adapter.retrieve_fractal -> client.recall -> HTTP POST localhost:35000/recall
-        query = {"content": f"VIBE Verification Trace {trace_id}"}
 
         # VIBE CHECK 1: Direct Fetch by Coordinate (Persistence Proof)
         print(f"    Target Coord: {nodes[0]}")

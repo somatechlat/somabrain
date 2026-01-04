@@ -481,7 +481,7 @@ def get_slow_requests(
             raise HttpError(403, "Access denied")
 
     logs = get_request_logs(str(tenant_id), 10000)
-    slow = [l for l in logs if l["response_time_ms"] >= threshold_ms]
+    slow = [log for log in logs if log["response_time_ms"] >= threshold_ms]
     slow.sort(key=lambda x: x["response_time_ms"], reverse=True)
 
     return {

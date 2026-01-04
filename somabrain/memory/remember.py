@@ -198,7 +198,6 @@ async def aremember_background(
         payload, coord_key, namespace, tenant=tenant
     )
     rid_hdr.update(compat_hdr)
-    ns = namespace
 
     # Compute stable coordinate for outbox recording
     sc = _stable_coord(f"{uni}::{coord_key}")

@@ -551,7 +551,7 @@ def get_webhook_deliveries(
     if not Webhook:
         return []
 
-    webhook = get_object_or_404(Webhook, id=webhook_id, tenant_id=tenant_id)
+    get_object_or_404(Webhook, id=webhook_id, tenant_id=tenant_id)
 
     # For now return empty - would come from WebhookDelivery model
     return []

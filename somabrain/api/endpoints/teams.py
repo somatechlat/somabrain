@@ -522,7 +522,7 @@ def add_team_member(
         raise HttpError(404, "Team not found")
 
     # Verify user exists
-    user = get_object_or_404(TenantUser, id=data.user_id, tenant_id=tenant_id)
+    get_object_or_404(TenantUser, id=data.user_id, tenant_id=tenant_id)
 
     # Check if already a member
     for m in team.get("members", []):
