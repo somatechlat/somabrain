@@ -68,9 +68,9 @@ class TestLearningAndAdaptation:
         )
         new_value = param.update(perf, delta=1.0)  # Positive delta
 
-        assert (
-            new_value > baseline
-        ), f"Positive feedback should increase weight: baseline={baseline}, new={new_value}"
+        assert new_value > baseline, (
+            f"Positive feedback should increase weight: baseline={baseline}, new={new_value}"
+        )
 
     def test_negative_feedback_decreases_weights(self) -> None:
         """C3.2: Negative feedback decreases weights.
@@ -99,9 +99,9 @@ class TestLearningAndAdaptation:
         )
         new_value = param.update(perf, delta=-1.0)  # Negative delta
 
-        assert (
-            new_value < baseline
-        ), f"Negative feedback should decrease weight: baseline={baseline}, new={new_value}"
+        assert new_value < baseline, (
+            f"Negative feedback should decrease weight: baseline={baseline}, new={new_value}"
+        )
 
     def test_constraints_clamp_values(self) -> None:
         """C3.3: Constraints clamp values.
@@ -128,15 +128,15 @@ class TestLearningAndAdaptation:
 
         # Try to push above max
         param.update(perf, delta=10.0)
-        assert (
-            param.current_value <= 0.8
-        ), f"Value should be clamped to max: {param.current_value}"
+        assert param.current_value <= 0.8, (
+            f"Value should be clamped to max: {param.current_value}"
+        )
 
         # Try to push below min
         param.update(perf, delta=-20.0)
-        assert (
-            param.current_value >= 0.2
-        ), f"Value should be clamped to min: {param.current_value}"
+        assert param.current_value >= 0.2, (
+            f"Value should be clamped to min: {param.current_value}"
+        )
 
     def test_tau_annealing_decay(self) -> None:
         """C3.4: Tau annealing decay.
@@ -220,9 +220,9 @@ class TestLearningAndAdaptation:
         )
 
         # Verify state matches
-        assert (
-            restored.current_value == param.current_value
-        ), f"Restored value should match: {restored.current_value} vs {param.current_value}"
+        assert restored.current_value == param.current_value, (
+            f"Restored value should match: {restored.current_value} vs {param.current_value}"
+        )
         assert restored.name == param.name
         assert restored.min_value == param.min_value
         assert restored.max_value == param.max_value
@@ -262,16 +262,16 @@ class TestPerformanceMetrics:
         metrics.clamp()
 
         # Verify clamping
-        assert (
-            0.0 <= metrics.success_rate <= 1.0
-        ), f"success_rate out of range: {metrics.success_rate}"
-        assert (
-            0.0 <= metrics.error_rate <= 1.0
-        ), f"error_rate out of range: {metrics.error_rate}"
+        assert 0.0 <= metrics.success_rate <= 1.0, (
+            f"success_rate out of range: {metrics.success_rate}"
+        )
+        assert 0.0 <= metrics.error_rate <= 1.0, (
+            f"error_rate out of range: {metrics.error_rate}"
+        )
         assert metrics.latency > 0, f"latency should be positive: {metrics.latency}"
-        assert (
-            0.0 <= metrics.accuracy <= 1.0
-        ), f"accuracy out of range: {metrics.accuracy}"
+        assert 0.0 <= metrics.accuracy <= 1.0, (
+            f"accuracy out of range: {metrics.accuracy}"
+        )
 
     def test_metrics_default_values(self) -> None:
         """Performance metrics have sensible defaults.
@@ -373,9 +373,9 @@ class TestAdaptiveParameterProperties:
         )
         param.update(perf, delta)
 
-        assert (
-            0.0 <= param.current_value <= 1.0
-        ), f"Value {param.current_value} out of bounds after update with delta={delta}"
+        assert 0.0 <= param.current_value <= 1.0, (
+            f"Value {param.current_value} out of bounds after update with delta={delta}"
+        )
 
     @given(
         success=st.floats(min_value=-1.0, max_value=2.0, allow_nan=False),

@@ -66,7 +66,9 @@ except Exception:  # pragma: no cover - exercised only when pymilvus missing
 
 logger = logging.getLogger(__name__)
 
-_LATENCY_WINDOW_SIZE = max(1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW", 50)))
+_LATENCY_WINDOW_SIZE = max(
+    1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW", 50))
+)
 _LATENCY_WINDOWS: Dict[str, Dict[str, Deque[float]]] = {
     "ingest": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
     "search": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
@@ -96,11 +98,11 @@ def _record_latency(kind: str, tenant_id: str, value: float) -> float:
 def _set_latency_gauge(gauge, tenant_id: str, seconds: float) -> None:
     """Execute set latency gauge.
 
-        Args:
-            gauge: The gauge.
-            tenant_id: The tenant_id.
-            seconds: The seconds.
-        """
+    Args:
+        gauge: The gauge.
+        tenant_id: The tenant_id.
+        seconds: The seconds.
+    """
 
     try:
         gauge.labels(tenant_id=tenant_id).set(seconds)
@@ -111,10 +113,10 @@ def _set_latency_gauge(gauge, tenant_id: str, seconds: float) -> None:
 def _set_segment_load(collection: str, value: int | float) -> None:
     """Execute set segment load.
 
-        Args:
-            collection: The collection.
-            value: The value.
-        """
+    Args:
+        collection: The collection.
+        value: The value.
+    """
 
     try:
         MILVUS_SEGMENT_LOAD.labels(collection=collection).set(value)
@@ -196,8 +198,7 @@ class MilvusClient:
     # Private helpers
     # ------------------------------------------------------------------
     def _create_collection(self) -> None:
-        """Execute create collection.
-            """
+        """Execute create collection."""
 
         fields = [
             FieldSchema(
@@ -222,8 +223,7 @@ class MilvusClient:
         coll.load()
 
     def _verify_collection_schema(self) -> None:
-        """Execute verify collection schema.
-            """
+        """Execute verify collection schema."""
 
         if self.collection is None:
             raise RuntimeError(
@@ -291,22 +291,30 @@ class MilvusClient:
                     actual_val = field.get("params", {}).get(param_key)
                     if actual_val != param_val:
                         # Dimension mismatch - adapt instead of fail (dev/Docker flexibility)
-                        if param_key == "dim" and name == "embedding" and actual_val is not None:
+                        if (
+                            param_key == "dim"
+                            and name == "embedding"
+                            and actual_val is not None
+                        ):
                             logger.warning(
                                 "Milvus embedding dim=%s differs from expected %s; adapting",
-                                actual_val, param_val
+                                actual_val,
+                                param_val,
                             )
-                            self.dim = int(actual_val)  # Adapt to collection's actual dim
+                            self.dim = int(
+                                actual_val
+                            )  # Adapt to collection's actual dim
                         else:
                             logger.warning(
                                 "Milvus field %s param %s=%s differs from expected %s",
-                                name, param_key, actual_val, param_val
+                                name,
+                                param_key,
+                                actual_val,
+                                param_val,
                             )
         except Exception as exc:
             # Log warning but don't fail startup for schema issues
-            logger.warning(
-                "Milvus collection schema verification issue: %s", exc
-            )
+            logger.warning("Milvus collection schema verification issue: %s", exc)
 
     def _refresh_segment_load_metric(self, *, force: bool = False) -> None:
         """Update the segment-load gauge using live Milvus query-segment info."""
@@ -350,17 +358,19 @@ class MilvusClient:
     def upsert_option(self, tenant_id: str, option_id: str, payload: bytes) -> None:
         """Execute upsert option.
 
-            Args:
-                tenant_id: The tenant_id.
-                option_id: The option_id.
-                payload: The payload.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            option_id: The option_id.
+            payload: The payload.
+        """
 
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot upsert option")
 
         max_retries = int(getattr(settings, "SOMABRAIN_MILVUS_UPSERT_RETRIES", 3))
-        backoff_base = float(getattr(settings, "SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE", 0.5))
+        backoff_base = float(
+            getattr(settings, "SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE", 0.5)
+        )
         attempt = 0
         while True:
             attempt += 1
@@ -403,12 +413,12 @@ class MilvusClient:
     ) -> List[Tuple[str, float]]:
         """Execute search similar.
 
-            Args:
-                tenant_id: The tenant_id.
-                payload: The payload.
-                top_k: The top_k.
-                similarity_threshold: The similarity_threshold.
-            """
+        Args:
+            tenant_id: The tenant_id.
+            payload: The payload.
+            top_k: The top_k.
+            similarity_threshold: The similarity_threshold.
+        """
 
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot search")

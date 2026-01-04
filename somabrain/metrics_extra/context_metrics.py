@@ -51,12 +51,12 @@ class ContextMetrics:
     ) -> None:
         """Execute observe state.
 
-            Args:
-                context_id: The context_id.
-                anchor_count: The anchor_count.
-                capacity: The capacity.
-                snr_db: The snr_db.
-            """
+        Args:
+            context_id: The context_id.
+            anchor_count: The anchor_count.
+            capacity: The capacity.
+            snr_db: The snr_db.
+        """
 
         _context_anchor_count.labels(context_id=context_id).set(float(anchor_count))
         _context_capacity_load.labels(context_id=context_id).set(float(capacity))
@@ -71,12 +71,12 @@ class ContextMetrics:
     ) -> None:
         """Execute record cleanup.
 
-            Args:
-                context_id: The context_id.
-                best_score: The best_score.
-                second_score: The second_score.
-                threshold: The threshold.
-            """
+        Args:
+            context_id: The context_id.
+            best_score: The best_score.
+            second_score: The second_score.
+            threshold: The threshold.
+        """
 
         _cleanup_best_confidence.labels(context_id=context_id).set(float(best_score))
         margin = (

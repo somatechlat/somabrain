@@ -63,9 +63,9 @@ class OpaMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         """Execute call  .
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         try:
             opa_url = getattr(settings, "SOMABRAIN_OPA_URL", None)
@@ -95,7 +95,9 @@ class OpaMiddleware:
                 allowed = opa_client.evaluate(input_payload)
                 if not allowed:
                     app_metrics.OPA_DENY_TOTAL.inc()
-                    return JsonResponse({"detail": "OPA policy denied request"}, status=403)
+                    return JsonResponse(
+                        {"detail": "OPA policy denied request"}, status=403
+                    )
                 else:
                     app_metrics.OPA_ALLOW_TOTAL.inc()
                     return self.get_response(request)
@@ -107,22 +109,24 @@ class OpaMiddleware:
         # OPA is configured – call external OPA service (Sync for Django Middleware)
         policy_path = _policy_path_for_mode()
         query_url = f"{opa_url.rstrip('/')}/v1/data/{policy_path}"
-        
+
         try:
             timeout_seconds = float(getattr(settings, "SOMABRAIN_OPA_TIMEOUT", 2.0))
             with httpx.Client(timeout=timeout_seconds) as client:
                 resp = client.post(query_url, json={"input": input_payload})
-            
+
             if resp.status_code == 200:
                 result = resp.json().get("result", {})
                 if isinstance(result, dict):
                     allowed = bool(result.get("allow", True))
                 else:
                     allowed = bool(result)
-                
+
                 if not allowed:
                     app_metrics.OPA_DENY_TOTAL.inc()
-                    return JsonResponse({"detail": "OPA policy denied request"}, status=403)
+                    return JsonResponse(
+                        {"detail": "OPA policy denied request"}, status=403
+                    )
                 else:
                     app_metrics.OPA_ALLOW_TOTAL.inc()
             else:

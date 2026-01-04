@@ -11,8 +11,6 @@ from somabrain.saas.auth import (
     APIKeyAuth,
     JWTAuth,
     GoogleOAuth,
-    require_scope,
-    log_api_action,
 )
 
 # Singleton instances for backward compatibility

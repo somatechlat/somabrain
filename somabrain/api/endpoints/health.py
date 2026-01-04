@@ -14,9 +14,7 @@ from ninja import Router
 from django.http import HttpRequest
 
 from django.conf import settings
-from somabrain import metrics as M
 from somabrain.schemas import HealthResponse
-from somabrain.auth import require_auth
 from somabrain.healthchecks import check_kafka, check_postgres
 from somabrain.tenant import get_tenant
 from somabrain.version import API_VERSION
@@ -32,19 +30,15 @@ router = Router(tags=["health"])
 
 # Helper functions - moved from health_helpers.py
 from somabrain.health.helpers import (
-    get_app_config,
     get_embedder,
     get_mt_memory,
-    milvus_metrics_for_tenant,
-    ping,
-    get_app_state,
 )
 
 
 @router.get("/health", response=HealthResponse)
 def health(request: HttpRequest) -> Dict[str, Any]:
     """Public health endpoint with CB + sleep degradation semantics.
-    
+
     Converted from async to sync for Django Ninja compatibility.
     """
     from somabrain.infrastructure.cb_registry import get_cb
@@ -176,19 +170,16 @@ def health(request: HttpRequest) -> Dict[str, Any]:
 @router.get("/")
 def health_check(request: HttpRequest) -> Dict[str, Any]:
     """Main health endpoint with detailed component status.
-    
+
     Returns status of all critical components: postgres, kafka, redis, embedder, predictor.
     Clean URL: /api/health/
-    
+
     10-PERSONA COMPLIANT: Architect, Security, QA, Docs, DBA, SRE, Perf, UX, Django, DevOps
     """
     from somabrain.healthchecks import check_from_env
-    
-    result = {
-        "status": "ok",
-        "components": {}
-    }
-    
+
+    result = {"status": "ok", "components": {}}
+
     # Check PostgreSQL and Kafka using check_from_env() (reads from Django settings)
     try:
         env_checks = check_from_env()
@@ -201,7 +192,7 @@ def health_check(request: HttpRequest) -> Dict[str, Any]:
         result["kafka_ok"] = False
         result["components"]["postgres"] = {"ok": False, "error": str(e)}
         result["components"]["kafka"] = {"ok": False, "error": str(e)}
-    
+
     # Check embedder
     try:
         embedder = get_embedder()
@@ -210,7 +201,7 @@ def health_check(request: HttpRequest) -> Dict[str, Any]:
     except Exception:
         result["embedder_ok"] = False
         result["components"]["embedder"] = {"ok": False}
-    
+
     # Check predictor/memory
     try:
         mt_memory = get_mt_memory()
@@ -219,11 +210,11 @@ def health_check(request: HttpRequest) -> Dict[str, Any]:
     except Exception:
         result["predictor_ok"] = False
         result["components"]["predictor"] = {"ok": False}
-    
+
     # Overall status
     all_ok = result.get("postgres_ok", False) and result.get("kafka_ok", False)
     result["status"] = "ok" if all_ok else "degraded"
-    
+
     return result
 
 
@@ -239,16 +230,16 @@ def diagnostics(request: HttpRequest) -> Dict[str, Any]:
     cfg = _get_app_config()
     mt_memory = _get_mt_memory()
     app_state = _get_app_state()
-    
+
     ctx = get_tenant(request, cfg.namespace)
-    
+
     diag = {
         "tenant_id": ctx.tenant_id,
         "namespace": ctx.namespace,
         "api_version": API_VERSION,
         "timestamp": time.time(),
     }
-    
+
     # Add memory diagnostics
     ns_mem = mt_memory.for_namespace(ctx.namespace) if mt_memory else None
     if ns_mem:
@@ -256,7 +247,7 @@ def diagnostics(request: HttpRequest) -> Dict[str, Any]:
             diag["memory_count"] = int(getattr(ns_mem, "count", lambda: 0)())
         except Exception:
             diag["memory_count"] = None
-    
+
     return diag
 
 

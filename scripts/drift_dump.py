@@ -8,6 +8,7 @@ Usage:
 
 If the detector is not enabled, it will still attempt to read the persistence file.
 """
+
 import json
 from pathlib import Path
 from datetime import datetime
@@ -18,9 +19,9 @@ from somabrain.monitoring.drift_detector import drift_detector
 def _human(ts: float) -> str:
     """Execute human.
 
-        Args:
-            ts: The ts.
-        """
+    Args:
+        ts: The ts.
+    """
 
     if not ts:
         return "-"
@@ -32,8 +33,7 @@ def _human(ts: float) -> str:
 
 def main() -> None:
     # Prefer live in-memory state (centralized mode gating); use persistence file alternative if detector disabled
-    """Execute main.
-        """
+    """Execute main."""
 
     if drift_detector.enabled:
         state = drift_detector.export_state()

@@ -9,11 +9,11 @@ from typing import Sequence, Set
 def precision_at_k(relevant: Set[str], retrieved: Sequence[str], k: int) -> float:
     """Execute precision at k.
 
-        Args:
-            relevant: The relevant.
-            retrieved: The retrieved.
-            k: The k.
-        """
+    Args:
+        relevant: The relevant.
+        retrieved: The retrieved.
+        k: The k.
+    """
 
     if k <= 0:
         return 0.0
@@ -24,11 +24,11 @@ def precision_at_k(relevant: Set[str], retrieved: Sequence[str], k: int) -> floa
 def recall_at_k(relevant: Set[str], retrieved: Sequence[str], k: int) -> float:
     """Execute recall at k.
 
-        Args:
-            relevant: The relevant.
-            retrieved: The retrieved.
-            k: The k.
-        """
+    Args:
+        relevant: The relevant.
+        retrieved: The retrieved.
+        k: The k.
+    """
 
     if not relevant:
         return 0.0

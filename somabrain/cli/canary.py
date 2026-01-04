@@ -45,8 +45,7 @@ from somabrain.services.feature_flags import FeatureFlags
 
 
 def _parse_args() -> argparse.Namespace:
-    """Execute parse args.
-        """
+    """Execute parse args."""
 
     parser = argparse.ArgumentParser(
         description="Deploy a canary release of SomaBrain to a subset of tenants",
@@ -168,8 +167,7 @@ def _check_tenant_health(tenants: List[str], timeout: int) -> bool:
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     args = _parse_args()
 

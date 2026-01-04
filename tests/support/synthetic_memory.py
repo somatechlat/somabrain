@@ -44,8 +44,7 @@ def post_json(
     """Return a thunk that posts JSON and raises on network failure."""
 
     def _caller() -> requests.Response:
-        """Execute caller.
-            """
+        """Execute caller."""
 
         resp = requests.post(url, json=payload, timeout=timeout)
         resp.raise_for_status()

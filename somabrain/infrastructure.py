@@ -17,9 +17,9 @@ except Exception:  # pragma: no cover - optional dependency in lean environments
 def _clean(value: Optional[str]) -> Optional[str]:
     """Execute clean.
 
-        Args:
-            value: The value.
-        """
+    Args:
+        value: The value.
+    """
 
     if value is None:
         return None
@@ -31,8 +31,7 @@ def _clean(value: Optional[str]) -> Optional[str]:
 
 
 def _first_non_empty(*values: Optional[str]) -> Optional[str]:
-    """Execute first non empty.
-        """
+    """Execute first non empty."""
 
     for value in values:
         cleaned = _clean(value)
@@ -44,9 +43,9 @@ def _first_non_empty(*values: Optional[str]) -> Optional[str]:
 def _from_settings(attr: str) -> Optional[str]:
     """Execute from settings.
 
-        Args:
-            attr: The attr.
-        """
+    Args:
+        attr: The attr.
+    """
 
     if settings is None:
         return None

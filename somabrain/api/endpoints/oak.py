@@ -30,6 +30,7 @@ router = Router(tags=["oak"])
 # Re-use Milvus client (lazy)
 _milvus = MilvusClient()
 
+
 # Local Schema Definitions
 class OakOptionCreateRequest(Schema):
     """Data model for OakOptionCreateRequest."""
@@ -37,10 +38,12 @@ class OakOptionCreateRequest(Schema):
     payload: str  # base64 encoded
     option_id: Optional[str] = None
 
+
 class OakPlanSuggestResponse(Schema):
     """Data model for OakPlanSuggestResponse."""
 
     plan: List[str]
+
 
 @router.post("/option/create", response=OakPlanSuggestResponse, auth=bearer_auth)
 def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
@@ -67,8 +70,11 @@ def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
     except Exception as exc:
         raise HttpError(500, f"Option creation failed: {exc}")
 
+
 @router.put("/option/{option_id}", response=OakPlanSuggestResponse, auth=bearer_auth)
-def oak_option_update(request: HttpRequest, option_id: str, body: OakOptionCreateRequest):
+def oak_option_update(
+    request: HttpRequest, option_id: str, body: OakOptionCreateRequest
+):
     """Replace the payload of an existing Oak option."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
@@ -88,7 +94,8 @@ def oak_option_update(request: HttpRequest, option_id: str, body: OakOptionCreat
         M.OPTION_COUNT.labels(opt.tenant_id).inc()
         return {"plan": [opt.option_id]}
     except Exception as exc:
-         raise HttpError(500, f"Option update failed: {exc}")
+        raise HttpError(500, f"Option update failed: {exc}")
+
 
 @router.get("/plan", response=OakPlanSuggestResponse, auth=bearer_auth)
 def oak_plan(request: HttpRequest, max_options: Optional[int] = None):

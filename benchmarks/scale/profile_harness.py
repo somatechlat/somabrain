@@ -18,8 +18,7 @@ BENCHMARK_ARGS: dict = {}
 
 
 def profile_benchmark():
-    """Execute profile benchmark.
-        """
+    """Execute profile benchmark."""
 
     print(f"Profiling {BENCHMARK_MODULE}.{BENCHMARK_FUNC}...")
     mod = importlib.import_module(BENCHMARK_MODULE)

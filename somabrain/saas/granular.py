@@ -26,7 +26,7 @@ ALL 10 PERSONAS:
 
 from enum import Enum
 from functools import wraps
-from typing import List, Optional, Set, Dict
+from typing import List, Set
 import logging
 
 from django.http import HttpRequest
@@ -39,16 +39,18 @@ logger = logging.getLogger(__name__)
 # PLATFORM ROLES (8 roles adapted from SomaAgent01 pattern)
 # =============================================================================
 
+
 class PlatformRole(str, Enum):
     """Platform-level roles for SaaS authorization (9 roles adapted from SomaAgent01 pattern)."""
-    SAAS_ADMIN = "saas_admin"           # Full platform control
-    TENANT_ADMIN = "tenant_admin"        # Full tenant control
-    SERVICE_ADMIN = "service_admin"          # Manage cognitive services
-    SUPERVISOR = "supervisor"            # Monitor and review
-    OPERATOR = "operator"                # Execute operations
-    SERVICE_USER = "service_user"            # Use cognitive services
-    VIEWER = "viewer"                    # Read-only access
-    BILLING_ADMIN = "billing_admin"      # Billing management
+
+    SAAS_ADMIN = "saas_admin"  # Full platform control
+    TENANT_ADMIN = "tenant_admin"  # Full tenant control
+    SERVICE_ADMIN = "service_admin"  # Manage cognitive services
+    SUPERVISOR = "supervisor"  # Monitor and review
+    OPERATOR = "operator"  # Execute operations
+    SERVICE_USER = "service_user"  # Use cognitive services
+    VIEWER = "viewer"  # Read-only access
+    BILLING_ADMIN = "billing_admin"  # Billing management
     SECURITY_AUDITOR = "security_auditor"  # Audit + read-only (adapted)
 
 
@@ -56,14 +58,15 @@ class PlatformRole(str, Enum):
 # RESOURCE:ACTION PERMISSION TUPLES (65+ permissions)
 # =============================================================================
 
+
 class Permission(str, Enum):
     """
     Resource:action permission tuples.
-    
+
     Format: resource:action
     Examples: agents:create, conversations:read, billing:manage
     """
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # TENANT PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -73,7 +76,7 @@ class Permission(str, Enum):
     TENANTS_DELETE = "tenants:delete"
     TENANTS_SUSPEND = "tenants:suspend"
     TENANTS_LIST = "tenants:list"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # USER PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -84,7 +87,7 @@ class Permission(str, Enum):
     USERS_LIST = "users:list"
     USERS_INVITE = "users:invite"
     USERS_ASSIGN_ROLE = "users:assign_role"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # ROLE PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -94,7 +97,7 @@ class Permission(str, Enum):
     ROLES_DELETE = "roles:delete"
     ROLES_LIST = "roles:list"
     ROLES_ASSIGN = "roles:assign"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # IDENTITY PROVIDER PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -104,7 +107,7 @@ class Permission(str, Enum):
     IDP_DELETE = "idp:delete"
     IDP_LIST = "idp:list"
     IDP_TEST = "idp:test"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # API KEY PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -112,7 +115,7 @@ class Permission(str, Enum):
     API_KEYS_READ = "api_keys:read"
     API_KEYS_REVOKE = "api_keys:revoke"
     API_KEYS_LIST = "api_keys:list"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # SUBSCRIPTION & BILLING PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -123,7 +126,7 @@ class Permission(str, Enum):
     BILLING_READ = "billing:read"
     BILLING_MANAGE = "billing:manage"
     INVOICES_READ = "invoices:read"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # WEBHOOK PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -131,7 +134,7 @@ class Permission(str, Enum):
     WEBHOOKS_READ = "webhooks:read"
     WEBHOOKS_UPDATE = "webhooks:update"
     WEBHOOKS_DELETE = "webhooks:delete"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # COGNITIVE SERVICE PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -142,7 +145,7 @@ class Permission(str, Enum):
     COGNITIVE_LIST = "cognitive:list"
     COGNITIVE_DEPLOY = "cognitive:deploy"
     COGNITIVE_SUSPEND = "cognitive:suspend"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # CONVERSATION PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -151,7 +154,7 @@ class Permission(str, Enum):
     CONVERSATIONS_LIST = "conversations:list"
     CONVERSATIONS_DELETE = "conversations:delete"
     CONVERSATIONS_EXPORT = "conversations:export"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # MEMORY PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
@@ -160,28 +163,28 @@ class Permission(str, Enum):
     MEMORY_DELETE = "memory:delete"
     MEMORY_EXPORT = "memory:export"
     MEMORY_ADMIN = "memory:admin"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # AUDIT & COMPLIANCE PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
     AUDIT_READ = "audit:read"
     AUDIT_EXPORT = "audit:export"
     COMPLIANCE_MANAGE = "compliance:manage"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # SYSTEM PERMISSIONS
     # ─────────────────────────────────────────────────────────────────────────
     SYSTEM_CONFIG = "system:config"
     SYSTEM_HEALTH = "system:health"
     SYSTEM_ADMIN = "system:admin"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # PLATFORM PERMISSIONS (adapted)
     # ─────────────────────────────────────────────────────────────────────────
     PLATFORM_MANAGE = "platform:manage"
     PLATFORM_IMPERSONATE = "platform:impersonate"
     PLATFORM_CONFIG = "platform:config"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # TOOL PERMISSIONS (adapted)
     # ─────────────────────────────────────────────────────────────────────────
@@ -190,7 +193,7 @@ class Permission(str, Enum):
     TOOLS_CREATE = "tools:create"
     TOOLS_DELETE = "tools:delete"
     TOOLS_LIST = "tools:list"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # FILE PERMISSIONS (adapted)
     # ─────────────────────────────────────────────────────────────────────────
@@ -199,7 +202,7 @@ class Permission(str, Enum):
     FILES_SHARE = "files:share"
     FILES_DELETE = "files:delete"
     FILES_LIST = "files:list"
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # BACKUP PERMISSIONS (adapted)
     # ─────────────────────────────────────────────────────────────────────────
@@ -219,9 +222,9 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
     # ─────────────────────────────────────────────────────────────────────────
     PlatformRole.SAAS_ADMIN.value: {
         # All permissions - wildcard emulation
-        p.value for p in Permission
+        p.value
+        for p in Permission
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # TENANT_ADMIN: Full tenant control
     # ─────────────────────────────────────────────────────────────────────────
@@ -266,7 +269,6 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
         Permission.AUDIT_READ.value,
         Permission.AUDIT_EXPORT.value,
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # SERVICE_ADMIN: Manage cognitive services
     # ─────────────────────────────────────────────────────────────────────────
@@ -284,7 +286,6 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
         Permission.CONVERSATIONS_READ.value,
         Permission.CONVERSATIONS_LIST.value,
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # SUPERVISOR: Monitor and review
     # ─────────────────────────────────────────────────────────────────────────
@@ -300,7 +301,6 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
         Permission.USERS_READ.value,
         Permission.USERS_LIST.value,
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # OPERATOR: Execute operations
     # ─────────────────────────────────────────────────────────────────────────
@@ -314,7 +314,6 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
         Permission.MEMORY_READ.value,
         Permission.MEMORY_WRITE.value,
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # SERVICE_USER: Use cognitive services
     # ─────────────────────────────────────────────────────────────────────────
@@ -326,7 +325,6 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
         Permission.CONVERSATIONS_LIST.value,
         Permission.MEMORY_READ.value,
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # VIEWER: Read-only access
     # ─────────────────────────────────────────────────────────────────────────
@@ -340,7 +338,6 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
         Permission.SUBSCRIPTIONS_READ.value,
         Permission.BILLING_READ.value,
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # BILLING_ADMIN: Billing management
     # ─────────────────────────────────────────────────────────────────────────
@@ -354,7 +351,6 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
         Permission.BILLING_MANAGE.value,
         Permission.INVOICES_READ.value,
     },
-    
     # ─────────────────────────────────────────────────────────────────────────
     # SECURITY_AUDITOR: Audit + read-only (adapted)
     # ─────────────────────────────────────────────────────────────────────────
@@ -384,14 +380,15 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
 # PERMISSION CHECKING FUNCTIONS
 # =============================================================================
 
+
 def has_permission(user_roles: List[str], permission: str) -> bool:
     """
     Check if any of the user's roles grant the given permission.
-    
+
     Args:
         user_roles: List of role slugs from JWT
         permission: Permission string (e.g., "cognitive:create")
-    
+
     Returns:
         True if permission granted, False otherwise
     """
@@ -405,10 +402,10 @@ def has_permission(user_roles: List[str], permission: str) -> bool:
 def get_all_permissions(user_roles: List[str]) -> Set[str]:
     """
     Get all permissions for a user's roles.
-    
+
     Args:
         user_roles: List of role slugs from JWT
-    
+
     Returns:
         Combined set of all granted permissions
     """
@@ -419,15 +416,17 @@ def get_all_permissions(user_roles: List[str]) -> Set[str]:
     return all_perms
 
 
-def check_permissions(user_roles: List[str], required: List[str], require_all: bool = True) -> bool:
+def check_permissions(
+    user_roles: List[str], required: List[str], require_all: bool = True
+) -> bool:
     """
     Check multiple permissions.
-    
+
     Args:
         user_roles: List of role slugs from JWT
         required: List of required permission strings
         require_all: If True, all permissions required. If False, any one is sufficient.
-    
+
     Returns:
         True if check passes, False otherwise
     """
@@ -441,76 +440,76 @@ def check_permissions(user_roles: List[str], required: List[str], require_all: b
 # DECORATOR: @require_permission
 # =============================================================================
 
+
 def require_permission(*permissions: str, require_all: bool = True):
     """
     Decorator to require specific resource:action permissions.
-    
+
     Based on SomaAgent01 architecture. ALL 10 PERSONAS.
-    
+
     Args:
         *permissions: Permission strings (e.g., "cognitive:create", "memory:read")
         require_all: If True, all permissions required. If False, any one sufficient.
-    
+
     Usage:
         @router.post("/cognitive")
         @require_permission("cognitive:create")
         def example_endpoint(request):
             ...
-        
+
         @router.get("/admin/reports")
         @require_permission("audit:read", "audit:export", require_all=False)
         def get_reports(request):
             ...
     """
+
     def decorator(func):
         @wraps(func)
-        """Execute decorator.
-
-            Args:
-                func: The func.
-            """
-
         def wrapper(request, *args, **kwargs):
-            # Get auth from request
             """Execute wrapper.
 
-                Args:
-                    request: The request.
-                """
-
+            Args:
+                request: The request.
+            """
+            # Get auth from request
             auth = getattr(request, "auth", None)
             if auth is None:
                 logger.warning("Permission check failed: No auth context")
                 raise HttpError(401, "Authentication required")
-            
+
             # Extract roles
             user_roles = auth.get("roles", [])
-            
+
             # SAAS_ADMIN bypasses all checks
             if PlatformRole.SAAS_ADMIN.value in user_roles:
                 return func(request, *args, **kwargs)
-            
+
             # Check permissions
             if not check_permissions(user_roles, list(permissions), require_all):
                 logger.warning(
                     f"Permission denied: user={auth.get('user_id')} "
                     f"roles={user_roles} required={permissions}"
                 )
-                raise HttpError(403, f"Missing required permission(s): {', '.join(permissions)}")
-            
-            # Log successful check
-            logger.debug(f"Permission granted: {permissions} for user={auth.get('user_id')}")
-            
-            return func(request, *args, **kwargs)
-        
-        return wrapper
-    return decorator
+                raise HttpError(
+                    403, f"Missing required permission(s): {', '.join(permissions)}"
+                )
 
+            # Log successful check
+            logger.debug(
+                f"Permission granted: {permissions} for user={auth.get('user_id')}"
+            )
+
+            return func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 # =============================================================================
 # PERMISSION HELPERS FOR VIEWS
 # =============================================================================
+
 
 def filter_by_permissions(
     request: HttpRequest,
@@ -520,33 +519,37 @@ def filter_by_permissions(
 ) -> list:
     """
     Filter a list of items based on user permissions.
-    
+
     Used for multi-tenant isolation. ALL 10 PERSONAS - Security.
-    
+
     Args:
         request: Django request with auth
         items: List to filter
         read_permission: Permission required to read
         item_tenant_field: Field name containing tenant_id
-    
+
     Returns:
         Filtered list user can access
     """
     auth = getattr(request, "auth", {})
     user_roles = auth.get("roles", [])
     user_tenant = auth.get("tenant_id")
-    
+
     # SAAS_ADMIN sees all
     if PlatformRole.SAAS_ADMIN.value in user_roles:
         return items
-    
+
     # Check if user has read permission
     if not has_permission(user_roles, read_permission):
         return []
-    
+
     # Filter by tenant
     return [
-        item for item in items
+        item
+        for item in items
         if getattr(item, item_tenant_field, None) == user_tenant
-        or (hasattr(item, item_tenant_field) and getattr(item, item_tenant_field) is None)  # Platform-level items
+        or (
+            hasattr(item, item_tenant_field)
+            and getattr(item, item_tenant_field) is None
+        )  # Platform-level items
     ]

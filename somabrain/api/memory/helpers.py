@@ -364,10 +364,10 @@ def _coerce_to_retrieval_request(
     def _env(name: str, default: str | None = None) -> str | None:
         """Execute env.
 
-            Args:
-                name: The name.
-                default: The default.
-            """
+        Args:
+            name: The name.
+            default: The default.
+        """
 
         try:
             v = getattr(settings, name.lower(), None)
@@ -378,10 +378,10 @@ def _coerce_to_retrieval_request(
     def _env_bool(name: str, default: bool) -> bool:
         """Execute env bool.
 
-            Args:
-                name: The name.
-                default: The default.
-            """
+        Args:
+            name: The name.
+            default: The default.
+        """
 
         v = _env(name)
         if v is None:

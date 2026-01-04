@@ -128,12 +128,14 @@ class OPAClient:
 # Lazy-load singleton to avoid import-time failures when OPA not configured
 _opa_client_instance = None
 
+
 def get_opa_client() -> OPAClient:
     """Get or create the OPA client singleton."""
     global _opa_client_instance
     if _opa_client_instance is None:
         _opa_client_instance = OPAClient()
     return _opa_client_instance
+
 
 # For backwards compatibility, provide the singleton as module attribute
 # but make it lazy via a getter
@@ -143,11 +145,12 @@ class _OPAClientProxy:
     def __getattr__(self, name):
         """Execute getattr  .
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         return getattr(get_opa_client(), name)
+
 
 opa_client = _OPAClientProxy()
 

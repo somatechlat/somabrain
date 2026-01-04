@@ -62,8 +62,7 @@ class PolicyEngine:
     def _kill_switch(self) -> bool:
         # Disable kill switch during test runs to prevent unintended denial of requests.
         # Pytest sets the PYTEST_CURRENT_TEST environment variable for each test.
-        """Execute kill switch.
-            """
+        """Execute kill switch."""
 
         if getattr(settings, "pytest_current_test", None):
             return False
@@ -73,9 +72,9 @@ class PolicyEngine:
         # Global kill switch
         """Execute evaluate.
 
-            Args:
-                ctx: The ctx.
-            """
+        Args:
+            ctx: The ctx.
+        """
 
         if self._kill_switch():
             return PolicyDecision("deny", "kill_switch", {"operator_pause": True})

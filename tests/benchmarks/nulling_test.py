@@ -13,11 +13,11 @@ from somabrain.quantum import HRRConfig, QuantumLayer
 def run_once(seed: int = 1234, D: int = 1024, null_frac: float = 0.2):
     """Execute run once.
 
-        Args:
-            seed: The seed.
-            D: The D.
-            null_frac: The null_frac.
-        """
+    Args:
+        seed: The seed.
+        D: The D.
+        null_frac: The null_frac.
+    """
 
     rng = np.random.default_rng(seed)
     cfg = HRRConfig(dim=D)

@@ -17,15 +17,13 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import timedelta
 from uuid import UUID
-from enum import Enum
 
 from django.utils import timezone
 from django.core.cache import cache
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, AuditLog
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
 
@@ -37,13 +35,14 @@ router = Router(tags=["Metrics"])
 # METRICS STORAGE (Cache-backed, simulated)
 # =============================================================================
 
+
 def get_metrics_key(tenant_id: str, metric_type: str) -> str:
     """Retrieve metrics key.
 
-        Args:
-            tenant_id: The tenant_id.
-            metric_type: The metric_type.
-        """
+    Args:
+        tenant_id: The tenant_id.
+        metric_type: The metric_type.
+    """
 
     return f"metrics:{tenant_id}:{metric_type}"
 
@@ -52,13 +51,15 @@ def record_metric(tenant_id: str, metric_type: str, value: float, tags: Dict = N
     """Record a metric value."""
     key = get_metrics_key(tenant_id, metric_type)
     metrics = cache.get(key, [])
-    
-    metrics.append({
-        "value": value,
-        "tags": tags or {},
-        "timestamp": timezone.now().isoformat(),
-    })
-    
+
+    metrics.append(
+        {
+            "value": value,
+            "tags": tags or {},
+            "timestamp": timezone.now().isoformat(),
+        }
+    )
+
     # Keep last 1000 data points
     metrics = metrics[-1000:]
     cache.set(key, metrics, timeout=86400)
@@ -75,8 +76,10 @@ def get_metrics(tenant_id: str, metric_type: str, limit: int = 100) -> List[dict
 # SCHEMAS
 # =============================================================================
 
+
 class MetricPoint(Schema):
     """Single metric data point."""
+
     value: float
     timestamp: str
     tags: Optional[Dict[str, str]]
@@ -84,6 +87,7 @@ class MetricPoint(Schema):
 
 class MetricSummary(Schema):
     """Metric summary statistics."""
+
     metric: str
     count: int
     sum: float
@@ -96,6 +100,7 @@ class MetricSummary(Schema):
 
 class EndpointMetrics(Schema):
     """Metrics for a specific endpoint."""
+
     endpoint: str
     method: str
     total_requests: int
@@ -108,6 +113,7 @@ class EndpointMetrics(Schema):
 
 class TenantMetricsSummary(Schema):
     """Summary of tenant API metrics."""
+
     tenant_id: str
     total_requests: int
     requests_today: int
@@ -119,6 +125,7 @@ class TenantMetricsSummary(Schema):
 
 class SLOStatus(Schema):
     """SLO status."""
+
     name: str
     target: float
     current: float
@@ -130,6 +137,7 @@ class SLOStatus(Schema):
 # TENANT METRICS ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/summary", response=TenantMetricsSummary)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_tenant_metrics_summary(
@@ -138,15 +146,16 @@ def get_tenant_metrics_summary(
 ):
     """
     Get metrics summary for a tenant.
-    
+
     📊 Performance: Dashboard-ready data
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Simulated metrics (in production, from time-series DB)
     return TenantMetricsSummary(
         tenant_id=str(tenant_id),
@@ -177,33 +186,36 @@ def get_request_metrics(
 ):
     """
     Get request metrics over time.
-    
+
     🎨 UX: Time-series charts
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Generate sample time series
     now = timezone.now()
     data_points = []
-    
+
     periods = {"1h": 60, "6h": 360, "24h": 1440, "7d": 10080}
     minutes = periods.get(period, 60)
     interval = max(1, minutes // 60)
-    
+
     for i in range(60):
         ts = now - timedelta(minutes=i * interval)
-        data_points.append({
-            "timestamp": ts.isoformat(),
-            "requests": 50 + (i % 20) * 5,
-            "errors": i % 5,
-            "latency_p50": 45 + (i % 10),
-            "latency_p95": 120 + (i % 30),
-        })
-    
+        data_points.append(
+            {
+                "timestamp": ts.isoformat(),
+                "requests": 50 + (i % 20) * 5,
+                "errors": i % 5,
+                "latency_p50": 45 + (i % 10),
+                "latency_p95": 120 + (i % 30),
+            }
+        )
+
     return {
         "period": period,
         "interval_minutes": interval,
@@ -219,15 +231,16 @@ def get_latency_metrics(
 ):
     """
     Get latency metrics breakdown.
-    
+
     🚨 SRE: Performance monitoring
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     return {
         "overall": {
             "p50": 45,
@@ -253,15 +266,16 @@ def get_error_metrics(
 ):
     """
     Get error metrics and breakdown.
-    
+
     🚨 SRE: Error monitoring
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     return {
         "period": period,
         "total_errors": 30,
@@ -291,6 +305,7 @@ def get_error_metrics(
 # SLO ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/slo", response=List[SLOStatus])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_slo_status(
@@ -299,15 +314,16 @@ def get_slo_status(
 ):
     """
     Get SLO status for the tenant.
-    
+
     🚨 SRE: SLO tracking
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     return [
         SLOStatus(
             name="Availability",
@@ -337,13 +353,14 @@ def get_slo_status(
 # PLATFORM METRICS (Super Admin)
 # =============================================================================
 
+
 @router.get("/platform/overview")
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_platform_metrics(request: AuthenticatedRequest):
     """
     Get platform-wide metrics.
-    
+
     📊 Performance: Platform analytics
     """
     return {
@@ -365,7 +382,7 @@ def get_platform_metrics(request: AuthenticatedRequest):
 def get_platform_health(request: AuthenticatedRequest):
     """
     Get platform health indicators.
-    
+
     🚨 SRE: Health monitoring
     """
     return {
@@ -385,16 +402,17 @@ def get_platform_health(request: AuthenticatedRequest):
 # PROMETHEUS EXPORT
 # =============================================================================
 
+
 @router.get("/export/prometheus")
 @require_auth(roles=["super-admin"])
 def export_prometheus_metrics(request: AuthenticatedRequest):
     """
     Export metrics in Prometheus format.
-    
+
     🛠️ DevOps: Prometheus integration
     """
     from django.http import HttpResponse
-    
+
     metrics = [
         "# HELP somabrain_requests_total Total number of API requests",
         "# TYPE somabrain_requests_total counter",
@@ -413,8 +431,5 @@ def export_prometheus_metrics(request: AuthenticatedRequest):
         'somabrain_errors_total{status="401"} 80',
         'somabrain_errors_total{status="500"} 20',
     ]
-    
-    return HttpResponse(
-        "\n".join(metrics),
-        content_type="text/plain; charset=utf-8"
-    )
+
+    return HttpResponse("\n".join(metrics), content_type="text/plain; charset=utf-8")

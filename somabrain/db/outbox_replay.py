@@ -27,28 +27,28 @@ VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
 @transaction.atomic
 def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) -> int:
     """Mark failed events for replay by setting their status back to 'pending'.
-    
+
     Args:
         limit: Maximum number of events to mark for replay
         tenant_id: Specific tenant to replay (None for all tenants)
-    
+
     Returns:
         Number of events marked for replay
     """
-    qs = OutboxEvent.objects.filter(status='failed')
+    qs = OutboxEvent.objects.filter(status="failed")
     if tenant_id:
         qs = qs.filter(tenant_id=tenant_id)
-    
-    events = list(qs.order_by('created_at')[:limit])
+
+    events = list(qs.order_by("created_at")[:limit])
     count = 0
-    
+
     for ev in events:
-        ev.status = 'pending'
+        ev.status = "pending"
         ev.retries = 0
         ev.last_error = None
         ev.save()
         count += 1
-    
+
     # Report metrics
     tenant_label = tenant_id or "default"
     if report_outbox_replayed is not None and count > 0:
@@ -60,7 +60,7 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
                 tenant_label,
                 exc,
             )
-    
+
     return count
 
 
@@ -69,34 +69,34 @@ def mark_tenant_events_for_replay(
     tenant_id: str, limit: int = 100, status: str = "failed"
 ) -> int:
     """Mark events for a specific tenant for replay.
-    
+
     Args:
         tenant_id: The tenant ID to replay events for
         limit: Maximum number of events to replay
         status: Status of events to replay (failed or sent)
-    
+
     Returns:
         Number of events marked for replay
     """
     if status not in VALID_OUTBOX_STATUSES:
         raise ValueError(f"Invalid outbox status: {status}")
-    
+
     limit = max(1, min(int(limit), 1000))
-    
+
     events = list(
-        OutboxEvent.objects
-        .filter(tenant_id=tenant_id, status=status)
-        .order_by('created_at')[:limit]
+        OutboxEvent.objects.filter(tenant_id=tenant_id, status=status).order_by(
+            "created_at"
+        )[:limit]
     )
-    
+
     count = 0
     for ev in events:
-        ev.status = 'pending'
+        ev.status = "pending"
         ev.retries = 0
         ev.last_error = None
         ev.save()
         count += 1
-    
+
     # Report metrics
     if report_outbox_replayed is not None and count > 0:
         try:
@@ -105,7 +105,7 @@ def mark_tenant_events_for_replay(
             logger.debug(
                 "Failed to report outbox replayed for tenant=%s: %s", tenant_id, exc
             )
-    
+
     return count
 
 
@@ -117,56 +117,54 @@ def list_tenant_events(
     offset: int = 0,
 ) -> List[OutboxEvent]:
     """List outbox events for a specific tenant with filtering options.
-    
+
     Args:
         tenant_id: The tenant ID to get events for
         status: Filter events by status (pending|failed|sent)
         topic_filter: Optional topic pattern to filter events
         limit: Maximum number of events to return
         offset: Offset for pagination
-    
+
     Returns:
         List of outbox events
     """
     if status not in VALID_OUTBOX_STATUSES:
         raise ValueError(f"Invalid outbox status: {status}")
-    
+
     limit = max(1, min(int(limit), 1000))
     offset = max(0, int(offset))
-    
+
     qs = OutboxEvent.objects.filter(tenant_id=tenant_id, status=status)
-    
+
     if topic_filter:
         qs = qs.filter(topic__icontains=topic_filter)
-    
-    return list(qs.order_by('-created_at')[offset:offset+limit])
+
+    return list(qs.order_by("-created_at")[offset : offset + limit])
 
 
 def get_failed_counts_by_tenant() -> Dict[str, int]:
     """Get failed event counts per tenant.
-    
+
     Returns:
         Dict mapping tenant_id to failed event count
     """
     counts = (
-        OutboxEvent.objects
-        .filter(status='failed')
-        .values('tenant_id')
-        .annotate(count=Count('id'))
+        OutboxEvent.objects.filter(status="failed")
+        .values("tenant_id")
+        .annotate(count=Count("id"))
     )
-    return {row['tenant_id'] or 'default': row['count'] for row in counts}
+    return {row["tenant_id"] or "default": row["count"] for row in counts}
 
 
 def get_sent_counts_by_tenant() -> Dict[str, int]:
     """Get sent event counts per tenant.
-    
+
     Returns:
         Dict mapping tenant_id to sent event count
     """
     counts = (
-        OutboxEvent.objects
-        .filter(status='sent')
-        .values('tenant_id')
-        .annotate(count=Count('id'))
+        OutboxEvent.objects.filter(status="sent")
+        .values("tenant_id")
+        .annotate(count=Count("id"))
     )
-    return {row['tenant_id'] or 'default': row['count'] for row in counts}
+    return {row["tenant_id"] or "default": row["count"] for row in counts}

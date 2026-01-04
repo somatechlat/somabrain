@@ -68,12 +68,16 @@ class CognitiveLoopState:
 
         try:
             from somabrain.models import SleepState as DbSleepState
-            
+
             # Use Django ORM to fetch sleep state
             # order_by('-timestamp') to get the latest if multiple exist (though ideally unique per tenant)
             # The model has index on [tenant_id, timestamp]
-            ss = DbSleepState.objects.filter(tenant_id=tenant_id).order_by('-timestamp').first()
-            
+            ss = (
+                DbSleepState.objects.filter(tenant_id=tenant_id)
+                .order_by("-timestamp")
+                .first()
+            )
+
             if ss:
                 # Map string state from DB to Enum
                 # Ensure we handle case sensitivity if needed, usually upper or matching enum
@@ -169,6 +173,7 @@ def eval_step(
         # First step in session - no previous focus (Requirement 3.2)
         try:
             from somabrain.metrics.planning import PREDICT_COMPARE_MISSING_PREV
+
             PREDICT_COMPARE_MISSING_PREV.inc()
         except Exception:
             pass

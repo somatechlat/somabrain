@@ -75,16 +75,14 @@ class TargetConfig:
     bypass_lock_checks: bool = False
 
     def id(self) -> str:
-        """Execute id.
-            """
+        """Execute id."""
 
         return self.label
 
     # ---- Probing helpers -------------------------------------------------
 
     def _probe_api(self) -> tuple[bool, str | None]:
-        """Execute probe api.
-            """
+        """Execute probe api."""
 
         url = f"{self.api_base.rstrip('/')}/health"
         try:
@@ -98,8 +96,7 @@ class TargetConfig:
         return True, None
 
     def _probe_memory(self) -> tuple[bool, str | None]:
-        """Execute probe memory.
-            """
+        """Execute probe memory."""
 
         url = f"{self.memory_base.rstrip('/')}/health"
         try:
@@ -134,8 +131,7 @@ class TargetConfig:
         return False, f"Memory health ambiguous schema at {url}: {body!r}"
 
     def _probe_redis(self) -> tuple[bool, str | None]:
-        """Execute probe redis.
-            """
+        """Execute probe redis."""
 
         if not self.redis_url:
             return True, None
@@ -172,9 +168,9 @@ class TargetConfig:
 def _env_truthy(value: str | None) -> bool:
     """Execute env truthy.
 
-        Args:
-            value: The value.
-        """
+    Args:
+        value: The value.
+    """
 
     if value is None:
         return False
@@ -182,11 +178,12 @@ def _env_truthy(value: str | None) -> bool:
 
 
 def _default_target() -> TargetConfig:
-    """Execute default target.
-        """
+    """Execute default target."""
 
     api_base = require(
-        get_api_base_url(DEFAULT_API_URL) or settings.SOMABRAIN_API_URL or DEFAULT_API_URL,
+        get_api_base_url(DEFAULT_API_URL)
+        or settings.SOMABRAIN_API_URL
+        or DEFAULT_API_URL,
         message="Set SOMABRAIN_API_URL (see .env) before running tests.",
     )
     memory_base = require(
@@ -213,8 +210,7 @@ def _default_target() -> TargetConfig:
 
 
 def _live_target_from_env() -> TargetConfig | None:
-    """Execute live target from env.
-        """
+    """Execute live target from env."""
 
     api = settings.live_api_url
     if not api:
@@ -258,8 +254,8 @@ def list_test_targets() -> list[TargetConfig]:
 def target_ids(targets: Iterable[TargetConfig]) -> list[str]:
     """Execute target ids.
 
-        Args:
-            targets: The targets.
-        """
+    Args:
+        targets: The targets.
+    """
 
     return [t.id() for t in targets]

@@ -15,7 +15,6 @@ from ninja import Router, Schema
 from somabrain.saas.models import (
     Role,
     FieldPermission,
-    PlatformRole,
     AuditLog,
     ActorType,
 )
@@ -29,8 +28,10 @@ router = Router(tags=["Roles"])
 # SCHEMAS
 # =============================================================================
 
+
 class RoleCreate(Schema):
     """Schema for creating a role."""
+
     name: str
     slug: str
     description: Optional[str] = None
@@ -40,6 +41,7 @@ class RoleCreate(Schema):
 
 class RoleUpdate(Schema):
     """Schema for updating a role."""
+
     name: Optional[str] = None
     slug: Optional[str] = None
     description: Optional[str] = None
@@ -49,6 +51,7 @@ class RoleUpdate(Schema):
 
 class RoleOut(Schema):
     """Schema for role output."""
+
     id: UUID
     name: str
     slug: str
@@ -63,9 +66,9 @@ class RoleOut(Schema):
     def resolve_created_at(obj):
         """Execute resolve created at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.created_at.isoformat()
 
@@ -73,15 +76,16 @@ class RoleOut(Schema):
     def resolve_updated_at(obj):
         """Execute resolve updated at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.updated_at.isoformat()
 
 
 class FieldPermissionCreate(Schema):
     """Schema for creating field permission."""
+
     role_id: UUID
     model_name: str
     field_name: str
@@ -91,12 +95,14 @@ class FieldPermissionCreate(Schema):
 
 class FieldPermissionUpdate(Schema):
     """Schema for updating field permission."""
+
     can_view: Optional[bool] = None
     can_edit: Optional[bool] = None
 
 
 class FieldPermissionOut(Schema):
     """Schema for field permission output."""
+
     id: UUID
     role_id: UUID
     model_name: str
@@ -107,6 +113,7 @@ class FieldPermissionOut(Schema):
 
 class PermissionMatrixOut(Schema):
     """Schema for permission matrix output."""
+
     model_name: str
     fields: List[dict]
 
@@ -115,19 +122,20 @@ class PermissionMatrixOut(Schema):
 # ROLE ENDPOINTS
 # =============================================================================
 
+
 @router.get("/", response=List[RoleOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_roles(request: AuthenticatedRequest):
     """
     List all roles.
-    
+
     Super-admin sees all. Tenant-admin sees non-system roles.
     """
     if request.is_super_admin:
         roles = Role.objects.all().order_by("name")
     else:
         roles = Role.objects.filter(is_system=False).order_by("name")
-    
+
     return list(roles)
 
 
@@ -136,13 +144,13 @@ def list_roles(request: AuthenticatedRequest):
 def create_role(request: AuthenticatedRequest, data: RoleCreate):
     """
     Create a new custom role.
-    
+
     Only super-admin can create roles.
     """
     parent = None
     if data.parent_id:
         parent = get_object_or_404(Role, id=data.parent_id)
-    
+
     role = Role.objects.create(
         name=data.name,
         slug=data.slug,
@@ -151,7 +159,7 @@ def create_role(request: AuthenticatedRequest, data: RoleCreate):
         parent=parent,
         is_system=False,
     )
-    
+
     # Audit log
     AuditLog.log(
         action="role.created",
@@ -161,7 +169,7 @@ def create_role(request: AuthenticatedRequest, data: RoleCreate):
         actor_type=ActorType.ADMIN,
         details={"name": role.name},
     )
-    
+
     return role
 
 
@@ -177,26 +185,27 @@ def get_role(request: AuthenticatedRequest, role_id: UUID):
 def update_role(request: AuthenticatedRequest, role_id: UUID, data: RoleUpdate):
     """
     Update a role.
-    
+
     Cannot update system roles.
     """
     role = get_object_or_404(Role, id=role_id)
-    
+
     if role.is_system:
         from ninja.errors import HttpError
+
         raise HttpError(400, "Cannot modify system roles")
-    
+
     update_data = data.dict(exclude_unset=True)
-    
+
     if "parent_id" in update_data:
         parent_id = update_data.pop("parent_id")
         role.parent = Role.objects.get(id=parent_id) if parent_id else None
-    
+
     for field, value in update_data.items():
         setattr(role, field, value)
-    
+
     role.save()
-    
+
     return role
 
 
@@ -205,18 +214,19 @@ def update_role(request: AuthenticatedRequest, role_id: UUID, data: RoleUpdate):
 def delete_role(request: AuthenticatedRequest, role_id: UUID):
     """
     Delete a role.
-    
+
     Cannot delete system roles.
     """
     role = get_object_or_404(Role, id=role_id)
-    
+
     if role.is_system:
         from ninja.errors import HttpError
+
         raise HttpError(400, "Cannot delete system roles")
-    
+
     role_name = role.name
     role.delete()
-    
+
     return {"success": True, "message": f"Role '{role_name}' deleted"}
 
 
@@ -224,12 +234,15 @@ def delete_role(request: AuthenticatedRequest, role_id: UUID):
 # FIELD PERMISSION ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{role_id}/permissions", response=List[FieldPermissionOut])
 @require_auth(roles=["super-admin"])
 def list_role_permissions(request: AuthenticatedRequest, role_id: UUID):
     """Get all field permissions for a role."""
     role = get_object_or_404(Role, id=role_id)
-    permissions = FieldPermission.objects.filter(role=role).order_by("model_name", "field_name")
+    permissions = FieldPermission.objects.filter(role=role).order_by(
+        "model_name", "field_name"
+    )
     return list(permissions)
 
 
@@ -238,7 +251,7 @@ def list_role_permissions(request: AuthenticatedRequest, role_id: UUID):
 def create_permission(request: AuthenticatedRequest, data: FieldPermissionCreate):
     """Create a field permission."""
     role = get_object_or_404(Role, id=data.role_id)
-    
+
     perm, created = FieldPermission.objects.update_or_create(
         role=role,
         model_name=data.model_name,
@@ -246,22 +259,24 @@ def create_permission(request: AuthenticatedRequest, data: FieldPermissionCreate
         defaults={
             "can_view": data.can_view,
             "can_edit": data.can_edit,
-        }
+        },
     )
-    
+
     return perm
 
 
 @router.patch("/permissions/{perm_id}", response=FieldPermissionOut)
 @require_auth(roles=["super-admin"])
-def update_permission(request: AuthenticatedRequest, perm_id: UUID, data: FieldPermissionUpdate):
+def update_permission(
+    request: AuthenticatedRequest, perm_id: UUID, data: FieldPermissionUpdate
+):
     """Update a field permission."""
     perm = get_object_or_404(FieldPermission, id=perm_id)
-    
+
     update_data = data.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(perm, field, value)
-    
+
     perm.save()
     return perm
 
@@ -279,61 +294,88 @@ def delete_permission(request: AuthenticatedRequest, perm_id: UUID):
 # PERMISSION MATRIX (For UI)
 # =============================================================================
 
+
 @router.get("/{role_id}/matrix", response=List[PermissionMatrixOut])
 @require_auth(roles=["super-admin"])
 def get_permission_matrix(request: AuthenticatedRequest, role_id: UUID):
     """
     Get permission matrix for a role.
-    
+
     Returns all models with their fields and permissions.
     Used by the admin UI to display/edit the permission grid.
     """
     role = get_object_or_404(Role, id=role_id)
-    
+
     # Get current permissions
     permissions = FieldPermission.objects.filter(role=role)
     perm_map = {(p.model_name, p.field_name): p for p in permissions}
-    
+
     # Define models and their editable fields
     # 🏛️ Architect: This defines the permission matrix structure
     MODEL_FIELDS = {
-        "Tenant": ["name", "slug", "status", "tier", "admin_email", "billing_email", "config", "quota_overrides"],
+        "Tenant": [
+            "name",
+            "slug",
+            "status",
+            "tier",
+            "admin_email",
+            "billing_email",
+            "config",
+            "quota_overrides",
+        ],
         "TenantUser": ["email", "role", "display_name", "is_active", "is_primary"],
-        "Subscription": ["tier", "status", "current_period_start", "current_period_end"],
+        "Subscription": [
+            "tier",
+            "status",
+            "current_period_start",
+            "current_period_end",
+        ],
         "APIKey": ["name", "scopes", "is_active", "expires_at"],
-        "IdentityProvider": ["name", "provider_type", "client_id", "is_enabled", "is_default"],
+        "IdentityProvider": [
+            "name",
+            "provider_type",
+            "client_id",
+            "is_enabled",
+            "is_default",
+        ],
     }
-    
+
     result = []
     for model, fields in MODEL_FIELDS.items():
         field_perms = []
         for field in fields:
             perm = perm_map.get((model, field))
-            field_perms.append({
-                "field_name": field,
-                "can_view": perm.can_view if perm else False,
-                "can_edit": perm.can_edit if perm else False,
-                "perm_id": str(perm.id) if perm else None,
-            })
-        
-        result.append(PermissionMatrixOut(
-            model_name=model,
-            fields=field_perms,
-        ))
-    
+            field_perms.append(
+                {
+                    "field_name": field,
+                    "can_view": perm.can_view if perm else False,
+                    "can_edit": perm.can_edit if perm else False,
+                    "perm_id": str(perm.id) if perm else None,
+                }
+            )
+
+        result.append(
+            PermissionMatrixOut(
+                model_name=model,
+                fields=field_perms,
+            )
+        )
+
     return result
 
 
 @router.post("/{role_id}/matrix")
 @require_auth(roles=["super-admin"])
-def update_permission_matrix(request: AuthenticatedRequest, role_id: UUID, matrix: List[dict]):
+def update_permission_matrix(
+    request: AuthenticatedRequest, role_id: UUID, matrix: List[dict]
+):
     """
     Bulk update permission matrix for a role.
-    
+
     Accepts a list of {model_name, field_name, can_view, can_edit} dicts.
     """
     role = get_object_or_404(Role, id=role_id)
-    
+
     updated = 0
     for entry in matrix:
         perm, created = FieldPermission.objects.update_or_create(
@@ -343,8 +385,8 @@ def update_permission_matrix(request: AuthenticatedRequest, role_id: UUID, matri
             defaults={
                 "can_view": entry.get("can_view", False),
                 "can_edit": entry.get("can_edit", False),
-            }
+            },
         )
         updated += 1
-    
+
     return {"success": True, "updated": updated}

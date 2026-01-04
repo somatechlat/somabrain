@@ -37,10 +37,10 @@ class RetrievalCache:
     def _normalize(self, namespace: str | None, query: str | None) -> _CacheKey:
         """Execute normalize.
 
-            Args:
-                namespace: The namespace.
-                query: The query.
-            """
+        Args:
+            namespace: The namespace.
+            query: The query.
+        """
 
         ns = (namespace or "").strip().lower()
         q = (query or "").strip().lower()

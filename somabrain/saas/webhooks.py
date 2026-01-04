@@ -33,7 +33,6 @@ from django.views.decorators.http import require_POST
 
 from somabrain.saas.models import (
     AuditLog,
-    Subscription,
     SubscriptionStatus,
     Tenant,
     TenantStatus,
@@ -46,22 +45,23 @@ logger = logging.getLogger(__name__)
 # WEBHOOK SIGNATURE VERIFICATION
 # =============================================================================
 
+
 def verify_lago_signature(request: HttpRequest) -> bool:
     """
     Verify Lago webhook signature.
-    
+
     Security: Uses HMAC-SHA256 to verify webhook authenticity.
     """
     webhook_secret = getattr(settings, "LAGO_WEBHOOK_SECRET", "")
     if not webhook_secret:
         logger.warning("LAGO_WEBHOOK_SECRET not configured - skipping verification")
         return True  # Allow in development
-    
+
     signature = request.headers.get("X-Lago-Signature", "")
     if not signature:
         logger.warning("Missing X-Lago-Signature header")
         return False
-    
+
     # Compute expected signature
     body = request.body
     expected = hmac.new(
@@ -69,7 +69,7 @@ def verify_lago_signature(request: HttpRequest) -> bool:
         body,
         hashlib.sha256,
     ).hexdigest()
-    
+
     # Constant-time comparison
     return hmac.compare_digest(signature, expected)
 
@@ -78,14 +78,15 @@ def verify_lago_signature(request: HttpRequest) -> bool:
 # EVENT HANDLERS
 # =============================================================================
 
+
 def handle_invoice_created(data: dict) -> None:
     """Handle invoice.created event."""
     invoice = data.get("invoice", {})
     customer_id = invoice.get("customer", {}).get("external_id")
     amount = invoice.get("total_amount_cents", 0) / 100
-    
+
     logger.info(f"Invoice created for customer {customer_id}: ${amount}")
-    
+
     if customer_id:
         try:
             tenant = Tenant.objects.get(id=customer_id)
@@ -106,20 +107,20 @@ def handle_invoice_paid(data: dict) -> None:
     """Handle invoice.paid event."""
     invoice = data.get("invoice", {})
     customer_id = invoice.get("customer", {}).get("external_id")
-    
+
     logger.info(f"Invoice paid for customer {customer_id}")
-    
+
     if customer_id:
         try:
             tenant = Tenant.objects.get(id=customer_id)
-            
+
             # Ensure subscription is active
             if hasattr(tenant, "subscription"):
                 sub = tenant.subscription
                 if sub.status == SubscriptionStatus.PAST_DUE:
                     sub.status = SubscriptionStatus.ACTIVE
                     sub.save()
-            
+
             AuditLog.log(
                 action="invoice.paid",
                 resource_type="invoice",
@@ -137,13 +138,13 @@ def handle_subscription_started(data: dict) -> None:
     subscription = data.get("subscription", {})
     customer_id = subscription.get("external_customer_id")
     plan_code = subscription.get("plan_code")
-    
+
     logger.info(f"Subscription started for {customer_id}: {plan_code}")
-    
+
     if customer_id:
         try:
             tenant = Tenant.objects.get(id=customer_id)
-            
+
             with transaction.atomic():
                 if hasattr(tenant, "subscription"):
                     sub = tenant.subscription
@@ -151,12 +152,12 @@ def handle_subscription_started(data: dict) -> None:
                     sub.lago_subscription_id = subscription.get("lago_id")
                     sub.current_period_start = datetime.now(timezone.utc)
                     sub.save()
-                
+
                 # Ensure tenant is active
                 if tenant.status == TenantStatus.PENDING:
                     tenant.status = TenantStatus.ACTIVE
                     tenant.save()
-            
+
             AuditLog.log(
                 action="subscription.started",
                 resource_type="subscription",
@@ -174,20 +175,20 @@ def handle_subscription_terminated(data: dict) -> None:
     """Handle subscription.terminated event."""
     subscription = data.get("subscription", {})
     customer_id = subscription.get("external_customer_id")
-    
+
     logger.info(f"Subscription terminated for {customer_id}")
-    
+
     if customer_id:
         try:
             tenant = Tenant.objects.get(id=customer_id)
-            
+
             with transaction.atomic():
                 if hasattr(tenant, "subscription"):
                     sub = tenant.subscription
                     sub.status = SubscriptionStatus.CANCELLED
                     sub.cancelled_at = datetime.now(timezone.utc)
                     sub.save()
-            
+
             AuditLog.log(
                 action="subscription.terminated",
                 resource_type="subscription",
@@ -204,19 +205,19 @@ def handle_payment_overdue(data: dict) -> None:
     """Handle customer.payment_overdue event."""
     customer = data.get("customer", {})
     customer_id = customer.get("external_id")
-    
+
     logger.warning(f"Payment overdue for customer {customer_id}")
-    
+
     if customer_id:
         try:
             tenant = Tenant.objects.get(id=customer_id)
-            
+
             with transaction.atomic():
                 if hasattr(tenant, "subscription"):
                     sub = tenant.subscription
                     sub.status = SubscriptionStatus.PAST_DUE
                     sub.save()
-            
+
             AuditLog.log(
                 action="payment.overdue",
                 resource_type="customer",
@@ -246,36 +247,37 @@ EVENT_HANDLERS: dict[str, Callable[[dict], None]] = {
 # WEBHOOK VIEW
 # =============================================================================
 
+
 @csrf_exempt
 @require_POST
 def lago_webhook(request: HttpRequest) -> JsonResponse:
     """
     Lago webhook endpoint.
-    
+
     POST /webhooks/lago/
-    
+
     Receives and processes billing events from Lago.
     """
     # Verify signature
     if not verify_lago_signature(request):
         logger.error("Invalid Lago webhook signature")
         return JsonResponse({"error": "Invalid signature"}, status=401)
-    
+
     # Parse body
     try:
         payload = json.loads(request.body)
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in webhook: {e}")
         return JsonResponse({"error": "Invalid JSON"}, status=400)
-    
+
     # Extract event type
     event_type = payload.get("webhook_type")
     if not event_type:
         logger.error("Missing webhook_type in payload")
         return JsonResponse({"error": "Missing webhook_type"}, status=400)
-    
+
     logger.info(f"Received Lago webhook: {event_type}")
-    
+
     # Route to handler
     handler = EVENT_HANDLERS.get(event_type)
     if handler:

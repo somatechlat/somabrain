@@ -75,10 +75,10 @@ class TestWMPersistence:
             async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
                 """Execute aremember.
 
-                    Args:
-                        key: The key.
-                        payload: The payload.
-                    """
+                Args:
+                    key: The key.
+                    payload: The payload.
+                """
 
                 self._stored[key] = payload
                 return True
@@ -89,10 +89,10 @@ class TestWMPersistence:
                 # Return all stored items that match the query criteria
                 """Execute arecall.
 
-                    Args:
-                        query: The query.
-                        top_k: The top_k.
-                    """
+                Args:
+                    query: The query.
+                    top_k: The top_k.
+                """
 
                 results = []
                 for key, payload in self._stored.items():
@@ -121,8 +121,7 @@ class TestWMPersistence:
 
         # Persist items using the persister
         async def persist_items():
-            """Execute persist items.
-                """
+            """Execute persist items."""
 
             await persister.start()
             for item in wm._items:
@@ -144,8 +143,7 @@ class TestWMPersistence:
         restorer = WMRestorer(client, tenant_id, timeout_s=5.0)
 
         async def restore_wm():
-            """Execute restore wm.
-                """
+            """Execute restore wm."""
 
             start = time.time()
             restored = await restorer.restore(wm2)
@@ -186,10 +184,10 @@ class TestWMPersistence:
             async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
                 """Execute aremember.
 
-                    Args:
-                        key: The key.
-                        payload: The payload.
-                    """
+                Args:
+                    key: The key.
+                    payload: The payload.
+                """
 
                 self._stored[key] = payload
                 self._store_times.append(time.time())
@@ -210,8 +208,7 @@ class TestWMPersistence:
         )
 
         async def test_persistence():
-            """Execute test persistence.
-                """
+            """Execute test persistence."""
 
             await persister.start()
             start_time = time.time()
@@ -258,10 +255,10 @@ class TestWMPersistence:
             async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
                 """Execute aremember.
 
-                    Args:
-                        key: The key.
-                        payload: The payload.
-                    """
+                Args:
+                    key: The key.
+                    payload: The payload.
+                """
 
                 self._stored[key] = payload
                 return True
@@ -272,8 +269,7 @@ class TestWMPersistence:
 
         async def test_eviction():
             # Mark an item as evicted
-            """Execute test eviction.
-                """
+            """Execute test eviction."""
 
             item_id = f"wm_{tenant_id}_1_1_12345"
             result = await persister.mark_evicted(item_id)
@@ -354,10 +350,10 @@ class TestWMRestorerTimeout:
                 # Simulate slow response
                 """Execute arecall.
 
-                    Args:
-                        query: The query.
-                        top_k: The top_k.
-                    """
+                Args:
+                    query: The query.
+                    top_k: The top_k.
+                """
 
                 await asyncio.sleep(0.1)
                 return []
@@ -369,8 +365,7 @@ class TestWMRestorerTimeout:
         wm = WorkingMemory(capacity=10)
 
         async def test_timeout():
-            """Execute test timeout.
-                """
+            """Execute test timeout."""
 
             start = time.time()
             restored = await restorer.restore(wm)

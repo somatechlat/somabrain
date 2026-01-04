@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any, Optional
 
 
 # Module-level logger
@@ -33,8 +33,7 @@ async def start_memory_watchdog(
     """
 
     async def _watchdog_loop() -> None:
-        """Execute watchdog loop.
-            """
+        """Execute watchdog loop."""
 
         while True:
             try:

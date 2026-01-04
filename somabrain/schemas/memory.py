@@ -81,8 +81,7 @@ class MemoryPayload(BaseModel):
 
     @model_validator(mode="after")
     def _normalize_timestamp(self):
-        """Execute normalize timestamp.
-            """
+        """Execute normalize timestamp."""
 
         if self.timestamp is not None:
             try:

@@ -15,11 +15,11 @@ from somabrain.quantum import HRRConfig, QuantumLayer
 def make_colored_noise_spectrum(n_bins, exponent=1.0, seed=0):
     """Execute make colored noise spectrum.
 
-        Args:
-            n_bins: The n_bins.
-            exponent: The exponent.
-            seed: The seed.
-        """
+    Args:
+        n_bins: The n_bins.
+        exponent: The exponent.
+        seed: The seed.
+    """
 
     rng = np.random.default_rng(seed)
     freqs = np.arange(1, n_bins + 1)
@@ -34,12 +34,12 @@ def run_bench(
 ):
     """Execute run bench.
 
-        Args:
-            out_path: The out_path.
-            D_list: The D_list.
-            exponents: The exponents.
-            seeds: The seeds.
-        """
+    Args:
+        out_path: The out_path.
+        D_list: The D_list.
+        exponents: The exponents.
+        seeds: The seeds.
+    """
 
     results = {
         "meta": {
@@ -69,10 +69,10 @@ def run_bench(
                 def mse(x, y):
                     """Execute mse.
 
-                        Args:
-                            x: The x.
-                            y: The y.
-                        """
+                    Args:
+                        x: The x.
+                        y: The y.
+                    """
 
                     return float(np.mean((x - y) ** 2))
 
@@ -128,8 +128,7 @@ def run_bench(
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     p = argparse.ArgumentParser()
     p.add_argument(

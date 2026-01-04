@@ -35,15 +35,14 @@ try:  # pragma: no cover - trivial import guard
 except Exception:  # pragma: no cover
 
     def arc_cache(*args, **kwargs):
-        """Execute arc cache.
-            """
+        """Execute arc cache."""
 
         def _decorator(fn):
             """Execute decorator.
 
-                Args:
-                    fn: The fn.
-                """
+            Args:
+                fn: The fn.
+            """
 
             return fn
 
@@ -218,9 +217,9 @@ class _CachedEmbedder:
     def embed(self, text: str) -> np.ndarray:
         """Execute embed.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         return self._embed(text)
 
@@ -254,9 +253,9 @@ def make_embedder(cfg, quantum=None):
         def _hrr_embed(text: str) -> np.ndarray:
             """Execute hrr embed.
 
-                Args:
-                    text: The text.
-                """
+            Args:
+                text: The text.
+            """
 
             hv = quantum.encode_text(text)
             return (

@@ -10,9 +10,9 @@ from typing import Callable, Iterable, Iterator, List, Optional, Sequence
 def _extract_text(payload: dict) -> Optional[str]:
     """Execute extract text.
 
-        Args:
-            payload: The payload.
-        """
+    Args:
+        payload: The payload.
+    """
 
     for key in ("text", "task", "content", "what"):
         value = payload.get(key)
@@ -34,9 +34,9 @@ class TrainingExample:
     def tokens(self, tokenizer: Callable[[str], Sequence[int]]) -> dict:
         """Execute tokens.
 
-            Args:
-                tokenizer: The tokenizer.
-            """
+        Args:
+            tokenizer: The tokenizer.
+        """
 
         return {
             "prompt_tokens": list(tokenizer(self.prompt)),
@@ -50,9 +50,9 @@ class TrainingExample:
 def _conversation_from_payload(payload: dict) -> Optional[List[dict]]:
     """Execute conversation from payload.
 
-        Args:
-            payload: The payload.
-        """
+    Args:
+        payload: The payload.
+    """
 
     convo = payload.get("conversation")
     if isinstance(convo, list):
@@ -72,9 +72,9 @@ def _conversation_from_payload(payload: dict) -> Optional[List[dict]]:
 def _build_example(record: dict) -> Optional[TrainingExample]:
     """Execute build example.
 
-        Args:
-            record: The record.
-        """
+    Args:
+        record: The record.
+    """
 
     tenant = str(record.get("tenant") or "unknown")
     namespace = str(record.get("namespace") or "default")
@@ -140,9 +140,9 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
 def build_examples(records: Iterable[dict]) -> List[TrainingExample]:
     """Execute build examples.
 
-        Args:
-            records: The records.
-        """
+    Args:
+        records: The records.
+    """
 
     examples: List[TrainingExample] = []
     for record in records:
@@ -158,10 +158,10 @@ def tokenize_examples(
 ) -> List[dict]:
     """Execute tokenize examples.
 
-        Args:
-            examples: The examples.
-            tokenizer: The tokenizer.
-        """
+    Args:
+        examples: The examples.
+        tokenizer: The tokenizer.
+    """
 
     return [example.tokens(tokenizer) for example in examples]
 
@@ -169,10 +169,10 @@ def tokenize_examples(
 def export_examples(examples: Iterable[TrainingExample], path: str) -> None:
     """Execute export examples.
 
-        Args:
-            examples: The examples.
-            path: The path.
-        """
+    Args:
+        examples: The examples.
+        path: The path.
+    """
 
     with open(path, "w", encoding="utf-8") as handle:
         for example in examples:
@@ -182,9 +182,9 @@ def export_examples(examples: Iterable[TrainingExample], path: str) -> None:
 def iter_jsonl(path: str) -> Iterator[dict]:
     """Execute iter jsonl.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     with open(path, "r", encoding="utf-8") as handle:
         for line in handle:

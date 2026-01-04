@@ -38,13 +38,9 @@ def validate_evaluate_response(
     if len(memories) > 20:
         raise HttpError(400, "memories exceeds 20 items")
     if len(prompt) > 4096:
-        raise HttpError(
-            400, "prompt length exceeds 4096 characters"
-        )
+        raise HttpError(400, "prompt length exceeds 4096 characters")
     if len(residual_vector) > 2048:
-        raise HttpError(
-            400, "residual vector exceeds 2048 floats"
-        )
+        raise HttpError(400, "residual vector exceeds 2048 floats")
     if len(working_memory) > 10:
         raise HttpError(400, "working memory exceeds 10 items")
 
@@ -81,9 +77,7 @@ def validate_feedback_fields(
     """
     for field in [session_id, query, prompt, response_text]:
         if field and len(field) > 1024:
-            raise HttpError(
-                400, "input field exceeds 1024 characters"
-            )
+            raise HttpError(400, "input field exceeds 1024 characters")
 
 
 def validate_feedback_metadata(metadata: Optional[Dict[str, Any]]) -> None:

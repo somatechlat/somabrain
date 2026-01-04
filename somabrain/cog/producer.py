@@ -10,8 +10,7 @@ from django.conf import settings
 
 
 def _bootstrap_from_env() -> Optional[str]:
-    """Execute bootstrap from env.
-        """
+    """Execute bootstrap from env."""
 
     url = settings.KAFKA_BOOTSTRAP_SERVERS
     if not url:
@@ -44,9 +43,9 @@ class BeliefUpdatePublisher:
     def _topic(domain: str) -> str:
         """Execute topic.
 
-            Args:
-                domain: The domain.
-            """
+        Args:
+            domain: The domain.
+        """
 
         d = (domain or "").strip().lower()
         if d not in ("state", "agent", "action"):
@@ -55,8 +54,7 @@ class BeliefUpdatePublisher:
 
     @staticmethod
     def _now_iso() -> str:
-        """Execute now iso.
-            """
+        """Execute now iso."""
 
         return datetime.now(timezone.utc).isoformat()
 
@@ -72,8 +70,7 @@ class BeliefUpdatePublisher:
         latency_ms: int = 0,
         ts: Optional[str] = None,
     ) -> None:
-        """Execute publish.
-            """
+        """Execute publish."""
 
         if not self.enabled or not self._producer:
             raise RuntimeError("BeliefUpdatePublisher not initialized")

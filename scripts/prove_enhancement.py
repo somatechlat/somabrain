@@ -49,9 +49,9 @@ LATENCY_KEYS = ("recall_latency_p95", "latency_p95", "recall_latency")
 def _load_json(path: Path) -> Dict[str, Any]:
     """Execute load json.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     try:
         with path.open("r", encoding="utf-8") as fh:
@@ -65,10 +65,10 @@ def _load_json(path: Path) -> Dict[str, Any]:
 def _find_metric(blob: Any, keys: Iterable[str]) -> Optional[float]:
     """Execute find metric.
 
-        Args:
-            blob: The blob.
-            keys: The keys.
-        """
+    Args:
+        blob: The blob.
+        keys: The keys.
+    """
 
     if isinstance(blob, dict):
         for name in keys:
@@ -89,9 +89,9 @@ def _find_metric(blob: Any, keys: Iterable[str]) -> Optional[float]:
 def _extract_metrics(data: Dict[str, Any]) -> Dict[str, float]:
     """Execute extract metrics.
 
-        Args:
-            data: The data.
-        """
+    Args:
+        data: The data.
+    """
 
     metrics: Dict[str, float] = {}
     top1 = _find_metric(data, TOP1_KEYS)
@@ -109,9 +109,9 @@ def _extract_metrics(data: Dict[str, Any]) -> Dict[str, float]:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     """Execute parse args.
 
-        Args:
-            argv: The argv.
-        """
+    Args:
+        argv: The argv.
+    """
 
     parser = argparse.ArgumentParser(description="Verify benchmark uplift")
     parser.add_argument("--baseline", required=True, type=Path, help="baseline report")
@@ -142,9 +142,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     """Execute main.
 
-        Args:
-            argv: The argv.
-        """
+    Args:
+        argv: The argv.
+    """
 
     args = parse_args(argv or sys.argv[1:])
     baseline = _extract_metrics(_load_json(args.baseline))

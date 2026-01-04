@@ -14,8 +14,7 @@ FORBIDDEN = ("mock", "stub", "placeholder", "todo", "fixme", "dummy")
 
 
 def _prod_files() -> list[Path]:
-    """Execute prod files.
-        """
+    """Execute prod files."""
 
     root = Path(__file__).resolve().parents[2]  # repo root
     return [
@@ -26,9 +25,9 @@ def _prod_files() -> list[Path]:
 def _comment_and_docstring_tokens(path: Path) -> list[str]:
     """Execute comment and docstring tokens.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     content = path.read_text(encoding="utf-8")
     tokens = []

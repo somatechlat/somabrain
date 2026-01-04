@@ -14,9 +14,9 @@ from pathlib import Path
 def load_schema(p: Path):
     """Execute load schema.
 
-        Args:
-            p: The p.
-        """
+    Args:
+        p: The p.
+    """
 
     with p.open("r", encoding="utf-8") as f:
         return json.load(f)
@@ -25,9 +25,9 @@ def load_schema(p: Path):
 def index_fields(schema: dict) -> dict:
     """Execute index fields.
 
-        Args:
-            schema: The schema.
-        """
+    Args:
+        schema: The schema.
+    """
 
     return {f["name"]: f for f in schema.get("fields", [])}
 
@@ -35,10 +35,10 @@ def index_fields(schema: dict) -> dict:
 def check_backward_compatible(old: dict, new: dict) -> list[str]:
     """Execute check backward compatible.
 
-        Args:
-            old: The old.
-            new: The new.
-        """
+    Args:
+        old: The old.
+        new: The new.
+    """
 
     problems: list[str] = []
     oldf = index_fields(old)
@@ -58,8 +58,7 @@ def check_backward_compatible(old: dict, new: dict) -> list[str]:
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     repo = Path(__file__).resolve().parents[2]
     new_dir = repo / "proto" / "cog" / "avro"

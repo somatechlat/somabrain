@@ -1,7 +1,6 @@
 """Module debug_e2e_manual."""
 
 import os
-import sys
 import django
 from django.conf import settings
 
@@ -12,13 +11,13 @@ django.setup()
 
 from somabrain.memory_client import MemoryClient
 
+
 def run_debug():
-    """Execute run debug.
-        """
+    """Execute run debug."""
 
     print("DEBUG: Initializing MemoryClient...")
     client = MemoryClient(cfg=settings)
-    
+
     try:
         url = client._transport.client.base_url
         print(f"DEBUG: Checking Health... Target: {url}")
@@ -42,12 +41,13 @@ def run_debug():
         print(f"ERROR: Remember Failed: {e}")
         # We continue to see if Recall works (unlikely)
 
-    print(f"DEBUG: Attempting Recall('Manual')...")
+    print("DEBUG: Attempting Recall('Manual')...")
     try:
         hits = client.recall(query="Manual", top_k=1)
         print(f"DEBUG: Recall Hits: {hits}")
     except Exception as e:
         print(f"ERROR: Recall Failed: {e}")
+
 
 if __name__ == "__main__":
     run_debug()

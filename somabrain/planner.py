@@ -131,7 +131,9 @@ def _get_graph_client(mem) -> Optional["GraphClient"]:
             tenant = getattr(mem, "_tenant", "default")
             return GraphClient(mem._transport, tenant=tenant)
         except Exception as exc:
-            logger.debug("Could not construct GraphClient from transport", error=str(exc))
+            logger.debug(
+                "Could not construct GraphClient from transport", error=str(exc)
+            )
 
     return None
 

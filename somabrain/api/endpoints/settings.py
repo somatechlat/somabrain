@@ -17,7 +17,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 from uuid import UUID
 
 from django.utils import timezone
@@ -46,7 +45,12 @@ SETTING_CATEGORIES = {
     "security": {
         "name": "Security",
         "description": "Security and authentication settings",
-        "settings": ["mfa_required", "session_timeout", "ip_whitelist", "api_key_expiry"],
+        "settings": [
+            "mfa_required",
+            "session_timeout",
+            "ip_whitelist",
+            "api_key_expiry",
+        ],
     },
     "notifications": {
         "name": "Notifications",
@@ -103,8 +107,10 @@ SENSITIVE_SETTINGS = {"slack_webhook", "billing_email"}
 # SCHEMAS - ALL 10 PERSONAS
 # =============================================================================
 
+
 class SettingOut(Schema):
     """Setting output."""
+
     key: str
     value: Any
     category: str
@@ -115,16 +121,19 @@ class SettingOut(Schema):
 
 class SettingUpdate(Schema):
     """Update a setting."""
+
     value: Any
 
 
 class SettingsBulkUpdate(Schema):
     """Bulk update settings."""
+
     settings: Dict[str, Any]
 
 
 class CategorySettingsOut(Schema):
     """Settings grouped by category."""
+
     category: str
     name: str
     description: str
@@ -135,6 +144,7 @@ class CategorySettingsOut(Schema):
 # SETTINGS STORAGE - CACHE BACKED
 # =============================================================================
 
+
 def get_settings_key(tenant_id: str) -> str:
     """Generate cache key for tenant settings."""
     return f"settings:tenant:{tenant_id}"
@@ -144,11 +154,11 @@ def get_tenant_settings(tenant_id: str) -> Dict[str, Any]:
     """Get tenant settings with defaults."""
     key = get_settings_key(tenant_id)
     stored = cache.get(key, {})
-    
+
     # Merge with defaults
     settings = SETTING_DEFAULTS.copy()
     settings.update(stored.get("values", {}))
-    
+
     return settings
 
 
@@ -163,13 +173,13 @@ def save_tenant_setting(tenant_id: str, key: str, value: Any, user_id: str):
     """Save a tenant setting."""
     cache_key = get_settings_key(tenant_id)
     stored = cache.get(cache_key, {"values": {}, "metadata": {}})
-    
+
     stored["values"][key] = value
     stored["metadata"][key] = {
         "updated_at": timezone.now().isoformat(),
         "updated_by": user_id,
     }
-    
+
     cache.set(cache_key, stored, timeout=86400 * 30)
 
 
@@ -177,7 +187,7 @@ def save_tenant_settings_bulk(tenant_id: str, settings: Dict[str, Any], user_id:
     """Save multiple tenant settings."""
     cache_key = get_settings_key(tenant_id)
     stored = cache.get(cache_key, {"values": {}, "metadata": {}})
-    
+
     now = timezone.now().isoformat()
     for key, value in settings.items():
         stored["values"][key] = value
@@ -185,7 +195,7 @@ def save_tenant_settings_bulk(tenant_id: str, settings: Dict[str, Any], user_id:
             "updated_at": now,
             "updated_by": user_id,
         }
-    
+
     cache.set(cache_key, stored, timeout=86400 * 30)
 
 
@@ -201,6 +211,7 @@ def mask_sensitive_value(key: str, value: Any) -> Any:
 # ENDPOINTS - ALL 10 PERSONAS
 # =============================================================================
 
+
 @router.get("/{tenant_id}", response=List[CategorySettingsOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_all_settings(
@@ -209,7 +220,7 @@ def get_all_settings(
 ):
     """
     Get all settings organized by category.
-    
+
     🏛️ Architect: Hierarchical organization
     🎨 UX: Clear grouping
     """
@@ -217,34 +228,39 @@ def get_all_settings(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     settings = get_tenant_settings(str(tenant_id))
     metadata = get_setting_metadata(str(tenant_id))
-    
+
     result = []
     for cat_key, cat_info in SETTING_CATEGORIES.items():
         cat_settings = []
         for setting_key in cat_info["settings"]:
             value = settings.get(setting_key, SETTING_DEFAULTS.get(setting_key))
             meta = metadata.get(setting_key, {})
-            
-            cat_settings.append(SettingOut(
-                key=setting_key,
-                value=mask_sensitive_value(setting_key, value),
+
+            cat_settings.append(
+                SettingOut(
+                    key=setting_key,
+                    value=mask_sensitive_value(setting_key, value),
+                    category=cat_key,
+                    is_default=setting_key not in metadata,
+                    updated_at=meta.get("updated_at"),
+                    updated_by=meta.get("updated_by"),
+                )
+            )
+
+        result.append(
+            CategorySettingsOut(
                 category=cat_key,
-                is_default=setting_key not in metadata,
-                updated_at=meta.get("updated_at"),
-                updated_by=meta.get("updated_by"),
-            ))
-        
-        result.append(CategorySettingsOut(
-            category=cat_key,
-            name=cat_info["name"],
-            description=cat_info["description"],
-            settings=cat_settings,
-        ))
-    
+                name=cat_info["name"],
+                description=cat_info["description"],
+                settings=cat_settings,
+            )
+        )
+
     return result
 
 
@@ -260,30 +276,34 @@ def get_category_settings(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     if category not in SETTING_CATEGORIES:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Category '{category}' not found")
-    
+
     settings = get_tenant_settings(str(tenant_id))
     metadata = get_setting_metadata(str(tenant_id))
     cat_info = SETTING_CATEGORIES[category]
-    
+
     cat_settings = []
     for setting_key in cat_info["settings"]:
         value = settings.get(setting_key, SETTING_DEFAULTS.get(setting_key))
         meta = metadata.get(setting_key, {})
-        
-        cat_settings.append(SettingOut(
-            key=setting_key,
-            value=mask_sensitive_value(setting_key, value),
-            category=category,
-            is_default=setting_key not in metadata,
-            updated_at=meta.get("updated_at"),
-            updated_by=meta.get("updated_by"),
-        ))
-    
+
+        cat_settings.append(
+            SettingOut(
+                key=setting_key,
+                value=mask_sensitive_value(setting_key, value),
+                category=category,
+                is_default=setting_key not in metadata,
+                updated_at=meta.get("updated_at"),
+                updated_by=meta.get("updated_by"),
+            )
+        )
+
     return CategorySettingsOut(
         category=category,
         name=cat_info["name"],
@@ -304,23 +324,25 @@ def get_setting(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     if key not in SETTING_DEFAULTS:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Setting '{key}' not found")
-    
+
     settings = get_tenant_settings(str(tenant_id))
     metadata = get_setting_metadata(str(tenant_id))
     meta = metadata.get(key, {})
-    
+
     # Find category
     category = "general"
     for cat_key, cat_info in SETTING_CATEGORIES.items():
         if key in cat_info["settings"]:
             category = cat_key
             break
-    
+
     return SettingOut(
         key=key,
         value=mask_sensitive_value(key, settings.get(key)),
@@ -342,7 +364,7 @@ def update_setting(
 ):
     """
     Update a specific setting.
-    
+
     🔒 Security: Authorized update
     🚨 SRE: Audit logging
     """
@@ -350,15 +372,17 @@ def update_setting(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     if key not in SETTING_DEFAULTS:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Setting '{key}' not found")
-    
+
     # Save setting
     save_tenant_setting(str(tenant_id), key, data.value, str(request.user_id))
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -370,18 +394,18 @@ def update_setting(
         tenant=tenant,
         details={"key": key, "value": mask_sensitive_value(key, data.value)},
     )
-    
+
     # Return updated setting
     settings = get_tenant_settings(str(tenant_id))
     metadata = get_setting_metadata(str(tenant_id))
     meta = metadata.get(key, {})
-    
+
     category = "general"
     for cat_key, cat_info in SETTING_CATEGORIES.items():
         if key in cat_info["settings"]:
             category = cat_key
             break
-    
+
     return SettingOut(
         key=key,
         value=mask_sensitive_value(key, settings.get(key)),
@@ -402,24 +426,26 @@ def update_settings_bulk(
 ):
     """
     Update multiple settings at once.
-    
+
     📊 Performance: Batch update
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Validate keys
     invalid_keys = [k for k in data.settings.keys() if k not in SETTING_DEFAULTS]
     if invalid_keys:
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Invalid settings: {', '.join(invalid_keys)}")
-    
+
     # Save settings
     save_tenant_settings_bulk(str(tenant_id), data.settings, str(request.user_id))
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -431,7 +457,7 @@ def update_settings_bulk(
         tenant=tenant,
         details={"keys": list(data.settings.keys())},
     )
-    
+
     return {"success": True, "updated_count": len(data.settings)}
 
 
@@ -448,23 +474,25 @@ def reset_setting(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     if key not in SETTING_DEFAULTS:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Setting '{key}' not found")
-    
+
     # Remove from cache
     cache_key = get_settings_key(str(tenant_id))
     stored = cache.get(cache_key, {"values": {}, "metadata": {}})
-    
+
     if key in stored["values"]:
         del stored["values"][key]
     if key in stored["metadata"]:
         del stored["metadata"][key]
-    
+
     cache.set(cache_key, stored, timeout=86400 * 30)
-    
+
     return {
         "success": True,
         "key": key,
@@ -484,11 +512,12 @@ def reset_all_settings(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     cache_key = get_settings_key(str(tenant_id))
     cache.delete(cache_key)
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -499,5 +528,5 @@ def reset_all_settings(
         actor_type=ActorType.ADMIN,
         tenant=tenant,
     )
-    
+
     return {"success": True, "message": "All settings reset to defaults"}

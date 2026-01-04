@@ -4,6 +4,7 @@
 This script is intended for CI. It will produce one message to the configured topic and
 attempt to consume it within a short timeout. Returns exit code 0 on success, non-zero on failure.
 """
+
 import argparse
 import json
 import time
@@ -13,8 +14,7 @@ from kafka import KafkaConsumer, KafkaProducer
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     p = argparse.ArgumentParser()
     p.add_argument("--bootstrap-server", default="127.0.0.1:9092")

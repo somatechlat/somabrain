@@ -7,27 +7,29 @@ from somabrain.services.calibration_service import calibration_service
 
 router = Router(tags=["calibration"])
 
+
 @router.get("/status")
 def calibration_status(request: HttpRequest):
     """Execute calibration status.
 
-        Args:
-            request: The request.
-        """
+    Args:
+        request: The request.
+    """
 
     if not calibration_service.enabled:
         return {"enabled": False}
     return calibration_service.get_all_calibration_status()
 
+
 @router.get("/{domain}/{tenant}")
 def calibration_get(request: HttpRequest, domain: str, tenant: str):
     """Execute calibration get.
 
-        Args:
-            request: The request.
-            domain: The domain.
-            tenant: The tenant.
-        """
+    Args:
+        request: The request.
+        domain: The domain.
+        tenant: The tenant.
+    """
 
     if not calibration_service.enabled:
         return {"enabled": False}
@@ -36,15 +38,16 @@ def calibration_get(request: HttpRequest, domain: str, tenant: str):
     except Exception as e:
         raise HttpError(500, str(e))
 
+
 @router.get("/reliability/{domain}/{tenant}")
 def calibration_reliability(request: HttpRequest, domain: str, tenant: str):
     """Execute calibration reliability.
 
-        Args:
-            request: The request.
-            domain: The domain.
-            tenant: The tenant.
-        """
+    Args:
+        request: The request.
+        domain: The domain.
+        tenant: The tenant.
+    """
 
     if not calibration_service.enabled:
         return {"enabled": False}

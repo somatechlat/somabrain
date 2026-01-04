@@ -9,9 +9,9 @@ from common.logging import logger
 def span(name: str, **attrs):
     """Execute span.
 
-        Args:
-            name: The name.
-        """
+    Args:
+        name: The name.
+    """
 
     provider = trace.get_tracer_provider()
     # Detect default/uninitialized provider classes that result in no-op spans

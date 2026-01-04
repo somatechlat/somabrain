@@ -77,8 +77,7 @@ def _get_jwt_cache() -> JWTKeyCache:
 
 def _auth_disabled() -> bool:
     # Auth disable capability removed: always enforce auth in strict mode.
-    """Execute auth disabled.
-        """
+    """Execute auth disabled."""
 
     return False
 
@@ -102,7 +101,7 @@ def _get_jwt_key() -> Optional[str]:
         except Exception as exc:
             logger.warning("Failed to load JWT public key: %s", exc)
             return None
-    
+
     return getattr(settings, "SOMABRAIN_JWT_SECRET", None)
 
 
@@ -123,8 +122,7 @@ def invalidate_jwt_cache() -> None:
 
 
 def _jwt_algorithms() -> list[str]:
-    """Execute jwt algorithms.
-        """
+    """Execute jwt algorithms."""
 
     if getattr(settings, "SOMABRAIN_JWT_PUBLIC_KEY_PATH", None):
         return ["RS256", "RS384", "RS512"]
@@ -133,7 +131,7 @@ def _jwt_algorithms() -> list[str]:
 
 def require_auth(request: HttpRequest, cfg: Any = None) -> None:
     """Validate authentication for API requests.
-    
+
     Args:
         request: The incoming Django request
         cfg: Legacy configuration object (ignored in favor of settings)
@@ -146,17 +144,17 @@ def require_auth(request: HttpRequest, cfg: Any = None) -> None:
         if not auth.startswith("Bearer "):
             raise HttpError(401, "missing bearer token")
         token = auth.split(" ", 1)[1].strip()
-        
+
         audience = getattr(settings, "SOMABRAIN_JWT_AUDIENCE", None)
         issuer = getattr(settings, "SOMABRAIN_JWT_ISSUER", None)
-        
+
         options = {"verify_aud": bool(audience)}
         kwargs = {}
         if audience:
             kwargs["audience"] = audience
         if issuer:
             kwargs["issuer"] = issuer
-            
+
         try:
             jwt.decode(
                 token,
@@ -185,7 +183,7 @@ def require_auth(request: HttpRequest, cfg: Any = None) -> None:
 
 def require_admin_auth(request: HttpRequest, cfg: Any = None) -> None:
     """Validate admin authentication.
-    
+
     Args:
         request: Incoming request
         cfg: Legacy config (ignored)

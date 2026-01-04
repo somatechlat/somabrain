@@ -34,8 +34,7 @@ OUT = Path(__file__).resolve().parent / "workbench_numerics_results.json"
 
 
 def _git_sha() -> str:
-    """Execute git sha.
-        """
+    """Execute git sha."""
 
     try:
         return (
@@ -53,9 +52,9 @@ def _git_sha() -> str:
 def _provenance(extra: dict | None = None) -> dict:
     """Execute provenance.
 
-        Args:
-            extra: The extra.
-        """
+    Args:
+        extra: The extra.
+    """
 
     prov = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -77,10 +76,10 @@ def run(
 ):
     """Execute run.
 
-        Args:
-            D_list: The D_list.
-            dtypes: The dtypes.
-        """
+    Args:
+        D_list: The D_list.
+        dtypes: The dtypes.
+    """
 
     results = {
         "provenance": _provenance(

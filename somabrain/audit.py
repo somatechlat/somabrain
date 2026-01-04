@@ -27,13 +27,7 @@ def _schema_path() -> Optional[Path]:
     """Return path to docs audit schema if present (optional)."""
     try:
         here = Path(__file__).resolve().parent.parent
-        sp = (
-            here.parent
-            / "docs"
-            / "technical"
-            / "schemas"
-            / "audit_event.schema.json"
-        )
+        sp = here.parent / "docs" / "technical" / "schemas" / "audit_event.schema.json"
         if sp.exists():
             return sp
     except Exception:
@@ -94,14 +88,16 @@ def log_admin_action(
             "type": "admin_action",
             "path": str(request.path),
             "method": request.method,
-            "client": request.META.get('REMOTE_ADDR'),
+            "client": request.META.get("REMOTE_ADDR"),
             "action": action,
         }
         if details:
             ev["details"] = details
 
         # Use the outbox-backed publish_event. No direct disk write.
-        publish_event(ev, topic=getattr(settings, "SOMABRAIN_AUDIT_TOPIC", "soma.audit"))
+        publish_event(
+            ev, topic=getattr(settings, "SOMABRAIN_AUDIT_TOPIC", "soma.audit")
+        )
     except Exception:
         LOGGER.debug("log_admin_action failed", exc_info=True)
 
@@ -142,9 +138,9 @@ _MASK = "***REDACTED***"
 def _mask_value(v: Any) -> Any:
     """Execute mask value.
 
-        Args:
-            v: The v.
-        """
+    Args:
+        v: The v.
+    """
 
     try:
         if v is None:
@@ -178,9 +174,9 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         def _walk(obj: Any) -> Any:
             """Execute walk.
 
-                Args:
-                    obj: The obj.
-                """
+            Args:
+                obj: The obj.
+            """
 
             if isinstance(obj, dict):
                 out: Dict[str, Any] = {}

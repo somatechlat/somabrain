@@ -27,13 +27,13 @@ def forward_request(request: HttpRequest, body: ProxyRequest):
     """Forward request to external service."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
-    
+
     # Basic proxy logic - forward to configured service
     target_url = getattr(body, "target_url", None)
     payload = getattr(body, "payload", {})
-    
+
     logger.debug(f"Proxy request for {ctx.tenant_id} to {target_url}")
-    
+
     # This is a simplified proxy - full implementation would use httpx/requests
     return {
         "tenant_id": ctx.tenant_id,

@@ -160,7 +160,9 @@ class WorkingMemory:
         self._recency_scale = self._validate_scale(
             r_scale, settings.SOMABRAIN_WM_RECENCY_TIME_SCALE
         )
-        self._recency_cap = self._validate_scale(r_cap, settings.SOMABRAIN_WM_RECENCY_MAX_STEPS)
+        self._recency_cap = self._validate_scale(
+            r_cap, settings.SOMABRAIN_WM_RECENCY_MAX_STEPS
+        )
         self._default_salience_threshold = float(
             settings.SOMABRAIN_WM_SALIENCE_THRESHOLD
             if salience_threshold is None
@@ -181,10 +183,10 @@ class WorkingMemory:
     def _validate_scale(value: float, default: float) -> float:
         """Execute validate scale.
 
-            Args:
-                value: The value.
-                default: The default.
-            """
+        Args:
+            value: The value.
+            default: The default.
+        """
 
         try:
             v = float(value)
@@ -459,10 +461,10 @@ class WorkingMemory:
     def _recency_steps(self, now: float, admitted_at: float) -> float:
         """Execute recency steps.
 
-            Args:
-                now: The now.
-                admitted_at: The admitted_at.
-            """
+        Args:
+            now: The now.
+            admitted_at: The admitted_at.
+        """
 
         age = max(0.0, float(now) - float(admitted_at))
         if age <= 0.0:

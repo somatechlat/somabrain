@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Enforce clean project structure - prevent clutter regressions."""
+
 import sys
 from pathlib import Path
 

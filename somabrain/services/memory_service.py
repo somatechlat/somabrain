@@ -62,20 +62,17 @@ class MemoryService:
     # Circuit‑breaker delegation helpers
     # ---------------------------------------------------------------------
     def _is_circuit_open(self) -> bool:
-        """Execute is circuit open.
-            """
+        """Execute is circuit open."""
 
         return self._cb.is_open(self.tenant_id)
 
     def _mark_success(self) -> None:
-        """Execute mark success.
-            """
+        """Execute mark success."""
 
         self._cb.record_success(self.tenant_id)
 
     def _mark_failure(self) -> None:
-        """Execute mark failure.
-            """
+        """Execute mark failure."""
 
         self._cb.record_failure(self.tenant_id)
 
@@ -113,11 +110,11 @@ class MemoryService:
     def remember(self, key: str, payload: dict, universe: str | None = None):
         """Execute remember.
 
-            Args:
-                key: The key.
-                payload: The payload.
-                universe: The universe.
-            """
+        Args:
+            key: The key.
+            payload: The payload.
+            universe: The universe.
+        """
 
         if universe and "universe" not in payload:
             payload["universe"] = universe
@@ -140,11 +137,11 @@ class MemoryService:
     def recall(self, query: str, top_k: int = 3, universe: str | None = None):
         """Execute recall.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-                universe: The universe.
-            """
+        Args:
+            query: The query.
+            top_k: The top_k.
+            universe: The universe.
+        """
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
@@ -180,11 +177,11 @@ class MemoryService:
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         """Execute aremember.
 
-            Args:
-                key: The key.
-                payload: The payload.
-                universe: The universe.
-            """
+        Args:
+            key: The key.
+            payload: The payload.
+            universe: The universe.
+        """
 
         if universe and "universe" not in payload:
             payload["universe"] = universe
@@ -206,11 +203,11 @@ class MemoryService:
     async def arecall(self, query: str, top_k: int = 3, universe: str | None = None):
         """Execute arecall.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-                universe: The universe.
-            """
+        Args:
+            query: The query.
+            top_k: The top_k.
+            universe: The universe.
+        """
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
@@ -252,10 +249,10 @@ class MemoryService:
     ) -> list[tuple[float, float, float]]:
         """Execute aremember bulk.
 
-            Args:
-                items: The items.
-                universe: The universe.
-            """
+        Args:
+            items: The items.
+            universe: The universe.
+        """
 
         prepared: list[tuple[str, dict]] = []
         for key, payload in items:
@@ -285,8 +282,7 @@ class MemoryService:
     # Miscellaneous helper methods (mostly no‑ops for metrics)
     # ---------------------------------------------------------------------
     def _health_check(self) -> bool:
-        """Execute health check.
-            """
+        """Execute health check."""
 
         try:
             health = self.client().health()
@@ -304,8 +300,7 @@ class MemoryService:
         return False
 
     def _reset_circuit_if_needed(self) -> bool:
-        """Execute reset circuit if needed.
-            """
+        """Execute reset circuit if needed."""
 
         if not self._is_circuit_open():
             return False
@@ -322,10 +317,10 @@ class MemoryService:
     def coord_for_key(self, key: str, universe: str | None = None):
         """Execute coord for key.
 
-            Args:
-                key: The key.
-                universe: The universe.
-            """
+        Args:
+            key: The key.
+            universe: The universe.
+        """
 
         return self.client().coord_for_key(key, universe)
 
@@ -337,16 +332,15 @@ class MemoryService:
     def delete(self, coordinate):
         """Execute delete.
 
-            Args:
-                coordinate: The coordinate.
-            """
+        Args:
+            coordinate: The coordinate.
+        """
 
         self._reset_circuit_if_needed()
         return self.client().delete(coordinate)
 
     def health(self) -> dict:
-        """Execute health.
-            """
+        """Execute health."""
 
         return self.client().health()
 
@@ -380,9 +374,9 @@ class MemoryService:
     ) -> None:
         """Execute configure tenant thresholds.
 
-            Args:
-                tenant: The tenant.
-            """
+        Args:
+            tenant: The tenant.
+        """
 
         cls._circuit_breaker.configure_tenant(
             tenant,
@@ -406,9 +400,9 @@ class MemoryService:
     def _should_attempt_reset(cls, tenant: str) -> bool:
         """Execute should attempt reset.
 
-            Args:
-                tenant: The tenant.
-            """
+        Args:
+            tenant: The tenant.
+        """
 
         return cls._circuit_breaker.should_attempt_reset(tenant)
 
@@ -418,18 +412,18 @@ class MemoryService:
     def _tenant_label(self, namespace: str) -> str:
         """Execute tenant label.
 
-            Args:
-                namespace: The namespace.
-            """
+        Args:
+            namespace: The namespace.
+        """
 
         return tenant_label(namespace)
 
     def _resolve_namespace_for_label(self, label: str) -> str:
         """Execute resolve namespace for label.
 
-            Args:
-                label: The label.
-            """
+        Args:
+            label: The label.
+        """
 
         return resolve_namespace(label)
 
@@ -445,10 +439,10 @@ class MemoryService:
     def _update_outbox_metric(tenant: str, count: int) -> None:
         """Execute update outbox metric.
 
-            Args:
-                tenant: The tenant.
-                count: The count.
-            """
+        Args:
+            tenant: The tenant.
+            count: The count.
+        """
 
         try:
             from somabrain import metrics
@@ -467,10 +461,10 @@ class MemoryService:
     def _update_tenant_outbox_metric(tenant: str, count: int) -> None:
         """Execute update tenant outbox metric.
 
-            Args:
-                tenant: The tenant.
-                count: The count.
-            """
+        Args:
+            tenant: The tenant.
+            count: The count.
+        """
 
         try:
             from somabrain import metrics

@@ -17,17 +17,15 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 from enum import Enum
 
-from django.db.models import Q
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, TenantUser, AuditLog, ActorType
+from somabrain.saas.models import Tenant, AuditLog, ActorType
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
 
@@ -39,8 +37,10 @@ router = Router(tags=["Onboarding"])
 # ONBOARDING STEPS DEFINITION - ALL 10 PERSONAS
 # =============================================================================
 
+
 class OnboardingStep(str, Enum):
     """Onboarding wizard steps."""
+
     WELCOME = "welcome"
     ORGANIZATION_PROFILE = "organization_profile"
     INVITE_TEAM = "invite_team"
@@ -118,8 +118,10 @@ STEP_INFO = {
 # SCHEMAS - ALL 10 PERSONAS
 # =============================================================================
 
+
 class OnboardingStepOut(Schema):
     """Step information output."""
+
     step: str
     title: str
     description: str
@@ -132,6 +134,7 @@ class OnboardingStepOut(Schema):
 
 class OnboardingProgressOut(Schema):
     """Complete onboarding progress."""
+
     tenant_id: UUID
     current_step: str
     completed_steps: List[str]
@@ -144,17 +147,20 @@ class OnboardingProgressOut(Schema):
 
 class StepCompleteRequest(Schema):
     """Request to mark step as complete."""
+
     data: Optional[Dict[str, Any]] = None
 
 
 class StepSkipRequest(Schema):
     """Request to skip a step."""
+
     reason: Optional[str] = None
 
 
 # =============================================================================
 # PROGRESS STORAGE - CACHE BACKED
 # =============================================================================
+
 
 def get_progress_key(tenant_id: str) -> str:
     """Generate cache key for onboarding progress."""
@@ -165,7 +171,7 @@ def get_onboarding_progress(tenant_id: str) -> Dict[str, Any]:
     """Get or create onboarding progress for tenant."""
     key = get_progress_key(tenant_id)
     progress = cache.get(key)
-    
+
     if not progress:
         now = timezone.now().isoformat()
         progress = {
@@ -178,7 +184,7 @@ def get_onboarding_progress(tenant_id: str) -> Dict[str, Any]:
             "last_activity_at": now,
         }
         cache.set(key, progress, timeout=86400 * 30)  # 30 days
-    
+
     return progress
 
 
@@ -193,7 +199,8 @@ def calculate_progress_percentage(progress: Dict[str, Any]) -> int:
     """Calculate completion percentage."""
     total_required = sum(1 for s in STEP_ORDER if STEP_INFO[s]["required"])
     completed_required = sum(
-        1 for s in progress["completed_steps"]
+        1
+        for s in progress["completed_steps"]
         if STEP_INFO.get(OnboardingStep(s), {}).get("required", False)
     )
     return int((completed_required / total_required) * 100) if total_required > 0 else 0
@@ -203,6 +210,7 @@ def calculate_progress_percentage(progress: Dict[str, Any]) -> int:
 # ENDPOINTS - ALL 10 PERSONAS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/steps", response=List[OnboardingStepOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_onboarding_steps(
@@ -211,7 +219,7 @@ def list_onboarding_steps(
 ):
     """
     List all onboarding steps with completion status.
-    
+
     🔒 Security: Tenant isolation enforced
     🎨 UX: Clear step progression
     """
@@ -219,26 +227,29 @@ def list_onboarding_steps(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     progress = get_onboarding_progress(str(tenant_id))
-    
+
     steps = []
     for step in STEP_ORDER:
         info = STEP_INFO[step]
         step_data = progress.get("step_data", {}).get(step.value, {})
-        
-        steps.append(OnboardingStepOut(
-            step=step.value,
-            title=info["title"],
-            description=info["description"],
-            required=info["required"],
-            estimated_minutes=info["estimated_minutes"],
-            completed=step.value in progress["completed_steps"],
-            completed_at=step_data.get("completed_at"),
-            skipped=step.value in progress["skipped_steps"],
-        ))
-    
+
+        steps.append(
+            OnboardingStepOut(
+                step=step.value,
+                title=info["title"],
+                description=info["description"],
+                required=info["required"],
+                estimated_minutes=info["estimated_minutes"],
+                completed=step.value in progress["completed_steps"],
+                completed_at=step_data.get("completed_at"),
+                skipped=step.value in progress["skipped_steps"],
+            )
+        )
+
     return steps
 
 
@@ -250,7 +261,7 @@ def get_progress(
 ):
     """
     Get current onboarding progress.
-    
+
     🚨 SRE: Progress tracking
     📊 Performance: Cached progress
     """
@@ -258,10 +269,11 @@ def get_progress(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     progress = get_onboarding_progress(str(tenant_id))
-    
+
     return OnboardingProgressOut(
         tenant_id=UUID(progress["tenant_id"]),
         current_step=progress["current_step"],
@@ -284,7 +296,7 @@ def complete_step(
 ):
     """
     Mark an onboarding step as complete.
-    
+
     🧪 QA: Step validation
     🏛️ Architect: State machine transitions
     """
@@ -292,38 +304,40 @@ def complete_step(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Validate step
     try:
         step_enum = OnboardingStep(step)
     except ValueError:
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Invalid step: {step}")
-    
+
     progress = get_onboarding_progress(str(tenant_id))
-    
+
     # Mark as complete
     if step not in progress["completed_steps"]:
         progress["completed_steps"].append(step)
-    
+
     # Remove from skipped if it was skipped
     if step in progress["skipped_steps"]:
         progress["skipped_steps"].remove(step)
-    
+
     # Store step data
     progress.setdefault("step_data", {})[step] = {
         "completed_at": timezone.now().isoformat(),
         "data": data.data or {},
     }
-    
+
     # Advance to next step
     current_idx = STEP_ORDER.index(step_enum)
     if current_idx < len(STEP_ORDER) - 1:
         progress["current_step"] = STEP_ORDER[current_idx + 1].value
-    
+
     save_onboarding_progress(str(tenant_id), progress)
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -335,7 +349,7 @@ def complete_step(
         tenant=tenant,
         details={"step": step, "percentage": calculate_progress_percentage(progress)},
     )
-    
+
     return {
         "success": True,
         "step": step,
@@ -354,40 +368,43 @@ def skip_step(
 ):
     """
     Skip an optional onboarding step.
-    
+
     🔒 Security: Only optional steps can be skipped
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Validate step
     try:
         step_enum = OnboardingStep(step)
     except ValueError:
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Invalid step: {step}")
-    
+
     # Check if step can be skipped
     if STEP_INFO[step_enum]["required"]:
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Step '{step}' is required and cannot be skipped")
-    
+
     progress = get_onboarding_progress(str(tenant_id))
-    
+
     # Mark as skipped
     if step not in progress["skipped_steps"]:
         progress["skipped_steps"].append(step)
-    
+
     # Advance to next step
     current_idx = STEP_ORDER.index(step_enum)
     if current_idx < len(STEP_ORDER) - 1:
         progress["current_step"] = STEP_ORDER[current_idx + 1].value
-    
+
     save_onboarding_progress(str(tenant_id), progress)
-    
+
     return {
         "success": True,
         "step": step,
@@ -405,18 +422,19 @@ def reset_onboarding(
 ):
     """
     Reset onboarding progress for a tenant.
-    
+
     🛠️ DevOps: Development/testing support
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     key = get_progress_key(str(tenant_id))
     cache.delete(key)
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -427,7 +445,7 @@ def reset_onboarding(
         actor_type=ActorType.ADMIN,
         tenant=tenant,
     )
-    
+
     return {"success": True, "message": "Onboarding progress reset"}
 
 
@@ -439,17 +457,18 @@ def get_checklist(
 ):
     """
     Get a simplified checklist view of onboarding.
-    
+
     🎨 UX: Simple progress display
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     progress = get_onboarding_progress(str(tenant_id))
-    
+
     checklist = []
     for step in STEP_ORDER:
         info = STEP_INFO[step]
@@ -461,14 +480,16 @@ def get_checklist(
             status = "current"
         else:
             status = "pending"
-        
-        checklist.append({
-            "step": step.value,
-            "title": info["title"],
-            "required": info["required"],
-            "status": status,
-        })
-    
+
+        checklist.append(
+            {
+                "step": step.value,
+                "title": info["title"],
+                "required": info["required"],
+                "status": status,
+            }
+        )
+
     return {
         "tenant_id": str(tenant_id),
         "checklist": checklist,
@@ -479,6 +500,7 @@ def get_checklist(
 # =============================================================================
 # STEP-SPECIFIC ACTIONS - ALL 10 PERSONAS
 # =============================================================================
+
 
 @router.post("/{tenant_id}/steps/organization_profile/save")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -493,17 +515,18 @@ def save_organization_profile(
 ):
     """
     Save organization profile during onboarding.
-    
+
     💾 DBA: Update tenant record
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     if name:
         tenant.name = name
     if industry:
@@ -512,18 +535,20 @@ def save_organization_profile(
         tenant.company_size = size
     if timezone_str:
         tenant.timezone = timezone_str
-    
+
     tenant.save()
-    
+
     return {
         "success": True,
         "tenant_id": str(tenant_id),
         "updated_fields": {
-            k: v for k, v in [
-                ("name", name), 
-                ("industry", industry), 
-                ("size", size), 
-                ("timezone", timezone_str)
-            ] if v
+            k: v
+            for k, v in [
+                ("name", name),
+                ("industry", industry),
+                ("size", size),
+                ("timezone", timezone_str),
+            ]
+            if v
         },
     }

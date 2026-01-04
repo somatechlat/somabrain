@@ -79,9 +79,9 @@ class ModeConfig:
     def _parse_mode(self, mode: str | None) -> DeploymentMode:
         """Execute parse mode.
 
-            Args:
-                mode: The mode.
-            """
+        Args:
+            mode: The mode.
+        """
 
         m = (mode or "").strip().lower()
         if m in ("dev", "development"):
@@ -93,8 +93,7 @@ class ModeConfig:
         raise ValueError(f"Invalid mode: {mode}. Use dev, staging, or production")
 
     def _validate(self):
-        """Execute validate.
-            """
+        """Execute validate."""
 
         if self.mode == DeploymentMode.PRODUCTION and not self.profile.auth_enabled:
             raise ValueError("CRITICAL: Auth cannot be disabled in production")

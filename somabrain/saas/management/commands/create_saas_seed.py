@@ -31,40 +31,41 @@ from somabrain.saas.models import (
 
 class Command(BaseCommand):
     """Create seed data for SaaS platform."""
-    
+
     help = "Create default subscription tiers and test data"
-    
+
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--with-test-tenant",
             action="store_true",
             help="Also create a test tenant with API key",
         )
-    
+
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         self.stdout.write("Creating SaaS seed data...")
-        
+
         # Create tiers
         tiers = self._create_tiers()
-        self.stdout.write(self.style.SUCCESS(f"Created {len(tiers)} subscription tiers"))
-        
+        self.stdout.write(
+            self.style.SUCCESS(f"Created {len(tiers)} subscription tiers")
+        )
+
         # Create test tenant if requested
         if options["with_test_tenant"]:
             tenant, api_key = self._create_test_tenant(tiers["starter"])
             self.stdout.write(self.style.SUCCESS(f"Created test tenant: {tenant.slug}"))
             self.stdout.write(self.style.WARNING(f"Test API Key: {api_key}"))
-        
+
         self.stdout.write(self.style.SUCCESS("Seed data created successfully!"))
-    
+
     def _create_tiers(self) -> dict:
         """Create default subscription tiers."""
         tiers_data = [
@@ -135,7 +136,7 @@ class Command(BaseCommand):
                 "api_calls_limit": 1000000,
                 "memory_ops_limit": 100000,
                 "services_limit": -1,  # Unlimited
-                "users_limit": -1,   # Unlimited
+                "users_limit": -1,  # Unlimited
                 "storage_limit_gb": 1000,
                 "features": {
                     "basic_memory": True,
@@ -150,9 +151,9 @@ class Command(BaseCommand):
                 "display_order": 4,
             },
         ]
-        
+
         result = {}
-        
+
         for tier_data in tiers_data:
             tier, created = SubscriptionTier.objects.update_or_create(
                 slug=tier_data["slug"],
@@ -161,9 +162,9 @@ class Command(BaseCommand):
             result[tier.slug] = tier
             status = "Created" if created else "Updated"
             self.stdout.write(f"  {status}: {tier.name} (${tier.price_monthly}/mo)")
-        
+
         return result
-    
+
     @transaction.atomic
     def _create_test_tenant(self, default_tier: SubscriptionTier) -> tuple:
         """Create a test tenant with API key."""
@@ -178,7 +179,7 @@ class Command(BaseCommand):
                 "billing_email": "billing@test-tenant.local",
             },
         )
-        
+
         # Create subscription if new tenant
         if created:
             Subscription.objects.create(
@@ -186,18 +187,24 @@ class Command(BaseCommand):
                 tier=default_tier,
                 status=SubscriptionStatus.ACTIVE,
             )
-        
+
         # Generate API key
         full_key, prefix, key_hash = APIKey.generate_key(is_test=False)
-        
+
         api_key, _ = APIKey.objects.get_or_create(
             tenant=tenant,
             name="Default Admin Key",
             defaults={
                 "key_prefix": prefix,
                 "key_hash": key_hash,
-                "scopes": ["admin", "admin:tenants", "admin:billing", "read:memory", "write:memory"],
+                "scopes": [
+                    "admin",
+                    "admin:tenants",
+                    "admin:billing",
+                    "read:memory",
+                    "write:memory",
+                ],
             },
         )
-        
+
         return tenant, full_key

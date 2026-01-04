@@ -17,9 +17,8 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Service lifecycle
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime, timedelta
-from uuid import UUID
 import time
 
 from django.utils import timezone
@@ -40,8 +39,10 @@ router = Router(tags=["Service Health"])
 # SCHEMAS
 # =============================================================================
 
+
 class ServiceStatus(Schema):
     """Individual service status."""
+
     name: str
     status: str  # healthy, degraded, unhealthy
     response_time_ms: float
@@ -51,6 +52,7 @@ class ServiceStatus(Schema):
 
 class HealthSummary(Schema):
     """Overall health summary."""
+
     status: str
     services: List[ServiceStatus]
     timestamp: str
@@ -59,6 +61,7 @@ class HealthSummary(Schema):
 
 class HealthHistory(Schema):
     """Health check history entry."""
+
     timestamp: str
     status: str
     response_time_ms: float
@@ -68,6 +71,7 @@ class HealthHistory(Schema):
 # REAL HEALTH CHECKS
 # =============================================================================
 
+
 def check_database() -> ServiceStatus:
     """Check REAL PostgreSQL database."""
     start = time.time()
@@ -75,7 +79,7 @@ def check_database() -> ServiceStatus:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
-        
+
         response_time = (time.time() - start) * 1000
         return ServiceStatus(
             name="database",
@@ -102,9 +106,9 @@ def check_cache() -> ServiceStatus:
         cache.set(test_key, "ok", timeout=10)
         result = cache.get(test_key)
         cache.delete(test_key)
-        
+
         response_time = (time.time() - start) * 1000
-        
+
         if result == "ok":
             return ServiceStatus(
                 name="cache",
@@ -138,7 +142,7 @@ def check_orm() -> ServiceStatus:
         # REAL query against Tenant model
         count = Tenant.objects.count()
         response_time = (time.time() - start) * 1000
-        
+
         return ServiceStatus(
             name="orm",
             status="healthy" if response_time < 100 else "degraded",
@@ -160,22 +164,23 @@ def check_orm() -> ServiceStatus:
 # PUBLIC ENDPOINTS
 # =============================================================================
 
+
 @router.get("/health", response=HealthSummary)
 def get_health():
     """
     Get overall system health.
-    
+
     🚨 SRE: Primary health endpoint
-    
+
     REAL checks against database, cache, ORM.
     """
     # Run REAL checks
     db_status = check_database()
     cache_status = check_cache()
     orm_status = check_orm()
-    
+
     services = [db_status, cache_status, orm_status]
-    
+
     # Determine overall status
     if any(s.status == "unhealthy" for s in services):
         overall = "unhealthy"
@@ -183,15 +188,19 @@ def get_health():
         overall = "degraded"
     else:
         overall = "healthy"
-    
+
     # Calculate uptime from cache
     startup_time = cache.get("system:startup_time")
     if not startup_time:
         startup_time = timezone.now()
         cache.set("system:startup_time", startup_time, timeout=86400 * 30)
-    
-    uptime = int((timezone.now() - startup_time).total_seconds()) if isinstance(startup_time, datetime) else 0
-    
+
+    uptime = (
+        int((timezone.now() - startup_time).total_seconds())
+        if isinstance(startup_time, datetime)
+        else 0
+    )
+
     return HealthSummary(
         status=overall,
         services=services,
@@ -204,7 +213,7 @@ def get_health():
 def liveness_check():
     """
     Kubernetes liveness probe.
-    
+
     🛠️ DevOps: K8s probe
     """
     return {"status": "alive", "timestamp": timezone.now().isoformat()}
@@ -214,16 +223,16 @@ def liveness_check():
 def readiness_check():
     """
     Kubernetes readiness probe.
-    
+
     🛠️ DevOps: K8s probe
-    
+
     REAL database check.
     """
     db_status = check_database()
-    
+
     if db_status.status == "unhealthy":
         raise HttpError(503, "Database unavailable")
-    
+
     return {"status": "ready", "timestamp": timezone.now().isoformat()}
 
 
@@ -231,14 +240,15 @@ def readiness_check():
 # ADMIN ENDPOINTS
 # =============================================================================
 
+
 @router.get("/services", response=List[ServiceStatus])
 @require_auth(roles=["super-admin"])
 def list_service_status(request: AuthenticatedRequest):
     """
     List all service statuses (admin).
-    
+
     🚨 SRE: Service monitoring
-    
+
     REAL checks.
     """
     return [
@@ -260,10 +270,10 @@ def get_service_status(
         "cache": check_cache,
         "orm": check_orm,
     }
-    
+
     if service_name not in checks:
         raise HttpError(404, f"Unknown service: {service_name}")
-    
+
     return checks[service_name]()
 
 
@@ -276,17 +286,17 @@ def get_health_history(
 ):
     """
     Get health check history.
-    
+
     📊 Performance: Historical health data
-    
+
     REAL data from cache.
     """
     history_key = f"health:history:{service_name}"
     history = cache.get(history_key, [])
-    
+
     # Filter by time range
     since = timezone.now() - timedelta(hours=hours)
-    
+
     return [
         HealthHistory(
             timestamp=h["timestamp"],
@@ -304,16 +314,16 @@ def get_health_history(
 def get_health_metrics(request: AuthenticatedRequest):
     """
     Get detailed health metrics.
-    
+
     📊 Performance: REAL metrics
     """
     # REAL counts
     tenant_count = Tenant.objects.count()
     active_tenants = Tenant.objects.filter(status="active").count()
-    
+
     # Get last audit log
     last_activity = AuditLog.objects.order_by("-timestamp").first()
-    
+
     return {
         "tenants": {
             "total": tenant_count,
@@ -331,7 +341,7 @@ def get_health_metrics(request: AuthenticatedRequest):
 def force_health_check(request: AuthenticatedRequest):
     """
     Force immediate health check on all services.
-    
+
     🧪 QA: On-demand health check
     """
     results = {
@@ -339,17 +349,20 @@ def force_health_check(request: AuthenticatedRequest):
         "cache": check_cache().dict(),
         "orm": check_orm().dict(),
     }
-    
+
     # Store in history
     for name, result in results.items():
         history_key = f"health:history:{name}"
         history = cache.get(history_key, [])
-        history.insert(0, {
-            "timestamp": result["last_check"],
-            "status": result["status"],
-            "response_time_ms": result["response_time_ms"],
-        })
+        history.insert(
+            0,
+            {
+                "timestamp": result["last_check"],
+                "status": result["status"],
+                "response_time_ms": result["response_time_ms"],
+            },
+        )
         history = history[:100]  # Keep last 100
         cache.set(history_key, history, timeout=86400 * 7)
-    
+
     return {"checked": True, "results": results}

@@ -16,8 +16,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Multiple format support
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime
+from typing import List, Optional
 from uuid import UUID, uuid4
 import json
 import csv
@@ -31,7 +30,11 @@ from ninja import Router, Schema, File
 from ninja.files import UploadedFile
 
 from somabrain.saas.models import (
-    Tenant, TenantUser, APIKey, Webhook, Notification, AuditLog, ActorType
+    Tenant,
+    TenantUser,
+    Webhook,
+    AuditLog,
+    ActorType,
 )
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
@@ -44,12 +47,13 @@ router = Router(tags=["Import/Export"])
 # JOB TRACKING
 # =============================================================================
 
+
 def get_job_key(job_id: str) -> str:
     """Retrieve job key.
 
-        Args:
-            job_id: The job_id.
-        """
+    Args:
+        job_id: The job_id.
+    """
 
     return f"import_export_job:{job_id}"
 
@@ -88,9 +92,9 @@ def update_job(job_id: str, **updates):
 def get_job(job_id: str) -> Optional[dict]:
     """Retrieve job.
 
-        Args:
-            job_id: The job_id.
-        """
+    Args:
+        job_id: The job_id.
+    """
 
     return cache.get(get_job_key(job_id))
 
@@ -99,8 +103,10 @@ def get_job(job_id: str) -> Optional[dict]:
 # SCHEMAS
 # =============================================================================
 
+
 class ExportJobOut(Schema):
     """Export job output."""
+
     id: str
     type: str
     status: str
@@ -112,6 +118,7 @@ class ExportJobOut(Schema):
 
 class ImportJobOut(Schema):
     """Import job output."""
+
     id: str
     type: str
     status: str
@@ -125,6 +132,7 @@ class ImportJobOut(Schema):
 
 class ExportRequest(Schema):
     """Export request."""
+
     format: str = "json"  # json, csv
     include_users: bool = True
     include_api_keys: bool = False
@@ -134,6 +142,7 @@ class ExportRequest(Schema):
 
 class ImportPreview(Schema):
     """Import preview."""
+
     valid: bool
     format: str
     items_count: int
@@ -146,6 +155,7 @@ class ImportPreview(Schema):
 # EXPORT ENDPOINTS
 # =============================================================================
 
+
 @router.post("/{tenant_id}/export", response=ExportJobOut)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
@@ -156,7 +166,7 @@ def start_export(
 ):
     """
     Start a tenant data export job.
-    
+
     🚨 SRE: Job tracking
     📊 Performance: Background processing
     """
@@ -164,14 +174,15 @@ def start_export(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     job = create_job("export", str(tenant_id), str(request.user_id))
-    
+
     # For now, do synchronous export (async in production)
     tenant = get_object_or_404(Tenant, id=tenant_id)
     export_data = {"tenant": {"id": str(tenant.id), "name": tenant.name}}
-    
+
     if data.include_users:
         users = TenantUser.objects.filter(tenant=tenant)
         export_data["users"] = [
@@ -184,7 +195,7 @@ def start_export(
             }
             for u in users
         ]
-    
+
     if data.include_webhooks:
         webhooks = Webhook.objects.filter(tenant=tenant)
         export_data["webhooks"] = [
@@ -197,14 +208,18 @@ def start_export(
             }
             for w in webhooks
         ]
-    
+
     # Store export result
     cache.set(f"export_result:{job['id']}", export_data, timeout=86400)
-    
-    update_job(job["id"], status="completed", progress=100,
-               completed_at=timezone.now().isoformat(),
-               result_url=f"/api/import-export/{tenant_id}/download/{job['id']}")
-    
+
+    update_job(
+        job["id"],
+        status="completed",
+        progress=100,
+        completed_at=timezone.now().isoformat(),
+        result_url=f"/api/import-export/{tenant_id}/download/{job['id']}",
+    )
+
     # Audit log
     AuditLog.log(
         action="data.exported",
@@ -215,7 +230,7 @@ def start_export(
         tenant=tenant,
         details={"format": data.format},
     )
-    
+
     return ExportJobOut(
         id=job["id"],
         type="export",
@@ -238,40 +253,44 @@ def download_export(
 ):
     """
     Download an export result.
-    
+
     🛠️ DevOps: Multiple formats
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     export_data = cache.get(f"export_result:{job_id}")
     if not export_data:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Export not found or expired")
-    
+
     if format == "csv":
         output = io.StringIO()
         writer = csv.writer(output)
-        
+
         # Users
         if "users" in export_data:
             writer.writerow(["users"])
             writer.writerow(["id", "email", "display_name", "role", "is_active"])
             for u in export_data["users"]:
-                writer.writerow([u["id"], u["email"], u["display_name"], 
-                               u["role"], u["is_active"]])
-        
+                writer.writerow(
+                    [u["id"], u["email"], u["display_name"], u["role"], u["is_active"]]
+                )
+
         response = HttpResponse(output.getvalue(), content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="export_{tenant_id}.csv"'
+        response["Content-Disposition"] = (
+            f'attachment; filename="export_{tenant_id}.csv"'
+        )
         return response
-    
+
     # JSON format
     response = HttpResponse(
-        json.dumps(export_data, indent=2),
-        content_type="application/json"
+        json.dumps(export_data, indent=2), content_type="application/json"
     )
     response["Content-Disposition"] = f'attachment; filename="export_{tenant_id}.json"'
     return response
@@ -280,6 +299,7 @@ def download_export(
 # =============================================================================
 # IMPORT ENDPOINTS
 # =============================================================================
+
 
 @router.post("/{tenant_id}/import/preview", response=ImportPreview)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -291,22 +311,23 @@ def preview_import(
 ):
     """
     Preview import data before applying.
-    
+
     🧪 QA: Import validation
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     errors = []
     users_count = 0
     webhooks_count = 0
-    
+
     try:
         content = file.read().decode("utf-8")
-        
+
         if file.name.endswith(".json"):
             data = json.loads(content)
             users_count = len(data.get("users", []))
@@ -322,9 +343,9 @@ def preview_import(
         else:
             errors.append("Unsupported file format. Use JSON or CSV.")
             file_format = "unknown"
-        
+
         items_count = users_count + webhooks_count
-        
+
     except json.JSONDecodeError as e:
         errors.append(f"Invalid JSON: {str(e)}")
         file_format = "json"
@@ -333,7 +354,7 @@ def preview_import(
         errors.append(f"Error parsing file: {str(e)}")
         file_format = "unknown"
         items_count = 0
-    
+
     return ImportPreview(
         valid=len(errors) == 0 and items_count > 0,
         format=file_format,
@@ -355,7 +376,7 @@ def start_import(
 ):
     """
     Start a tenant data import job.
-    
+
     📊 Performance: Bulk operations
     🚨 SRE: Error tracking
     """
@@ -363,30 +384,31 @@ def start_import(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     job = create_job("import", str(tenant_id), str(request.user_id))
-    
+
     errors = []
     processed = 0
     total = 0
-    
+
     try:
         content = file.read().decode("utf-8")
         data = json.loads(content)
-        
+
         # Import users
         users_data = data.get("users", [])
         total += len(users_data)
-        
+
         for user_data in users_data:
             try:
                 email = user_data.get("email")
                 if not email:
                     errors.append("User missing email")
                     continue
-                
+
                 # Check existing
                 existing = TenantUser.objects.filter(tenant=tenant, email=email).first()
                 if existing:
@@ -408,25 +430,25 @@ def start_import(
                 processed += 1
             except Exception as e:
                 errors.append(f"Error importing user {email}: {str(e)}")
-        
+
         # Import webhooks
         webhooks_data = data.get("webhooks", [])
         total += len(webhooks_data)
-        
+
         for webhook_data in webhooks_data:
             try:
                 name = webhook_data.get("name")
                 url = webhook_data.get("url")
-                
+
                 if not url:
                     errors.append("Webhook missing URL")
                     continue
-                
+
                 existing = Webhook.objects.filter(tenant=tenant, url=url).first()
                 if existing and skip_existing:
                     processed += 1
                     continue
-                
+
                 Webhook.objects.create(
                     tenant=tenant,
                     name=name or "Imported Webhook",
@@ -437,12 +459,12 @@ def start_import(
                 processed += 1
             except Exception as e:
                 errors.append(f"Error importing webhook: {str(e)}")
-        
+
     except json.JSONDecodeError as e:
         errors.append(f"Invalid JSON: {str(e)}")
     except Exception as e:
         errors.append(f"Import error: {str(e)}")
-    
+
     # Update job
     status = "completed" if len(errors) == 0 else "completed_with_errors"
     update_job(
@@ -454,7 +476,7 @@ def start_import(
         errors=errors,
         completed_at=timezone.now().isoformat(),
     )
-    
+
     # Audit log
     AuditLog.log(
         action="data.imported",
@@ -465,7 +487,7 @@ def start_import(
         tenant=tenant,
         details={"total": total, "processed": processed, "errors_count": len(errors)},
     )
-    
+
     return ImportJobOut(
         id=job["id"],
         type="import",
@@ -491,17 +513,20 @@ def get_job_status(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     job = get_job(job_id)
     if not job:
         from ninja.errors import HttpError
+
         raise HttpError(404, "Job not found")
-    
+
     if job.get("tenant_id") != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(403, "Job does not belong to this tenant")
-    
+
     return ImportJobOut(
         id=job["id"],
         type=job["type"],
@@ -519,11 +544,12 @@ def get_job_status(
 # TEMPLATE ENDPOINTS
 # =============================================================================
 
+
 @router.get("/templates/users")
 def get_users_import_template():
     """
     Get a CSV template for importing users.
-    
+
     🎨 UX: Import guidance
     """
     output = io.StringIO()
@@ -531,7 +557,7 @@ def get_users_import_template():
     writer.writerow(["email", "display_name", "role", "is_active"])
     writer.writerow(["user@example.com", "John Doe", "member", "true"])
     writer.writerow(["admin@example.com", "Jane Admin", "admin", "true"])
-    
+
     response = HttpResponse(output.getvalue(), content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="users_template.csv"'
     return response
@@ -543,9 +569,15 @@ def get_webhooks_import_template():
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["name", "url", "event_types", "is_active"])
-    writer.writerow(["My Webhook", "https://example.com/webhook", 
-                    "tenant.updated,subscription.changed", "true"])
-    
+    writer.writerow(
+        [
+            "My Webhook",
+            "https://example.com/webhook",
+            "tenant.updated,subscription.changed",
+            "true",
+        ]
+    )
+
     response = HttpResponse(output.getvalue(), content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="webhooks_template.csv"'
     return response

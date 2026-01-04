@@ -110,10 +110,10 @@ class ContextBuilder:
             # Environment variable names are uppercase; Settings uses snake_case.
             """Execute env float.
 
-                Args:
-                    name: The name.
-                    current: The current.
-                """
+            Args:
+                name: The name.
+                current: The current.
+            """
 
             attr_name = name.lower()
             value = getattr(settings, attr_name, None)
@@ -183,11 +183,11 @@ class ContextBuilder:
     ) -> ContextBundle:
         """Execute build.
 
-            Args:
-                query: The query.
-                top_k: The top_k.
-                session_id: The session_id.
-            """
+        Args:
+            query: The query.
+            top_k: The top_k.
+            session_id: The session_id.
+        """
 
         embedding = self._embed(query)
         results = self._search(query, embedding, top_k)
@@ -224,8 +224,7 @@ class ContextBuilder:
 
     @property
     def weights(self) -> RetrievalWeights:
-        """Execute weights.
-            """
+        """Execute weights."""
 
         return self._weights
 
@@ -233,9 +232,9 @@ class ContextBuilder:
     def _embed(self, text: str) -> List[float]:
         """Execute embed.
 
-            Args:
-                text: The text.
-            """
+        Args:
+            text: The text.
+        """
 
         raw = list(self._embed_fn(text))
         if not raw:
@@ -245,17 +244,16 @@ class ContextBuilder:
     def _namespace_for_tenant(self, tenant_id: str) -> str:
         """Execute namespace for tenant.
 
-            Args:
-                tenant_id: The tenant_id.
-            """
+        Args:
+            tenant_id: The tenant_id.
+        """
 
         base = getattr(settings, "SOMABRAIN_NAMESPACE", "public") or "public"
         tid = str(tenant_id or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "public"))
         return f"{base}:{tid}"
 
     def _memory_component(self) -> object:
-        """Execute memory component.
-            """
+        """Execute memory component."""
 
         if self._memory is not None:
             return self._memory
@@ -271,11 +269,11 @@ class ContextBuilder:
     ) -> List[Dict[str, Any]]:
         """Execute search.
 
-            Args:
-                query_text: The query_text.
-                embedding: The embedding.
-                top_k: The top_k.
-            """
+        Args:
+            query_text: The query_text.
+            embedding: The embedding.
+            top_k: The top_k.
+        """
 
         memory_component = self._memory_component()
         try:
@@ -290,9 +288,9 @@ class ContextBuilder:
     def _hits_to_results(self, hits: Iterable[RecallHit]) -> List[Dict[str, Any]]:
         """Execute hits to results.
 
-            Args:
-                hits: The hits.
-            """
+        Args:
+            hits: The hits.
+        """
 
         tenant = getattr(self, "_tenant_id", None) or None
         results: List[Dict[str, Any]] = []
@@ -319,10 +317,10 @@ class ContextBuilder:
     ) -> List[float]:
         """Execute compute weights.
 
-            Args:
-                query_vec: The query_vec.
-                memories: The memories.
-            """
+        Args:
+            query_vec: The query_vec.
+            memories: The memories.
+        """
 
         alpha, beta, gamma, tau = (
             self._weights.alpha,
@@ -473,10 +471,10 @@ class ContextBuilder:
     def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
         """Execute build prompt.
 
-            Args:
-                query: The query.
-                memories: The memories.
-            """
+        Args:
+            query: The query.
+            memories: The memories.
+        """
 
         context_blocks: List[str] = []
         for mem in memories:
@@ -497,10 +495,10 @@ class ContextBuilder:
     ) -> List[float]:
         """Execute build residual.
 
-            Args:
-                weights: The weights.
-                memories: The memories.
-            """
+        Args:
+            weights: The weights.
+            memories: The memories.
+        """
 
         if not weights or not memories:
             return []
@@ -519,9 +517,9 @@ class ContextBuilder:
     def _temporal_decay(self, ts: float) -> float:
         """Execute temporal decay.
 
-            Args:
-                ts: The ts.
-            """
+        Args:
+            ts: The ts.
+        """
 
         if ts <= 0:
             return max(self._recency_floor, 0.0)
@@ -539,9 +537,9 @@ class ContextBuilder:
     def _density_factor(self, metadata: Dict) -> float:
         """Execute density factor.
 
-            Args:
-                metadata: The metadata.
-            """
+        Args:
+            metadata: The metadata.
+        """
 
         if not isinstance(metadata, dict):
             return 1.0

@@ -106,8 +106,7 @@ class JournalEvent:
     last_error: Optional[str] = None
 
     def __post_init__(self):
-        """Execute post init  .
-            """
+        """Execute post init  ."""
 
         if self.timestamp is None:
             self.timestamp = datetime.utcnow()

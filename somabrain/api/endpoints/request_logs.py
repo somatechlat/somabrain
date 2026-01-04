@@ -16,17 +16,14 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Log retention
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict
 from datetime import datetime, timedelta
 from uuid import UUID, uuid4
-from enum import Enum
 
 from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, AuditLog, ActorType
 from somabrain.saas.auth import require_auth, AuthenticatedRequest
 from somabrain.saas.granular import require_permission, Permission
 
@@ -38,12 +35,13 @@ router = Router(tags=["Request Logs"])
 # REQUEST LOG STORAGE
 # =============================================================================
 
+
 def get_logs_key(tenant_id: str) -> str:
     """Retrieve logs key.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     return f"request_logs:{tenant_id}"
 
@@ -72,13 +70,13 @@ def log_request(
         "ip_address": ip_address,
         "timestamp": timezone.now().isoformat(),
     }
-    
+
     key = get_logs_key(tenant_id)
     logs = cache.get(key, [])
     logs.insert(0, log_entry)
     logs = logs[:10000]  # Keep last 10k
     cache.set(key, logs, timeout=86400 * 7)
-    
+
     return log_entry
 
 
@@ -91,12 +89,12 @@ def get_request_logs(
     """Get request logs with optional filters."""
     key = get_logs_key(tenant_id)
     logs = cache.get(key, [])
-    
+
     if method:
         logs = [l for l in logs if l["method"] == method]
     if status_code:
         logs = [l for l in logs if l["status_code"] == status_code]
-    
+
     return logs[:limit]
 
 
@@ -104,8 +102,10 @@ def get_request_logs(
 # SCHEMAS
 # =============================================================================
 
+
 class RequestLogOut(Schema):
     """Request log output."""
+
     id: str
     method: str
     path: str
@@ -119,6 +119,7 @@ class RequestLogOut(Schema):
 
 class RequestStats(Schema):
     """Request statistics."""
+
     total_requests: int
     requests_today: int
     requests_week: int
@@ -130,6 +131,7 @@ class RequestStats(Schema):
 
 class EndpointStats(Schema):
     """Per-endpoint statistics."""
+
     path: str
     total_requests: int
     avg_response_time_ms: float
@@ -140,6 +142,7 @@ class EndpointStats(Schema):
 
 class HourlyStats(Schema):
     """Hourly request statistics."""
+
     hour: str
     requests: int
     avg_response_time_ms: float
@@ -148,6 +151,7 @@ class HourlyStats(Schema):
 
 class TopUser(Schema):
     """Top user by requests."""
+
     user_id: str
     request_count: int
 
@@ -155,6 +159,7 @@ class TopUser(Schema):
 # =============================================================================
 # REQUEST LOG ENDPOINTS
 # =============================================================================
+
 
 @router.get("/{tenant_id}/logs", response=List[RequestLogOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -168,17 +173,18 @@ def list_request_logs(
 ):
     """
     List API request logs for a tenant.
-    
+
     📊 Performance: Request analytics
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), limit, method, status_code)
-    
+
     return [RequestLogOut(**log) for log in logs]
 
 
@@ -195,21 +201,24 @@ def get_request_log(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), 10000)
-    
+
     for log in logs:
         if log["id"] == log_id:
             return RequestLogOut(**log)
-    
+
     from ninja.errors import HttpError
+
     raise HttpError(404, "Log not found")
 
 
 # =============================================================================
 # ANALYTICS ENDPOINTS
 # =============================================================================
+
 
 @router.get("/{tenant_id}/stats", response=RequestStats)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -220,50 +229,51 @@ def get_request_stats(
 ):
     """
     Get request statistics for a tenant.
-    
+
     📊 Performance: Stats dashboard
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), 10000)
-    
+
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     week_start = today_start - timedelta(days=7)
-    
+
     today_count = 0
     week_count = 0
     total_time = 0
     error_count = 0
     by_method = {}
     by_status = {}
-    
+
     for log in logs:
         ts = datetime.fromisoformat(log["timestamp"])
-        
+
         if ts >= today_start:
             today_count += 1
         if ts >= week_start:
             week_count += 1
-        
+
         total_time += log["response_time_ms"]
-        
+
         if log["status_code"] >= 400:
             error_count += 1
-        
+
         method = log["method"]
         by_method[method] = by_method.get(method, 0) + 1
-        
+
         status = str(log["status_code"])
         by_status[status] = by_status.get(status, 0) + 1
-    
+
     avg_time = total_time / len(logs) if logs else 0
     error_rate = error_count / len(logs) if logs else 0
-    
+
     return RequestStats(
         total_requests=len(logs),
         requests_today=today_count,
@@ -285,17 +295,18 @@ def get_endpoint_stats(
 ):
     """
     Get per-endpoint statistics.
-    
+
     📊 Performance: Endpoint analytics
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), 10000)
-    
+
     # Aggregate by path
     by_path = {}
     for log in logs:
@@ -305,25 +316,27 @@ def get_endpoint_stats(
         by_path[path]["times"].append(log["response_time_ms"])
         if log["status_code"] >= 400:
             by_path[path]["errors"] += 1
-    
+
     # Calculate stats
     stats = []
     for path, data in by_path.items():
         times = sorted(data["times"])
         total = len(times)
-        
-        stats.append(EndpointStats(
-            path=path,
-            total_requests=total,
-            avg_response_time_ms=sum(times) / total if total else 0,
-            error_rate=data["errors"] / total if total else 0,
-            p50_latency_ms=times[total // 2] if times else 0,
-            p95_latency_ms=times[int(total * 0.95)] if times else 0,
-        ))
-    
+
+        stats.append(
+            EndpointStats(
+                path=path,
+                total_requests=total,
+                avg_response_time_ms=sum(times) / total if total else 0,
+                error_rate=data["errors"] / total if total else 0,
+                p50_latency_ms=times[total // 2] if times else 0,
+                p95_latency_ms=times[int(total * 0.95)] if times else 0,
+            )
+        )
+
     # Sort by total requests
     stats.sort(key=lambda x: x.total_requests, reverse=True)
-    
+
     return stats[:limit]
 
 
@@ -337,46 +350,49 @@ def get_hourly_stats(
 ):
     """
     Get hourly request statistics.
-    
+
     📊 Performance: Time-series data
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), 10000)
-    
+
     # Group by hour
     by_hour = {}
     cutoff = timezone.now() - timedelta(hours=hours)
-    
+
     for log in logs:
         ts = datetime.fromisoformat(log["timestamp"])
         if ts < cutoff:
             continue
-        
+
         hour_key = ts.strftime("%Y-%m-%d %H:00")
         if hour_key not in by_hour:
             by_hour[hour_key] = {"count": 0, "total_time": 0, "errors": 0}
-        
+
         by_hour[hour_key]["count"] += 1
         by_hour[hour_key]["total_time"] += log["response_time_ms"]
         if log["status_code"] >= 400:
             by_hour[hour_key]["errors"] += 1
-    
+
     # Format response
     stats = [
         HourlyStats(
             hour=hour,
             requests=data["count"],
-            avg_response_time_ms=data["total_time"] / data["count"] if data["count"] else 0,
+            avg_response_time_ms=data["total_time"] / data["count"]
+            if data["count"]
+            else 0,
             error_count=data["errors"],
         )
         for hour, data in sorted(by_hour.items())
     ]
-    
+
     return stats
 
 
@@ -390,26 +406,27 @@ def get_top_users(
 ):
     """
     Get top users by request count.
-    
+
     📊 Performance: User analytics
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), 10000)
-    
+
     by_user = {}
     for log in logs:
         user_id = log.get("user_id")
         if user_id:
             by_user[user_id] = by_user.get(user_id, 0) + 1
-    
+
     # Sort and limit
     top = sorted(by_user.items(), key=lambda x: x[1], reverse=True)[:limit]
-    
+
     return [TopUser(user_id=uid, request_count=count) for uid, count in top]
 
 
@@ -423,18 +440,19 @@ def get_error_logs(
 ):
     """
     Get recent error logs (4xx and 5xx).
-    
+
     🚨 SRE: Error monitoring
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), 10000)
     errors = [l for l in logs if l["status_code"] >= 400]
-    
+
     return {
         "total_errors": len(errors),
         "errors": errors[:limit],
@@ -452,19 +470,20 @@ def get_slow_requests(
 ):
     """
     Get slow requests above threshold.
-    
+
     📊 Performance: Slow query detection
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     logs = get_request_logs(str(tenant_id), 10000)
     slow = [l for l in logs if l["response_time_ms"] >= threshold_ms]
     slow.sort(key=lambda x: x["response_time_ms"], reverse=True)
-    
+
     return {
         "threshold_ms": threshold_ms,
         "total_slow": len(slow),

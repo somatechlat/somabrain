@@ -4,6 +4,7 @@
 Usage:
     python -m scripts.print_hrr_config
 """
+
 import json
 
 # Unified configuration – use the central Settings instance

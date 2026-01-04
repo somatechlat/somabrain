@@ -38,16 +38,15 @@ class UCB1Bandit:
     def add_arm(self, name: str) -> None:
         """Execute add arm.
 
-            Args:
-                name: The name.
-            """
+        Args:
+            name: The name.
+        """
 
         if name not in self._arms:
             self._arms[name] = Arm(name)
 
     def select(self) -> Optional[str]:
-        """Execute select.
-            """
+        """Execute select."""
 
         if not self._arms:
             return None
@@ -69,10 +68,10 @@ class UCB1Bandit:
     def update(self, name: str, reward: float) -> None:
         """Execute update.
 
-            Args:
-                name: The name.
-                reward: The reward.
-            """
+        Args:
+            name: The name.
+            reward: The reward.
+        """
 
         arm = self._arms.get(name)
         if arm is None:

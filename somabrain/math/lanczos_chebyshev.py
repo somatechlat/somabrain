@@ -79,9 +79,9 @@ def chebyshev_heat_apply(
     def apply_Ap(v: np.ndarray) -> np.ndarray:
         """Execute apply Ap.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         return (2.0 * apply_A(v) - (b + a) * v) / (b - a)
 

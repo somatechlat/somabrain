@@ -17,7 +17,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 from uuid import UUID, uuid4
 from enum import Enum
 
@@ -38,8 +37,10 @@ router = Router(tags=["SSO"])
 # IDENTITY PROVIDER TYPES
 # =============================================================================
 
+
 class IdPType(str, Enum):
     """Identity provider types."""
+
     SAML = "saml"
     OIDC = "oidc"
     OAUTH2 = "oauth2"
@@ -48,6 +49,7 @@ class IdPType(str, Enum):
 
 class IdPStatus(str, Enum):
     """IdP status."""
+
     ACTIVE = "active"
     INACTIVE = "inactive"
     TESTING = "testing"
@@ -58,12 +60,13 @@ class IdPStatus(str, Enum):
 # IDP STORAGE
 # =============================================================================
 
+
 def get_idps_key(tenant_id: str) -> str:
     """Retrieve idps key.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     return f"idps:tenant:{tenant_id}"
 
@@ -71,14 +74,16 @@ def get_idps_key(tenant_id: str) -> str:
 def get_idp_key(idp_id: str) -> str:
     """Retrieve idp key.
 
-        Args:
-            idp_id: The idp_id.
-        """
+    Args:
+        idp_id: The idp_id.
+    """
 
     return f"idp:{idp_id}"
 
 
-def create_idp(tenant_id: str, name: str, provider_type: str, config: dict, created_by: str) -> dict:
+def create_idp(
+    tenant_id: str, name: str, provider_type: str, config: dict, created_by: str
+) -> dict:
     """Create a new identity provider."""
     idp_id = str(uuid4())
     idp = {
@@ -95,24 +100,24 @@ def create_idp(tenant_id: str, name: str, provider_type: str, config: dict, crea
         "error_count": 0,
         "last_error": None,
     }
-    
+
     cache.set(get_idp_key(idp_id), idp, timeout=86400 * 30)
-    
+
     # Add to tenant list
     tenant_key = get_idps_key(tenant_id)
     idps = cache.get(tenant_key, [])
     idps.append(idp_id)
     cache.set(tenant_key, idps, timeout=86400 * 30)
-    
+
     return idp
 
 
 def get_idp(idp_id: str) -> Optional[dict]:
     """Retrieve idp.
 
-        Args:
-            idp_id: The idp_id.
-        """
+    Args:
+        idp_id: The idp_id.
+    """
 
     return cache.get(get_idp_key(idp_id))
 
@@ -120,9 +125,9 @@ def get_idp(idp_id: str) -> Optional[dict]:
 def update_idp(idp_id: str, **updates) -> Optional[dict]:
     """Execute update idp.
 
-        Args:
-            idp_id: The idp_id.
-        """
+    Args:
+        idp_id: The idp_id.
+    """
 
     key = get_idp_key(idp_id)
     idp = cache.get(key)
@@ -135,9 +140,9 @@ def update_idp(idp_id: str, **updates) -> Optional[dict]:
 def get_tenant_idps(tenant_id: str) -> List[dict]:
     """Retrieve tenant idps.
 
-        Args:
-            tenant_id: The tenant_id.
-        """
+    Args:
+        tenant_id: The tenant_id.
+    """
 
     idp_ids = cache.get(get_idps_key(tenant_id), [])
     idps = []
@@ -152,8 +157,10 @@ def get_tenant_idps(tenant_id: str) -> List[dict]:
 # SCHEMAS
 # =============================================================================
 
+
 class SAMLConfig(Schema):
     """SAML configuration."""
+
     entity_id: str
     sso_url: str
     slo_url: Optional[str] = None
@@ -164,6 +171,7 @@ class SAMLConfig(Schema):
 
 class OIDCConfig(Schema):
     """OIDC configuration."""
+
     issuer_url: str
     client_id: str
     client_secret: str
@@ -175,6 +183,7 @@ class OIDCConfig(Schema):
 
 class LDAPConfig(Schema):
     """LDAP configuration."""
+
     server_url: str
     base_dn: str
     bind_dn: str
@@ -186,6 +195,7 @@ class LDAPConfig(Schema):
 
 class IdPOut(Schema):
     """Identity provider output."""
+
     id: str
     name: str
     type: str
@@ -198,6 +208,7 @@ class IdPOut(Schema):
 
 class IdPDetailOut(Schema):
     """Detailed IdP output."""
+
     id: str
     name: str
     type: str
@@ -213,6 +224,7 @@ class IdPDetailOut(Schema):
 
 class IdPCreate(Schema):
     """Create IdP request."""
+
     name: str
     type: str  # saml, oidc, oauth2, ldap
     config: Dict[str, Any]
@@ -220,6 +232,7 @@ class IdPCreate(Schema):
 
 class IdPUpdate(Schema):
     """Update IdP request."""
+
     name: Optional[str] = None
     config: Optional[Dict[str, Any]] = None
     status: Optional[str] = None
@@ -227,6 +240,7 @@ class IdPUpdate(Schema):
 
 class SSOSettings(Schema):
     """SSO settings for tenant."""
+
     enabled: bool = False
     enforce_sso: bool = False
     default_idp_id: Optional[str] = None
@@ -239,6 +253,7 @@ class SSOSettings(Schema):
 # IDP CRUD ENDPOINTS
 # =============================================================================
 
+
 @router.get("/{tenant_id}/providers", response=List[IdPOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.IDP_LIST.value)
@@ -248,17 +263,18 @@ def list_identity_providers(
 ):
     """
     List all identity providers for a tenant.
-    
+
     🎨 UX: IdP management view
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     idps = get_tenant_idps(str(tenant_id))
-    
+
     return [
         IdPOut(
             id=idp["id"],
@@ -284,20 +300,22 @@ def create_identity_provider(
 ):
     """
     Create a new identity provider.
-    
+
     🔒 Security: Secure IdP creation
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     # Validate type
     if data.type not in [t.value for t in IdPType]:
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Invalid IdP type: {data.type}")
-    
+
     idp = create_idp(
         tenant_id=str(tenant_id),
         name=data.name,
@@ -305,7 +323,7 @@ def create_identity_provider(
         config=data.config,
         created_by=str(request.user_id),
     )
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -317,10 +335,10 @@ def create_identity_provider(
         tenant=tenant,
         details={"name": data.name, "type": data.type},
     )
-    
+
     # Mask sensitive config
     safe_config = _mask_sensitive_config(idp["config"])
-    
+
     return IdPDetailOut(
         id=idp["id"],
         name=idp["name"],
@@ -349,15 +367,17 @@ def get_identity_provider(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     idp = get_idp(idp_id)
     if not idp or idp["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Identity provider not found")
-    
+
     safe_config = _mask_sensitive_config(idp["config"])
-    
+
     return IdPDetailOut(
         id=idp["id"],
         name=idp["name"],
@@ -384,31 +404,33 @@ def update_identity_provider(
 ):
     """
     Update identity provider.
-    
+
     🔒 Security: IdP update
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     idp = get_idp(idp_id)
     if not idp or idp["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Identity provider not found")
-    
+
     if data.name is not None:
         idp["name"] = data.name
     if data.config is not None:
         idp["config"].update(data.config)
     if data.status is not None:
         idp["status"] = data.status
-    
+
     update_idp(idp_id, **idp)
-    
+
     safe_config = _mask_sensitive_config(idp["config"])
-    
+
     return IdPDetailOut(
         id=idp["id"],
         name=idp["name"],
@@ -437,28 +459,31 @@ def delete_identity_provider(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     idp = get_idp(idp_id)
     if not idp or idp["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Identity provider not found")
-    
+
     # Remove from cache
     cache.delete(get_idp_key(idp_id))
-    
+
     # Remove from tenant list
     tenant_key = get_idps_key(str(tenant_id))
     idps = cache.get(tenant_key, [])
     idps = [i for i in idps if i != idp_id]
     cache.set(tenant_key, idps, timeout=86400 * 30)
-    
+
     return {"success": True, "deleted": idp_id}
 
 
 # =============================================================================
 # SSO CONFIGURATION
 # =============================================================================
+
 
 @router.get("/{tenant_id}/settings", response=SSOSettings)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -469,15 +494,16 @@ def get_sso_settings(
 ):
     """
     Get SSO settings for tenant.
-    
+
     🛠️ DevOps: SSO configuration
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     settings = cache.get(f"sso_settings:{tenant_id}", {})
     return SSOSettings(**settings)
 
@@ -492,17 +518,18 @@ def update_sso_settings(
 ):
     """
     Update SSO settings.
-    
+
     🔒 Security: SSO enforcement
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     cache.set(f"sso_settings:{tenant_id}", data.dict(), timeout=86400 * 30)
-    
+
     # Audit log
     tenant = get_object_or_404(Tenant, id=tenant_id)
     AuditLog.log(
@@ -514,13 +541,14 @@ def update_sso_settings(
         tenant=tenant,
         details=data.dict(),
     )
-    
+
     return data
 
 
 # =============================================================================
 # IDP TESTING
 # =============================================================================
+
 
 @router.post("/{tenant_id}/providers/{idp_id}/test")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -532,49 +560,55 @@ def test_identity_provider(
 ):
     """
     Test identity provider configuration.
-    
+
     🧪 QA: IdP testing
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     idp = get_idp(idp_id)
     if not idp or idp["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Identity provider not found")
-    
+
     # Real IdP test - verify configuration is valid
     import httpx
     import time
-    
+
     test_result = {
         "success": False,
         "message": "",
         "details": {},
     }
-    
+
     start_time = time.time()
     config = idp.get("config", {})
     idp_type = idp.get("type")
-    
+
     try:
         if idp_type == "oidc":
             # Test OIDC well-known endpoint
             issuer_url = config.get("issuer_url", "")
             if issuer_url:
                 with httpx.Client(timeout=10.0) as client:
-                    well_known = f"{issuer_url.rstrip('/')}/.well-known/openid-configuration"
+                    well_known = (
+                        f"{issuer_url.rstrip('/')}/.well-known/openid-configuration"
+                    )
                     response = client.get(well_known)
                     if response.status_code == 200:
                         test_result["success"] = True
                         test_result["message"] = "OIDC configuration verified"
                         test_result["details"]["well_known"] = "OK"
                     else:
-                        test_result["message"] = f"OIDC endpoint returned {response.status_code}"
-        
+                        test_result["message"] = (
+                            f"OIDC endpoint returned {response.status_code}"
+                        )
+
         elif idp_type == "saml":
             # Verify SAML SSO URL is reachable
             sso_url = config.get("sso_url", "")
@@ -582,25 +616,33 @@ def test_identity_provider(
                 with httpx.Client(timeout=10.0) as client:
                     response = client.head(sso_url)
                     test_result["success"] = response.status_code < 500
-                    test_result["message"] = f"SAML endpoint status: {response.status_code}"
-        
+                    test_result["message"] = (
+                        f"SAML endpoint status: {response.status_code}"
+                    )
+
         else:
             # For other types, mark as verified without network check
             test_result["success"] = True
             test_result["message"] = f"Configuration saved for {idp_type}"
-        
-        test_result["details"]["response_time_ms"] = int((time.time() - start_time) * 1000)
-        
+
+        test_result["details"]["response_time_ms"] = int(
+            (time.time() - start_time) * 1000
+        )
+
     except httpx.RequestError as e:
         test_result["message"] = f"Connection failed: {str(e)}"
         test_result["details"]["error"] = str(e)
-    
+
     # Update last verified if successful
     if test_result["success"]:
         update_idp(idp_id, last_verified_at=timezone.now().isoformat())
     else:
-        update_idp(idp_id, last_error=test_result["message"], error_count=idp.get("error_count", 0) + 1)
-    
+        update_idp(
+            idp_id,
+            last_error=test_result["message"],
+            error_count=idp.get("error_count", 0) + 1,
+        )
+
     return test_result
 
 
@@ -617,15 +659,17 @@ def activate_identity_provider(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     idp = get_idp(idp_id)
     if not idp or idp["tenant_id"] != str(tenant_id):
         from ninja.errors import HttpError
+
         raise HttpError(404, "Identity provider not found")
-    
+
     update_idp(idp_id, status=IdPStatus.ACTIVE)
-    
+
     return {"success": True, "status": "active"}
 
 
@@ -633,13 +677,14 @@ def activate_identity_provider(
 # HELPERS
 # =============================================================================
 
+
 def _mask_sensitive_config(config: dict) -> dict:
     """Mask sensitive values in config."""
     masked = config.copy()
     sensitive_keys = ["client_secret", "certificate", "bind_password", "password"]
-    
+
     for key in sensitive_keys:
         if key in masked:
             masked[key] = "********"
-    
+
     return masked

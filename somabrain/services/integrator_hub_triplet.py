@@ -42,9 +42,9 @@ import requests
 def _load_schema(path: str):
     """Execute load schema.
 
-        Args:
-            path: The path.
-        """
+    Args:
+        path: The path.
+    """
 
     with open(path, "r", encoding="utf-8") as f:
         return parse_schema(json.load(f))
@@ -124,7 +124,9 @@ class IntegratorHub:
         self.topic_updates = topic_updates or {
             "state": getattr(ss, "SOMABRAIN_TOPIC_STATE_UPDATES", "cog.state.updates"),
             "agent": getattr(ss, "SOMABRAIN_TOPIC_AGENT_UPDATES", "cog.agent.updates"),
-            "action": getattr(ss, "SOMABRAIN_TOPIC_ACTION_UPDATES", "cog.action.updates"),
+            "action": getattr(
+                ss, "SOMABRAIN_TOPIC_ACTION_UPDATES", "cog.action.updates"
+            ),
         }
         self.topic_global = topic_global or getattr(
             ss, "SOMABRAIN_TOPIC_GLOBAL_FRAME", "cog.global.frame"
@@ -166,8 +168,7 @@ class IntegratorHub:
             self._health_thread.start()
 
     def _serve_health(self) -> None:
-        """Execute serve health.
-            """
+        """Execute serve health."""
 
         hub_ref = self
 
@@ -175,8 +176,7 @@ class IntegratorHub:
             """Handler class implementation."""
 
             def do_GET(self):
-                """Execute do GET.
-                    """
+                """Execute do GET."""
 
                 if self.path not in ("/health", "/healthz", "/ready"):
                     self.send_response(404)
@@ -196,9 +196,9 @@ class IntegratorHub:
             def log_message(self, format, *args):  # noqa: N802
                 """Execute log message.
 
-                    Args:
-                        format: The format.
-                    """
+                Args:
+                    format: The format.
+                """
 
                 return
 
@@ -211,10 +211,10 @@ class IntegratorHub:
     def _encode(self, record: Dict, schema) -> bytes:
         """Execute encode.
 
-            Args:
-                record: The record.
-                schema: The schema.
-            """
+        Args:
+            record: The record.
+            schema: The schema.
+        """
 
         import io
 
@@ -226,14 +226,17 @@ class IntegratorHub:
         """Load current config from Django settings."""
         ss = settings
         alpha = float(getattr(ss, "SOMABRAIN_PREDICTOR_ALPHA", self.alpha))
-        temp = float(getattr(ss, "SOMABRAIN_INTEGRATOR_TEMPERATURE", self._initial_temperature))
+        temp = float(
+            getattr(ss, "SOMABRAIN_INTEGRATOR_TEMPERATURE", self._initial_temperature)
+        )
         flag = bool(getattr(ss, "ENABLE_COG_THREADS", self._initial_enable_flag))
-        opa_url = (getattr(ss, "SOMABRAIN_OPA_URL", self._initial_opa_url) or "").strip()
+        opa_url = (
+            getattr(ss, "SOMABRAIN_OPA_URL", self._initial_opa_url) or ""
+        ).strip()
         return {"alpha": alpha, "temperature": temp, "enable": flag, "opa_url": opa_url}
 
     def _select_leader(self) -> Optional[str]:
-        """Execute select leader.
-            """
+        """Execute select leader."""
 
         if not set(self.domains).issubset(self._latest.keys()):
             return None
@@ -259,9 +262,9 @@ class IntegratorHub:
     def _publish_global(self, leader: str) -> None:
         """Execute publish global.
 
-            Args:
-                leader: The leader.
-            """
+        Args:
+            leader: The leader.
+        """
 
         cfg = self._effective_cfg()
         present = {d: self._latest[d] for d in self.domains if d in self._latest}
@@ -351,10 +354,10 @@ class IntegratorHub:
     def _default_opa_request(self, url: str, context: Dict[str, float]) -> bool:
         """Execute default opa request.
 
-            Args:
-                url: The url.
-                context: The context.
-            """
+        Args:
+            url: The url.
+            context: The context.
+        """
 
         try:
             resp = requests.post(url, json={"input": context}, timeout=1)
@@ -368,8 +371,7 @@ class IntegratorHub:
             return False
 
     def run(self) -> None:  # pragma: no cover (I/O loop)
-        """Execute run.
-            """
+        """Execute run."""
 
         if self.consumer is None:
             return

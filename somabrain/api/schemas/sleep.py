@@ -58,9 +58,9 @@ class SleepRequest(BaseModel):
         # Ensure the value maps to the internal SleepState enum.
         """Execute validate target.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         if v.value not in {s.value for s in SleepState}:
             raise ValueError(f"Invalid sleep state: {v}")

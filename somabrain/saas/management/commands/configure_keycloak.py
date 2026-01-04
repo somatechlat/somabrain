@@ -33,9 +33,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Execute add arguments.
 
-            Args:
-                parser: The parser.
-            """
+        Args:
+            parser: The parser.
+        """
 
         parser.add_argument(
             "--realm",
@@ -54,20 +54,23 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        """Execute handle.
-            """
+        """Execute handle."""
 
         realm_name = options["realm"]
         dry_run = options["dry_run"]
         force = options["force"]
 
         # Get Keycloak configuration from settings
-        keycloak_url = getattr(settings, "KEYCLOAK_URL", os.environ.get("KEYCLOAK_URL", "http://localhost:8080"))
+        keycloak_url = getattr(
+            settings,
+            "KEYCLOAK_URL",
+            os.environ.get("KEYCLOAK_URL", "http://localhost:8080"),
+        )
         admin_user = os.environ.get("KEYCLOAK_ADMIN", "admin")
         admin_password = os.environ.get("KEYCLOAK_ADMIN_PASSWORD", "admin")
 
-        self.stdout.write(f"\n🔐 Keycloak Realm Configuration")
-        self.stdout.write(f"=" * 50)
+        self.stdout.write("\n🔐 Keycloak Realm Configuration")
+        self.stdout.write("=" * 50)
         self.stdout.write(f"Keycloak URL: {keycloak_url}")
         self.stdout.write(f"Realm: {realm_name}")
         self.stdout.write(f"Dry Run: {dry_run}")
@@ -75,23 +78,31 @@ class Command(BaseCommand):
 
         # Build realm configuration
         realm_config = self._build_realm_config(realm_name)
-        
+
         if dry_run:
             self._print_config(realm_config)
-            self.stdout.write(self.style.SUCCESS("\n✅ Dry run complete - no changes made"))
+            self.stdout.write(
+                self.style.SUCCESS("\n✅ Dry run complete - no changes made")
+            )
             return
 
         # Apply configuration via Keycloak Admin API
         try:
-            self._apply_config(keycloak_url, admin_user, admin_password, realm_config, force)
-            self.stdout.write(self.style.SUCCESS(f"\n✅ Realm '{realm_name}' configured successfully!"))
+            self._apply_config(
+                keycloak_url, admin_user, admin_password, realm_config, force
+            )
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"\n✅ Realm '{realm_name}' configured successfully!"
+                )
+            )
         except Exception as e:
             raise CommandError(f"Failed to configure realm: {e}")
 
     def _build_realm_config(self, realm_name: str) -> dict:
         """
         Build complete realm configuration.
-        
+
         ALL 10 PERSONAS:
         - Security: Strong defaults, brute force protection
         - SRE: Reasonable timeouts and limits
@@ -101,7 +112,6 @@ class Command(BaseCommand):
             "enabled": True,
             "displayName": "SomaBrain",
             "displayNameHtml": "<b>SomaBrain</b>",
-            
             # Security settings
             "sslRequired": "external",  # Require SSL in production
             "registrationAllowed": False,  # Admin creates users
@@ -110,7 +120,6 @@ class Command(BaseCommand):
             "verifyEmail": True,
             "loginWithEmailAllowed": True,
             "duplicateEmailsAllowed": False,
-            
             # Brute force protection
             "bruteForceProtected": True,
             "maxFailureWaitSeconds": 900,  # 15 min lockout
@@ -119,7 +128,6 @@ class Command(BaseCommand):
             "quickLoginCheckMilliSeconds": 1000,
             "maxDeltaTimeSeconds": 3600,
             "failureFactor": 5,  # 5 failed attempts
-            
             # Token settings
             "accessTokenLifespan": 300,  # 5 min
             "accessTokenLifespanForImplicitFlow": 300,
@@ -128,31 +136,44 @@ class Command(BaseCommand):
             "offlineSessionIdleTimeout": 2592000,  # 30 days
             "offlineSessionMaxLifespanEnabled": True,
             "offlineSessionMaxLifespan": 5184000,  # 60 days
-            
             # Realm roles
             "roles": {
                 "realm": [
-                    {"name": "saas_admin", "description": "SaaS platform administrator - full control"},
-                    {"name": "tenant_admin", "description": "Tenant administrator - full tenant control"},
-                    {"name": "service_admin", "description": "Cognitive services administrator"},
-                    {"name": "supervisor", "description": "Monitor and review operations"},
+                    {
+                        "name": "saas_admin",
+                        "description": "SaaS platform administrator - full control",
+                    },
+                    {
+                        "name": "tenant_admin",
+                        "description": "Tenant administrator - full tenant control",
+                    },
+                    {
+                        "name": "service_admin",
+                        "description": "Cognitive services administrator",
+                    },
+                    {
+                        "name": "supervisor",
+                        "description": "Monitor and review operations",
+                    },
                     {"name": "operator", "description": "Execute operations"},
                     {"name": "service_user", "description": "Use cognitive services"},
                     {"name": "viewer", "description": "Read-only access"},
-                    {"name": "billing_admin", "description": "Billing and subscription management"},
-                    {"name": "security_auditor", "description": "Audit and compliance access"},
+                    {
+                        "name": "billing_admin",
+                        "description": "Billing and subscription management",
+                    },
+                    {
+                        "name": "security_auditor",
+                        "description": "Audit and compliance access",
+                    },
                 ]
             },
-            
             # Default role
             "defaultRoles": ["service_user"],
-            
             # Clients
             "clients": self._build_clients(realm_name),
-            
             # Client scopes
             "clientScopes": self._build_client_scopes(),
-            
             # Identity Providers (Google OAuth)
             "identityProviders": self._build_identity_providers(),
         }
@@ -161,7 +182,7 @@ class Command(BaseCommand):
         """Build Keycloak client configurations."""
         frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
         api_url = getattr(settings, "API_URL", "http://localhost:8000")
-        
+
         return [
             # Eye of God Admin SPA (public client with PKCE)
             {
@@ -192,7 +213,10 @@ class Command(BaseCommand):
                     "post.logout.redirect.uris": f"{frontend_url}/*",
                 },
                 "defaultClientScopes": [
-                    "openid", "profile", "email", "somabrain-roles"
+                    "openid",
+                    "profile",
+                    "email",
+                    "somabrain-roles",
                 ],
             },
             # SomaBrain API (bearer-only)
@@ -271,11 +295,11 @@ class Command(BaseCommand):
         """Build identity provider configurations (Google OAuth)."""
         google_client_id = os.environ.get("GOOGLE_OAUTH_CLIENT_ID", "")
         google_client_secret = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET", "")
-        
+
         if not google_client_id:
             logger.warning("GOOGLE_OAUTH_CLIENT_ID not set - skipping Google IDP")
             return []
-        
+
         return [
             {
                 "alias": "google",
@@ -298,89 +322,109 @@ class Command(BaseCommand):
 
     def _print_config(self, config: dict):
         """Pretty print configuration for dry run."""
-        import json
+
         self.stdout.write("\n📋 Realm Configuration:")
         self.stdout.write("-" * 50)
-        
+
         # Print key sections
         self.stdout.write(f"\nRealm: {config['realm']}")
         self.stdout.write(f"Display Name: {config['displayName']}")
         self.stdout.write(f"SSL Required: {config['sslRequired']}")
         self.stdout.write(f"Brute Force Protection: {config['bruteForceProtected']}")
-        
+
         self.stdout.write("\n🎭 Realm Roles:")
         for role in config["roles"]["realm"]:
             self.stdout.write(f"  • {role['name']}: {role['description']}")
-        
+
         self.stdout.write("\n📱 Clients:")
         for client in config["clients"]:
             client_type = "public" if client.get("publicClient") else "confidential"
             if client.get("bearerOnly"):
                 client_type = "bearer-only"
             self.stdout.write(f"  • {client['clientId']} ({client_type})")
-        
+
         self.stdout.write("\n🔍 Client Scopes:")
         for scope in config["clientScopes"]:
             self.stdout.write(f"  • {scope['name']}: {scope['description']}")
-        
+
         if config.get("identityProviders"):
             self.stdout.write("\n🌐 Identity Providers:")
             for idp in config["identityProviders"]:
                 self.stdout.write(f"  • {idp['displayName']} ({idp['alias']})")
         else:
-            self.stdout.write("\n⚠️  No identity providers configured (set GOOGLE_OAUTH_CLIENT_ID)")
+            self.stdout.write(
+                "\n⚠️  No identity providers configured (set GOOGLE_OAUTH_CLIENT_ID)"
+            )
 
-    def _apply_config(self, keycloak_url: str, admin_user: str, admin_password: str, config: dict, force: bool):
+    def _apply_config(
+        self,
+        keycloak_url: str,
+        admin_user: str,
+        admin_password: str,
+        config: dict,
+        force: bool,
+    ):
         """Apply configuration to Keycloak via Admin REST API."""
         try:
             import httpx
         except ImportError:
             raise CommandError("httpx not installed. Run: pip install httpx")
-        
+
         self.stdout.write("\n🔄 Connecting to Keycloak...")
-        
+
         # Get admin token
         token_url = f"{keycloak_url}/realms/master/protocol/openid-connect/token"
         try:
-            with httpx.Client(timeout=30, verify=False) as client:  # verify=False for self-signed certs
+            with httpx.Client(
+                timeout=30, verify=False
+            ) as client:  # verify=False for self-signed certs
                 # Authenticate
                 self.stdout.write("  • Authenticating...")
-                response = client.post(token_url, data={
-                    "grant_type": "password",
-                    "client_id": "admin-cli",
-                    "username": admin_user,
-                    "password": admin_password,
-                })
-                
+                response = client.post(
+                    token_url,
+                    data={
+                        "grant_type": "password",
+                        "client_id": "admin-cli",
+                        "username": admin_user,
+                        "password": admin_password,
+                    },
+                )
+
                 if response.status_code != 200:
                     raise CommandError(f"Failed to authenticate: {response.text}")
-                
+
                 access_token = response.json()["access_token"]
                 headers = {"Authorization": f"Bearer {access_token}"}
-                
+
                 # Check if realm exists
                 realm_name = config["realm"]
                 realms_url = f"{keycloak_url}/admin/realms"
-                
+
                 self.stdout.write(f"  • Checking if realm '{realm_name}' exists...")
                 response = client.get(f"{realms_url}/{realm_name}", headers=headers)
-                
+
                 if response.status_code == 200:
                     if force:
-                        self.stdout.write(f"  • Deleting existing realm...")
+                        self.stdout.write("  • Deleting existing realm...")
                         client.delete(f"{realms_url}/{realm_name}", headers=headers)
                     else:
-                        self.stdout.write(self.style.WARNING(f"  ⚠️  Realm '{realm_name}' already exists. Use --force to recreate."))
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f"  ⚠️  Realm '{realm_name}' already exists. Use --force to recreate."
+                            )
+                        )
                         return
-                
+
                 # Create realm
                 self.stdout.write(f"  • Creating realm '{realm_name}'...")
                 response = client.post(realms_url, headers=headers, json=config)
-                
+
                 if response.status_code not in (201, 204):
-                    raise CommandError(f"Failed to create realm: {response.status_code} - {response.text}")
-                
-                self.stdout.write(self.style.SUCCESS(f"  ✅ Realm created"))
-                
+                    raise CommandError(
+                        f"Failed to create realm: {response.status_code} - {response.text}"
+                    )
+
+                self.stdout.write(self.style.SUCCESS("  ✅ Realm created"))
+
         except httpx.ConnectError as e:
             raise CommandError(f"Cannot connect to Keycloak at {keycloak_url}: {e}")

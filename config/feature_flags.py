@@ -30,8 +30,7 @@ class FeatureFlags:
     @staticmethod
     def _load_overrides() -> List[str]:
         # Use the centralized Settings path to avoid direct os.getenv access.
-        """Execute load overrides.
-            """
+        """Execute load overrides."""
 
         path = settings.feature_overrides_path
         try:
@@ -48,8 +47,7 @@ class FeatureFlags:
 
     @classmethod
     def get_status(cls) -> Dict[str, Any]:
-        """Retrieve status.
-            """
+        """Retrieve status."""
 
         cfg = mode_config()
         disabled = cls._load_overrides() if cfg.name == "full-local" else []
@@ -57,9 +55,9 @@ class FeatureFlags:
         def resolved(k: str) -> bool:
             """Execute resolved.
 
-                Args:
-                    k: The k.
-                """
+            Args:
+                k: The k.
+            """
 
             mapping = {
                 "hmm_segmentation": "hmm_segmentation",

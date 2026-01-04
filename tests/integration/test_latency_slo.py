@@ -25,9 +25,9 @@ TENANT = "workbench-slo"
 def _api_available(url: str) -> bool:
     """Execute api available.
 
-        Args:
-            url: The url.
-        """
+    Args:
+        url: The url.
+    """
 
     base = url.rstrip("/") or "http://localhost:9696"
     try:
@@ -42,8 +42,7 @@ def _api_available(url: str) -> bool:
 
 
 def _api_client() -> httpx.Client:
-    """Execute api client.
-        """
+    """Execute api client."""
 
     base = API_URL or "http://localhost:9696"
     if not _api_available(base):
@@ -55,8 +54,7 @@ def _api_client() -> httpx.Client:
 
 @pytest.mark.integration
 def test_latency_slo_basic() -> None:
-    """Execute test latency slo basic.
-        """
+    """Execute test latency slo basic."""
 
     if not MEM_TOKEN:
         pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN required for latency SLO test")
@@ -107,9 +105,9 @@ def test_latency_slo_basic() -> None:
     def p95(values):
         """Execute p95.
 
-            Args:
-                values: The values.
-            """
+        Args:
+            values: The values.
+        """
 
         if not values:
             return 0.0

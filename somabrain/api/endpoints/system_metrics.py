@@ -17,17 +17,17 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Platform observability
 """
 
-from typing import List, Optional
-from datetime import datetime, timedelta
+from typing import List
+from datetime import timedelta
 
 from django.utils import timezone
-from django.db.models import Count, Sum, Avg
+from django.db.models import Count
 from django.db.models.functions import TruncDate, TruncHour
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain.saas.models import (
-    Tenant, 
+    Tenant,
     TenantUser,
     APIKey,
     AuditLog,
@@ -43,8 +43,10 @@ router = Router(tags=["System Metrics"])
 # SCHEMAS
 # =============================================================================
 
+
 class PlatformMetrics(Schema):
     """Platform-wide metrics."""
+
     total_tenants: int
     active_tenants: int
     total_users: int
@@ -57,6 +59,7 @@ class PlatformMetrics(Schema):
 
 class TenantGrowth(Schema):
     """Tenant growth data."""
+
     date: str
     new_tenants: int
     cumulative: int
@@ -64,6 +67,7 @@ class TenantGrowth(Schema):
 
 class UserActivity(Schema):
     """User activity metrics."""
+
     hour: str
     active_users: int
     api_calls: int
@@ -71,6 +75,7 @@ class UserActivity(Schema):
 
 class ApiUsage(Schema):
     """API usage metrics."""
+
     date: str
     total_calls: int
     unique_users: int
@@ -80,33 +85,33 @@ class ApiUsage(Schema):
 # PLATFORM METRICS
 # =============================================================================
 
+
 @router.get("/platform", response=PlatformMetrics)
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_platform_metrics(request: AuthenticatedRequest):
     """
     Get platform-wide metrics.
-    
+
     📊 Performance: REAL ORM counts
-    
+
     REAL Django ORM aggregations.
     """
     now = timezone.now()
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     last_30_days = now - timedelta(days=30)
-    
+
     # REAL counts
     total_tenants = Tenant.objects.count()
     active_tenants = Tenant.objects.filter(status="active").count()
     total_users = TenantUser.objects.count()
     active_users = TenantUser.objects.filter(
-        is_active=True,
-        last_login_at__gte=last_30_days
+        is_active=True, last_login_at__gte=last_30_days
     ).count()
     total_api_keys = APIKey.objects.count()
     active_api_keys = APIKey.objects.filter(is_active=True).count()
     audit_logs_today = AuditLog.objects.filter(timestamp__gte=today).count()
-    
+
     return PlatformMetrics(
         total_tenants=total_tenants,
         active_tenants=active_tenants,
@@ -128,33 +133,35 @@ def get_tenant_growth(
 ):
     """
     Get tenant growth over time.
-    
+
     📊 Performance: REAL aggregations
-    
+
     REAL Django ORM with TruncDate.
     """
     since = timezone.now() - timedelta(days=days)
-    
+
     # REAL daily aggregation
-    daily_counts = Tenant.objects.filter(
-        created_at__gte=since
-    ).annotate(
-        date=TruncDate("created_at")
-    ).values("date").annotate(
-        count=Count("id")
-    ).order_by("date")
-    
+    daily_counts = (
+        Tenant.objects.filter(created_at__gte=since)
+        .annotate(date=TruncDate("created_at"))
+        .values("date")
+        .annotate(count=Count("id"))
+        .order_by("date")
+    )
+
     result = []
     cumulative = Tenant.objects.filter(created_at__lt=since).count()
-    
+
     for row in daily_counts:
         cumulative += row["count"]
-        result.append(TenantGrowth(
-            date=row["date"].isoformat() if row["date"] else "",
-            new_tenants=row["count"],
-            cumulative=cumulative,
-        ))
-    
+        result.append(
+            TenantGrowth(
+                date=row["date"].isoformat() if row["date"] else "",
+                new_tenants=row["count"],
+                cumulative=cumulative,
+            )
+        )
+
     return result
 
 
@@ -167,23 +174,22 @@ def get_user_activity(
 ):
     """
     Get hourly user activity.
-    
+
     📊 Performance: REAL hourly aggregations
-    
+
     REAL Django ORM with TruncHour.
     """
     since = timezone.now() - timedelta(hours=hours)
-    
+
     # REAL hourly aggregation from audit logs
-    hourly_activity = AuditLog.objects.filter(
-        timestamp__gte=since
-    ).annotate(
-        hour=TruncHour("timestamp")
-    ).values("hour").annotate(
-        calls=Count("id"),
-        users=Count("actor_id", distinct=True)
-    ).order_by("hour")
-    
+    hourly_activity = (
+        AuditLog.objects.filter(timestamp__gte=since)
+        .annotate(hour=TruncHour("timestamp"))
+        .values("hour")
+        .annotate(calls=Count("id"), users=Count("actor_id", distinct=True))
+        .order_by("hour")
+    )
+
     return [
         UserActivity(
             hour=row["hour"].isoformat() if row["hour"] else "",
@@ -203,24 +209,22 @@ def get_api_usage(
 ):
     """
     Get daily API usage.
-    
+
     📊 Performance: REAL daily aggregations
-    
+
     REAL Django ORM aggregations.
     """
     since = timezone.now() - timedelta(days=days)
-    
+
     # REAL daily aggregation
-    daily_usage = AuditLog.objects.filter(
-        timestamp__gte=since,
-        action__startswith="api."
-    ).annotate(
-        date=TruncDate("timestamp")
-    ).values("date").annotate(
-        total=Count("id"),
-        users=Count("actor_id", distinct=True)
-    ).order_by("date")
-    
+    daily_usage = (
+        AuditLog.objects.filter(timestamp__gte=since, action__startswith="api.")
+        .annotate(date=TruncDate("timestamp"))
+        .values("date")
+        .annotate(total=Count("id"), users=Count("actor_id", distinct=True))
+        .order_by("date")
+    )
+
     return [
         ApiUsage(
             date=row["date"].isoformat() if row["date"] else "",
@@ -235,6 +239,7 @@ def get_api_usage(
 # TENANT METRICS
 # =============================================================================
 
+
 @router.get("/tenant/{tenant_id}/metrics")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_tenant_metrics(
@@ -243,32 +248,40 @@ def get_tenant_metrics(
 ):
     """
     Get metrics for a specific tenant.
-    
+
     📊 Performance: REAL tenant counts
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != tenant_id:
             raise HttpError(403, "Access denied")
-    
+
     now = timezone.now()
     today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     last_7_days = now - timedelta(days=7)
-    
+
     # REAL counts
     return {
         "tenant_id": tenant_id,
         "users": {
             "total": TenantUser.objects.filter(tenant_id=tenant_id).count(),
-            "active": TenantUser.objects.filter(tenant_id=tenant_id, is_active=True).count(),
+            "active": TenantUser.objects.filter(
+                tenant_id=tenant_id, is_active=True
+            ).count(),
         },
         "api_keys": {
             "total": APIKey.objects.filter(tenant_id=tenant_id).count(),
-            "active": APIKey.objects.filter(tenant_id=tenant_id, is_active=True).count(),
+            "active": APIKey.objects.filter(
+                tenant_id=tenant_id, is_active=True
+            ).count(),
         },
         "audit_logs": {
-            "today": AuditLog.objects.filter(tenant_id=tenant_id, timestamp__gte=today).count(),
-            "week": AuditLog.objects.filter(tenant_id=tenant_id, timestamp__gte=last_7_days).count(),
+            "today": AuditLog.objects.filter(
+                tenant_id=tenant_id, timestamp__gte=today
+            ).count(),
+            "week": AuditLog.objects.filter(
+                tenant_id=tenant_id, timestamp__gte=last_7_days
+            ).count(),
         },
         "timestamp": now.isoformat(),
     }
@@ -284,32 +297,32 @@ def get_top_tenants(
 ):
     """
     Get top tenants by metric.
-    
+
     📊 Performance: REAL rankings
     """
     if metric == "users":
-        tenants = Tenant.objects.annotate(
-            count=Count("users")
-        ).order_by("-count")[:limit]
-        
+        tenants = Tenant.objects.annotate(count=Count("users")).order_by("-count")[
+            :limit
+        ]
+
         return {
             "metric": "users",
             "tenants": [
                 {"tenant_id": str(t.id), "name": t.name, "count": t.count}
                 for t in tenants
-            ]
+            ],
         }
     elif metric == "api_keys":
-        tenants = Tenant.objects.annotate(
-            count=Count("api_keys")
-        ).order_by("-count")[:limit]
-        
+        tenants = Tenant.objects.annotate(count=Count("api_keys")).order_by("-count")[
+            :limit
+        ]
+
         return {
             "metric": "api_keys",
             "tenants": [
                 {"tenant_id": str(t.id), "name": t.name, "count": t.count}
                 for t in tenants
-            ]
+            ],
         }
     else:
         raise HttpError(400, f"Invalid metric: {metric}")

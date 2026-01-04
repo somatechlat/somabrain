@@ -78,9 +78,13 @@ class SalienceConfig:
     def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""
         if self.soft_temperature is None:
-            self.soft_temperature = getattr(_get_settings(), "SOMABRAIN_SALIENCE_SOFT_TEMPERATURE", 0.1)
+            self.soft_temperature = getattr(
+                _get_settings(), "SOMABRAIN_SALIENCE_SOFT_TEMPERATURE", 0.1
+            )
         if self.fd_energy_floor is None:
-            self.fd_energy_floor = getattr(_get_settings(), "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.9)
+            self.fd_energy_floor = getattr(
+                _get_settings(), "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.9
+            )
 
 
 class AmygdalaSalience:
@@ -209,15 +213,13 @@ class AmygdalaSalience:
 
     @property
     def last_fd_residual(self) -> float:
-        """Execute last fd residual.
-            """
+        """Execute last fd residual."""
 
         return float(self._last_fd_residual)
 
     @property
     def last_fd_capture(self) -> float:
-        """Execute last fd capture.
-            """
+        """Execute last fd capture."""
 
         return float(self._last_fd_capture)
 
@@ -246,9 +248,9 @@ class AmygdalaSalience:
             # numerically stable sigmoid
             """Execute sig.
 
-                Args:
-                    x: The x.
-                """
+            Args:
+                x: The x.
+            """
 
             import math
 
@@ -263,9 +265,9 @@ class AmygdalaSalience:
         # NE raises thresholds under urgency
         """Execute thresholds.
 
-            Args:
-                neuromod: The neuromod.
-            """
+        Args:
+            neuromod: The neuromod.
+        """
 
         th_store = self.cfg.threshold_store + float(neuromod.noradrenaline)
         th_act = self.cfg.threshold_act + float(neuromod.noradrenaline)

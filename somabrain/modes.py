@@ -52,15 +52,13 @@ class ModeConfig:
     enable_cog_threads: bool
 
     def as_dict(self) -> Dict[str, bool]:  # convenience for logging/metrics
-        """Execute as dict.
-            """
+        """Execute as dict."""
 
         return {k: getattr(self, k) for k in self.__dataclass_fields__ if k != "name"}
 
 
 def _resolve_mode() -> str:
-    """Execute resolve mode.
-        """
+    """Execute resolve mode."""
 
     raw = (settings.SOMABRAIN_MODE or "").strip().lower()
     if not raw:
@@ -97,8 +95,7 @@ def _load_overrides() -> List[str]:
 
 
 def get_mode_config() -> ModeConfig:
-    """Retrieve mode config.
-        """
+    """Retrieve mode config."""
 
     name = _resolve_mode()
     if name == "ci":

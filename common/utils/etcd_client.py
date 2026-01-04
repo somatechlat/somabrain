@@ -29,9 +29,9 @@ class EtcdClient:
     def get_flag(self, key: str) -> Optional[str]:
         """Retrieve flag.
 
-            Args:
-                key: The key.
-            """
+        Args:
+            key: The key.
+        """
 
         value, _ = self._client.get(key)
         if value is None:
@@ -41,19 +41,19 @@ class EtcdClient:
     def set_flag(self, key: str, value: str) -> None:
         """Set flag.
 
-            Args:
-                key: The key.
-                value: The value.
-            """
+        Args:
+            key: The key.
+            value: The value.
+        """
 
         self._client.put(key, value)
 
     def delete_flag(self, key: str) -> None:
         """Execute delete flag.
 
-            Args:
-                key: The key.
-            """
+        Args:
+            key: The key.
+        """
 
         self._client.delete(key)
 
@@ -66,9 +66,9 @@ class EtcdClient:
         def _handler(event):
             """Execute handler.
 
-                Args:
-                    event: The event.
-                """
+            Args:
+                event: The event.
+            """
 
             if event.value is None:
                 payload = None

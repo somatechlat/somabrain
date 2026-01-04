@@ -55,8 +55,7 @@ class AuditLogger:
         self._prev_hash = self._load_last_hash()
 
     def _load_last_hash(self) -> str:
-        """Execute load last hash.
-            """
+        """Execute load last hash."""
 
         try:
             if not os.path.exists(self.path):
@@ -75,9 +74,9 @@ class AuditLogger:
     def _hash(self, rec: Dict[str, Any]) -> str:
         """Execute hash.
 
-            Args:
-                rec: The rec.
-            """
+        Args:
+            rec: The rec.
+        """
 
         h = hashlib.blake2b(digest_size=16)
         prev = (self._prev_hash or "").encode("utf-8")
@@ -88,9 +87,9 @@ class AuditLogger:
     def write(self, rec: Dict[str, Any]) -> None:
         """Execute write.
 
-            Args:
-                rec: The rec.
-            """
+        Args:
+            rec: The rec.
+        """
 
         rec = dict(rec)
         rec.setdefault("ts", time.time())

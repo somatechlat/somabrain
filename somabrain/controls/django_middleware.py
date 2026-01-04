@@ -32,13 +32,13 @@ class ControlsMiddleware:
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         # Pre-process request
-        
+
         # Read body safely (Django caches it)
         """Execute call  .
 
-            Args:
-                request: The request.
-            """
+        Args:
+            request: The request.
+        """
 
         raw_body = b""
         try:
@@ -51,7 +51,7 @@ class ControlsMiddleware:
         headers = dict(request.headers)
         # Normalize headers to lower case keys for consistency
         normalized_headers = {k.lower(): v for k, v in headers.items()}
-        
+
         # Extract client IP
         if x_forwarded := normalized_headers.get("x-forwarded-for"):
             client_ip = x_forwarded.split(",")[0].strip()
@@ -67,8 +67,12 @@ class ControlsMiddleware:
             "content_type": normalized_headers.get("content-type", ""),
             "body_size": len(raw_body),
             "provenance_valid": None,
-            "provenance_strict": bool(getattr(settings, "SOMABRAIN_PROVENANCE_STRICT_DENY", False)),
-            "require_provenance": bool(getattr(settings, "SOMABRAIN_REQUIRE_PROVENANCE", False)),
+            "provenance_strict": bool(
+                getattr(settings, "SOMABRAIN_PROVENANCE_STRICT_DENY", False)
+            ),
+            "require_provenance": bool(
+                getattr(settings, "SOMABRAIN_REQUIRE_PROVENANCE", False)
+            ),
         }
 
         # Provenance Check

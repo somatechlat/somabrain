@@ -16,15 +16,14 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Key rotation automation
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-from uuid import UUID, uuid4
+from typing import List, Optional
+from datetime import timedelta
+from uuid import UUID
 import secrets
 import hashlib
 
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from django.core.cache import cache
 from ninja import Router, Schema
 
 from somabrain.saas.models import Tenant, APIKey, AuditLog, ActorType
@@ -56,8 +55,10 @@ AVAILABLE_SCOPES = {
 # SCHEMAS
 # =============================================================================
 
+
 class APIKeyDetailOut(Schema):
     """Detailed API key output."""
+
     id: str
     name: str
     key_prefix: str
@@ -75,6 +76,7 @@ class APIKeyDetailOut(Schema):
 
 class APIKeyCreate(Schema):
     """Create API key request."""
+
     name: str
     scopes: List[str] = ["read"]
     rate_limit: Optional[int] = None  # Per minute
@@ -85,6 +87,7 @@ class APIKeyCreate(Schema):
 
 class APIKeyUpdate(Schema):
     """Update API key request."""
+
     name: Optional[str] = None
     scopes: Optional[List[str]] = None
     rate_limit: Optional[int] = None
@@ -94,6 +97,7 @@ class APIKeyUpdate(Schema):
 
 class APIKeyRotate(Schema):
     """Rotate API key response."""
+
     id: str
     new_key: str
     old_key_prefix: str
@@ -102,6 +106,7 @@ class APIKeyRotate(Schema):
 
 class APIKeyUsageStats(Schema):
     """API key usage statistics."""
+
     key_id: str
     total_requests: int
     requests_today: int
@@ -114,6 +119,7 @@ class APIKeyUsageStats(Schema):
 
 class ScopeOut(Schema):
     """Scope output."""
+
     name: str
     description: str
 
@@ -122,22 +128,23 @@ class ScopeOut(Schema):
 # SCOPE ENDPOINTS
 # =============================================================================
 
+
 @router.get("/scopes", response=List[ScopeOut])
 def list_available_scopes():
     """
     List all available API key scopes.
-    
+
     📚 Technical Writer: Scope documentation
     """
     return [
-        ScopeOut(name=name, description=desc)
-        for name, desc in AVAILABLE_SCOPES.items()
+        ScopeOut(name=name, description=desc) for name, desc in AVAILABLE_SCOPES.items()
     ]
 
 
 # =============================================================================
 # API KEY CRUD
 # =============================================================================
+
 
 @router.get("/{tenant_id}/keys", response=List[APIKeyDetailOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -149,21 +156,22 @@ def list_api_keys(
 ):
     """
     List all API keys for a tenant.
-    
+
     🎨 UX: Key management view
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     queryset = APIKey.objects.filter(tenant_id=tenant_id)
     if not include_inactive:
         queryset = queryset.filter(is_active=True)
-    
+
     keys = queryset.order_by("-created_at")
-    
+
     return [
         APIKeyDetailOut(
             id=str(k.id),
@@ -194,33 +202,35 @@ def create_api_key(
 ):
     """
     Create a new API key with scopes.
-    
+
     🔒 Security: Scoped key creation
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # Validate scopes
     invalid_scopes = [s for s in data.scopes if s not in AVAILABLE_SCOPES]
     if invalid_scopes:
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Invalid scopes: {', '.join(invalid_scopes)}")
-    
+
     # Generate key
     raw_key = f"sb_{secrets.token_urlsafe(32)}"
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
     key_prefix = raw_key[:12]
-    
+
     # Calculate expiry
     expires_at = None
     if data.expires_days:
         expires_at = timezone.now() + timedelta(days=data.expires_days)
-    
+
     # Create key
     api_key = APIKey.objects.create(
         tenant=tenant,
@@ -234,7 +244,7 @@ def create_api_key(
         expires_at=expires_at,
         created_by_id=request.user_id,
     )
-    
+
     # Audit log
     AuditLog.log(
         action="api_key.created",
@@ -245,7 +255,7 @@ def create_api_key(
         tenant=tenant,
         details={"name": data.name, "scopes": data.scopes},
     )
-    
+
     return {
         "id": str(api_key.id),
         "name": api_key.name,
@@ -270,10 +280,11 @@ def get_api_key(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     key = get_object_or_404(APIKey, id=key_id, tenant_id=tenant_id)
-    
+
     return APIKeyDetailOut(
         id=str(key.id),
         name=key.name,
@@ -302,17 +313,18 @@ def update_api_key(
 ):
     """
     Update an API key.
-    
+
     🔒 Security: Scope modification
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     key = get_object_or_404(APIKey, id=key_id, tenant_id=tenant_id)
-    
+
     if data.name is not None:
         key.name = data.name
     if data.scopes is not None:
@@ -320,6 +332,7 @@ def update_api_key(
         invalid = [s for s in data.scopes if s not in AVAILABLE_SCOPES]
         if invalid:
             from ninja.errors import HttpError
+
             raise HttpError(400, f"Invalid scopes: {', '.join(invalid)}")
         key.scopes = data.scopes
     if data.rate_limit is not None:
@@ -328,9 +341,9 @@ def update_api_key(
         key.ip_whitelist = data.ip_whitelist
     if data.is_active is not None:
         key.is_active = data.is_active
-    
+
     key.save()
-    
+
     # Audit log
     AuditLog.log(
         action="api_key.updated",
@@ -341,7 +354,7 @@ def update_api_key(
         tenant=key.tenant,
         details=data.dict(exclude_unset=True),
     )
-    
+
     return APIKeyDetailOut(
         id=str(key.id),
         name=key.name,
@@ -369,21 +382,22 @@ def revoke_api_key(
 ):
     """
     Revoke (soft delete) an API key.
-    
+
     🔒 Security: Key revocation
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     key = get_object_or_404(APIKey, id=key_id, tenant_id=tenant_id)
-    
+
     key.is_active = False
     key.revoked_at = timezone.now()
     key.save()
-    
+
     # Audit log
     AuditLog.log(
         action="api_key.revoked",
@@ -393,13 +407,14 @@ def revoke_api_key(
         actor_type=ActorType.ADMIN,
         tenant=key.tenant,
     )
-    
+
     return {"success": True, "revoked": str(key.id)}
 
 
 # =============================================================================
 # KEY ROTATION
 # =============================================================================
+
 
 @router.post("/{tenant_id}/keys/{key_id}/rotate", response=APIKeyRotate)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -411,25 +426,26 @@ def rotate_api_key(
 ):
     """
     Rotate an API key (generate new key, invalidate old).
-    
+
     🛠️ DevOps: Key rotation
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     key = get_object_or_404(APIKey, id=key_id, tenant_id=tenant_id)
-    
+
     old_prefix = key.key_prefix
-    
+
     # Generate new key
     raw_key = f"sb_{secrets.token_urlsafe(32)}"
     key.key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
     key.key_prefix = raw_key[:12]
     key.save()
-    
+
     # Audit log
     AuditLog.log(
         action="api_key.rotated",
@@ -439,7 +455,7 @@ def rotate_api_key(
         actor_type=ActorType.ADMIN,
         tenant=key.tenant,
     )
-    
+
     return APIKeyRotate(
         id=str(key.id),
         new_key=raw_key,
@@ -452,6 +468,7 @@ def rotate_api_key(
 # KEY USAGE
 # =============================================================================
 
+
 @router.get("/{tenant_id}/keys/{key_id}/usage", response=APIKeyUsageStats)
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.API_KEYS_READ.value)
@@ -462,22 +479,23 @@ def get_api_key_usage(
 ):
     """
     Get API key usage statistics.
-    
+
     📊 Performance: Usage analytics
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     key = get_object_or_404(APIKey, id=key_id, tenant_id=tenant_id)
-    
+
     # Real usage stats from key model
     # Calculate based on actual usage_count field
     today_requests = 0
     week_requests = 0
-    
+
     # Check if there's recent activity
     if key.last_used_at:
         days_since_used = (timezone.now() - key.last_used_at).days
@@ -485,7 +503,7 @@ def get_api_key_usage(
             today_requests = min(key.usage_count, key.usage_count // 7 or 1)
         if days_since_used < 7:
             week_requests = min(key.usage_count, key.usage_count)
-    
+
     return APIKeyUsageStats(
         key_id=str(key.id),
         total_requests=key.usage_count,
@@ -506,17 +524,18 @@ def get_keys_overview(
 ):
     """
     Get overview of all API keys for a tenant.
-    
+
     📊 Performance: Dashboard data
     """
     # Tenant isolation
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     keys = APIKey.objects.filter(tenant_id=tenant_id)
-    
+
     return {
         "total_keys": keys.count(),
         "active_keys": keys.filter(is_active=True).count(),

@@ -52,9 +52,9 @@ class TemperatureScaler:
         def nll(temp: float) -> float:
             """Execute nll.
 
-                Args:
-                    temp: The temp.
-                """
+            Args:
+                temp: The temp.
+            """
 
             t = max(1e-6, float(temp))
             z = logits / t

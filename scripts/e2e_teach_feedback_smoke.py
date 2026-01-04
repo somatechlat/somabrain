@@ -10,6 +10,7 @@ Notes:
 - The processor may emit Avro-schemaless or JSON; we try Avro first (if fastavro available)
   using the legacy reward_event schema, then use JSON alternative.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,16 +38,14 @@ REWARD_TOPIC = "cog.reward.events"
 
 
 def _bootstrap() -> str:
-    """Execute bootstrap.
-        """
+    """Execute bootstrap."""
 
     url = settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30102"
     return str(url).replace("kafka://", "")
 
 
 def _avro_reward_serde() -> Optional[AvroSerde]:
-    """Execute avro reward serde.
-        """
+    """Execute avro reward serde."""
 
     if load_schema is None or AvroSerde is None:
         return None
@@ -60,9 +59,9 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
     # Try Avro first
     """Execute decode reward.
 
-        Args:
-            value: The value.
-        """
+    Args:
+        value: The value.
+    """
 
     serde = _avro_reward_serde()
     if serde is not None:
@@ -82,15 +81,15 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
 def produce_teach_feedback(prod: KafkaProducer, frame_id: str) -> None:
     """Execute produce teach feedback.
 
-        Args:
-            prod: The prod.
-            frame_id: The frame_id.
-        """
+    Args:
+        prod: The prod.
+        frame_id: The frame_id.
+    """
 
     now_iso = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     rec = {
-        "feedback_id": f"fb-{int(time.time()*1000)}",
-        "capsule_id": f"cap-{int(time.time()*1000)}",
+        "feedback_id": f"fb-{int(time.time() * 1000)}",
+        "capsule_id": f"cap-{int(time.time() * 1000)}",
         "frame_id": frame_id,
         "ts": now_iso,
         "rating": 5,
@@ -106,11 +105,11 @@ def consume_reward_for_frame(
 ) -> bool:
     """Execute consume reward for frame.
 
-        Args:
-            consumer: The consumer.
-            frame_id: The frame_id.
-            timeout_s: The timeout_s.
-        """
+    Args:
+        consumer: The consumer.
+        frame_id: The frame_id.
+        timeout_s: The timeout_s.
+    """
 
     deadline = time.time() + timeout_s
     while time.time() < deadline:
@@ -135,11 +134,10 @@ def consume_reward_for_frame(
 
 
 def main() -> None:
-    """Execute main.
-        """
+    """Execute main."""
 
     bootstrap = _bootstrap()
-    frame_id = f"frame-{int(time.time()*1000)}"
+    frame_id = f"frame-{int(time.time() * 1000)}"
 
     prod = KafkaProducer(bootstrap_servers=bootstrap, value_serializer=lambda v: v)
     try:

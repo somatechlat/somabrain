@@ -10,8 +10,7 @@ except Exception:  # pragma: no cover
     BaseModel = object
 
     def Field(*a, **k):
-        """Execute Field.
-            """
+        """Execute Field."""
 
         return None
 

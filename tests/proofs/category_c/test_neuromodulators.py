@@ -78,9 +78,9 @@ class TestNeuromodulatorStateManagement:
             f"Dopamine should be settable to higher value: "
             f"baseline={baseline_dopamine}, new={new_state.dopamine}"
         )
-        assert (
-            new_state.dopamine == 0.8
-        ), f"Dopamine should be 0.8, got {new_state.dopamine}"
+        assert new_state.dopamine == 0.8, (
+            f"Dopamine should be 0.8, got {new_state.dopamine}"
+        )
 
     def test_serotonin_shifts_exploitation(self) -> None:
         """C1.2: Serotonin shifts exploitation.
@@ -113,9 +113,9 @@ class TestNeuromodulatorStateManagement:
 
         # Verify serotonin set correctly
         new_state = neuromods.get_state()
-        assert (
-            new_state.serotonin == 0.9
-        ), f"Serotonin should be 0.9, got {new_state.serotonin}"
+        assert new_state.serotonin == 0.9, (
+            f"Serotonin should be 0.9, got {new_state.serotonin}"
+        )
 
         # Create low serotonin state (exploration mode)
         low_serotonin_state = NeuromodState(
@@ -129,9 +129,9 @@ class TestNeuromodulatorStateManagement:
 
         # Verify serotonin set correctly
         exploration_state = neuromods.get_state()
-        assert (
-            exploration_state.serotonin == 0.1
-        ), f"Serotonin should be 0.1, got {exploration_state.serotonin}"
+        assert exploration_state.serotonin == 0.1, (
+            f"Serotonin should be 0.1, got {exploration_state.serotonin}"
+        )
 
     def test_noradrenaline_narrows_attention(self) -> None:
         """C1.3: Noradrenaline narrows attention.
@@ -164,9 +164,9 @@ class TestNeuromodulatorStateManagement:
 
         # Verify noradrenaline set correctly
         new_state = neuromods.get_state()
-        assert (
-            new_state.noradrenaline == 0.1
-        ), f"Noradrenaline should be 0.1, got {new_state.noradrenaline}"
+        assert new_state.noradrenaline == 0.1, (
+            f"Noradrenaline should be 0.1, got {new_state.noradrenaline}"
+        )
 
     def test_acetylcholine_increases_learning_rate(self) -> None:
         """C1.4: Acetylcholine increases learning rate.
@@ -199,9 +199,9 @@ class TestNeuromodulatorStateManagement:
 
         # Verify acetylcholine set correctly
         new_state = neuromods.get_state()
-        assert (
-            new_state.acetylcholine == 0.1
-        ), f"Acetylcholine should be 0.1, got {new_state.acetylcholine}"
+        assert new_state.acetylcholine == 0.1, (
+            f"Acetylcholine should be 0.1, got {new_state.acetylcholine}"
+        )
 
     def test_all_values_in_valid_range(self) -> None:
         """C1.5: All values in valid range.
@@ -227,18 +227,18 @@ class TestNeuromodulatorStateManagement:
         # Note: The dataclass allows any float, but the documented ranges are:
         # Dopamine: [0.2, 0.8], Serotonin: [0.0, 1.0]
         # Noradrenaline: [0.0, 0.1], Acetylcholine: [0.0, 0.1]
-        assert isinstance(
-            state.dopamine, float
-        ), f"Dopamine should be float: {state.dopamine}"
-        assert isinstance(
-            state.serotonin, float
-        ), f"Serotonin should be float: {state.serotonin}"
-        assert isinstance(
-            state.noradrenaline, float
-        ), f"Noradrenaline should be float: {state.noradrenaline}"
-        assert isinstance(
-            state.acetylcholine, float
-        ), f"Acetylcholine should be float: {state.acetylcholine}"
+        assert isinstance(state.dopamine, float), (
+            f"Dopamine should be float: {state.dopamine}"
+        )
+        assert isinstance(state.serotonin, float), (
+            f"Serotonin should be float: {state.serotonin}"
+        )
+        assert isinstance(state.noradrenaline, float), (
+            f"Noradrenaline should be float: {state.noradrenaline}"
+        )
+        assert isinstance(state.acetylcholine, float), (
+            f"Acetylcholine should be float: {state.acetylcholine}"
+        )
 
         # Verify timestamp is set
         assert state.timestamp > 0, f"Timestamp should be positive: {state.timestamp}"
@@ -271,9 +271,9 @@ class TestNeuromodulatorPubSub:
         def callback(state: NeuromodState) -> None:
             """Execute callback.
 
-                Args:
-                    state: The state.
-                """
+            Args:
+                state: The state.
+            """
 
             received_states.append(state)
 
@@ -291,9 +291,9 @@ class TestNeuromodulatorPubSub:
         neuromods.set_state(new_state)
 
         # Verify callback was called
-        assert (
-            len(received_states) == 1
-        ), f"Expected 1 callback, got {len(received_states)}"
+        assert len(received_states) == 1, (
+            f"Expected 1 callback, got {len(received_states)}"
+        )
         assert received_states[0].dopamine == 0.7
         assert received_states[0].serotonin == 0.6
 
@@ -374,12 +374,12 @@ class TestPerTenantNeuromodulators:
         state_a = per_tenant.get_state("tenant_a")
         state_b = per_tenant.get_state("tenant_b")
 
-        assert (
-            state_a.dopamine == 0.8
-        ), f"Tenant A dopamine should be 0.8, got {state_a.dopamine}"
-        assert (
-            state_b.dopamine == 0.3
-        ), f"Tenant B dopamine should be 0.3, got {state_b.dopamine}"
+        assert state_a.dopamine == 0.8, (
+            f"Tenant A dopamine should be 0.8, got {state_a.dopamine}"
+        )
+        assert state_b.dopamine == 0.3, (
+            f"Tenant B dopamine should be 0.3, got {state_b.dopamine}"
+        )
 
     def test_unknown_tenant_uses_global(self) -> None:
         """Unknown tenant falls back to global state.

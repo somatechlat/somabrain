@@ -18,12 +18,12 @@ def compute_utility(
     # default params
     """Execute compute utility.
 
-        Args:
-            p_confidence: The p_confidence.
-            cost: The cost.
-            latency: The latency.
-            const_params: The const_params.
-        """
+    Args:
+        p_confidence: The p_confidence.
+        cost: The cost.
+        latency: The latency.
+        const_params: The const_params.
+    """
 
     lam = const_params.get("lambda", const_params.get("lam", 1.0))
     mu = const_params.get("mu", 0.0)
@@ -41,6 +41,7 @@ def _get_constitution_engine() -> Optional[ConstitutionEngine]:
     """Get the ConstitutionEngine singleton."""
     try:
         from somabrain.app import app
+
         return getattr(app.state, "constitution_engine", None)
     except Exception:
         return None
@@ -52,7 +53,7 @@ async def utility_guard(request: HttpRequest) -> None:
     This guard expects the route handler or middleware to provide model confidence.
     """
     engine = _get_constitution_engine()
-    
+
     # Determine mode; in dev, relax strict constitution requirement
     dev_mode = False
     try:
@@ -72,14 +73,14 @@ async def utility_guard(request: HttpRequest) -> None:
     # extract confidence/cost/latency from request
     # Check request.state (if present) or headers
     state = getattr(request, "state", None)
-    
+
     conf = getattr(state, "model_confidence", None) if state else None
     if conf is None:
         try:
             conf = float(request.headers.get("X-Model-Confidence", "0"))
         except Exception:
             conf = 0.0
-            
+
     cost = float(getattr(state, "estimated_cost", 0.0)) if state else 0.0
     latency = float(getattr(state, "estimated_latency", 0.0)) if state else 0.0
 
@@ -91,19 +92,19 @@ async def utility_guard(request: HttpRequest) -> None:
         params = {}
 
     u = compute_utility(conf, cost, latency, params)
-    
+
     # attach for handler
     if state:
         state.utility_value = u
     else:
         # Fallback if no state container
         setattr(request, "utility_value", u)
-        
+
     try:
         M.UTILITY_VALUE.set(u)
     except Exception:
         pass
-        
+
     # In dev mode, be permissive
     if u < 0 and not dev_mode:
         try:
@@ -117,4 +118,4 @@ async def utility_guard(request: HttpRequest) -> None:
         if state:
             state.utility_value = 0.0
         else:
-             setattr(request, "utility_value", 0.0)
+            setattr(request, "utility_value", 0.0)

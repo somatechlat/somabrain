@@ -266,14 +266,14 @@ class TestDegradationManager:
         cb.reset("tenant_recovery")
 
         # Should no longer be degraded
-        assert not dm.is_degraded(
-            "tenant_recovery"
-        ), "Should not be degraded after reset"
+        assert not dm.is_degraded("tenant_recovery"), (
+            "Should not be degraded after reset"
+        )
 
         # Alert should not trigger
-        assert not dm.check_alert(
-            "tenant_recovery"
-        ), "Alert should not trigger after recovery"
+        assert not dm.check_alert("tenant_recovery"), (
+            "Alert should not trigger after recovery"
+        )
 
 
 # ---------------------------------------------------------------------------

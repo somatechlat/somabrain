@@ -28,9 +28,9 @@ class FrequentDirections:
     def insert(self, v: np.ndarray):
         """Execute insert.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         v = np.asarray(v, dtype=float).reshape(1, -1)
         self.S = np.vstack([self.S, v])
@@ -39,8 +39,7 @@ class FrequentDirections:
 
     def _compress(self):
         # compute SVD of current S, shrink singular values
-        """Execute compress.
-            """
+        """Execute compress."""
 
         U, s, Vt = np.linalg.svd(self.S, full_matrices=False)
         # shrink by smallest singular value s[-1]
@@ -58,9 +57,9 @@ class FrequentDirections:
     def top_components(self, r: Optional[int] = None):
         """Execute top components.
 
-            Args:
-                r: The r.
-            """
+        Args:
+            r: The r.
+        """
 
         C = self.approx_cov()
         U, s, Vt = np.linalg.svd(C)

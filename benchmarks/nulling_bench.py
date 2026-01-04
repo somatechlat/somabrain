@@ -23,12 +23,12 @@ def run_bench(
 ):
     """Execute run bench.
 
-        Args:
-            out_path: The out_path.
-            D_list: The D_list.
-            null_fracs: The null_fracs.
-            seeds: The seeds.
-        """
+    Args:
+        out_path: The out_path.
+        D_list: The D_list.
+        null_fracs: The null_fracs.
+        seeds: The seeds.
+    """
 
     results = {
         "meta": {
@@ -62,10 +62,10 @@ def run_bench(
                 def mse(x, y):
                     """Execute mse.
 
-                        Args:
-                            x: The x.
-                            y: The y.
-                        """
+                    Args:
+                        x: The x.
+                        y: The y.
+                    """
 
                     return float(np.mean((x - y) ** 2))
 
@@ -122,8 +122,7 @@ def run_bench(
 
 
 def main():
-    """Execute main.
-        """
+    """Execute main."""
 
     p = argparse.ArgumentParser()
     p.add_argument("--out", type=Path, default=Path("benchmarks/nulling_results.json"))

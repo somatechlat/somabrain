@@ -27,7 +27,9 @@ def _service_available() -> bool:
     A ``HEAD`` request is sufficient and inexpensive. If the request raises an
     exception we treat the service as unavailable and skip the test.
     """
-    endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:10101")
+    endpoint = getattr(
+        settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:10101"
+    )
     try:
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.get("/health")
@@ -55,6 +57,7 @@ def test_memory_remember_and_recall() -> None:
 
     class ConfigProxy:
         """Proxy to expose lowercase settings to MemoryClient/Transport."""
+
         def __init__(self, wrapped_settings):
             """Initialize the instance."""
 
@@ -62,14 +65,18 @@ def test_memory_remember_and_recall() -> None:
             # Explicitly provide the token expected by create_memory_transport
             self.memory_http_token = AUTH["api_token"]
             # Expose endpoint as expected
-            self.memory_http_endpoint = getattr(wrapped_settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:10101")
+            self.memory_http_endpoint = getattr(
+                wrapped_settings,
+                "SOMABRAIN_MEMORY_HTTP_ENDPOINT",
+                "http://127.0.0.1:10101",
+            )
 
         def __getattr__(self, name):
             """Execute getattr  .
 
-                Args:
-                    name: The name.
-                """
+            Args:
+                name: The name.
+            """
 
             return getattr(self._wrapped, name)
 
@@ -85,7 +92,6 @@ def test_memory_remember_and_recall() -> None:
         print(f"WARNING: Memory service reported unhealthy: {health}")
         # Proceed if we can connect, assuming degraded state might still allow basic storage
 
-
     test_key = "e2e-test-key"
     payload = {"key": test_key, "content": "hello world"}
 
@@ -94,6 +100,7 @@ def test_memory_remember_and_recall() -> None:
         coord = client.remember(coord_key=test_key, payload=payload)
     except RuntimeError as exc:
         import sys
+
         sys.stderr.write(f"\nDEBUG E2E FAIL: {exc}\n")
         pytest.skip(f"Memory service write failed: {exc}")
     assert isinstance(coord, tuple) and len(coord) == 3

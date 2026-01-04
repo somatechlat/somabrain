@@ -30,8 +30,7 @@ def _select_heat_method() -> str:
 
 
 def _now_ts() -> str:
-    """Execute now ts.
-        """
+    """Execute now ts."""
 
     from datetime import datetime, timezone
 
@@ -74,9 +73,9 @@ class PredictorBase:
     def salience(self, x0: np.ndarray) -> np.ndarray:
         """Execute salience.
 
-            Args:
-                x0: The x0.
-            """
+        Args:
+            x0: The x0.
+        """
 
         t = float(self.cfg.diffusion_t)
         if self._method == "lanczos":
@@ -94,10 +93,10 @@ class PredictorBase:
     def mse(a: np.ndarray, b: np.ndarray) -> float:
         """Execute mse.
 
-            Args:
-                a: The a.
-                b: The b.
-            """
+        Args:
+            a: The a.
+            b: The b.
+        """
 
         a = np.asarray(a, dtype=float)
         b = np.asarray(b, dtype=float)
@@ -111,10 +110,10 @@ class PredictorBase:
     ) -> Tuple[float, float]:
         """Execute error and confidence.
 
-            Args:
-                salience: The salience.
-                observed: The observed.
-            """
+        Args:
+            salience: The salience.
+            observed: The observed.
+        """
 
         err = self.mse(salience, observed)
         conf = float(np.exp(-self.cfg.alpha * max(0.0, err)))
@@ -132,10 +131,10 @@ class HeatDiffusionPredictor(PredictorBase):
     ) -> Tuple[np.ndarray, float, float]:
         """Execute step.
 
-            Args:
-                source_idx: The source_idx.
-                observed: The observed.
-            """
+        Args:
+            source_idx: The source_idx.
+            observed: The observed.
+        """
 
         x0 = np.zeros(self.dim, dtype=float)
         x0[max(0, min(self.dim - 1, int(source_idx)))] = 1.0
@@ -169,16 +168,16 @@ def make_line_graph_laplacian(n: int) -> np.ndarray:
 def matvec_from_matrix(M: np.ndarray) -> ApplyOp:
     """Execute matvec from matrix.
 
-        Args:
-            M: The M.
-        """
+    Args:
+        M: The M.
+    """
 
     def _apply(v: np.ndarray) -> np.ndarray:
         """Execute apply.
 
-            Args:
-                v: The v.
-            """
+        Args:
+            v: The v.
+        """
 
         return M @ v
 
@@ -188,9 +187,9 @@ def matvec_from_matrix(M: np.ndarray) -> ApplyOp:
 def _to_ndarray(obj: object) -> Optional[np.ndarray]:
     """Execute to ndarray.
 
-        Args:
-            obj: The obj.
-        """
+    Args:
+        obj: The obj.
+    """
 
     try:
         arr = np.array(obj, dtype=float)
@@ -205,9 +204,9 @@ def _laplacian_from_adjacency(A: np.ndarray) -> np.ndarray:
     # L = D - A
     """Execute laplacian from adjacency.
 
-        Args:
-            A: The A.
-        """
+    Args:
+        A: The A.
+    """
 
     deg = np.sum(A, axis=1)
     L = np.diag(deg) - A

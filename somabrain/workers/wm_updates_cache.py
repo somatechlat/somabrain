@@ -41,8 +41,7 @@ except Exception:  # pragma: no cover
 
 
 def _bootstrap() -> str:
-    """Execute bootstrap.
-        """
+    """Execute bootstrap."""
 
     url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "")
     if not url:
@@ -53,8 +52,7 @@ def _bootstrap() -> str:
 
 
 def _redis_client():
-    """Execute redis client.
-        """
+    """Execute redis client."""
 
     url = getattr(settings, "SOMABRAIN_REDIS_URL", "") or ""
     if not url or redis is None:
@@ -66,8 +64,7 @@ def _redis_client():
 
 
 def _serde() -> Optional[AvroSerde]:
-    """Execute serde.
-        """
+    """Execute serde."""
 
     if load_schema is None or AvroSerde is None:
         return None
@@ -80,10 +77,10 @@ def _serde() -> Optional[AvroSerde]:
 def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
     """Execute decode.
 
-        Args:
-            payload: The payload.
-            serde: The serde.
-        """
+    Args:
+        payload: The payload.
+        serde: The serde.
+    """
 
     if serde is not None:
         try:
@@ -97,8 +94,7 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
 
 
 def run_forever() -> None:  # pragma: no cover - integration loop
-    """Execute run forever.
-        """
+    """Execute run forever."""
 
     if not feature_enabled("wm_updates_cache"):
         print("wm_updates_cache: feature flag disabled; exiting.")
@@ -173,8 +169,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
 
 
 def main() -> None:  # pragma: no cover
-    """Execute main.
-        """
+    """Execute main."""
 
     run_forever()
 

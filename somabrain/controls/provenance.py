@@ -46,9 +46,9 @@ from typing import Optional
 def canonical_body(body: bytes) -> bytes:
     """Execute canonical body.
 
-        Args:
-            body: The body.
-        """
+    Args:
+        body: The body.
+    """
 
     try:
         obj = json.loads(body.decode("utf-8"))
@@ -60,11 +60,11 @@ def canonical_body(body: bytes) -> bytes:
 def verify_hmac_sha256(secret: Optional[str], body: bytes, header: str) -> bool:
     """Execute verify hmac sha256.
 
-        Args:
-            secret: The secret.
-            body: The body.
-            header: The header.
-        """
+    Args:
+        secret: The secret.
+        body: The body.
+        header: The header.
+    """
 
     if not secret:
         return False

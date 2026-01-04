@@ -18,12 +18,10 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 
 from typing import List, Optional
 from uuid import UUID
-from datetime import datetime
 
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from ninja import Router, Schema, Query
-from ninja.pagination import paginate
 
 from somabrain.saas.models import (
     TenantUser,
@@ -42,8 +40,10 @@ router = Router(tags=["Users"])
 # SCHEMAS
 # =============================================================================
 
+
 class UserCreate(Schema):
     """Schema for creating a user."""
+
     email: str
     display_name: Optional[str] = None
     external_id: Optional[str] = None  # Keycloak user ID
@@ -54,6 +54,7 @@ class UserCreate(Schema):
 
 class UserUpdate(Schema):
     """Schema for updating a user."""
+
     display_name: Optional[str] = None
     is_active: Optional[bool] = None
     is_primary: Optional[bool] = None
@@ -61,6 +62,7 @@ class UserUpdate(Schema):
 
 class UserOut(Schema):
     """Schema for user output."""
+
     id: UUID
     tenant_id: UUID
     email: str
@@ -76,9 +78,9 @@ class UserOut(Schema):
     def resolve_created_at(obj):
         """Execute resolve created at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.created_at.isoformat()
 
@@ -86,9 +88,9 @@ class UserOut(Schema):
     def resolve_last_login_at(obj):
         """Execute resolve last login at.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.last_login_at.isoformat() if obj.last_login_at else None
 
@@ -96,17 +98,24 @@ class UserOut(Schema):
     def resolve_roles(obj):
         """Execute resolve roles.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         from somabrain.saas.models import TenantUserRole
-        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
-        return [{"id": str(a.role.id), "name": a.role.name, "slug": a.role.slug} for a in assignments]
+
+        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
+            "role"
+        )
+        return [
+            {"id": str(a.role.id), "name": a.role.name, "slug": a.role.slug}
+            for a in assignments
+        ]
 
 
 class UserListOut(Schema):
     """Schema for user list output."""
+
     id: UUID
     email: str
     display_name: Optional[str]
@@ -119,9 +128,9 @@ class UserListOut(Schema):
     def resolve_tenant_name(obj):
         """Execute resolve tenant name.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         return obj.tenant.name if obj.tenant else ""
 
@@ -129,22 +138,27 @@ class UserListOut(Schema):
     def resolve_roles(obj):
         """Execute resolve roles.
 
-            Args:
-                obj: The obj.
-            """
+        Args:
+            obj: The obj.
+        """
 
         from somabrain.saas.models import TenantUserRole
-        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
+
+        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
+            "role"
+        )
         return [a.role.slug for a in assignments]
 
 
 class RoleAssignment(Schema):
     """Schema for assigning a role."""
+
     role_id: UUID
 
 
 class UserInvite(Schema):
     """Schema for inviting a user."""
+
     email: str
     roles: List[str] = []  # Role slugs
     message: Optional[str] = None
@@ -152,6 +166,7 @@ class UserInvite(Schema):
 
 class UserFilters(Schema):
     """Filters for user list."""
+
     search: Optional[str] = None
     role: Optional[str] = None
     status: Optional[str] = None  # "active" or "inactive"
@@ -160,6 +175,7 @@ class UserFilters(Schema):
 # =============================================================================
 # PLATFORM USER ENDPOINTS (SysAdmin)
 # =============================================================================
+
 
 @router.get("/", response=List[UserListOut])
 @require_auth(roles=["super-admin"])
@@ -170,41 +186,43 @@ def list_all_users(
 ):
     """
     List all users across all tenants.
-    
+
     SysAdmin only - sees all platform users.
-    
+
     ALL 10 PERSONAS:
     - Security: SysAdmin only
     - DBA: Efficient filtering
     - UX: Search/filter support
     """
     queryset = TenantUser.objects.select_related("tenant").all()
-    
+
     # Apply filters
     if filters.search:
         queryset = queryset.filter(
-            Q(email__icontains=filters.search) |
-            Q(display_name__icontains=filters.search)
+            Q(email__icontains=filters.search)
+            | Q(display_name__icontains=filters.search)
         )
-    
+
     if filters.status == "active":
         queryset = queryset.filter(is_active=True)
     elif filters.status == "inactive":
         queryset = queryset.filter(is_active=False)
-    
+
     if filters.role:
         from somabrain.saas.models import TenantUserRole
-        user_ids = TenantUserRole.objects.filter(
-            role__slug=filters.role
-        ).values_list("tenant_user_id", flat=True)
+
+        user_ids = TenantUserRole.objects.filter(role__slug=filters.role).values_list(
+            "tenant_user_id", flat=True
+        )
         queryset = queryset.filter(id__in=user_ids)
-    
+
     return list(queryset.order_by("-created_at")[:100])
 
 
 # =============================================================================
 # TENANT USER ENDPOINTS
 # =============================================================================
+
 
 @router.get("/tenant/{tenant_id}", response=List[UserListOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -216,7 +234,7 @@ def list_tenant_users(
 ):
     """
     List users for a specific tenant.
-    
+
     Tenant-admin sees their own tenant's users.
     SysAdmin can view any tenant.
     """
@@ -224,23 +242,24 @@ def list_tenant_users(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied to this tenant")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
     queryset = TenantUser.objects.filter(tenant=tenant).select_related("tenant")
-    
+
     # Apply filters
     if filters.search:
         queryset = queryset.filter(
-            Q(email__icontains=filters.search) |
-            Q(display_name__icontains=filters.search)
+            Q(email__icontains=filters.search)
+            | Q(display_name__icontains=filters.search)
         )
-    
+
     if filters.status == "active":
         queryset = queryset.filter(is_active=True)
     elif filters.status == "inactive":
         queryset = queryset.filter(is_active=False)
-    
+
     return list(queryset.order_by("-created_at"))
 
 
@@ -254,7 +273,7 @@ def create_tenant_user(
 ):
     """
     Create a new user in a tenant.
-    
+
     ALL 10 PERSONAS:
     - Security: Role assignment only by authorized users
     - DBA: Transaction for user + roles
@@ -262,20 +281,24 @@ def create_tenant_user(
     """
     from django.db import transaction
     from somabrain.saas.models import Role, TenantUserRole
-    
+
     # Tenant isolation check
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied to this tenant")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # Check if user already exists in tenant
     if TenantUser.objects.filter(tenant=tenant, email=data.email).exists():
         from ninja.errors import HttpError
-        raise HttpError(400, f"User with email {data.email} already exists in this tenant")
-    
+
+        raise HttpError(
+            400, f"User with email {data.email} already exists in this tenant"
+        )
+
     with transaction.atomic():
         # Create user
         user = TenantUser.objects.create(
@@ -286,7 +309,7 @@ def create_tenant_user(
             is_active=data.is_active,
             is_primary=data.is_primary,
         )
-        
+
         # Assign roles
         if data.roles:
             roles = Role.objects.filter(slug__in=data.roles)
@@ -296,7 +319,7 @@ def create_tenant_user(
                     role=role,
                     assigned_by_id=request.user_id,
                 )
-        
+
         # Audit log
         AuditLog.log(
             action="user.created",
@@ -307,7 +330,7 @@ def create_tenant_user(
             tenant=tenant,
             details={"email": user.email, "roles": data.roles},
         )
-    
+
     return user
 
 
@@ -324,8 +347,9 @@ def get_tenant_user(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     return get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
 
 
@@ -343,16 +367,17 @@ def update_tenant_user(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     update_data = data.dict(exclude_unset=True)
     for field, value in update_data.items():
         setattr(user, field, value)
-    
+
     user.save()
-    
+
     # Audit log
     AuditLog.log(
         action="user.updated",
@@ -363,7 +388,7 @@ def update_tenant_user(
         tenant=user.tenant,
         details={"updated_fields": list(update_data.keys())},
     )
-    
+
     return user
 
 
@@ -379,18 +404,20 @@ def delete_tenant_user(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     # Can't delete primary user
     if user.is_primary:
         from ninja.errors import HttpError
+
         raise HttpError(400, "Cannot delete primary tenant user")
-    
+
     email = user.email
     user.delete()
-    
+
     # Audit log
     AuditLog.log(
         action="user.deleted",
@@ -401,13 +428,14 @@ def delete_tenant_user(
         tenant_id=tenant_id,
         details={"email": email},
     )
-    
+
     return {"success": True, "message": f"User '{email}' deleted"}
 
 
 # =============================================================================
 # ROLE ASSIGNMENT ENDPOINTS
 # =============================================================================
+
 
 @router.post("/tenant/{tenant_id}/{user_id}/roles")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -420,26 +448,28 @@ def assign_role(
 ):
     """Assign a role to a user."""
     from somabrain.saas.models import Role, TenantUserRole
-    
+
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
     role = get_object_or_404(Role, id=data.role_id)
-    
+
     # Check if already assigned
     if TenantUserRole.objects.filter(tenant_user=user, role=role).exists():
         from ninja.errors import HttpError
+
         raise HttpError(400, f"Role '{role.name}' already assigned")
-    
+
     TenantUserRole.objects.create(
         tenant_user=user,
         role=role,
         assigned_by_id=request.user_id,
     )
-    
+
     # Audit log
     AuditLog.log(
         action="user.role_assigned",
@@ -450,7 +480,7 @@ def assign_role(
         tenant=user.tenant,
         details={"role": role.name},
     )
-    
+
     return {"success": True, "message": f"Role '{role.name}' assigned"}
 
 
@@ -465,22 +495,24 @@ def remove_role(
 ):
     """Remove a role from a user."""
     from somabrain.saas.models import Role, TenantUserRole
-    
+
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
     role = get_object_or_404(Role, id=role_id)
-    
+
     assignment = TenantUserRole.objects.filter(tenant_user=user, role=role).first()
     if not assignment:
         from ninja.errors import HttpError
+
         raise HttpError(404, f"Role '{role.name}' not assigned to user")
-    
+
     assignment.delete()
-    
+
     # Audit log
     AuditLog.log(
         action="user.role_removed",
@@ -491,13 +523,14 @@ def remove_role(
         tenant=user.tenant,
         details={"role": role.name},
     )
-    
+
     return {"success": True, "message": f"Role '{role.name}' removed"}
 
 
 # =============================================================================
 # USER INVITATION
 # =============================================================================
+
 
 @router.post("/tenant/{tenant_id}/invite")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -509,35 +542,38 @@ def invite_user(
 ):
     """
     Invite a user to a tenant.
-    
+
     Creates the user record and sends invitation email.
-    
+
     ALL 10 PERSONAS - Future email integration.
     """
     from somabrain.saas.models import Role
-    
+
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     tenant = get_object_or_404(Tenant, id=tenant_id)
-    
+
     # Check if user already exists
     if TenantUser.objects.filter(tenant=tenant, email=data.email).exists():
         from ninja.errors import HttpError
+
         raise HttpError(400, f"User with email {data.email} already exists")
-    
+
     # Create user (inactive until they accept)
     user = TenantUser.objects.create(
         tenant=tenant,
         email=data.email,
         is_active=False,  # Pending invitation
     )
-    
+
     # Assign roles
     if data.roles:
         from somabrain.saas.models import TenantUserRole
+
         roles = Role.objects.filter(slug__in=data.roles)
         for role in roles:
             TenantUserRole.objects.create(
@@ -545,16 +581,17 @@ def invite_user(
                 role=role,
                 assigned_by_id=request.user_id,
             )
-    
+
     # Send invitation email using Django's native email service
     from somabrain.saas.email_service import send_invitation_email
+
     email_sent = send_invitation_email(
         to_email=data.email,
         tenant_name=tenant.name,
-        inviter_name=getattr(request, 'user_display_name', None),
-        custom_message=getattr(data, 'message', None),
+        inviter_name=getattr(request, "user_display_name", None),
+        custom_message=getattr(data, "message", None),
     )
-    
+
     # Audit log
     AuditLog.log(
         action="user.invited",
@@ -565,7 +602,7 @@ def invite_user(
         tenant=tenant,
         details={"email": data.email, "roles": data.roles, "email_sent": email_sent},
     )
-    
+
     return {
         "success": True,
         "message": f"Invitation sent to {data.email}",
@@ -576,6 +613,7 @@ def invite_user(
 # =============================================================================
 # USER STATUS TOGGLE
 # =============================================================================
+
 
 @router.post("/tenant/{tenant_id}/{user_id}/toggle-status")
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -589,20 +627,22 @@ def toggle_user_status(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     # Can't disable primary user
     if user.is_primary and user.is_active:
         from ninja.errors import HttpError
+
         raise HttpError(400, "Cannot disable primary tenant user")
-    
+
     user.is_active = not user.is_active
     user.save()
-    
+
     action = "enabled" if user.is_active else "disabled"
-    
+
     # Audit log
     AuditLog.log(
         action=f"user.{action}",
@@ -613,13 +653,14 @@ def toggle_user_status(
         tenant=user.tenant,
         details={"is_active": user.is_active},
     )
-    
+
     return {"success": True, "is_active": user.is_active, "message": f"User {action}"}
 
 
 # =============================================================================
 # USER AUDIT LOG
 # =============================================================================
+
 
 @router.get("/tenant/{tenant_id}/{user_id}/audit", response=List[dict])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
@@ -633,15 +674,16 @@ def get_user_audit_log(
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
             from ninja.errors import HttpError
+
             raise HttpError(403, "Access denied")
-    
+
     user = get_object_or_404(TenantUser, id=user_id, tenant_id=tenant_id)
-    
+
     logs = AuditLog.objects.filter(
         resource_type="TenantUser",
         resource_id=str(user.id),
     ).order_by("-timestamp")[:50]
-    
+
     return [
         {
             "action": log.action,

@@ -27,9 +27,9 @@ class PersonalityStore:
     def get(self, tenant: str | None = None) -> PersonalityState:
         """Execute get.
 
-            Args:
-                tenant: The tenant.
-            """
+        Args:
+            tenant: The tenant.
+        """
 
         t = tenant or get_tenant_manager().current_tenant()
         with self._lock:
@@ -40,10 +40,10 @@ class PersonalityStore:
     ) -> PersonalityState:
         """Execute set.
 
-            Args:
-                state: The state.
-                tenant: The tenant.
-            """
+        Args:
+            state: The state.
+            tenant: The tenant.
+        """
 
         t = tenant or get_tenant_manager().current_tenant()
         with self._lock:
@@ -63,8 +63,7 @@ class PersonalityStore:
             return updated
 
     def all(self) -> Dict[str, PersonalityState]:
-        """Execute all.
-            """
+        """Execute all."""
 
         with self._lock:
             return {k: v.model_copy() for k, v in self._states.items()}

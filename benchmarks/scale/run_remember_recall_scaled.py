@@ -23,8 +23,7 @@ DEFAULT_PORT = 9696
 
 
 def read_env_port() -> int:
-    """Execute read env port.
-        """
+    """Execute read env port."""
 
     port = None
     if os.path.exists(ENV_FILE):
@@ -45,10 +44,10 @@ API_PORT = read_env_port()
 def make_base(host: str | None = None, port: int | None = None) -> str:
     """Execute make base.
 
-        Args:
-            host: The host.
-            port: The port.
-        """
+    Args:
+        host: The host.
+        port: The port.
+    """
 
     host = host or "127.0.0.1"
     port = int(port or API_PORT)
@@ -61,9 +60,9 @@ HEADERS = {"Content-Type": "application/json"}
 def make_payload(i: int):
     """Execute make payload.
 
-        Args:
-            i: The i.
-        """
+    Args:
+        i: The i.
+    """
 
     return {
         "payload": {
@@ -85,12 +84,12 @@ async def post_remember(
 ):
     """Execute post remember.
 
-        Args:
-            client: The client.
-            i: The i.
-            sem: The sem.
-            retries: The retries.
-        """
+    Args:
+        client: The client.
+        i: The i.
+        sem: The sem.
+        retries: The retries.
+    """
 
     body = make_payload(i)
     attempt = 0
@@ -129,11 +128,11 @@ async def post_remember(
 async def run_count(count: int, concurrency: int = 250, base: str | None = None):
     """Execute run count.
 
-        Args:
-            count: The count.
-            concurrency: The concurrency.
-            base: The base.
-        """
+    Args:
+        count: The count.
+        concurrency: The concurrency.
+        base: The base.
+    """
 
     base_url = base or make_base()
     limits = httpx.Limits(

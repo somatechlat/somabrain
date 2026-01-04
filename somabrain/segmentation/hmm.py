@@ -24,9 +24,9 @@ class HMMParams:
 def _log(x: float) -> float:
     """Execute log.
 
-        Args:
-            x: The x.
-        """
+    Args:
+        x: The x.
+    """
 
     return -1e12 if x <= 0.0 else math.log(x)
 
@@ -34,11 +34,11 @@ def _log(x: float) -> float:
 def _log_norm_pdf(x: float, mu: float, sigma: float) -> float:
     """Execute log norm pdf.
 
-        Args:
-            x: The x.
-            mu: The mu.
-            sigma: The sigma.
-        """
+    Args:
+        x: The x.
+        mu: The mu.
+        sigma: The sigma.
+    """
 
     s = max(1e-6, float(sigma))
     z = (x - mu) / s

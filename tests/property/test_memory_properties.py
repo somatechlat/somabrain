@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import time
 from typing import Tuple
 
@@ -36,9 +35,9 @@ def test_stable_coord_bounds(key: str) -> None:
 def _memory_service_available(url: str) -> bool:
     """Execute memory service available.
 
-        Args:
-            url: The url.
-        """
+    Args:
+        url: The url.
+    """
 
     try:
         resp = httpx.get(url.rstrip("/") + "/health", timeout=2.0)
@@ -54,7 +53,9 @@ def test_memory_round_trip(key: str, payload: dict) -> None:
     """**Feature: memory-client-api-alignment, Property 3: Memory remember/recall round-trip preserves payload data**"""
     client = MemoryClient(settings)
 
-    mem_url = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595")
+    mem_url = getattr(
+        settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595"
+    )
     if not _memory_service_available(mem_url):
         pytest.skip("Memory service not reachable; skipping round-trip property test")
 

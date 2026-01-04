@@ -22,10 +22,10 @@ from somabrain.quantum_pure import PureQuantumLayer
 def tiny_floor_sqrt(dtype, dim):
     """Execute tiny floor sqrt.
 
-        Args:
-            dtype: The dtype.
-            dim: The dim.
-        """
+    Args:
+        dtype: The dtype.
+        dim: The dim.
+    """
 
     dt = np.dtype(dtype)
     eps = float(np.finfo(dt).eps)
@@ -36,13 +36,13 @@ def tiny_floor_sqrt(dtype, dim):
 def simulate_zeroed_fraction(dim, dtype, n=1000, kind="gaussian", strategy="linear"):
     """Execute simulate zeroed fraction.
 
-        Args:
-            dim: The dim.
-            dtype: The dtype.
-            n: The n.
-            kind: The kind.
-            strategy: The strategy.
-        """
+    Args:
+        dim: The dim.
+        dtype: The dtype.
+        n: The n.
+        kind: The kind.
+        strategy: The strategy.
+    """
 
     rng = np.random.default_rng(12345)
     zeroed = 0
@@ -71,12 +71,12 @@ def simulate_zeroed_fraction(dim, dtype, n=1000, kind="gaussian", strategy="line
 def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
     """Execute unbind fidelity.
 
-        Args:
-            dim: The dim.
-            dtype: The dtype.
-            n_pairs: The n_pairs.
-            strategy: The strategy.
-        """
+    Args:
+        dim: The dim.
+        dtype: The dtype.
+        n_pairs: The n_pairs.
+        strategy: The strategy.
+    """
 
     cfg = HRRConfig(
         dim=dim,
@@ -94,8 +94,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
         # positional/keyword form and forward to the local tiny_floor_sqrt.
         def _patched_compute_tiny_floor(*args, **kwargs):
             # Determine dim and dtype regardless of positional ordering
-            """Execute patched compute tiny floor.
-                """
+            """Execute patched compute tiny floor."""
 
             dim = None
             dtype = kwargs.get("dtype", None)
@@ -165,8 +164,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
 
 
 def run_all():
-    """Execute run all.
-        """
+    """Execute run all."""
 
     out = {"runs": [], "meta": {"timestamp": time.time()}}
     dims = [2048, 8192]

@@ -8,6 +8,7 @@ singletons.
 
 It is safe to run idempotently.
 """
+
 import importlib.util
 import os
 import sys

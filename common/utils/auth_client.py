@@ -30,9 +30,9 @@ class AuthClient:
     def validate(self, token: str) -> Dict[str, Any]:
         """Execute validate.
 
-            Args:
-                token: The token.
-            """
+        Args:
+            token: The token.
+        """
 
         resp = self._client.post("/validate", json={"token": token})
         resp.raise_for_status()
@@ -43,10 +43,10 @@ class AuthClient:
     ) -> str:
         """Execute issue service token.
 
-            Args:
-                subject: The subject.
-                scopes: The scopes.
-            """
+        Args:
+            subject: The subject.
+            scopes: The scopes.
+        """
 
         resp = self._client.post(
             "/token", json={"subject": subject, "scopes": scopes or []}

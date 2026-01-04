@@ -272,9 +272,7 @@ async def perform_recall(
         except RuntimeError as exc:
             raise HttpError(503, str(exc)) from exc
         except Exception as exc:
-            raise HttpError(
-                502, f"recall failed: {exc}"
-            ) from exc
+            raise HttpError(502, f"recall failed: {exc}") from exc
         stage_dur = time.perf_counter() - stage_start
         try:
             from somabrain import metrics as M
@@ -344,9 +342,9 @@ async def perform_recall(
     def _append(item: Optional[MemoryRecallItem]) -> None:
         """Execute append.
 
-            Args:
-                item: The item.
-            """
+        Args:
+            item: The item.
+        """
 
         if item is None:
             return
