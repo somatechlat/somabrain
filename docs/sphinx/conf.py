@@ -33,6 +33,7 @@ extensions = [
     'sphinx.ext.coverage',          # Doc coverage stats
     'sphinx.ext.mathjax',           # Math rendering for cognitive docs
     'sphinx_autodoc_typehints',     # Type hints support
+    'sphinx.ext.autosummary',       # Create summaries
 ]
 
 # Napoleon settings for Google-style docstrings

@@ -168,3 +168,4 @@ temp/
 .tmp/
 resolved.yml
 violations.md
+docs/sphinx/_build/
