@@ -8,15 +8,7 @@ Auto-generated API documentation for SomaBrain.
    :maxdepth: 2
    :caption: Core APIs
 
-   somabrain.api
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Cognitive APIs
-
-   somabrain.api.agents
-   somabrain.api.sessions
-   somabrain.api.chat
+   somabrain.api.endpoints
 
 Module Index
 ============
