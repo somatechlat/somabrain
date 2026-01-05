@@ -279,7 +279,7 @@ class RateLimitMiddleware:
 
     def __call__(self, request):
         # Skip rate limiting for health checks
-        """Execute call  .
+        """Execute call.
 
         Args:
             request: The request.

@@ -5,3 +5,4 @@ Wm
    :members:
    :undoc-members:
    :show-inheritance:
+   :noindex:

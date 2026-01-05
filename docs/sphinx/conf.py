@@ -9,12 +9,19 @@ import django
 # Add project root to path for autodoc
 sys.path.insert(0, os.path.abspath("../.."))
 
+import warnings
+
 # Initialize Django for model introspection
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
 try:
     django.setup()
 except Exception:
     pass  # Allow doc build without full Django setup
+
+# Suppress Django Ninja view signature warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="ninja")
+warnings.filterwarnings("ignore", message=".*Field\\(s\\).*in the view path.*")
+warnings.filterwarnings("ignore", message=".*pkg_resources is deprecated as an API.*")
 
 # -- Project information -----------------------------------------------------
 project = "SomaBrain"
@@ -70,6 +77,13 @@ autodoc_mock_imports = [
     "transformers",
     "pydantic",
     "httpx",
+    "somabrain.storage.feedback",
+    "somabrain.storage.token_ledger",
+    "somabrain.runtime",
+    "somabrain.storage",
+    "somabrain.api.v1",
+    "somabrain.saas.webhooks",
+    "somabrain.api.endpoints.oak",
 ]
 
 # Intersphinx mapping
@@ -107,3 +121,13 @@ source_suffix = {
 }
 master_doc = "index"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
+# Suppress lexer warnings for code blocks
+highlight_language = "python3"
+suppress_warnings = [
+    "misc.highlighting_failure",
+    "toc.circular",
+    "toc.secnum",
+    "autodoc.import_object",
+    "myst.xref_missing"
+]

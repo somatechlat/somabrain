@@ -996,10 +996,10 @@ def downgrade():
 
 ---
 
-**Common Errors**: See [FAQ](../user/faq.md) for development troubleshooting.
+**Common Errors**: See troubleshooting guides.
 
 **References**:
-- [Local Setup Guide](local-setup.md) for development environment
-- [Testing Guidelines](testing-guidelines.md) for testing standards
-- [API Reference](api-reference.md) for API development
-- [Contribution Process](contribution-process.md) for development workflow
+- [Local Setup Guide](local-setup.md)- [Local Setup](local-setup.md)
+- [Testing Guidelines](testing-guidelines.md)
+- [API Reference](api-reference.md)
+- [Contribution Process](contribution-process.md)

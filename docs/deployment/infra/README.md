@@ -88,6 +88,6 @@ Notes:
 
 ## References
 
-- [Technical Manual](../docs/technical/index.md)
-- [Deployment Guide](../docs/technical/deployment.md)
-- [Monitoring Guide](../docs/technical/monitoring.md)
+- [Technical Manual](../../development/index.md)
+- [Deployment Guide](../../deployment/production_deployment.md)
+- [Monitoring Guide](../../development/testing-guidelines.md)

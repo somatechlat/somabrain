@@ -27,32 +27,20 @@ Quick Links
    :caption: Cognitive Architecture
 
    cognitive/index
-   cognitive/amygdala
-   cognitive/hippocampus
-   cognitive/prefrontal
-   cognitive/working-memory
 
 .. toctree::
    :maxdepth: 2
    :caption: Deployment
 
-   deployment/docker
-   deployment/production
+   deployment/index
 
 .. toctree::
-   :maxdepth: 3
-   :caption: API Reference
+   :maxdepth: 2
+   :caption: User Guide
 
+   development/index
    api/index
    saas/index
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Development
-
-   development/local-setup
-   development/coding-standards
-   development/testing
 
 Indices and tables
 ==================

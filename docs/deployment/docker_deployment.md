@@ -15,7 +15,7 @@ cd somabrain
 
 ## 2. Create an `.env` file (optional but recommended)
 The compose file reads many values from environment variables. Create a file named **`.env`** in the repository root and set the values you need. Only a minimal set is required for a full‑local deployment:
-```dotenv
+```bash
 # Core service ports (feel free to change the host‑side ports)
 SOMABRAIN_HOST_PORT=9696
 SOMABRAIN_PORT=9696
