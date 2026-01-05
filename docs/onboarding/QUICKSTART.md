@@ -163,9 +163,9 @@ SomaBrain Cognitive Modules
 
 ## Related Documentation
 
-- [SomaAgent01 Quick Start](../somaAgent01/docs/QUICKSTART.md)
-- [Deployment Guide](./docs/deployment/docker_deployment.md)
-- [Coding Standards](./docs/development/coding-standards.md)
+- [SomaAgent01 Quick Start](https://github.com/somatechlat/somaAgent01/blob/main/docs/QUICKSTART.md)
+- [Deployment Guide](deployment/docker_deployment.md)
+- [Coding Standards](development/coding-standards.md)
 
 ---
 

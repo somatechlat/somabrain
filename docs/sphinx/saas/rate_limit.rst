@@ -1,8 +1,7 @@
-Memory Client
+Rate Limiting
 =============
 
-.. automodule:: somabrain.memory_client
+.. automodule:: somabrain.saas.rate_limit
    :members:
    :undoc-members:
    :show-inheritance:
-   :noindex:

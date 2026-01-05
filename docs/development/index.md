@@ -10,11 +10,11 @@
 
 ## Quick Navigation
 
-- [Local Setup](local-setup.md) - One-page development environment setup
-- [Coding Standards](coding-standards.md) - Python style guide and linting rules
-- [Testing Guidelines](testing-guidelines.md) - Test strategy and framework usage
-- [API Reference](api-reference.md) - Complete endpoint documentation
-- [Contribution Process](contribution-process.md) - Pull request workflow and code review
+- {doc}`local-setup` - One-page development environment setup
+- {doc}`coding-standards` - Python style guide and linting rules
+- {doc}`testing-guidelines` - Test strategy and framework usage
+- {doc}`api-reference` - Complete endpoint documentation
+- {doc}`contribution-process` - Pull request workflow and code review
 
 ---
 
@@ -46,10 +46,10 @@ somabrain/
 - Use `make lint` and `make format` for code quality (if Makefile present).
 - Update this guide as you improve the workflow.
 
-1. **Environment Setup**: Follow [Local Setup](local-setup.md) for development environment
-2. **Code Style**: Adhere to [Coding Standards](coding-standards.md) (ruff, mypy)
-3. **Testing**: Write tests per [Testing Guidelines](testing-guidelines.md)
-4. **Contribution**: Submit changes via [Contribution Process](contribution-process.md)
+1. **Environment Setup**: Follow {doc}`local-setup` for development environment
+2. **Code Style**: Adhere to {doc}`coding-standards` (ruff, mypy)
+3. **Testing**: Write tests per {doc}`testing-guidelines`
+4. **Contribution**: Submit changes via {doc}`contribution-process`
 
 ## Mathematical Components
 
@@ -63,9 +63,23 @@ Core mathematical modules:
 
 **Verification**: Run `ruff check . && mypy somabrain && pytest` before submitting PRs.
 
-**Common Errors**: See [Testing Guidelines](testing-guidelines.md) for test failure troubleshooting.
+**Common Errors**: See {doc}`testing-guidelines` for test failure troubleshooting.
 
-**References**:
-- [Architecture Documentation](../technical/architecture.md) for system design
-- [User Manual](../user/index.md) for feature behavior
-- [Onboarding Manual](../onboarding/index.md) for new contributor guide
+
+
+```{toctree}
+:maxdepth: 1
+:caption: Development Topics
+:hidden:
+
+local-setup.md
+coding-standards.md
+testing-guidelines.md
+api-reference.md
+contribution-process.md
+first-contribution.md
+migrations.md
+VIBE_CODING_RULES.md
+adaptation-config.md
+```
+

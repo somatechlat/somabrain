@@ -169,3 +169,7 @@ temp/
 resolved.yml
 violations.md
 docs/sphinx/_build/
+
+# Sphinx broad ignores
+docs/_build/
+_build/

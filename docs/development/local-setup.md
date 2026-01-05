@@ -382,7 +382,7 @@ docker compose exec postgres psql -U somabrain
 - [Coding Standards](coding-standards.md) for style guide and linting rules
 - [Testing Guidelines](testing-guidelines.md) for test strategy and frameworks
 - [Contribution Process](contribution-process.md) for PR workflow
-- [Architecture Overview](../technical/architecture.md) for system understanding
+- [Architecture Overview](index.md) for system understanding
 
 ---
 

@@ -5,7 +5,7 @@ mask-based composers. Binding is hardware-friendly and invertible by
 construction.
 
 Mathematical Properties:
-- Spectral properties: |H_k|≈1 for all operations
+- Spectral properties: \|H_k\|≈1 for all operations
 - Perfect binding invertibility
 - Role orthogonality
 - Superposition normalization
