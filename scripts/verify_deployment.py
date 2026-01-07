@@ -12,7 +12,7 @@ import sys
 import time
 import requests
 
-BASE_URL = "http://localhost:9696"
+BASE_URL = "http://localhost:30101"
 
 
 def log(msg, success=None):

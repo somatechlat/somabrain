@@ -2,7 +2,7 @@
 """Simple static server to serve the SomaBrain dashboard during development.
 
 Run while Somabrain is running so you can open http://127.0.0.1:8083/dashboard.html
-and view live metrics from http://127.0.0.1:9696/metrics. This server enables CORS
+and view live metrics from http://127.0.0.1:30101/metrics. This server enables CORS
 so the dashboard can fetch metrics from the Somabrain instance.
 
 Usage:
@@ -32,7 +32,7 @@ class CORSHandler(SimpleHTTPRequestHandler):
         # Proxy /metrics requests to the target SomaBrain instance
         if parsed.path == "/metrics":
             qs = urllib.parse.parse_qs(parsed.query)
-            target_port = qs.get("port", ["9696"])[0]
+            target_port = qs.get("port", ["30101"])[0]
             target_url = f"http://127.0.0.1:{target_port}/metrics"
             try:
                 with urllib.request.urlopen(target_url, timeout=5) as resp:

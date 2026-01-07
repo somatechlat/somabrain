@@ -22,7 +22,7 @@ import pytest
 # Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
 
-APP_PORT = int(os.getenv("SOMABRAIN_PORT", "9696"))
+APP_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
 PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_HOST_PORT", "30105"))
 JAEGER_PORT = int(os.getenv("JAEGER_HOST_PORT", "30111"))
 OPA_PORT = int(os.getenv("OPA_HOST_PORT", "30104"))

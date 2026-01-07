@@ -20,7 +20,7 @@ def _env_port(name: str, default_val: int) -> int:
 
 
 DEFAULT_SERVICE_PORTS: Dict[str, int] = {
-    "SOMABRAIN_HOST_PORT": _env_port("SOMABRAIN_HOST_PORT", 9696),
+    "SOMABRAIN_HOST_PORT": _env_port("SOMABRAIN_HOST_PORT", 30101),
     # canonical host port for local somabrain API
     "REDIS_HOST_PORT": _env_port("REDIS_HOST_PORT", 6379),
     "KAFKA_HOST_PORT": _env_port("KAFKA_BROKER_HOST_PORT", 9092),

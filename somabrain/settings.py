@@ -304,8 +304,8 @@ SOMABRAIN_LOG_CONFIG = env.str(
 # Service configuration
 HOME_DIR = env.str("HOME", default="")
 SOMABRAIN_HOST = env.str("SOMABRAIN_HOST", default="0.0.0.0")
-SOMABRAIN_PORT = env.str("SOMABRAIN_PORT", default="9696")
-SOMABRAIN_HOST_PORT = env.int("SOMABRAIN_HOST_PORT", default=9696)
+SOMABRAIN_PORT = env.str("SOMABRAIN_PORT", default="30101")
+SOMABRAIN_HOST_PORT = env.int("SOMABRAIN_HOST_PORT", default=30101)
 SOMABRAIN_WORKERS = env.int("SOMABRAIN_WORKERS", default=1)
 SOMABRAIN_SERVICE_NAME = env.str("SOMABRAIN_SERVICE_NAME", default="somabrain")
 SOMABRAIN_NAMESPACE = env.str("SOMABRAIN_NAMESPACE", default="public")
@@ -315,7 +315,7 @@ SOMABRAIN_TENANT_ID = env.str("SOMABRAIN_TENANT_ID", default="default")
 # URLs
 SOMABRAIN_API_URL = env.str("SOMABRAIN_API_URL", default="")
 SOMABRAIN_DEFAULT_BASE_URL = env.str(
-    "SOMABRAIN_DEFAULT_BASE_URL", default="http://localhost:9696"
+    "SOMABRAIN_DEFAULT_BASE_URL", default="http://localhost:30101"
 )
 BASE_URL = env.str("BASE_URL", default="")
 SUPERVISOR_URL = env.str("SUPERVISOR_URL", default=None)

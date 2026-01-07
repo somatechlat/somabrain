@@ -4,7 +4,7 @@
 # - Namespace
 # - ConfigMap with base env (STRICT + BEST + required memory)
 # - Secrets placeholders (jwt, db, kafka) -- create real secrets before apply
-# - Somabrain Deployment + Service (port 9696)
+# - Somabrain Deployment + Service (port 30101)
 # - Redis (cache) Deployment + Service
 # - OPA (policy) Deployment + Service
 # - PersistentVolumeClaim for somabrain outbox/logs
@@ -28,7 +28,7 @@ metadata:
     somabrain.io/config-version: "1"
 data:
   SOMABRAIN_HOST: "0.0.0.0"
-  SOMABRAIN_PORT: "9696"
+  SOMABRAIN_PORT: "30101"
   SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
   SOMABRAIN_FORCE_FULL_STACK: "1"
   SOMABRAIN_REQUIRE_MEMORY: "1"
@@ -188,8 +188,8 @@ spec:
     app: somabrain
   ports:
     - name: http
-      port: 9696
-      targetPort: 9696
+      port: 30101
+      targetPort: 30101
   type: ClusterIP
 
 ---
@@ -206,7 +206,7 @@ spec:
   ports:
     - name: http-external
       port: 9898
-      targetPort: 9696
+      targetPort: 30101
   type: LoadBalancer
   externalTrafficPolicy: Cluster
 
@@ -232,14 +232,14 @@ spec:
               service:
                 name: somabrain
                 port:
-                  number: 9696
+                  number: 30101
   tls:
     - hosts:
         - somabrain.internal
       secretName: somabrain-tls # provide cert or remove TLS block if terminating elsewhere
 
 ---
-# Dedicated test ClusterIP service exposing port 9696 internally mapping to the same pods.
+# Dedicated test ClusterIP service exposing port 30101 internally mapping to the same pods.
 # Useful for segregating monitoring or test traffic without altering primary service.
 apiVersion: v1
 kind: Service
@@ -254,8 +254,8 @@ spec:
     app: somabrain
   ports:
     - name: http-test
-      port: 9696
-      targetPort: 9696
+      port: 30101
+      targetPort: 30101
   type: ClusterIP
 
 ---
@@ -299,7 +299,7 @@ spec:
           image: somabrain:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 9696
+            - containerPort: 30101
           envFrom:
             - configMapRef:
                 name: somabrain-env
@@ -318,14 +318,14 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 9696
+              port: 30101
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /health
-              port: 9696
+              port: 30101
             initialDelaySeconds: 30
             periodSeconds: 30
             failureThreshold: 3

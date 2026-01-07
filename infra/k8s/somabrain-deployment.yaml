@@ -411,7 +411,7 @@ spec:
         image: somabrain:latest
         imagePullPolicy: Never
         ports:
-        - containerPort: 9696
+        - containerPort: 30101
         envFrom:
         - configMapRef:
             name: somabrain-config
@@ -427,13 +427,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 9696
+            port: 30101
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
             path: /health
-            port: 9696
+            port: 30101
           initialDelaySeconds: 10
           periodSeconds: 5
 
@@ -449,7 +449,7 @@ spec:
   ports:
   - name: http
     port: 20020
-    targetPort: 9696
+    targetPort: 30101
   type: LoadBalancer
 
 ---

@@ -26,7 +26,7 @@ def run_server() -> None:
     Environment Variables:
         DJANGO_SETTINGS_MODULE: Settings module (default: somabrain.settings)
         HOST: Server host (default: "0.0.0.0")
-        PORT: Server port (default: 9696)
+        PORT: Server port (default: 30101)
 
     Example:
         >>> # Run on default port:
@@ -46,6 +46,6 @@ def run_server() -> None:
         ) from exc
 
     host = os.environ.get("HOST", "0.0.0.0")
-    port = os.environ.get("PORT", "9696")
+    port = os.environ.get("PORT", "30101")
 
     execute_from_command_line(["manage.py", "runserver", f"{host}:{port}"])

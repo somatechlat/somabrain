@@ -3,7 +3,7 @@
 Usage:
     python3 benchmarks/scale/run_remember_recall_scaled.py --count 1000 --out artifacts/benchmarks/rr_1000.json
 
-This runs against SOMABRAIN_HOST_PORT from .env or default 9696.
+This runs against SOMABRAIN_HOST_PORT from .env or default 30101.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import time
 import httpx
 
 ENV_FILE = ".env"
-DEFAULT_PORT = 9696
+DEFAULT_PORT = 30101
 
 
 def read_env_port() -> int:

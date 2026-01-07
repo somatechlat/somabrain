@@ -59,7 +59,7 @@ def main():
     """Execute main."""
 
     manifest = load_manifest()
-    base_url = manifest.get("base_url", "http://localhost:9696")
+    base_url = manifest.get("base_url", "http://localhost:30101")
     items = manifest.get("items", [])
     subset = items[: min(1000, len(items))]
     results = eval_precision_recall(base_url, subset, k=5)

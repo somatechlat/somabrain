@@ -447,7 +447,7 @@ services:
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
       SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
-      SOMABRAIN_PORT: "${SOMABRAIN_PORT:-9696}"
+      SOMABRAIN_PORT: "${SOMABRAIN_PORT:-30101}"
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
       SOMABRAIN_KAFKA_URL: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
@@ -472,7 +472,7 @@ services:
       SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
       # Disable Kafka readiness check for local dev (tests/smoke/kafka_smoke_test.py not included)
     ports:
-      - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-9696}"
+      - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-30101}"
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT}/health || exit 1" ]
       interval: 30s

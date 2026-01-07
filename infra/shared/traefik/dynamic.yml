@@ -48,7 +48,7 @@ http:
     somabrain-api:
       loadBalancer:
         servers:
-          - url: "http://host.docker.internal:9696"
+          - url: "http://host.docker.internal:30101"
 
     frontend:
       loadBalancer:

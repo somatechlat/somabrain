@@ -7,8 +7,8 @@ Verifies live learning behavior against a running Somabrain API by:
 2) POST /memory/recall to retrieve it
 
 Usage:
-  SOMA_API_URL=http://127.0.0.1:9696 python scripts/devprod_smoke.py
-  python scripts/devprod_smoke.py --url http://127.0.0.1:9696 --universe real
+  SOMA_API_URL=http://127.0.0.1:30101 python scripts/devprod_smoke.py
+  python scripts/devprod_smoke.py --url http://127.0.0.1:30101 --universe real
 
 Exit codes:
   0 on success, non-zero on failure

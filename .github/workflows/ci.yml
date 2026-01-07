@@ -158,7 +158,7 @@ jobs:
           MEMORY_URL="http://127.0.0.1:${SOMAMEMORY_HOST_PORT:-9595}"
           MEMORY_READY=0
           OPA_PORT=${OPA_HOST_PORT:-30004}
-          API_PORT=${SOMABRAIN_HOST_PORT:-9696}
+          API_PORT=${SOMABRAIN_HOST_PORT:-30101}
           for i in {1..40}; do
             if curl -sSf "${MEMORY_URL}/health" >/dev/null 2>&1; then echo "memory up"; MEMORY_READY=1; break; fi; sleep 2
           done
@@ -203,7 +203,7 @@ jobs:
       - name: Check for real endpoints (no mocks)
         id: probe
         run: |
-          API_URL=${SOMA_API_URL:-http://127.0.0.1:9696}
+          API_URL=${SOMA_API_URL:-http://127.0.0.1:30101}
           MEM_URL=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://127.0.0.1:9595}
           echo "Probing API: ${API_URL}"
           if curl -sSf "${API_URL}/health" >/dev/null 2>&1; then echo "api_ok=true" >> $GITHUB_OUTPUT; else echo "api_ok=false" >> $GITHUB_OUTPUT; fi
@@ -359,10 +359,10 @@ jobs:
           # so we spin up a minimal compose for the API only)
           docker compose -f docker-compose.yml up -d somabrain_app
           # Wait for health endpoint
-          timeout 60 bash -c "while ! curl -sSf http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696}/health >/dev/null 2>&1; do sleep 5; done"
+          timeout 60 bash -c "while ! curl -sSf http://127.0.0.1:${SOMABRAIN_HOST_PORT:-30101}/health >/dev/null 2>&1; do sleep 5; done"
           # Execute k6 script
           docker run --rm -i \
-            -e BASE_URL=http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696} \
+            -e BASE_URL=http://127.0.0.1:${SOMABRAIN_HOST_PORT:-30101} \
             -v $(pwd)/scripts/performance:/scripts \
             loadimpact/k6 run /scripts/load_test.k6.js
 
@@ -400,11 +400,11 @@ jobs:
         run: |
           docker compose -f docker-compose.yml up -d somabrain_app
           # Wait for health endpoint
-          timeout 60 bash -c "while ! curl -sSf http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696}/health >/dev/null 2>&1; do sleep 5; done"
+          timeout 60 bash -c "while ! curl -sSf http://127.0.0.1:${SOMABRAIN_HOST_PORT:-30101}/health >/dev/null 2>&1; do sleep 5; done"
 
       - name: Run profiling script (cProfile)
         env:
-          BASE_URL: http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696}
+          BASE_URL: http://127.0.0.1:${SOMABRAIN_HOST_PORT:-30101}
         run: |
           python scripts/profiling/run_profile.py --duration 30
 
