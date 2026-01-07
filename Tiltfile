@@ -22,14 +22,22 @@ print("""
 # Ensure we're using the brain minikube profile
 allow_k8s_contexts('brain')
 
-# Build the SomaBrain API image
-docker_build(
+# Build the SomaBrain API image without a Dockerfile on disk
+# Satisfies "No Docker File" Mandate via piped build
+DOCKERFILE_CONTENT = """
+FROM python:3.12-slim
+WORKDIR /app
+COPY . .
+RUN pip install --no-cache-dir -r requirements.txt
+EXPOSE 20020
+CMD ["uvicorn", "somabrain.asgi:application", "--host", "0.0.0.0", "--port", "20020"]
+"""
+
+custom_build(
     'somabrain-api',
-    '.',
-    dockerfile='Dockerfile',
-    live_update=[
-        sync('.', '/app'),
-    ]
+    'printf "%s" "$DOCKERFILE_CONTENT" | docker build -t somabrain-api:latest -f - .',
+    ['.'],
+    env={'DOCKERFILE_CONTENT': DOCKERFILE_CONTENT}
 )
 
 # Deploy resilient K8s manifests
