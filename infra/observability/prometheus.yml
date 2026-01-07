@@ -5,7 +5,7 @@ global:
 scrape_configs:
   - job_name: 'somabrain'
     static_configs:
-      - targets: ['host.docker.internal:9696']
+      - targets: ['host.docker.internal:30101']
 
 # Note: update the target host/port to your local Brain service. If running inside the compose network,
-# you can use the service name and port (e.g., 'brain:9696').
+# you can use the service name and port (e.g., 'brain:30101').

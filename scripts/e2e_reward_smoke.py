@@ -172,7 +172,7 @@ def main() -> int:
     # even though it is not used directly in the request URL.
     _port = getattr(settings, "SOMABRAIN_REWARD_PRODUCER_PORT", 30183)
     # Use the singleton ``settings`` directly for the API URL.
-    url = f"{getattr(settings, 'SOMABRAIN_API_URL', 'http://localhost:9696')}/reward/test-frame"
+    url = f"{getattr(settings, 'SOMABRAIN_API_URL', 'http://localhost:30101')}/reward/test-frame"
     payload = {
         "r_task": 0.9,
         "r_user": 0.8,

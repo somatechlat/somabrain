@@ -22,7 +22,7 @@ class SomaBrainClient:
         Parameters
         ----------
         base_url:
-            The base URL of the SomaBrain service (e.g. ``"http://localhost:9696"``).
+            The base URL of the SomaBrain service (e.g. ``"http://localhost:30101"``).
             Trailing slashes are stripped to avoid double ``//`` when constructing
             endpoint URLs.
         api_token:

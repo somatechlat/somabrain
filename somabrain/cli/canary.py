@@ -140,7 +140,7 @@ def _tenant_health_url(tenant: str) -> str:
     """
     host = settings.SOMABRAIN_HOST
     # Use Settings attribute for port; fallback to default string.
-    port = getattr(settings, "SOMABRAIN_PORT", "9696")
+    port = getattr(settings, "SOMABRAIN_PORT", "30101")
     return f"http://{host}:{port}/health?tenant={tenant}"
 
 

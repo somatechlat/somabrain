@@ -28,7 +28,7 @@ import pytest
 # Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
 
-APP_PORT = int(os.getenv("SOMABRAIN_PORT", "9696"))
+APP_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
 REDIS_PORT = int(os.getenv("REDIS_HOST_PORT", "30100"))
 KAFKA_PORT = int(os.getenv("KAFKA_BROKER_HOST_PORT", "30102"))
 POSTGRES_PORT = int(os.getenv("POSTGRES_HOST_PORT", "30106"))

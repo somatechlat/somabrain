@@ -1,7 +1,7 @@
 """Simple HTTP benchmark harness using httpx.
 
 Usage:
-    python benchmarks/http_bench.py --url http://localhost:9696/recall --concurrency 8 --requests 200
+    python benchmarks/http_bench.py --url http://localhost:30101/recall --concurrency 8 --requests 200
 
 This sends POST requests with a simple RetrievalRequest body and prints latency percentiles.
 """

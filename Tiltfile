@@ -24,12 +24,12 @@ docker_compose('./docker-compose.yml')
 # Development server with live reload
 local_resource(
     'somabrain-dev',
-    serve_cmd='.venv/bin/uvicorn somabrain.asgi:application --host 0.0.0.0 --port 9696 --reload',
+    serve_cmd='.venv/bin/uvicorn somabrain.asgi:application --host 0.0.0.0 --port 30101 --reload',
     serve_dir='.',
     env={
         'SA01_DEPLOYMENT_MODE': 'PROD',
         'SOMABRAIN_HOST': '0.0.0.0',
-        'SOMABRAIN_PORT': '9696',
+        'SOMABRAIN_PORT': '30101',
     },
     links=['http://localhost:30101/health'],
     labels=['app'],

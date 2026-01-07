@@ -22,7 +22,7 @@ from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
 # Use centralized Settings for test configuration
 MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
 MEM_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
-API_URL = settings.SOMABRAIN_API_URL or "http://localhost:9696"
+API_URL = settings.SOMABRAIN_API_URL or "http://localhost:30101"
 
 
 def _memory_available() -> bool:
@@ -45,11 +45,11 @@ def _api_available() -> bool:
     """Execute api available."""
 
     try:
-        base = API_URL or "http://localhost:9696"
+        base = API_URL or "http://localhost:30101"
         r = httpx.get(f"{base.rstrip('/')}/health", timeout=2.0)
         if r.status_code < 500:
             return True
-        r = httpx.get("http://localhost:9696/health", timeout=2.0)
+        r = httpx.get("http://localhost:30101/health", timeout=2.0)
         return r.status_code < 500
     except Exception:
         return False
@@ -69,7 +69,7 @@ def http_client() -> httpx.Client:
     try:
         httpx.get(f"{base.rstrip('/')}/health", timeout=1.0)
     except Exception:
-        base = "http://localhost:9696"
+        base = "http://localhost:30101"
     return httpx.Client(base_url=base, timeout=5.0)
 
 

@@ -19,7 +19,7 @@ metadata:
 data:
   # --- API Configuration ---
   SOMABRAIN_HOST: "0.0.0.0"
-  SOMABRAIN_PORT: "9696"
+  SOMABRAIN_PORT: "30101"
   SOMABRAIN_WORKERS: "2"
   
   # --- Service Ports (LoadBalancer range 20020+) ---

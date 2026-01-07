@@ -36,7 +36,7 @@ def _default_base_url() -> str:
 
     return (
         get_api_base_url()
-        or getattr(settings, "SOMABRAIN_API_URL", "http://localhost:9696")
+        or getattr(settings, "SOMABRAIN_API_URL", "http://localhost:30101")
     ).rstrip("/")
 
 

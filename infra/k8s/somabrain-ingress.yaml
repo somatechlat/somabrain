@@ -22,4 +22,4 @@ spec:
           service:
             name: somabrain
             port:
-              number: 9696
+              number: 30101

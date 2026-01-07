@@ -17,7 +17,7 @@ except Exception:
 from django.conf import settings
 
 # Use centralized Settings for test configuration
-API_URL = settings.SOMABRAIN_API_URL or "http://localhost:9696"
+API_URL = settings.SOMABRAIN_API_URL or "http://localhost:30101"
 MEM_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
 TENANT = "workbench-slo"
 
@@ -29,13 +29,13 @@ def _api_available(url: str) -> bool:
         url: The url.
     """
 
-    base = url.rstrip("/") or "http://localhost:9696"
+    base = url.rstrip("/") or "http://localhost:30101"
     try:
         r = httpx.get(f"{base}/health", timeout=2.0)
         return r.status_code < 500
     except Exception:
         try:
-            r = httpx.get("http://localhost:9696/health", timeout=2.0)
+            r = httpx.get("http://localhost:30101/health", timeout=2.0)
             return r.status_code < 500
         except Exception:
             return False
@@ -44,11 +44,11 @@ def _api_available(url: str) -> bool:
 def _api_client() -> httpx.Client:
     """Execute api client."""
 
-    base = API_URL or "http://localhost:9696"
+    base = API_URL or "http://localhost:30101"
     if not _api_available(base):
         raise RuntimeError("API unavailable")
     if not base.rstrip("/"):
-        base = "http://localhost:9696"
+        base = "http://localhost:30101"
     return httpx.Client(base_url=base.rstrip("/"), timeout=5.0)
 
 

@@ -28,7 +28,7 @@ import pytest
 # Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
 
-APP_PORT = int(os.getenv("SOMABRAIN_PORT", "9696"))
+APP_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
 APP_URL = f"http://localhost:{APP_PORT}"
 
 # Skip tests if infrastructure is not available

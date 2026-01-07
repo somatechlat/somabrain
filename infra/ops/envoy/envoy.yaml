@@ -52,7 +52,7 @@ static_resources:
                   address:
                     socket_address:
                       address: 127.0.0.1
-                      port_value: 9696
+                      port_value: 30101
       transport_socket:
         name: envoy.transport_sockets.tls
         typed_config:

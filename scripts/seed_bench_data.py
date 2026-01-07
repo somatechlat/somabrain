@@ -1,7 +1,7 @@
 """Seed the memory backend via HTTP /remember for benchmark datasets.
 
 Usage:
-  python scripts/seed_bench_data.py --count 1000 --base-url http://localhost:9696
+  python scripts/seed_bench_data.py --count 1000 --base-url http://localhost:30101
 
 This creates simple "fact" payloads like {"task": "Author of Book{i} is Author{i}"}
 and calls the `/remember` API to persist them. The script writes a JSON manifest

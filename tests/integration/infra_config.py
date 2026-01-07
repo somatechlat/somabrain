@@ -13,7 +13,7 @@ PORTS = {
     "kafka": 20092,
     "opa": 20181,
     "somafractalmemory": 10101,  # Local process
-    "somabrain": 9696,
+    "somabrain": 30101,
 }
 
 # Service URLs

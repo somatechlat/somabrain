@@ -34,7 +34,7 @@ def get_mem_token():
 def get_api_url():
     """Retrieve api url."""
 
-    return settings.SOMABRAIN_API_URL or "http://localhost:9696"
+    return settings.SOMABRAIN_API_URL or "http://localhost:30101"
 
 
 def _memory_available() -> bool:
@@ -61,7 +61,7 @@ def _api_available() -> bool:
         r = httpx.get(f"{base.rstrip('/')}/health", timeout=2.0)
         if r.status_code < 500:
             return True
-        r = httpx.get("http://localhost:9696/health", timeout=2.0)
+        r = httpx.get("http://localhost:30101/health", timeout=2.0)
         return r.status_code < 500
     except Exception:
         return False
@@ -88,5 +88,5 @@ def http_client() -> httpx.Client:
     try:
         httpx.get(f"{base.rstrip('/')}/health", timeout=1.0)
     except Exception:
-        base = "http://localhost:9696"
+        base = "http://localhost:30101"
     return httpx.Client(base_url=base, timeout=5.0)

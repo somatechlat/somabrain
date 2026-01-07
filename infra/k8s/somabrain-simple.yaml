@@ -47,7 +47,7 @@ spec:
           image: somabrain:production
           imagePullPolicy: Never
           ports:
-            - containerPort: 9696
+            - containerPort: 30101
           envFrom:
             - configMapRef:
                 name: somabrain-env
@@ -64,7 +64,7 @@ spec:
           startupProbe:
             httpGet:
               path: /health
-              port: 9696
+              port: 30101
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 3
@@ -72,7 +72,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /health
-              port: 9696
+              port: 30101
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
@@ -80,7 +80,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /health
-              port: 9696
+              port: 30101
             initialDelaySeconds: 30
             periodSeconds: 30
             timeoutSeconds: 5
