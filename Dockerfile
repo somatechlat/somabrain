@@ -1,3 +1,17 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🚨 ARCHITECTURE: COLIMA + TILT + MINIKUBE 🚨
+# ═══════════════════════════════════════════════════════════════════════════════
+# This project uses:
+#   ✅ COLIMA   - Docker runtime (NOT Docker Desktop)
+#   ✅ TILT     - Development orchestration
+#   ✅ MINIKUBE - Kubernetes cluster
+#
+# ❌ DO NOT USE DOCKER DESKTOP
+# ❌ DO NOT USE docker-compose directly
+#
+# Start with: tilt up --port <port>
+# ═══════════════════════════════════════════════════════════════════════════════
+
 ## Clean multi-stage Dockerfile: build wheel from pyproject and install in slim runtime
 ### Builder stage: build wheel
 FROM python:3.12-slim AS builder
