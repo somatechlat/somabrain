@@ -155,7 +155,7 @@ services:
     image: danielqsj/kafka-exporter:v1.7.0
     restart: unless-stopped
     command:
-      - --kafka.server=somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}
+      - --kafka.server=somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}
     deploy:
       resources:
         limits:
@@ -170,7 +170,7 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:${KAFKA_EXPORTER_CONTAINER_PORT}/" ]
+      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:9308/" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -604,6 +604,7 @@ services:
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_redis:6379/0}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      KAFKA_BOOTSTRAP_SERVERS: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
       SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain}"
@@ -756,6 +757,7 @@ services:
       # Django settings MUST be first - required for all Django workers
       DJANGO_SETTINGS_MODULE: "somabrain.settings"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      KAFKA_BOOTSTRAP_SERVERS: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       # Propagate the global memory cap to the integrator service.
       SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
       SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
