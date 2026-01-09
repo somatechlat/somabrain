@@ -1,316 +1,220 @@
-# SomaBrain Docker Deployment Guide
+# SomaBrain Infrastructure Deployment Guide
 
-**Document ID**: SOMA-DEPLOY-DOCKER-001  
-**Version**: 1.0.0  
+**Document ID**: SOMABRAIN-DEPLOY-001  
+**Version**: 2.0.0  
 **Last Updated**: 2026-01-09  
 **Status**: Verified ✅
 
 ---
 
-## 1. Overview
+## Overview
 
-This guide provides step-by-step instructions for deploying SomaBrain using Docker Compose. The deployment includes 16 containerized services providing a complete cognitive architecture platform.
+SomaBrain provides the cognitive processing layer for the SOMA architecture. This guide covers all deployment methods.
 
-### 1.1 Prerequisites
+## Prerequisites
 
 | Requirement | Minimum | Recommended |
 |-------------|---------|-------------|
 | Docker | 24.0+ | 25.0+ |
-| Docker Compose | v2.20+ | v2.24+ |
 | RAM | 8GB | 16GB |
-| Disk | 20GB | 50GB |
+| Disk | 20GB | 40GB |
 | CPU | 4 cores | 8 cores |
 
-### 1.2 Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SomaBrain Cluster                        │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │  App (API)  │  │    Cog      │  │  Outbox Publisher   │  │
-│  │   :30101    │  │  (Async)    │  │    (Kafka)          │  │
-│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘  │
-│         │                │                     │             │
-│  ┌──────▼────────────────▼─────────────────────▼──────────┐ │
-│  │                Infrastructure Layer                     │ │
-│  │  PostgreSQL │ Redis │ Kafka │ Milvus │ OPA │ MinIO     │ │
-│  │   :30106    │       │:30102 │        │     │           │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
-
 ---
 
-## 2. Quick Start (5 Minutes)
+## 1. Docker Compose Deployment
 
-### Step 1: Navigate to Infrastructure Directory
-
-```bash
-cd /path/to/somabrain/infra/docker
-```
-
-### Step 2: Start All Services
+### Quick Start
 
 ```bash
-docker compose -p somabrain up -d
-```
-
-### Step 3: Verify Deployment
-
-```bash
-# Check container status
-docker compose -p somabrain ps
-
-# Verify health endpoint
-curl http://localhost:30101/healthz
-# Expected: {"status": "healthy", "timestamp": "..."}
-
-# Verify comprehensive health
-curl http://localhost:30101/health
-# Expected: {"status": "ok", "healthy_count": 10, ...}
-```
-
----
-
-## 3. Detailed Deployment Steps
-
-### 3.1 Pre-Deployment Verification
-
-```bash
-# Verify Docker version
-docker --version  # Should be 24.0+
-
-# Verify Docker Compose version
-docker compose version  # Should be v2.20+
-
-# Check available resources
-docker system info | grep -E "(CPUs|Total Memory)"
-```
-
-### 3.2 Clone Repository
-
-```bash
-git clone https://github.com/somatechlat/somabrain.git
 cd somabrain
-git checkout somabrain-rust
-```
-
-### 3.3 Build and Start Services
-
-```bash
-cd infra/docker
-
-# Build images (first time or after code changes)
-docker compose -p somabrain build
 
 # Start all services
-docker compose -p somabrain up -d
+docker compose -f infra/docker/docker-compose.yml -p somabrain up -d
+
+# Verify health (wait ~60s for startup)
+curl http://localhost:30101/health
 
 # View logs
-docker compose -p somabrain logs -f somabrain_app
+docker compose -f infra/docker/docker-compose.yml -p somabrain logs -f somabrain_app
 ```
 
-### 3.4 Wait for Health Checks
+### Post-Deployment Checklist
 
 ```bash
-# Wait for all services to be healthy (approx. 60-90 seconds)
-watch -n 5 'docker compose -p somabrain ps'
+# 1. Check container status
+docker ps --filter "name=somabrain" --format "table {{.Names}}\t{{.Status}}"
+
+# 2. Verify API health
+curl -s http://localhost:30101/health | jq '.healthy_count'
+
+# 3. Test Rust core availability
+docker exec somabrain-somabrain_app-1 python -c "from somabrain.core.rust_bridge import is_rust_available; print('Rust:', is_rust_available())"
+```
+
+### Service Ports
+
+| Service | Host Port | Purpose |
+|---------|-----------|---------|
+| somabrain_app | 30101 | Main API |
+| postgres | 30106 | Database |
+| redis | 30100 | Cache |
+| kafka | 30102 | Message queue |
+| milvus | 30119 | Vector store |
+| prometheus | 30109 | Metrics |
+
+---
+
+## 2. Tilt Deployment (Kubernetes)
+
+### Prerequisites
+
+```bash
+# Install Tilt if not present
+brew install tilt-dev/tap/tilt
+
+# Start Minikube
+minikube start --cpus=4 --memory=8g
+```
+
+### Deploy with Tilt
+
+```bash
+cd somabrain
+
+# Start Tilt (opens dashboard at http://localhost:10350)
+tilt up --port 10350
+
+# View resources
+tilt get resources
+```
+
+### Tiltfile Features
+
+- **Live reload**: Code changes auto-sync to containers
+- **Build acceleration**: Layer caching for Rust + Python
+- **Port forwarding**: Automatic port-forward to local
+
+---
+
+## 3. Kubernetes (Production)
+
+### Prerequisites
+
+```bash
+# Ensure kubectl is configured
+kubectl cluster-info
+
+# Create namespace
+kubectl create namespace somabrain
+```
+
+### Deploy
+
+```bash
+cd somabrain/infra/k8s
+
+# Apply ConfigMaps and Secrets
+kubectl apply -f configmap.yaml -n somabrain
+kubectl apply -f secrets.yaml -n somabrain
+
+# Deploy infrastructure
+kubectl apply -f postgres.yaml -n somabrain
+kubectl apply -f redis.yaml -n somabrain
+kubectl apply -f kafka.yaml -n somabrain
+kubectl apply -f milvus.yaml -n somabrain
+
+# Wait for infrastructure
+kubectl wait --for=condition=ready pod -l app=postgres -n somabrain --timeout=120s
+
+# Deploy application
+kubectl apply -f somabrain-api.yaml -n somabrain
+
+# Verify
+kubectl get pods -n somabrain
 ```
 
 ---
 
-## 4. Service Reference
+## 4. Connecting to SomaFractalMemory
 
-### 4.1 Port Mapping
+SomaBrain requires SomaFractalMemory for persistent memory storage.
 
-| Service | Host Port | Container Port | Purpose |
-|---------|-----------|----------------|---------|
-| somabrain_app | 30101 | 9696 | Main API |
-| kafka | 30102 | 9094 | Message broker |
-| prometheus | 30105 | 9090 | Metrics |
-| postgres | 30106 | 5432 | Database |
-| postgres_exporter | 30107 | 9187 | DB metrics |
-| kafka_exporter | 30108 | 9308 | Kafka metrics |
-| jaeger | 30109 | 16686 | Tracing UI |
+### Configure Connection
 
-### 4.2 Default Credentials
+Set in `.env` or `docker-compose.yml`:
 
-| Service | Username | Password |
-|---------|----------|----------|
-| PostgreSQL | somabrain | somabrain |
-| Supervisor | admin | soma |
+```bash
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:10101
+SOMABRAIN_MEMORY_HTTP_TOKEN=dev-token-somastack2024
+```
 
-### 4.3 Environment Variables
+### Verify Connection
 
-All environment variables have sensible defaults for local development:
-
-```yaml
-POSTGRES_USER: somabrain
-POSTGRES_PASSWORD: somabrain
-POSTGRES_DB: somabrain
-SOMABRAIN_POSTGRES_DSN: postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain
-SOMABRAIN_REDIS_URL: redis://somabrain_redis:6379/0
-SOMABRAIN_OPA_URL: http://somabrain_opa:8181
-KAFKA_BROKER_CONTAINER_PORT: 9092
+```bash
+# Test SFM health from SomaBrain container
+docker exec somabrain-somabrain_app-1 curl -s http://host.docker.internal:10101/healthz
 ```
 
 ---
 
-## 5. Verification Commands
+## 5. Operations
 
-### 5.1 Health Checks
-
-```bash
-# Basic health (Kubernetes liveness probe)
-curl http://localhost:30101/healthz
-
-# Comprehensive health (all backends)
-curl http://localhost:30101/health | jq
-
-# API documentation
-open http://localhost:30101/api/docs
-```
-
-### 5.2 Service-Specific Verification
+### Start/Stop
 
 ```bash
-# PostgreSQL
-docker exec somabrain-somabrain_postgres-1 pg_isready -U somabrain
+# Docker Compose
+docker compose -f infra/docker/docker-compose.yml -p somabrain up -d
+docker compose -f infra/docker/docker-compose.yml -p somabrain down
 
-# Redis
-docker exec somabrain-somabrain_redis-1 redis-cli ping
-
-# Kafka (list topics)
-docker exec somabrain-somabrain_kafka-1 kafka-topics --bootstrap-server localhost:9092 --list
-
-# Milvus (check collections)
-curl http://localhost:19530/v1/vector/collections
+# Tilt
+tilt up
+tilt down
 ```
 
----
-
-## 6. Operations
-
-### 6.1 Stopping Services
+### Rebuild
 
 ```bash
-# Stop all services (preserve data)
-docker compose -p somabrain down
+# Rebuild single service
+docker compose -f infra/docker/docker-compose.yml -p somabrain up -d --build somabrain_app
 
-# Stop and remove volumes (DESTRUCTIVE)
-docker compose -p somabrain down -v
+# Rebuild with no cache
+docker compose -f infra/docker/docker-compose.yml -p somabrain build --no-cache
 ```
 
-### 6.2 Restarting Services
-
-```bash
-# Restart a specific service
-docker compose -p somabrain restart somabrain_app
-
-# Rebuild and restart
-docker compose -p somabrain up -d --build somabrain_app
-```
-
-### 6.3 Viewing Logs
+### Logs
 
 ```bash
 # All services
-docker compose -p somabrain logs -f
+docker compose -f infra/docker/docker-compose.yml -p somabrain logs -f
 
 # Specific service
-docker compose -p somabrain logs -f somabrain_app
-
-# Last 100 lines
-docker compose -p somabrain logs --tail 100 somabrain_app
+docker compose -f infra/docker/docker-compose.yml -p somabrain logs -f somabrain_app
 ```
 
-### 6.4 Scaling (Development Only)
+---
+
+## 6. Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Services restarting | Check `KAFKA_BOOTSTRAP_SERVERS` and port defaults |
+| Postgres exporter unhealthy | Verify `DATA_SOURCE_NAME` has correct DSN |
+| Rust core unavailable | Rebuild with `--no-cache` to recompile |
+| Health check timeout | Increase `start_period` in healthcheck |
+
+### Reset Everything
 
 ```bash
-# Scale cog workers
-docker compose -p somabrain up -d --scale somabrain_cog=3
+docker compose -f infra/docker/docker-compose.yml -p somabrain down -v --remove-orphans
+docker compose -f infra/docker/docker-compose.yml -p somabrain up -d --build
 ```
 
 ---
 
-## 7. Troubleshooting
+## Document Control
 
-### 7.1 Common Issues
-
-| Issue | Cause | Solution |
-|-------|-------|----------|
-| Port already allocated | Previous deployment running | `docker compose -p somabrain down --remove-orphans` |
-| Container restarting | Missing env vars | Check logs: `docker logs <container>` |
-| Postgres unhealthy | Password not set | Verify `POSTGRES_PASSWORD` default is set |
-| Kafka not connecting | Wrong port | Ensure `KAFKA_BROKER_CONTAINER_PORT: 9092` |
-| OPA unreachable | URL not set | Verify `SOMABRAIN_OPA_URL` default |
-
-### 7.2 Reset Everything
-
-```bash
-# Nuclear option - removes ALL data
-docker compose -p somabrain down -v --remove-orphans
-docker system prune -f
-docker compose -p somabrain up -d --build
-```
-
----
-
-## 8. Production Considerations
-
-> [!WARNING]
-> This docker-compose is designed for **development and testing**. For production:
-
-1. **Use external databases**: PostgreSQL, Redis should be managed services
-2. **Configure secrets**: Use Docker secrets or external vault
-3. **Enable TLS**: Configure SSL certificates for all endpoints
-4. **Set resource limits**: Configure memory/CPU limits per service
-5. **Use Kubernetes**: See `infra/k8s/DEPLOYMENT_GUIDE.md`
-
----
-
-## Appendix A: File Structure
-
-```
-infra/docker/
-├── docker-compose.yml      # Main orchestration file
-├── Dockerfile              # Multi-stage build for Python app
-├── docker-entrypoint.sh    # Container startup script
-├── .dockerignore           # Build context exclusions
-├── README.md               # Quick reference
-└── DEPLOYMENT_GUIDE.md     # This file
-```
-
----
-
-## Appendix B: Verified Health Output
-
-```json
-{
-  "status": "ok",
-  "healthy_count": 10,
-  "degraded_count": 0,
-  "unhealthy_count": 2,
-  "infrastructure": {
-    "postgresql": {"status": "healthy"},
-    "redis": {"status": "healthy"},
-    "kafka": {"status": "healthy"},
-    "milvus": {"status": "healthy"},
-    "opa": {"status": "healthy"},
-    "minio": {"status": "healthy"}
-  },
-  "internal_services": {
-    "cognitive": {"status": "healthy"},
-    "embedder": {"status": "healthy"}
-  }
-}
-```
-
----
-
-**Document Control**
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2026-01-09 | Vibe Collective | Initial verified deployment |
+| Version | Date | Changes |
+|---------|------|---------|
+| 2.0.0 | 2026-01-09 | Added Rust core, Tilt, K8s sections |
+| 1.0.0 | 2025-12-01 | Initial Docker deployment |
