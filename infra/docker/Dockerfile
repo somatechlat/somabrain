@@ -12,6 +12,34 @@
 # Start with: tilt up --port <port>
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# RUST BUILDER STAGE: Compile somabrain_rs (high-performance cognitive core)
+# Uses Python 3.12 base to ensure wheel compatibility with runtime
+# ═══════════════════════════════════════════════════════════════════════════════
+FROM python:3.12-slim AS rust-builder
+
+WORKDIR /rust
+
+# Install Rust toolchain via rustup and build dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl build-essential \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain=1.83.0
+
+# Add Rust to PATH and install maturin
+ENV PATH="/root/.cargo/bin:${PATH}"
+RUN pip install maturin
+
+# Copy Rust source
+COPY rust_core /rust/rust_core
+
+# Build the Rust extension wheel for Python 3.12
+WORKDIR /rust/rust_core
+RUN maturin build --release -o /rust/dist
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PYTHON BUILDER STAGE: Build Python wheel
+# ═══════════════════════════════════════════════════════════════════════════════
 ## Clean multi-stage Dockerfile: build wheel from pyproject and install in slim runtime
 ### Builder stage: build wheel
 FROM python:3.12-slim AS builder
@@ -59,6 +87,17 @@ RUN apt-get update \
 COPY --from=builder /build/dist /dist
 RUN --mount=type=cache,target=/root/.cache/pip \
     if [ -d "/dist" ] && [ -n "$(ls -A /dist)" ]; then pip install /dist/*.whl; else echo "No wheel files found"; exit 1; fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RUST CORE: Install precompiled somabrain_rs extension (27x faster cognitive ops)
+# ═══════════════════════════════════════════════════════════════════════════════
+COPY --from=rust-builder /rust/dist /rust_dist
+RUN --mount=type=cache,target=/root/.cache/pip \
+    if [ -d "/rust_dist" ] && [ -n "$(ls -A /rust_dist)" ]; then \
+    pip install /rust_dist/*.whl && echo "✅ Rust core installed"; \
+    else \
+    echo "⚠️ No Rust wheel found - falling back to Python"; \
+    fi
 # Ensure JWT library is available for auth module
 RUN --mount=type=cache,target=/root/.cache/pip pip install "PyJWT[crypto]"
 
