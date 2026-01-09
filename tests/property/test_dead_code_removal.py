@@ -12,9 +12,9 @@ import pytest
 
 
 # List of modules that were identified as dead code and should be removed
+# NOTE: cognitive/planning.py is ACTIVE (contains Planner class) - removed from list
 DEAD_CODE_MODULES = [
     "somabrain/somabrain/services/planning_service.py",
-    "somabrain/somabrain/cognitive/planning.py",
 ]
 
 
@@ -43,12 +43,5 @@ def test_planning_service_not_importable() -> None:
     with pytest.raises(ImportError):
         from somabrain.services import planning_service  # noqa: F401
 
-
-def test_cognitive_planning_not_importable() -> None:
-    """Verify that cognitive.planning cannot be imported.
-
-    **Feature: production-readiness-audit, Property 2: Dead Code Elimination**
-    **Validates: Requirements 2.3**
-    """
-    with pytest.raises(ImportError):
-        from somabrain.cognitive import planning  # noqa: F401
+# NOTE: test_cognitive_planning_not_importable removed - cognitive.planning is ACTIVE
+# The Planner class in somabrain/cognitive/planning.py is used in production workflows
