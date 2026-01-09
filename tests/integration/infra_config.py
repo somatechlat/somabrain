@@ -6,14 +6,15 @@ This file defines the canonical ports for local Docker services.
 
 # Service Ports (Localhost Mappings from Docker Compose)
 # ---------------------------------------------------------------------------
+# These ports match the actual docker-compose.yml port mappings for SomaBrain
 PORTS = {
-    "redis": 20379,
-    "milvus": 20530,
-    "postgres": 20432,
-    "kafka": 20092,
-    "opa": 20181,
-    "somafractalmemory": 10101,  # Local process
-    "somabrain": 9696,
+    "redis": 30100,       # somabrain_redis -> 6379
+    "milvus": 30119,      # somabrain_milvus -> 19530
+    "postgres": 30106,    # somabrain_postgres -> 5432
+    "kafka": 30102,       # somabrain_kafka -> 9094
+    "opa": 30104,         # somabrain_opa -> 8181
+    "somafractalmemory": 10101,  # SFM API
+    "somabrain": 30101,   # somabrain_app -> 9696
 }
 
 # Service URLs
