@@ -400,7 +400,7 @@ services:
         reservations:
           memory: 32M
     environment:
-      - DATA_SOURCE_NAME=${SOMABRAIN_POSTGRES_DSN}?sslmode=disable
+      - DATA_SOURCE_NAME=${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain}?sslmode=disable
     depends_on:
       somabrain_postgres:
         condition: service_healthy
@@ -409,7 +409,7 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:${POSTGRES_EXPORTER_CONTAINER_PORT}/" ]
+      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:9187/" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -474,10 +474,11 @@ services:
     ports:
       - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-9696}"
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT}/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:9696/health || exit 1" ]
       interval: 30s
-      timeout: 5s
-      retries: 3
+      timeout: 10s
+      start_period: 30s
+      retries: 5
     # No local journal volume; fail-fast only
     # Security hardening: drop all capabilities, run with read-only rootfs, and disallow privilege escalation.
     # Note: we mount a tmpfs for /app/logs to keep runtime logs writable.
