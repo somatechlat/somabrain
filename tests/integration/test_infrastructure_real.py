@@ -31,8 +31,8 @@ def _redis_available() -> bool:
     try:
         import redis
 
-        # SomaBrain cluster port is 20379 (was 30100)
-        for port in [20379, 30100]:
+        # SomaBrain cluster port is 30100
+        for port in [30100, 20379]:
             try:
                 r = redis.Redis(host="localhost", port=port, socket_timeout=2)
                 r.ping()
@@ -62,8 +62,8 @@ def _postgres_available() -> bool:
     try:
         import psycopg2
 
-        # SomaBrain cluster port is 20432 (was 30106)
-        for port in [20432, 30106]:
+        # SomaBrain cluster port is 30106
+        for port in [30106, 20432]:
             try:
                 conn = psycopg2.connect(
                     host="localhost",
@@ -91,8 +91,8 @@ def _postgres_available() -> bool:
 def _opa_available() -> bool:
     """Check if OPA is reachable on SomaBrain cluster."""
     try:
-        # SomaBrain cluster port is 20181 (was 30104)
-        for port in [20181, 30104]:
+        # SomaBrain cluster port is 30104
+        for port in [30104, 20181]:
             try:
                 with httpx.Client(timeout=2.0) as client:
                     resp = client.get(f"http://localhost:{port}/health")
@@ -125,7 +125,7 @@ class TestRedisIntegration:
 
         import redis
 
-        r = redis.Redis(host="localhost", port=20379, socket_timeout=2)
+        r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
         result = r.ping()
         assert result is True, "Redis PING should return True"
 
@@ -136,7 +136,7 @@ class TestRedisIntegration:
 
         import redis
 
-        r = redis.Redis(host="localhost", port=20379, socket_timeout=2)
+        r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
         test_key = "somabrain:test:integration"
         test_value = "test_value_12345"
 
@@ -158,7 +158,7 @@ class TestRedisIntegration:
 
         import redis
 
-        r = redis.Redis(host="localhost", port=20379, socket_timeout=2)
+        r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
         hash_key = "somabrain:test:adaptation_state"
 
         # HSET multiple fields
@@ -302,7 +302,7 @@ class TestOPAIntegration:
             pytest.skip("OPA not reachable; skipping integration test")
 
         with httpx.Client(timeout=5.0) as client:
-            resp = client.get("http://localhost:20181/health")
+            resp = client.get("http://localhost:30104/health")
             # OPA health returns empty JSON {}
             assert resp.status_code == 200
 
@@ -314,7 +314,7 @@ class TestOPAIntegration:
         with httpx.Client(timeout=5.0) as client:
             # Query a simple data path (may return empty if no policies loaded)
             resp = client.post(
-                "http://localhost:20181/v1/data",
+                "http://localhost:30104/v1/data",
                 json={"input": {"test": True}},
             )
             # OPA should respond with 200 even if no matching policy
