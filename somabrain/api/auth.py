@@ -20,6 +20,6 @@ jwt_auth = JWTAuth()
 google_oauth = GoogleOAuth()
 
 # Legacy aliases (deprecated - use api_key_auth or jwt_auth)
-bearer_auth = jwt_auth
+bearer_auth = api_key_auth  # Changed to support sbk_* API keys
 admin_auth = api_key_auth  # API key auth includes admin scope checking
 tenant_auth = api_key_auth  # API key auth extracts tenant context
