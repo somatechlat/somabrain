@@ -26,18 +26,40 @@ allow_k8s_contexts('brain')
 # Satisfies "No Docker File" Mandate via piped build
 DOCKERFILE_CONTENT = """
 FROM python:3.12-slim
+
+# Install system dependencies for Rust and build
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 WORKDIR /app
 COPY . .
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install maturin and build Rust extension
+RUN pip install maturin
+WORKDIR /app/rust_core
+RUN maturin build --release
+RUN pip install target/wheels/*.whl
+
+WORKDIR /app
+# Install Python dependencies
+RUN pip install --no-cache-dir .
+
 EXPOSE 20020
 CMD ["uvicorn", "somabrain.asgi:application", "--host", "0.0.0.0", "--port", "20020"]
 """
 
+
 custom_build(
-    'somabrain-api',
-    'printf "%s" "$DOCKERFILE_CONTENT" | docker build -t somabrain-api:latest -f - .',
-    ['.'],
-    env={'DOCKERFILE_CONTENT': DOCKERFILE_CONTENT}
+'somabrain-api',
+'printf "%s" "$DOCKERFILE_CONTENT" | docker build -t somabrain-api:latest -f - .',
+['.'],
+env={'DOCKERFILE_CONTENT': DOCKERFILE_CONTENT}
 )
 
 # Deploy resilient K8s manifests
@@ -45,32 +67,32 @@ k8s_yaml('infra/k8s/brain-resilient.yaml')
 
 # Resource configuration with port forwards
 k8s_resource(
-    'somabrain-api',
-    port_forwards=['20020:20020'],
-    labels=['app'],
-    resource_deps=['postgres', 'redis', 'milvus', 'kafka']
+'somabrain-api',
+port_forwards=['20020:20020'],
+labels=['app'],
+resource_deps=['postgres', 'redis', 'milvus', 'kafka']
 )
 
 k8s_resource(
-    'postgres',
-    port_forwards=['30106:5432'],
-    labels=['infra']
+'postgres',
+port_forwards=['30106:5432'],
+labels=['infra']
 )
 
 k8s_resource(
-    'redis',
-    port_forwards=['30100:6379'],
-    labels=['infra']
+'redis',
+port_forwards=['30100:6379'],
+labels=['infra']
 )
 
 k8s_resource(
-    'kafka',
-    port_forwards=['30102:9092'],
-    labels=['infra']
+'kafka',
+port_forwards=['30102:9092'],
+labels=['infra']
 )
 
 k8s_resource(
-    'milvus',
-    port_forwards=['30119:19530'],
-    labels=['infra']
+'milvus',
+port_forwards=['30119:19530'],
+labels=['infra']
 )

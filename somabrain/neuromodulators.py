@@ -56,6 +56,10 @@ from .metrics.neuromodulator import (
 
 logger = logging.getLogger(__name__)
 
+from .core.rust_bridge import get_rust_module, is_rust_available
+
+
+
 
 @dataclass
 class NeuromodState:
@@ -118,9 +122,42 @@ class Neuromodulators:
         )
         self._subs: List[Callable[[NeuromodState], None]] = []
 
+        # Initialize Rust backend if available
+        self._rust_impl = None
+        if is_rust_available():
+            try:
+                self._rust_impl = get_rust_module().Neuromodulators()
+                # Sync initial state to Rust
+                self._sync_to_rust()
+            except Exception as e:
+                logger.warning(f"Failed to initialize Rust Neuromodulators: {e}")
+
+    def _sync_to_rust(self) -> None:
+        """Sync current Python state to Rust backend."""
+        if self._rust_impl:
+            self._rust_impl.set_state([
+                self._state.dopamine,
+                self._state.serotonin,
+                self._state.noradrenaline,
+                self._state.acetylcholine
+            ])
+
+    def _sync_from_rust(self) -> None:
+        """Sync current Rust state to Python state."""
+        if self._rust_impl:
+            vals = self._rust_impl.get_state()
+            if len(vals) == 4:
+                self._state.dopamine = vals[0]
+                self._state.serotonin = vals[1]
+                self._state.noradrenaline = vals[2]
+                self._state.acetylcholine = vals[3]
+
+
     def get_state(self) -> NeuromodState:
         """Retrieve state."""
 
+        if self._rust_impl:
+            self._sync_from_rust()
         return self._state
 
     def set_state(self, s: NeuromodState) -> None:
@@ -129,6 +166,8 @@ class Neuromodulators:
         Subscribers are notified of the change.
         """
         self._state = s
+        if self._rust_impl:
+            self._sync_to_rust()
         for cb in self._subs:
             try:
                 cb(s)

@@ -30,7 +30,7 @@ from common.logging import logger
 from django.conf import settings
 
 # Use centralized Settings for test configuration
-SOMABRAIN_APP_URL = settings.SOMABRAIN_API_URL or "http://localhost:30101"
+SOMABRAIN_APP_URL = settings.SOMABRAIN_API_URL or "http://localhost:20020"
 
 # Test tenant ID
 TEST_TENANT_ID = "e2e_test_tenant"
