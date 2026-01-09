@@ -23,8 +23,8 @@ URLS = {
     "opa": f"http://127.0.0.1:{PORTS['opa']}",
     "sfm": f"http://127.0.0.1:{PORTS['somafractalmemory']}",
     "milvus": f"127.0.0.1:{PORTS['milvus']}",
-    "redis": f"redis://:somastack2024@127.0.0.1:{PORTS['redis']}/0",
-    "postgres": f"postgresql://postgres:somastack2024@127.0.0.1:{PORTS['postgres']}/somabrain",
+    "redis": f"redis://127.0.0.1:{PORTS['redis']}/0",
+    "postgres": f"postgresql://somabrain:somabrain@127.0.0.1:{PORTS['postgres']}/somabrain",
 }
 
 # Authentication
