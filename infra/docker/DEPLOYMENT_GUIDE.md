@@ -1,220 +1,204 @@
-# SomaBrain Infrastructure Deployment Guide
+# SomaBrain Docker Deployment Guide
 
-**Document ID**: SOMABRAIN-DEPLOY-001  
-**Version**: 2.0.0  
-**Last Updated**: 2026-01-09  
-**Status**: Verified ✅
+> **Document Version**: 2.0.0  
+> **Last Updated**: 2026-01-09  
+> **Status**: ✅ Verified 100% Healthy
+
+This guide provides step-by-step instructions for deploying SomaBrain with the Rust Core enabled.
 
 ---
 
-## Overview
+## Quick Start
 
-SomaBrain provides the cognitive processing layer for the SOMA architecture. This guide covers all deployment methods.
+```bash
+# 1. Clone and navigate
+cd /path/to/somabrain
+
+# 2. Start all services
+cd infra/docker
+docker compose --profile all up -d
+
+# 3. Verify health (all 16 services should be healthy)
+docker ps --format "table {{.Names}}\t{{.Status}}"
+```
+
+---
 
 ## Prerequisites
 
 | Requirement | Minimum | Recommended |
 |-------------|---------|-------------|
-| Docker | 24.0+ | 25.0+ |
-| RAM | 8GB | 16GB |
-| Disk | 20GB | 40GB |
-| CPU | 4 cores | 8 cores |
+| Docker | 24.0+ | Latest |
+| Docker Compose | 2.20+ | Latest |
+| RAM | 8GB | 12GB |
+| Disk | 10GB | 20GB |
 
 ---
 
-## 1. Docker Compose Deployment
+## Step-by-Step Deployment
 
-### Quick Start
+### Step 1: Environment Setup
 
 ```bash
-cd somabrain
+# Copy example environment file
+cp .env.example .env
 
-# Start all services
-docker compose -f infra/docker/docker-compose.yml -p somabrain up -d
-
-# Verify health (wait ~60s for startup)
-curl http://localhost:30101/health
-
-# View logs
-docker compose -f infra/docker/docker-compose.yml -p somabrain logs -f somabrain_app
+# Edit environment variables (optional)
+# Key variables:
+#   SOMABRAIN_POSTGRES_DSN - PostgreSQL connection string
+#   SOMABRAIN_HRR_DIM - Hyperdimensional vector dimension (default: 8192)
+#   SOMABRAIN_GLOBAL_SEED - Reproducibility seed (default: 42)
 ```
 
-### Post-Deployment Checklist
+### Step 2: Start Core Services
 
 ```bash
-# 1. Check container status
-docker ps --filter "name=somabrain" --format "table {{.Names}}\t{{.Status}}"
+cd infra/docker
 
-# 2. Verify API health
-curl -s http://localhost:30101/health | jq '.healthy_count'
+# Start with all profiles
+docker compose --profile all up -d
 
-# 3. Test Rust core availability
-docker exec somabrain-somabrain_app-1 python -c "from somabrain.core.rust_bridge import is_rust_available; print('Rust:', is_rust_available())"
+# Wait for services to initialize (30-60 seconds)
+sleep 30
 ```
 
-### Service Ports
-
-| Service | Host Port | Purpose |
-|---------|-----------|---------|
-| somabrain_app | 30101 | Main API |
-| postgres | 30106 | Database |
-| redis | 30100 | Cache |
-| kafka | 30102 | Message queue |
-| milvus | 30119 | Vector store |
-| prometheus | 30109 | Metrics |
-
----
-
-## 2. Tilt Deployment (Kubernetes)
-
-### Prerequisites
+### Step 3: Verify Health
 
 ```bash
-# Install Tilt if not present
-brew install tilt-dev/tap/tilt
+# Check all containers are healthy
+docker compose ps
 
-# Start Minikube
-minikube start --cpus=4 --memory=8g
+# Expected output: 16 services, all (healthy)
 ```
 
-### Deploy with Tilt
+### Step 4: Run Database Migrations
 
 ```bash
-cd somabrain
-
-# Start Tilt (opens dashboard at http://localhost:10350)
-tilt up --port 10350
-
-# View resources
-tilt get resources
+# Apply Django migrations
+docker exec somabrain-somabrain_app-1 python manage.py migrate
 ```
 
-### Tiltfile Features
-
-- **Live reload**: Code changes auto-sync to containers
-- **Build acceleration**: Layer caching for Rust + Python
-- **Port forwarding**: Automatic port-forward to local
-
----
-
-## 3. Kubernetes (Production)
-
-### Prerequisites
+### Step 5: Verify Rust Core
 
 ```bash
-# Ensure kubectl is configured
-kubectl cluster-info
+# Check Rust core is loaded
+docker exec somabrain-somabrain_app-1 python -c \
+  "from somabrain.core.rust_bridge import is_rust_available; print('Rust:', is_rust_available())"
 
-# Create namespace
-kubectl create namespace somabrain
+# Expected: Rust: True
 ```
 
-### Deploy
+### Step 6: Test API
 
 ```bash
-cd somabrain/infra/k8s
+# Health check
+curl -s http://localhost:30101/health | python3 -m json.tool
 
-# Apply ConfigMaps and Secrets
-kubectl apply -f configmap.yaml -n somabrain
-kubectl apply -f secrets.yaml -n somabrain
-
-# Deploy infrastructure
-kubectl apply -f postgres.yaml -n somabrain
-kubectl apply -f redis.yaml -n somabrain
-kubectl apply -f kafka.yaml -n somabrain
-kubectl apply -f milvus.yaml -n somabrain
-
-# Wait for infrastructure
-kubectl wait --for=condition=ready pod -l app=postgres -n somabrain --timeout=120s
-
-# Deploy application
-kubectl apply -f somabrain-api.yaml -n somabrain
-
-# Verify
-kubectl get pods -n somabrain
+# Check Rust modules
+curl -s http://localhost:30101/api/health/diagnostics | python3 -m json.tool
 ```
 
 ---
 
-## 4. Connecting to SomaFractalMemory
+## Services Overview
 
-SomaBrain requires SomaFractalMemory for persistent memory storage.
+| Service | Port | Purpose |
+|---------|------|---------|
+| somabrain_app | 30101 | Main API + Rust Core |
+| somabrain_postgres | 5432 | PostgreSQL database |
+| somabrain_redis | 6379 | Cache + KV store |
+| somabrain_milvus | 19530 | Vector store |
+| somabrain_kafka | 9092 | Event streaming |
+| somabrain_opa | 20181 | Policy engine |
 
-### Configure Connection
+---
 
-Set in `.env` or `docker-compose.yml`:
+## Rust Core Modules
 
-```bash
-SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:10101
-SOMABRAIN_MEMORY_HTTP_TOKEN=dev-token-somastack2024
+When properly deployed, 20 Rust modules are available:
+
+```
+Amygdala, BHDCEncoder, BatchNorm, BudgetedPredictor, Consolidation,
+Dropout, FNOM, HebbianConsolidation, LLMPredictor, MahalanobisPredictor,
+MatrixOps, MultiConsolidation, Neuromodulators, QuantumModule, QuantumState,
+SlowPredictor, batch_norm_inference, norm_l2, softmax
 ```
 
-### Verify Connection
-
+Verify with:
 ```bash
-# Test SFM health from SomaBrain container
-docker exec somabrain-somabrain_app-1 curl -s http://host.docker.internal:10101/healthz
+docker exec somabrain-somabrain_app-1 python -c \
+  "import somabrain_rs; print([m for m in dir(somabrain_rs) if not m.startswith('_')])"
 ```
 
 ---
 
-## 5. Operations
+## Running Tests
 
-### Start/Stop
-
+### Integration Tests
 ```bash
-# Docker Compose
-docker compose -f infra/docker/docker-compose.yml -p somabrain up -d
-docker compose -f infra/docker/docker-compose.yml -p somabrain down
-
-# Tilt
-tilt up
-tilt down
+# From host machine
+cd /path/to/somabrain
+source .venv/bin/activate
+DJANGO_SETTINGS_MODULE=somabrain.settings \
+  python -m pytest tests/integration/test_cognition_workbench.py \
+                   tests/integration/test_memory_workbench.py -v
 ```
 
-### Rebuild
+### Expected Results
+- Cognition workbench: 3/3 passed
+- Memory workbench: 1/1 passed
+- Property/unit tests: 103/108 passed
 
+---
+
+## Troubleshooting
+
+### Container Restarting
 ```bash
-# Rebuild single service
-docker compose -f infra/docker/docker-compose.yml -p somabrain up -d --build somabrain_app
+# Check logs
+docker logs somabrain-somabrain_app-1 --tail 50
 
-# Rebuild with no cache
-docker compose -f infra/docker/docker-compose.yml -p somabrain build --no-cache
+# Common fix: Extend health check timing
+docker compose down && docker compose up -d
 ```
 
-### Logs
-
+### Rust Core Not Loading
 ```bash
-# All services
-docker compose -f infra/docker/docker-compose.yml -p somabrain logs -f
+# Verify wheel is installed
+docker exec somabrain-somabrain_app-1 pip list | grep somabrain
 
-# Specific service
-docker compose -f infra/docker/docker-compose.yml -p somabrain logs -f somabrain_app
+# Rebuild if needed
+cd rust_core && ./scripts/build_rust.sh
+```
+
+### Database Connection Issues
+```bash
+# Use correct DSN format
+export SOMABRAIN_POSTGRES_DSN=postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain
 ```
 
 ---
 
-## 6. Troubleshooting
+## Production Deployment
 
-| Issue | Solution |
-|-------|----------|
-| Services restarting | Check `KAFKA_BOOTSTRAP_SERVERS` and port defaults |
-| Postgres exporter unhealthy | Verify `DATA_SOURCE_NAME` has correct DSN |
-| Rust core unavailable | Rebuild with `--no-cache` to recompile |
-| Health check timeout | Increase `start_period` in healthcheck |
-
-### Reset Everything
-
-```bash
-docker compose -f infra/docker/docker-compose.yml -p somabrain down -v --remove-orphans
-docker compose -f infra/docker/docker-compose.yml -p somabrain up -d --build
-```
+For production, use Kubernetes. See:
+- `infra/k8s/README.md` - Kubernetes deployment guide
+- `infra/k8s/base/` - Base manifests
+- `infra/k8s/overlays/` - Environment-specific configs
 
 ---
 
-## Document Control
+## Related Documentation
+
+- [SomaFractalMemory Deployment](../../somafractalmemory/infra/docker/DEPLOYMENT_GUIDE.md)
+- [Kubernetes Guide](../k8s/README.md)
+- [API Reference](../../docs/api.md)
+
+---
+
+## Document History
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 2.0.0 | 2026-01-09 | Added Rust core, Tilt, K8s sections |
-| 1.0.0 | 2025-12-01 | Initial Docker deployment |
+| 2.0.0 | 2026-01-09 | Rust Core integration, 16-service verification |
+| 1.0.0 | 2026-01-08 | Initial deployment guide |
