@@ -31,23 +31,26 @@ def _initialize_embedder() -> Any:
     global embedder
     if embedder is not None:
         return embedder
-    
+
     try:
         from somabrain.embeddings import make_embedder
+
         embedder = make_embedder(settings)
         logger.info("Embedder initialized successfully")
         return embedder
     except Exception as e:
         logger.warning(f"Failed to initialize Embedder: {e}")
+
         # Return a stub embedder that returns zero vectors
         class StubEmbedder:
             def embed(self, text: str) -> list:
                 import numpy as np
+
                 return np.zeros(384).tolist()
-            
+
             def embed_batch(self, texts: list) -> list:
                 return [self.embed(t) for t in texts]
-        
+
         embedder = StubEmbedder()
         logger.info("Using stub embedder (no ML backend)")
         return embedder
@@ -58,9 +61,10 @@ def _initialize_working_memory() -> Any:
     global mt_wm
     if mt_wm is not None:
         return mt_wm
-    
+
     try:
         from somabrain.mt_wm import MultiTenantWM
+
         # Default dimension 384 for embeddings
         mt_wm = MultiTenantWM(dim=384)
         logger.info("Working memory initialized successfully")
@@ -75,9 +79,10 @@ def _initialize_memory_pool() -> Any:
     global mt_memory
     if mt_memory is not None:
         return mt_memory
-    
+
     try:
         from somabrain.memory_pool import MultiTenantMemory
+
         mt_memory = MultiTenantMemory(cfg=settings)
         logger.info("Memory pool initialized successfully")
         return mt_memory
@@ -88,19 +93,19 @@ def _initialize_memory_pool() -> Any:
 
 def initialize_runtime() -> dict:
     """Initialize all runtime singletons.
-    
+
     Returns:
         Dict with initialization status for each component.
     """
     global cfg
     cfg = settings
-    
+
     status = {
-        'embedder': _initialize_embedder() is not None,
-        'working_memory': _initialize_working_memory() is not None,
-        'memory_pool': _initialize_memory_pool() is not None,
+        "embedder": _initialize_embedder() is not None,
+        "working_memory": _initialize_working_memory() is not None,
+        "memory_pool": _initialize_memory_pool() is not None,
     }
-    
+
     logger.info(f"Runtime initialized: {status}")
     return status
 

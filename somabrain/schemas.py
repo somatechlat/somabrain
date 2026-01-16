@@ -211,6 +211,7 @@ class OakOptionCreateRequest(BaseModel):
     option_id: Optional[str] = None
     payload: str  # base64 encoded bytes
 
+
 class OakPlanSuggestResponse(BaseModel):
     """Response model for Oak planning results.
 

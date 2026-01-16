@@ -63,9 +63,9 @@ class TestPerTenantCircuitIsolation:
             cb.record_failure("tenant_a")
 
         # Tenant A's circuit should be open
-        assert cb.is_open("tenant_a"), (
-            "Tenant A circuit should be open after 5 failures"
-        )
+        assert cb.is_open(
+            "tenant_a"
+        ), "Tenant A circuit should be open after 5 failures"
 
         # Tenant B's circuit should still be closed (no failures)
         assert not cb.is_open("tenant_b"), "Tenant B circuit should be closed"
@@ -139,9 +139,9 @@ class TestPerTenantCircuitIsolation:
         cb.reset("tenant_a")
 
         # Tenant A should be closed
-        assert not cb.is_open("tenant_a"), (
-            "Tenant A circuit should be closed after reset"
-        )
+        assert not cb.is_open(
+            "tenant_a"
+        ), "Tenant A circuit should be closed after reset"
 
         # Tenant B should still be open
         assert cb.is_open("tenant_b"), "Tenant B circuit should still be open"

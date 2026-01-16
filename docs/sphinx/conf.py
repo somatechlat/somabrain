@@ -129,5 +129,5 @@ suppress_warnings = [
     "toc.circular",
     "toc.secnum",
     "autodoc.import_object",
-    "myst.xref_missing"
+    "myst.xref_missing",
 ]

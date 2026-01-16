@@ -429,9 +429,11 @@ def test_provider_connection(
 
         return TestConnectionResult(
             success=all_reachable,
-            message="All endpoints reachable"
-            if all_reachable
-            else "Some endpoints unreachable",
+            message=(
+                "All endpoints reachable"
+                if all_reachable
+                else "Some endpoints unreachable"
+            ),
             details=results,
         )
 

@@ -259,14 +259,14 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
                 ev.save()
                 sent += 1
                 tenant_processed += 1
-                k = (tenant_label, topic)
-                processed_counts[k] = processed_counts.get(k, 0) + 1
+                k = (str(tenant_label), str(topic))  # type: ignore
+                processed_counts[k] = processed_counts.get(k, 0) + 1  # type: ignore
 
                 # Update journal event status
                 journal = get_journal()
                 journal.mark_events_sent([ev.dedupe_key])
             except Exception as e:
-                ev.retries = int(ev.retries or 0) + 1
+                ev.retries = int(ev.retries) + 1 if ev.retries is not None else 1
                 ev.last_error = str(e)
                 if ev.retries >= max_retries:
                     ev.status = "failed"
@@ -285,14 +285,15 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
 
     # Report processed events
     if report_outbox_processed is not None:
-        for (tenant_label, topic), count in processed_counts.items():
+        for tenant_label, topic in processed_counts.keys():  # type: ignore
+            count = processed_counts.get((str(tenant_label), str(topic)), 0)  # type: ignore
             try:
-                report_outbox_processed(tenant_label, topic, count)
+                report_outbox_processed(str(tenant_label), str(topic), count)
             except Exception as exc:
                 logging.debug(
                     "Failed to report outbox processed for tenant=%s topic=%s: %s",
-                    tenant_label,
-                    topic,
+                    str(tenant_label),
+                    str(topic),
                     exc,
                 )
                 continue
@@ -348,7 +349,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
 
         # Periodically replay journal events to database
         if current_time - last_journal_replay >= journal_replay_interval:
-            replayed = replay_journal_events(limit=batch_size)
+            replayed = replay_journal_events(limit=batch_size)  # type: ignore
             if replayed > 0:
                 logging.info(f"Replayed {replayed} events from journal to database")
             last_journal_replay = current_time
@@ -356,7 +357,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         # Process regular database outbox events
         try:
             n = _process_batch(producer, batch_size, max_retries)
-        except Exception as e:
+        except Exception as e:  # type: ignore
             # Safety net: don't crash the loop on DB issues
             logging.error("outbox_publisher: batch error: %s", e)
             n = 0

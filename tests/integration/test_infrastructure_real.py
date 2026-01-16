@@ -320,6 +320,6 @@ class TestOPAIntegration:
             # OPA should respond with 200 even if no matching policy
             assert resp.status_code == 200, f"OPA query failed: {resp.status_code}"
             result = resp.json()
-            assert "result" in result or result == {}, (
-                "OPA should return result key or empty"
-            )
+            assert (
+                "result" in result or result == {}
+            ), "OPA should return result key or empty"

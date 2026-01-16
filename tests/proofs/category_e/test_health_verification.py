@@ -71,9 +71,9 @@ class TestServiceHealthVerification:
             if field not in data:
                 missing_fields.append(field)
 
-        assert not missing_fields, (
-            f"Missing backend status fields: {', '.join(missing_fields)}"
-        )
+        assert (
+            not missing_fields
+        ), f"Missing backend status fields: {', '.join(missing_fields)}"
 
         # Verify components dict exists with expected structure
         assert "components" in data, "Missing 'components' field"
@@ -84,9 +84,9 @@ class TestServiceHealthVerification:
         assert "memory" in components, "Missing memory in components"
 
         # Verify milvus metrics are present
-        assert "milvus_metrics" in data or "milvus" in components, (
-            "Missing Milvus metrics in health response"
-        )
+        assert (
+            "milvus_metrics" in data or "milvus" in components
+        ), "Missing Milvus metrics in health response"
 
     def test_health_reports_degraded(self) -> None:
         """E2.2: Health endpoint reports degraded status when backend unhealthy.
@@ -104,9 +104,9 @@ class TestServiceHealthVerification:
 
         # Check that degraded indicators are present
         # The system should have memory_degraded field
-        assert "memory_degraded" in data or "ready" in data, (
-            "Missing degraded status indicator"
-        )
+        assert (
+            "memory_degraded" in data or "ready" in data
+        ), "Missing degraded status indicator"
 
         # If any backend is not OK, ready should be False
         kafka_ok = data.get("kafka_ok", False)
@@ -161,9 +161,9 @@ class TestServiceHealthVerification:
         ]
 
         for metric_prefix in expected_metrics:
-            assert metric_prefix in metrics_text, (
-                f"Missing expected metric prefix: {metric_prefix}"
-            )
+            assert (
+                metric_prefix in metrics_text
+            ), f"Missing expected metric prefix: {metric_prefix}"
 
     def test_jaeger_traces_complete(self) -> None:
         """E2.4: Jaeger traces show complete request flow.
@@ -194,9 +194,9 @@ class TestServiceHealthVerification:
 
         # Verify trace_id is echoed back in response
         data = r.json()
-        assert data.get("trace_id") == trace_id, (
-            f"Trace ID not echoed: expected {trace_id}, got {data.get('trace_id')}"
-        )
+        assert (
+            data.get("trace_id") == trace_id
+        ), f"Trace ID not echoed: expected {trace_id}, got {data.get('trace_id')}"
 
     def test_opa_decisions_logged(self) -> None:
         """E2.5: OPA policy decisions are available.
@@ -461,9 +461,9 @@ class TestSFMIntegrationHealth:
                 )
 
                 # Unhealthy components should be listed (E3.5)
-                assert len(health.degraded_components) > 0, (
-                    "degraded_components should list unhealthy components"
-                )
+                assert (
+                    len(health.degraded_components) > 0
+                ), "degraded_components should list unhealthy components"
 
                 # Verify the listed components match the unhealthy ones
                 if not health.sfm_kv_store:
@@ -474,18 +474,18 @@ class TestSFMIntegrationHealth:
                     assert "graph_store" in health.degraded_components
             else:
                 # All components healthy - should not be degraded
-                assert not health.degraded, (
-                    "degraded should be False when all SFM components are healthy"
-                )
-                assert len(health.degraded_components) == 0, (
-                    "degraded_components should be empty when all healthy"
-                )
+                assert (
+                    not health.degraded
+                ), "degraded should be False when all SFM components are healthy"
+                assert (
+                    len(health.degraded_components) == 0
+                ), "degraded_components should be empty when all healthy"
         else:
             # SFM unavailable - should be degraded (E3.3)
             assert health.degraded, "degraded should be True when SFM unavailable"
-            assert len(health.degraded_components) > 0, (
-                "degraded_components should indicate SFM unavailability"
-            )
+            assert (
+                len(health.degraded_components) > 0
+            ), "degraded_components should indicate SFM unavailability"
 
     def test_sfm_health_check_timeout(self) -> None:
         """E3.4: Health check times out after 2 seconds and reports unknown status.
@@ -595,6 +595,6 @@ class TestSFMIntegrationHealth:
             has_health_info = (
                 "healthy" in memory or "sfm_available" in memory or "status" in memory
             )
-            assert has_health_info or memory == {}, (
-                "Memory component should have health info or be empty dict"
-            )
+            assert (
+                has_health_info or memory == {}
+            ), "Memory component should have health info or be empty dict"

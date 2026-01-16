@@ -59,8 +59,6 @@ logger = logging.getLogger(__name__)
 from .core.rust_bridge import get_rust_module, is_rust_available
 
 
-
-
 @dataclass
 class NeuromodState:
     """
@@ -135,12 +133,14 @@ class Neuromodulators:
     def _sync_to_rust(self) -> None:
         """Sync current Python state to Rust backend."""
         if self._rust_impl:
-            self._rust_impl.set_state([
-                self._state.dopamine,
-                self._state.serotonin,
-                self._state.noradrenaline,
-                self._state.acetylcholine
-            ])
+            self._rust_impl.set_state(
+                [
+                    self._state.dopamine,
+                    self._state.serotonin,
+                    self._state.noradrenaline,
+                    self._state.acetylcholine,
+                ]
+            )
 
     def _sync_from_rust(self) -> None:
         """Sync current Rust state to Python state."""
@@ -151,7 +151,6 @@ class Neuromodulators:
                 self._state.serotonin = vals[1]
                 self._state.noradrenaline = vals[2]
                 self._state.acetylcholine = vals[3]
-
 
     def get_state(self) -> NeuromodState:
         """Retrieve state."""

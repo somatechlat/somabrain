@@ -385,9 +385,9 @@ def get_hourly_stats(
         HourlyStats(
             hour=hour,
             requests=data["count"],
-            avg_response_time_ms=data["total_time"] / data["count"]
-            if data["count"]
-            else 0,
+            avg_response_time_ms=(
+                data["total_time"] / data["count"] if data["count"] else 0
+            ),
             error_count=data["errors"],
         )
         for hour, data in sorted(by_hour.items())

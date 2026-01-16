@@ -213,9 +213,9 @@ def list_webhooks(
             event_types=wh.event_types,
             is_active=wh.is_active,
             secret_prefix=wh.secret[:8] + "..." if wh.secret else "",
-            last_triggered_at=wh.last_triggered_at.isoformat()
-            if wh.last_triggered_at
-            else None,
+            last_triggered_at=(
+                wh.last_triggered_at.isoformat() if wh.last_triggered_at else None
+            ),
             failure_count=wh.failure_count,
             created_at=wh.created_at.isoformat(),
         )
@@ -342,9 +342,9 @@ def update_webhook(
         event_types=webhook.event_types,
         is_active=webhook.is_active,
         secret_prefix=webhook.secret[:8] + "..." if webhook.secret else "",
-        last_triggered_at=webhook.last_triggered_at.isoformat()
-        if webhook.last_triggered_at
-        else None,
+        last_triggered_at=(
+            webhook.last_triggered_at.isoformat() if webhook.last_triggered_at else None
+        ),
         failure_count=webhook.failure_count,
         created_at=webhook.created_at.isoformat(),
     )

@@ -116,9 +116,9 @@ class TestSuperposedTraceDecayFormula:
 
         # State should be unit norm after all upserts
         state_norm = np.linalg.norm(trace.state)
-        assert abs(state_norm - 1.0) < 1e-5 or state_norm < 1e-10, (
-            f"State norm {state_norm} should be ~1.0 or ~0.0"
-        )
+        assert (
+            abs(state_norm - 1.0) < 1e-5 or state_norm < 1e-10
+        ), f"State norm {state_norm} should be ~1.0 or ~0.0"
 
 
 class TestWorkingMemoryRecall:
@@ -159,9 +159,9 @@ class TestWorkingMemoryRecall:
         # Verify descending order
         scores = [score for score, _ in results]
         for i in range(len(scores) - 1):
-            assert scores[i] >= scores[i + 1], (
-                f"Recall results not in descending order: {scores[i]} < {scores[i + 1]}"
-            )
+            assert (
+                scores[i] >= scores[i + 1]
+            ), f"Recall results not in descending order: {scores[i]} < {scores[i + 1]}"
 
     @given(
         dim=dim_strategy,
@@ -232,9 +232,9 @@ class TestWorkingMemoryNovelty:
 
         novelty = wm.novelty(vec)
 
-        assert novelty < 0.01, (
-            f"Novelty for identical vector should be ~0.0, got {novelty}"
-        )
+        assert (
+            novelty < 0.01
+        ), f"Novelty for identical vector should be ~0.0, got {novelty}"
 
 
 class TestSuperposedTraceCleanup:

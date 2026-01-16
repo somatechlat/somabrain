@@ -128,12 +128,9 @@ class BHDCEncoder:
         if is_rust_available():
             try:
                 self._rust_impl = get_rust_module().BHDCEncoder(
-                    self._dim,
-                    float(sparsity),
-                    int(self._seeds.base_seed),
-                    self._mode
+                    self._dim, float(sparsity), int(self._seeds.base_seed), self._mode
                 )
-            except Exception as e:
+            except Exception:
                 # Fallback to Python if Rust init fails (e.g. wrong args)
                 pass
 
@@ -148,12 +145,12 @@ class BHDCEncoder:
             # Wait, verify.py used: enc.random_vector()
             # Let's double check lib.rs for random_vector
             # lib.rs showed: fn encode(...) but NO random_vector in pymethods?
-            # actually checking lib.rs content... 
-            # It has `encode` but NOT `random_vector`. 
-            # verify.py said `enc.random_vector()`. 
+            # actually checking lib.rs content...
+            # It has `encode` but NOT `random_vector`.
+            # verify.py said `enc.random_vector()`.
             # I must have missed it or verify.py implies it exists.
             # Rereading lib.rs content from step 111...
-            # Lines 23-99. 
+            # Lines 23-99.
             # Methods: new, encode, bind, unbind, bundle, similarity, permute.
             # NO random_vector.
             # So verify.py might fail or I missed something.
@@ -166,7 +163,6 @@ class BHDCEncoder:
 
         return self._vector_from_rng(self._rng)
 
-
     def vector_for_key(self, key: str) -> np.ndarray:
         """Execute vector for key.
 
@@ -177,7 +173,7 @@ class BHDCEncoder:
         if self._rust_impl:
             # Rust encode takes (key, value). We use value=0.0 as default for key-based generation
             # Note: This will produce different vectors than Python implementation due to hashing differences
-            vec = self._rust_impl.encode(self._seeds.prefix.decode('ascii') + key, 0.0)
+            vec = self._rust_impl.encode(self._seeds.prefix.decode("ascii") + key, 0.0)
             return np.array(vec, dtype=self._dtype)
 
         seed = seed_to_uint64(self._seeds.prefix + key.encode("utf-8"))

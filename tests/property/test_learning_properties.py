@@ -114,9 +114,9 @@ class TestAdaptationDeltaFormula:
         expected_sign = 1 if (gain * signal) > 0 else -1
         actual_sign = 1 if delta > 0 else -1
 
-        assert actual_sign == expected_sign, (
-            f"Delta sign mismatch: delta={delta}, gain={gain}, signal={signal}"
-        )
+        assert (
+            actual_sign == expected_sign
+        ), f"Delta sign mismatch: delta={delta}, gain={gain}, signal={signal}"
 
 
 class TestConstraintClamping:
@@ -247,9 +247,9 @@ class TestTauExponentialAnnealing:
         result = exponential_anneal(initial_tau, anneal_rate, floor)
         expected = max(floor, initial_tau * (1.0 - anneal_rate))
 
-        assert abs(result - expected) < 1e-12, (
-            f"Annealed tau {result} != expected {expected}"
-        )
+        assert (
+            abs(result - expected) < 1e-12
+        ), f"Annealed tau {result} != expected {expected}"
 
     @given(
         initial_tau=st.floats(
@@ -304,9 +304,9 @@ class TestTauExponentialAnnealing:
         """Verify zero anneal rate leaves tau unchanged."""
         result = exponential_anneal(initial_tau, 0.0, floor)
 
-        assert result == initial_tau, (
-            f"Tau changed from {initial_tau} to {result} with zero rate"
-        )
+        assert (
+            result == initial_tau
+        ), f"Tau changed from {initial_tau} to {result} with zero rate"
 
 
 @dataclass
@@ -425,6 +425,6 @@ class TestAdaptationReset:
         state.reset_to(defaults)
         second_alpha = state.alpha
 
-        assert first_alpha == second_alpha, (
-            f"Reset not idempotent: {first_alpha} != {second_alpha}"
-        )
+        assert (
+            first_alpha == second_alpha
+        ), f"Reset not idempotent: {first_alpha} != {second_alpha}"

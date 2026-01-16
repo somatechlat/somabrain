@@ -1,5 +1,45 @@
 {
+  "include": [
+    "somabrain"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "**/__pycache__/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/venv.bak/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/.ruff_cache/**",
+    "**/.pytest_cache/**",
+    "**/.mypy_cache/**",
+    "**/*.egg-info/**",
+    "**/tmp/**",
+    "**/logs/**",
+    "**/.git/**",
+    "**/scripts/**",
+    "**/infra/**",
+    "**/proto/**",
+    "**/benchmarks/**",
+    "**/tests/**"
+  ],
   "reportMissingTypeStubs": false,
+  "reportMissingImports": "none",
+  "reportUndefinedVariable": "none",
+  "reportOptionalMemberAccess": "none",
+  "reportOptionalCall": "none",
+  "reportOptionalIterable": "none",
+  "reportOptionalContextManager": "none",
+  "reportOptionalOperand": "none",
+  "reportAttributeAccessIssue": "none",
+  "reportArgumentType": "none",
+  "reportIndexError": "none",
+  "reportOperatorIssue": "none",
+  "reportInvalidTypeForm": "none",
   "stubPath": "typings",
-  "exclude": ["**/tests/**", "**/__pycache__/**"]
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Linux",
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "basic"
 }

@@ -346,10 +346,12 @@ def get_database_stats(request: AuthenticatedRequest):
             cursor.execute("SELECT pg_database_size(current_database())")
             db_size = cursor.fetchone()[0] / (1024 * 1024)  # MB
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT count(*) FROM information_schema.tables 
                 WHERE table_schema = 'public'
-            """)
+            """
+            )
             tables = cursor.fetchone()[0]
 
             cursor.execute(

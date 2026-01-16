@@ -51,8 +51,10 @@ from somabrain.basal_ganglia import BasalGangliaPolicy
 from common.config.settings import settings
 from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
+
 # Oak option manager import for ROAMDP endpoints
 from somabrain.oak.option_manager import option_manager
+
 
 # ---------------------------------------------------------------------------
 # Simple OPA engine wrapper – provides a minimal health check for the OPA
@@ -69,7 +71,7 @@ class SimpleOPAEngine:
     """
 
     def __init__(self, base_url: str):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
 
     async def health(self) -> bool:
         """Return ``True`` if the OPA ``/health`` endpoint responds with 200.
@@ -85,6 +87,7 @@ class SimpleOPAEngine:
         except Exception:
             return False
 
+
 # Define OPA engine attachment function (will be registered after FastAPI app creation).
 async def _attach_opa_engine() -> None:  # pragma: no cover
     """Initialize the OPA engine and store it in ``app.state``.
@@ -96,11 +99,15 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
     instantiated.
     """
     # ``settings`` may expose the URL via ``opa_url`` or the legacy env var.
-    opa_url = getattr(settings, "opa_url", None) or getattr(settings, "SOMABRAIN_OPA_URL", None)
+    opa_url = getattr(settings, "opa_url", None) or getattr(
+        settings, "SOMABRAIN_OPA_URL", None
+    )
     if opa_url:
         app.state.opa_engine = SimpleOPAEngine(opa_url)
     else:
         app.state.opa_engine = None
+
+
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
 from somabrain.controls.reality_monitor import assess_reality
@@ -2572,7 +2579,9 @@ async def health(request: Request) -> S.HealthResponse:
     resp["idempotency_key"] = idempotency_key
     # Constitution information (if engine loaded)
     try:
-        engine: Optional["ConstitutionEngine"] = getattr(app.state, "constitution_engine", None)
+        engine: Optional["ConstitutionEngine"] = getattr(
+            app.state, "constitution_engine", None
+        )
         if engine:
             resp["constitution_version"] = engine.get_checksum()
             resp["constitution_status"] = "loaded"
@@ -2584,7 +2593,9 @@ async def health(request: Request) -> S.HealthResponse:
         resp["constitution_status"] = None
     # External backend requirement flag from settings
     try:
-        resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
+        resp["external_backends_required"] = getattr(
+            settings, "require_external_backends", None
+        )
     except Exception:
         resp["external_backends_required"] = None
     # Full‑stack mode flag (legacy)
@@ -2619,7 +2630,9 @@ async def health(request: Request) -> S.HealthResponse:
     # -------------------------------------------------------------------
     try:
         resp["memory_degrade_queue"] = getattr(settings, "memory_degrade_queue", None)
-        resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", None)
+        resp["memory_degrade_readonly"] = getattr(
+            settings, "memory_degrade_readonly", None
+        )
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
     except Exception:
         resp["memory_degrade_queue"] = None
@@ -3710,6 +3723,7 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
     except Exception:
         plan_result = []
     return {"plan": plan_result}
+
 
 # ---------------------------------------------------------------------------
 # Oak option creation endpoint (ROAMDP feature)

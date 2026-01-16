@@ -247,13 +247,19 @@ class WorkingMemory:
             item_id = f"wm_{self._t + 1}_{time.time()}"
             vector = item_id_or_vector
             payload = vector_or_payload if isinstance(vector_or_payload, dict) else {}  # type: ignore[assignment] - Union narrowing
-        if vector.shape[-1] != self.dim:
-            if vector.shape[-1] < self.dim:
-                pad = np.zeros((self.dim - vector.shape[-1],), dtype=vector.dtype)
-                vector = np.concatenate([vector, pad])
+
+            # Handle both dict and numpy arrays for shape access
+            shape_val = (vector.shape[-1] if hasattr(vector, 'shape') else len(vector)) if hasattr(vector, 'shape') and hasattr(vector, '__getitem__') else 0
+            dim_val = self.dim
+            vector_np: Any = vector if hasattr(vector, 'shape') else np.array(vector)
+
+        if shape_val != dim_val:
+            if shape_val < dim_val:
+                pad = np.zeros((dim_val - shape_val,), dtype=vector_np.dtype if hasattr(vector_np, 'dtype') else np.float32)  # type: ignore
+                vector_np = np.concatenate([vector_np, pad]) if hasattr(vector_np, 'shape') else vector_np  # type: ignore
             else:
-                vector = vector[: self.dim]
-        vector = normalize_vector(vector, dtype=np.float32)
+                vector_np = vector_np[: dim_val] if hasattr(vector_np, '__getitem__') else vector_np
+        vector = normalize_vector(vector_np, dtype=np.float32)  # type: ignore
         self._t += 1
         now = self._now()
         overlap = 0.0

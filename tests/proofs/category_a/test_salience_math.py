@@ -123,9 +123,9 @@ class TestSalienceMathematicalCorrectness:
         salience = compute_salience(novelty, error, w_novelty, w_error)
         expected = w_novelty * novelty + w_error * error
 
-        assert abs(salience - expected) < 1e-10, (
-            f"Weighted formula violated: got {salience}, expected {expected}"
-        )
+        assert (
+            abs(salience - expected) < 1e-10
+        ), f"Weighted formula violated: got {salience}, expected {expected}"
 
     @given(st.floats(min_value=-10.0, max_value=10.0, allow_nan=False))
     @settings(max_examples=200, deadline=None)
@@ -191,16 +191,16 @@ class TestNeuromodulatorModulation:
             # Modulation: threshold decreases with dopamine
             modulated_threshold = base_threshold * (1.0 - 0.3 * da)
 
-            assert 0.0 < modulated_threshold <= base_threshold, (
-                f"Invalid threshold for DA={da}: {modulated_threshold}"
-            )
+            assert (
+                0.0 < modulated_threshold <= base_threshold
+            ), f"Invalid threshold for DA={da}: {modulated_threshold}"
 
             # Higher dopamine = lower threshold
             if da > 0:
                 prev_threshold = base_threshold * (1.0 - 0.3 * (da - 0.25))
-                assert modulated_threshold <= prev_threshold, (
-                    f"Threshold not decreasing with DA: {modulated_threshold} > {prev_threshold}"
-                )
+                assert (
+                    modulated_threshold <= prev_threshold
+                ), f"Threshold not decreasing with DA: {modulated_threshold} > {prev_threshold}"
 
     @given(
         st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
@@ -223,9 +223,9 @@ class TestNeuromodulatorModulation:
         # Should remain positive
         assert modulated > 0.0, f"Modulated threshold non-positive: {modulated}"
         # Should not exceed base
-        assert modulated <= base_threshold + 1e-10, (
-            f"Modulated threshold exceeds base: {modulated} > {base_threshold}"
-        )
+        assert (
+            modulated <= base_threshold + 1e-10
+        ), f"Modulated threshold exceeds base: {modulated} > {base_threshold}"
 
 
 # ---------------------------------------------------------------------------
@@ -314,6 +314,6 @@ class TestHysteresis:
 
         # With hysteresis and small oscillations, no transitions should occur
         # because oscillation never crosses threshold ± margin
-        assert transitions == 0, (
-            f"Unexpected transitions ({transitions}) with small oscillation"
-        )
+        assert (
+            transitions == 0
+        ), f"Unexpected transitions ({transitions}) with small oscillation"
