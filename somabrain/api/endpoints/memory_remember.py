@@ -50,81 +50,9 @@ def _ensure_runtime():
     pass
 
 
-@router.post("/remember", response=MemoryWriteResponse, auth=bearer_auth)
-def remember_memory(request: HttpRequest, payload: MemoryWriteRequest):
-    """Store a memory in both WM and LTM."""
-    require_auth(request, settings)
 
-    pool = _get_memory_pool()
-    wm = _get_wm()
-    embedder = _get_embedder()
 
-    if not pool or not wm or not embedder:
-        # Fail gracefully or noisily? Using 503 as in original
-        raise HttpError(503, "Memory services not available")
 
-    resolved_ns = _resolve_namespace(payload.tenant, payload.namespace)
-    memsvc = MemoryService(pool, resolved_ns)
-    memsvc._reset_circuit_if_needed()
-
-    actor = request.headers.get("X-Actor") or "memory-api"
-    stored_payload, signal_data, seed_text = _compose_memory_payload(
-        tenant=payload.tenant,
-        namespace=payload.namespace,
-        key=payload.key,
-        value=payload.value,
-        meta=payload.meta,
-        universe=payload.universe,
-        attachments=payload.attachments,
-        links=payload.links,
-        tags=payload.tags,
-        policy_tags=payload.policy_tags,
-        signals=payload.signals,
-        importance=payload.importance,
-        novelty=payload.novelty,
-        ttl_seconds=payload.ttl_seconds,
-        trace_id=payload.trace_id,
-        actor=actor,
-    )
-
-    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-    degraded_warnings: List[str] = []
-
-    circuit_open = memsvc._is_circuit_open()
-
-    if circuit_open:
-        memsvc._queue_degraded(
-            "remember", {"key": payload.key, "payload": stored_payload}
-        )
-        degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
-    else:
-        try:
-            # Sync wrapper for async aremember?
-            # If MemService only has async, we need async view.
-            # Converting this to async def since Ninja supports it.
-            # But the task is 'sync' preferred?
-            # Looking at original: it was async. Ninja supports async.
-            # I will use async def for compatibility with async calls.
-            # BUT if I make this async, I need to ensure everything else is async-safe.
-            # Let's try synchronous call if possible, or use async.
-            # Django Ninja runs async views in async loop.
-            # Let's start with async view signature to enable awaits.
-            pass
-        except Exception:
-            pass
-
-    return _remember_logic(
-        request,
-        payload,
-        memsvc,
-        wm,
-        embedder,
-        stored_payload,
-        signal_data,
-        seed_text,
-        request_id,
-        degraded_warnings,
-    )
 
 
 # Splitting logic to handle async nature properly

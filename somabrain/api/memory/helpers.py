@@ -41,6 +41,16 @@ def _get_runtime():
         The runtime module containing embedder, mt_wm, mt_memory singletons,
         or None if not found.
     """
+    try:
+        import somabrain.runtime as rt
+        # Initialize runtime singletons on first access
+        if rt.mt_memory is None:
+            rt.initialize_runtime()
+        return rt
+    except ImportError:
+        pass
+    
+    # Fallback: search in loaded modules
     _runtime_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "runtime.py"
     )

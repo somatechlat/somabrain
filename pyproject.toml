@@ -70,6 +70,7 @@ dev = [
   "black",
   "ruff",
   "mypy",
+  "maturin",
 ]
 
 [project.scripts]

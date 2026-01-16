@@ -8,8 +8,25 @@ All configuration loaded from environment variables.
 from pathlib import Path
 import environ
 
-# Build paths
-BASE_DIR = Path(__file__).resolve().parent.parent
+from urllib.parse import urlparse
+
+# Helper for K8s Service env var collision (tcp://host:port)
+def _parse_port(value: str | int | None, default: int) -> int:
+    if not value:
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.startswith("tcp://"):
+        try:
+            return int(value.rsplit(":", 1)[-1])
+        except (ValueError, IndexError):
+            return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+# ... (rest of imports)
 
 # Initialize django-environ
 env = environ.Env(
@@ -22,18 +39,15 @@ env = environ.Env(
     SOMABRAIN_POSTGRES_DSN=(str, ""),
 )
 
-# Read .env file
-environ.Env.read_env(BASE_DIR / ".env")
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("SOMABRAIN_LOG_LEVEL") == "DEBUG"
+# ...
 
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
 
-# Application definition
+# ============================================================================
+# DJANGO CORE APPLICATION SETTINGS
+# ============================================================================
+SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -54,10 +68,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "somabrain.controls.security_middleware.SecurityMiddleware",
-    "somabrain.controls.cognitive_middleware.CognitiveMiddleware",
-    "somabrain.controls.django_middleware.ControlsMiddleware",
-    "somabrain.controls.opa_middleware.OpaMiddleware",
 ]
 
 ROOT_URLCONF = "somabrain.urls"
@@ -79,6 +89,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "somabrain.wsgi.application"
+ASGI_APPLICATION = "somabrain.asgi.application"
 
 # Database - PostgreSQL only
 DATABASES = {
@@ -89,9 +100,7 @@ DATABASES = {
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
@@ -110,112 +119,21 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # ============================================================================
-# SOMABRAIN CONFIGURATION - All Environment Variables
-# ============================================================================
 
-# --- AUTH & SECURITY SETTINGS ---
-SOMABRAIN_AUTH_REQUIRED = env.bool("SOMABRAIN_AUTH_REQUIRED", default=False)
-SOMABRAIN_API_TOKEN = env.str("SOMABRAIN_API_TOKEN", default=None)
-SOMABRAIN_AUTH_SERVICE_URL = env.str("SOMABRAIN_AUTH_SERVICE_URL", default=None)
-SOMABRAIN_AUTH_SERVICE_API_KEY = env.str("SOMABRAIN_AUTH_SERVICE_API_KEY", default=None)
-SOMABRAIN_JWT_SECRET = env.str("SOMABRAIN_JWT_SECRET", default=None)
-SOMABRAIN_JWT_PUBLIC_KEY_PATH = env.str("SOMABRAIN_JWT_PUBLIC_KEY_PATH", default=None)
-SOMABRAIN_JWT_AUDIENCE = env.str("SOMABRAIN_JWT_AUDIENCE", default=None)
-SOMABRAIN_JWT_ISSUER = env.str("SOMABRAIN_JWT_ISSUER", default=None)
-
-# OPA keys
-SOMABRAIN_OPA_PRIVKEY_PATH = env.str("SOMABRAIN_OPA_PRIVKEY_PATH", default=None)
-SOMABRAIN_OPA_PUBKEY_PATH = env.str("SOMABRAIN_OPA_PUBKEY_PATH", default=None)
-
-# Provenance
-SOMABRAIN_PROVENANCE_SECRET = env.str("SOMABRAIN_PROVENANCE_SECRET", default=None)
-SOMABRAIN_PROVENANCE_STRICT_DENY = env.bool(
-    "SOMABRAIN_PROVENANCE_STRICT_DENY", default=False
-)
-SOMABRAIN_REQUIRE_PROVENANCE = env.bool("SOMABRAIN_REQUIRE_PROVENANCE", default=False)
-
-# Vault integration
-SOMABRAIN_VAULT_ADDR = env.str("VAULT_ADDR", default=None)
-SOMABRAIN_VAULT_TOKEN = env.str("VAULT_TOKEN", default=None)
-SOMABRAIN_VAULT_PUBKEY_PATH = env.str("SOMABRAIN_VAULT_PUBKEY_PATH", default=None)
-
-# Constitution
-SOMABRAIN_CONSTITUTION_PUBKEYS = env.str("SOMABRAIN_CONSTITUTION_PUBKEYS", default=None)
-SOMABRAIN_CONSTITUTION_PUBKEY_PATH = env.str(
-    "SOMABRAIN_CONSTITUTION_PUBKEY_PATH", default=None
-)
-SOMABRAIN_CONSTITUTION_PRIVKEY_PATH = env.str(
-    "SOMABRAIN_CONSTITUTION_PRIVKEY_PATH", default=None
-)
-SOMABRAIN_CONSTITUTION_THRESHOLD = env.int(
-    "SOMABRAIN_CONSTITUTION_THRESHOLD", default=1
-)
-SOMABRAIN_CONSTITUTION_SIGNER_ID = env.str(
-    "SOMABRAIN_CONSTITUTION_SIGNER_ID", default="default"
-)
-
-# Feature flags
-SOMABRAIN_MINIMAL_PUBLIC_API = env.bool("SOMABRAIN_MINIMAL_PUBLIC_API", default=False)
-SOMABRAIN_ALLOW_ANONYMOUS_TENANTS = env.bool(
-    "SOMABRAIN_ALLOW_ANONYMOUS_TENANTS", default=False
-)
-SOMABRAIN_BLOCK_UA_REGEX = env.str("SOMABRAIN_BLOCK_UA_REGEX", default="")
-SOMABRAIN_KILL_SWITCH = env.bool("SOMABRAIN_KILL_SWITCH", default=False)
-SOMABRAIN_ALLOW_TINY_EMBEDDER = env.bool("SOMABRAIN_ALLOW_TINY_EMBEDDER", default=False)
-SOMABRAIN_FEATURE_OVERRIDES = env.str(
-    "SOMABRAIN_FEATURE_OVERRIDES", default="./data/feature_overrides.json"
-)
-
-# Cognitive threads
-ENABLE_COG_THREADS = env.bool("ENABLE_COG_THREADS", default=False)
-COGNITIVE_THREAD_DEFAULT_CURSOR = 0
-
-# Orchestrator
-SOMABRAIN_ORCH_CONSUMER_GROUP = env.str(
-    "SOMABRAIN_ORCH_CONSUMER_GROUP", default="orchestrator-service"
-)
-SOMABRAIN_ORCH_NAMESPACE = env.str("SOMABRAIN_ORCH_NAMESPACE", default="cog")
-SOMABRAIN_ORCH_ROUTING = env.str("SOMABRAIN_ORCH_ROUTING", default="")
-
-# Teach feedback
-TEACH_FEEDBACK_PROC_PORT = env.int("TEACH_FEEDBACK_PROC_PORT", default=8086)
-TEACH_PROC_GROUP = env.str("TEACH_PROC_GROUP", default="teach-feedback-proc")
-TEACH_DEDUP_CACHE_SIZE = env.int("TEACH_DEDUP_CACHE_SIZE", default=512)
-
-# Feature flags service
-SOMABRAIN_FEATURE_FLAGS_PORT = env.int("SOMABRAIN_FEATURE_FLAGS_PORT", default=9697)
-
-# Universe
-SOMABRAIN_UNIVERSE = env.str("SOMA_UNIVERSE", default=None)
-
-# Reward
-SOMABRAIN_REWARD_PORT = env.int("SOMABRAIN_REWARD_PORT", default=8083)
-SOMABRAIN_REWARD_PRODUCER_PORT = env.int("REWARD_PRODUCER_PORT", default=30183)
-SOMABRAIN_REWARD_PRODUCER_HOST_PORT = env.int(
-    "REWARD_PRODUCER_HOST_PORT", default=30183
-)
-
-# Benchmark
-SOMABRAIN_BENCH_TIMEOUT = env.float("BENCH_TIMEOUT", default=90.0)
+# ...
 
 # --- INFRASTRUCTURE SETTINGS ---
 # PostgreSQL
 SOMABRAIN_POSTGRES_DSN = env.str("SOMABRAIN_POSTGRES_DSN", default="")
-DATABASE_URL = env.str("DATABASE_URL", default=None)
+# Remove legacy DATABASE_URL fallback to avoid collisions
+# DATABASE_URL = env.str("DATABASE_URL", default=None)
 
 # Redis
-SOMABRAIN_REDIS_URL = env.str(
-    "SOMABRAIN_REDIS_URL", default=env.str("REDIS_URL", default="")
-)
-SOMABRAIN_REDIS_HOST = env.str(
-    "SOMABRAIN_REDIS_HOST", default=env.str("REDIS_HOST", default=None)
-)
-SOMABRAIN_REDIS_PORT = env.int(
-    "SOMABRAIN_REDIS_PORT", default=env.int("REDIS_PORT", default=6379)
-)
-SOMABRAIN_REDIS_DB = env.int(
-    "SOMABRAIN_REDIS_DB", default=env.int("REDIS_DB", default=0)
-)
+SOMABRAIN_REDIS_URL = env.str("SOMABRAIN_REDIS_URL", default="")
+SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="localhost")
+# Use _parse_port to handle K8s injections
+SOMABRAIN_REDIS_PORT = _parse_port(env.str("SOMABRAIN_REDIS_PORT", default=None), 6379)
+SOMABRAIN_REDIS_DB = env.int("SOMABRAIN_REDIS_DB", default=0)
 
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS = env.str(

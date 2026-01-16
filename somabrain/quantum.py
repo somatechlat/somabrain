@@ -67,15 +67,15 @@ class HRRConfig:
 
         s = _get_settings()
         if self.dim is None:
-            self.dim = s.quantum_dim
+            self.dim = s.SOMABRAIN_HRR_DIM
         if self.seed is None:
-            self.seed = s.global_seed
+            self.seed = s.SOMABRAIN_GLOBAL_SEED
         if self.dtype is None:
-            self.dtype = s.hrr_dtype
+            self.dtype = s.SOMABRAIN_HRR_DTYPE
         if self.renorm is None:
-            self.renorm = s.hrr_renorm
+            self.renorm = s.SOMABRAIN_HRR_RENORM
         if self.sparsity is None:
-            self.sparsity = s.quantum_sparsity
+            self.sparsity = s.SOMABRAIN_BHDC_SPARSITY
 
         # Validation
         if self.dim <= 0:

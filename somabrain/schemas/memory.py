@@ -31,8 +31,8 @@ def normalize_vector(vec_like, dim: int = None):
 
     s = _get_settings()
     if dim is None:
-        dim = s.hrr_dim
-    hrr_dtype = s.hrr_dtype
+        dim = s.SOMABRAIN_HRR_DIM
+    hrr_dtype = s.SOMABRAIN_HRR_DTYPE
 
     arr = np.asarray(vec_like, dtype=hrr_dtype)
     if arr.ndim != 1:

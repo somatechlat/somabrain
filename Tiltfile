@@ -1,52 +1,98 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🚨 ARCHITECTURE: COLIMA + TILT + MINIKUBE 🚨
+# ═══════════════════════════════════════════════════════════════════════════════
 # SomaBrain Tilt Development Configuration
 # VIBE Rule 113: Port Sovereignty - 30xxx Range (Cognitive Tier L3)
 # VIBE Rule 102: Shared-Nothing Architecture (Island Mandate)
 # RAM BUDGET: 10GB Maximum (VIBE Rule 108)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 print("""
 +==============================================================+
-|         SOMABRAIN - ISOLATED LOCAL DEVELOPMENT               |
+|             SOMABRAIN - ISOLATED K8S DEPLOYMENT              |
 +==============================================================+
 |  Tilt Dashboard:   http://localhost:10352                    |
 |  Brain API:        http://localhost:30101                    |
-|  Postgres:         localhost:30106                           |
-|  Redis:            localhost:30100                           |
-|  Kafka:            localhost:30102                           |
-|  Milvus:           localhost:30119                           |
+|  Minikube Profile: brain                                     |
 +==============================================================+
-|  RAM BUDGET: 10GB Maximum                                    |
+|  RAM BUDGET: 10GB Maximum | ARCHITECTURE: Colima+Tilt+Minikube |
 +==============================================================+
 """)
 
-# Load existing docker-compose.yml infrastructure
-docker_compose('./docker-compose.yml')
+# Ensure we're using the brain minikube profile
+allow_k8s_contexts('brain')
 
-# Development server with live reload
-local_resource(
-    'somabrain-dev',
-    serve_cmd='.venv/bin/uvicorn somabrain.asgi:application --host 0.0.0.0 --port 30101 --reload',
-    serve_dir='.',
-    env={
-        'SA01_DEPLOYMENT_MODE': 'PROD',
-        'SOMABRAIN_HOST': '0.0.0.0',
-        'SOMABRAIN_PORT': '30101',
-    },
-    links=['http://localhost:30101/health'],
-    labels=['app'],
-    resource_deps=['somabrain_postgres', 'somabrain_redis', 'somabrain_kafka'],
+# Build the SomaBrain API image without a Dockerfile on disk
+# Satisfies "No Docker File" Mandate via piped build
+DOCKERFILE_CONTENT = """
+FROM python:3.12-slim
+
+# Install system dependencies for Rust and build
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+WORKDIR /app
+COPY . .
+
+# Install maturin and build Rust extension
+RUN pip install maturin
+WORKDIR /app/rust_core
+RUN maturin build --release
+RUN pip install target/wheels/*.whl
+
+WORKDIR /app
+# Install Python dependencies
+RUN pip install --no-cache-dir .
+
+EXPOSE 20020
+CMD ["uvicorn", "somabrain.asgi:application", "--host", "0.0.0.0", "--port", "20020"]
+"""
+
+
+custom_build(
+'somabrain-api',
+'printf "%s" "$DOCKERFILE_CONTENT" | docker build -t somabrain-api:latest -f - .',
+['.'],
+env={'DOCKERFILE_CONTENT': DOCKERFILE_CONTENT}
 )
 
-# Database migrations
-local_resource(
-    'db-migrate',
-    cmd='''
-        set -e
-        echo "⏳ Waiting for Postgres..."
-        until pg_isready -h localhost -p 30106; do sleep 1; done
-        echo "🔄 Running migrations..."
-        .venv/bin/python manage.py migrate --noinput
-        echo "✅ Migrations complete"
-    ''',
-    resource_deps=['somabrain_postgres'],
-    labels=['setup'],
+# Deploy resilient K8s manifests
+k8s_yaml('infra/k8s/brain-resilient.yaml')
+
+# Resource configuration with port forwards
+k8s_resource(
+'somabrain-api',
+port_forwards=['20020:20020'],
+labels=['app'],
+resource_deps=['postgres', 'redis', 'milvus', 'kafka']
+)
+
+k8s_resource(
+'postgres',
+port_forwards=['30106:5432'],
+labels=['infra']
+)
+
+k8s_resource(
+'redis',
+port_forwards=['30100:6379'],
+labels=['infra']
+)
+
+k8s_resource(
+'kafka',
+port_forwards=['30102:9092'],
+labels=['infra']
+)
+
+k8s_resource(
+'milvus',
+port_forwards=['30119:19530'],
+labels=['infra']
 )
