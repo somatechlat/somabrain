@@ -48,7 +48,9 @@ class RecallSessionStore:
             "conversation_id": conversation_id,
             "scoring_mode": scoring_mode,
             "created_at": time.time(),
-            "results": [item.dict() if hasattr(item, "dict") else item for item in results],
+            "results": [
+                item.dict() if hasattr(item, "dict") else item for item in results
+            ],
         }
         with self._lock:
             self._sessions[session_id] = payload

@@ -216,7 +216,9 @@ def get_platform_stats(request: AuthenticatedRequest):
 
     # Estimate monthly revenue from tier prices
     revenue = (
-        subscriptions.select_related("tier").aggregate(total=Sum("tier__price_monthly"))["total"]
+        subscriptions.select_related("tier").aggregate(
+            total=Sum("tier__price_monthly")
+        )["total"]
         or 0
     )
 
@@ -356,7 +358,9 @@ def get_tier_distribution(request: AuthenticatedRequest):
     if total == 0:
         return []
 
-    distribution = Tenant.objects.values("tier").annotate(count=Count("id")).order_by("-count")
+    distribution = (
+        Tenant.objects.values("tier").annotate(count=Count("id")).order_by("-count")
+    )
 
     return [
         TierDistributionOut(
@@ -511,7 +515,9 @@ def get_system_health(request: AuthenticatedRequest):
         keycloak_url = getattr(settings, "KEYCLOAK_URL", None)
         if keycloak_url:
             response = httpx.get(f"{keycloak_url}/health", timeout=5)
-            health["keycloak"] = "healthy" if response.status_code == 200 else "degraded"
+            health["keycloak"] = (
+                "healthy" if response.status_code == 200 else "degraded"
+            )
         else:
             health["keycloak"] = "not_configured"
     except Exception:

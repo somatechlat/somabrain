@@ -171,7 +171,11 @@ def evaluate_boundaries(
     max(0, len(true) - tp)
     precision = tp / len(emitted) if emitted else 0.0
     recall = tp / len(true) if true else 0.0
-    f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    f1 = (
+        (2 * precision * recall) / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
     false_rate = fp / len(emitted) if emitted else 0.0
     # Mean dwell latency across true boundaries (intervals between changes)
     if len(true) > 1:
@@ -182,7 +186,9 @@ def evaluate_boundaries(
     return f1, false_rate, mean_latency
 
 
-def update_metrics(tenant: str, f1: float, false_rate: float, mean_latency: float) -> None:
+def update_metrics(
+    tenant: str, f1: float, false_rate: float, mean_latency: float
+) -> None:
     """Update segmentation metrics.
 
     VIBE Compliance:

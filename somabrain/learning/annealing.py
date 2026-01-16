@@ -37,7 +37,9 @@ def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) ->
 
         env_mode = getattr(settings, "tau_anneal_mode", None) if settings else None
         env_rate = getattr(settings, "tau_anneal_rate", None) if settings else None
-        env_step = getattr(settings, "tau_anneal_step_interval", None) if settings else None
+        env_step = (
+            getattr(settings, "tau_anneal_step_interval", None) if settings else None
+        )
         env_tau_min = getattr(settings, "tau_min", None) if settings else None
 
         anneal_mode = (
@@ -46,14 +48,20 @@ def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) ->
             else _rt.get_str("tau_anneal_mode", "").strip().lower()
         )
         anneal_rate = (
-            float(env_rate) if env_rate is not None else _rt.get_float("tau_anneal_rate", 0.0)
+            float(env_rate)
+            if env_rate is not None
+            else _rt.get_float("tau_anneal_rate", 0.0)
         )
         anneal_step_interval = (
             int(env_step)
             if env_step is not None
             else int(_rt.get_float("tau_anneal_step_interval", 10))
         )
-        tau_min = float(env_tau_min) if env_tau_min is not None else _rt.get_float("tau_min", 0.05)
+        tau_min = (
+            float(env_tau_min)
+            if env_tau_min is not None
+            else _rt.get_float("tau_min", 0.05)
+        )
     except Exception:
         anneal_mode = ""
         anneal_rate = 0.0
@@ -102,7 +110,9 @@ def get_decay_config(tenant_id: str, tenant_override: dict | None = None) -> dic
             else _rt.get_bool("tau_decay_enabled", False)
         )
         tau_decay_rate = (
-            float(env_rate) if env_rate is not None else _rt.get_float("tau_decay_rate", 0.0)
+            float(env_rate)
+            if env_rate is not None
+            else _rt.get_float("tau_decay_rate", 0.0)
         )
     except Exception:
         pass
@@ -227,7 +237,9 @@ def get_entropy_cap(tenant_id: str) -> float:
         from somabrain import runtime_config as _rt
 
         env_cap = getattr(settings, "entropy_cap", None) if settings else None
-        entropy_cap = float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
+        entropy_cap = (
+            float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
+        )
     except Exception:
         entropy_cap = 0.0
 

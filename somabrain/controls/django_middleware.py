@@ -67,15 +67,22 @@ class ControlsMiddleware:
             "content_type": normalized_headers.get("content-type", ""),
             "body_size": len(raw_body),
             "provenance_valid": None,
-            "provenance_strict": bool(getattr(settings, "SOMABRAIN_PROVENANCE_STRICT_DENY", False)),
-            "require_provenance": bool(getattr(settings, "SOMABRAIN_REQUIRE_PROVENANCE", False)),
+            "provenance_strict": bool(
+                getattr(settings, "SOMABRAIN_PROVENANCE_STRICT_DENY", False)
+            ),
+            "require_provenance": bool(
+                getattr(settings, "SOMABRAIN_REQUIRE_PROVENANCE", False)
+            ),
         }
 
         # Provenance Check
         if (
             ctx["require_provenance"]
             and request.method == "POST"
-            and (ctx["path"].startswith("/memory/remember") or ctx["path"].startswith("/act"))
+            and (
+                ctx["path"].startswith("/memory/remember")
+                or ctx["path"].startswith("/act")
+            )
         ):
             header_val = normalized_headers.get("x-provenance", "")
             try:

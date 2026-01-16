@@ -1,0 +1,8 @@
+/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/rust_core/target/debug/deps/num_complex-bcf2ef69962b7a64.d: /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/lib.rs /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/cast.rs /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/pow.rs /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/complex_float.rs
+
+/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/rust_core/target/debug/deps/libnum_complex-bcf2ef69962b7a64.rmeta: /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/lib.rs /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/cast.rs /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/pow.rs /Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/complex_float.rs
+
+/Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/lib.rs:
+/Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/cast.rs:
+/Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/pow.rs:
+/Users/macbookpro201916i964gb1tb/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/num-complex-0.4.6/src/complex_float.rs:

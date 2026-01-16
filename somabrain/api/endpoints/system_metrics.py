@@ -265,14 +265,20 @@ def get_tenant_metrics(
         "tenant_id": tenant_id,
         "users": {
             "total": TenantUser.objects.filter(tenant_id=tenant_id).count(),
-            "active": TenantUser.objects.filter(tenant_id=tenant_id, is_active=True).count(),
+            "active": TenantUser.objects.filter(
+                tenant_id=tenant_id, is_active=True
+            ).count(),
         },
         "api_keys": {
             "total": APIKey.objects.filter(tenant_id=tenant_id).count(),
-            "active": APIKey.objects.filter(tenant_id=tenant_id, is_active=True).count(),
+            "active": APIKey.objects.filter(
+                tenant_id=tenant_id, is_active=True
+            ).count(),
         },
         "audit_logs": {
-            "today": AuditLog.objects.filter(tenant_id=tenant_id, timestamp__gte=today).count(),
+            "today": AuditLog.objects.filter(
+                tenant_id=tenant_id, timestamp__gte=today
+            ).count(),
             "week": AuditLog.objects.filter(
                 tenant_id=tenant_id, timestamp__gte=last_7_days
             ).count(),
@@ -295,21 +301,27 @@ def get_top_tenants(
     📊 Performance: REAL rankings
     """
     if metric == "users":
-        tenants = Tenant.objects.annotate(count=Count("users")).order_by("-count")[:limit]
+        tenants = Tenant.objects.annotate(count=Count("users")).order_by("-count")[
+            :limit
+        ]
 
         return {
             "metric": "users",
             "tenants": [
-                {"tenant_id": str(t.id), "name": t.name, "count": t.count} for t in tenants
+                {"tenant_id": str(t.id), "name": t.name, "count": t.count}
+                for t in tenants
             ],
         }
     elif metric == "api_keys":
-        tenants = Tenant.objects.annotate(count=Count("api_keys")).order_by("-count")[:limit]
+        tenants = Tenant.objects.annotate(count=Count("api_keys")).order_by("-count")[
+            :limit
+        ]
 
         return {
             "metric": "api_keys",
             "tenants": [
-                {"tenant_id": str(t.id), "name": t.name, "count": t.count} for t in tenants
+                {"tenant_id": str(t.id), "name": t.name, "count": t.count}
+                for t in tenants
             ],
         }
     else:

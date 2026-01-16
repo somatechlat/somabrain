@@ -64,7 +64,9 @@ class TenantQuotaManager:
             # Check quota
             if len(recent_usage) + count > self.quota_limit:
                 # Apply backoff
-                backoff_duration = min(self.quota_window, max(5.0, self.quota_window * 0.1))
+                backoff_duration = min(
+                    self.quota_window, max(5.0, self.quota_window * 0.1)
+                )
                 self.tenant_backoff[tenant] = now + backoff_duration
                 return False
 
@@ -148,7 +150,9 @@ def get_quota_manager() -> TenantQuotaManager:
     """Get or create the global quota manager instance."""
     global _quota_manager
     if _quota_manager is None:
-        _quota_manager = TenantQuotaManager(PER_TENANT_QUOTA_LIMIT, PER_TENANT_QUOTA_WINDOW)
+        _quota_manager = TenantQuotaManager(
+            PER_TENANT_QUOTA_LIMIT, PER_TENANT_QUOTA_WINDOW
+        )
     return _quota_manager
 
 

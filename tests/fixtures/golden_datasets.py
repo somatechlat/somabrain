@@ -84,10 +84,14 @@ class GoldenTestSet:
                 return item
         return None
 
-    def get_relevant_items(self, query: GoldenQuery, threshold: float = 0.5) -> List[str]:
+    def get_relevant_items(
+        self, query: GoldenQuery, threshold: float = 0.5
+    ) -> List[str]:
         """Get item IDs with relevance above threshold for a query."""
         return [
-            item_id for item_id, score in query.relevance_judgments.items() if score >= threshold
+            item_id
+            for item_id, score in query.relevance_judgments.items()
+            if score >= threshold
         ]
 
 
@@ -405,4 +409,8 @@ def get_golden_corpus() -> GoldenTestSet:
 
 def get_category_items(category: str) -> List[GoldenMemoryItem]:
     """Get items from a specific category."""
-    return [item for item in GOLDEN_CORPUS_100.items if item.metadata.get("category") == category]
+    return [
+        item
+        for item in GOLDEN_CORPUS_100.items
+        if item.metadata.get("category") == category
+    ]

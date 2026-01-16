@@ -54,7 +54,9 @@ class Migration(migrations.Migration):
                 ("javascript_origins", models.JSONField(blank=True, default=list)),
                 (
                     "default_scopes",
-                    models.JSONField(default=list, help_text="e.g. ['openid', 'email', 'profile']"),
+                    models.JSONField(
+                        default=list, help_text="e.g. ['openid', 'email', 'profile']"
+                    ),
                 ),
                 (
                     "claim_mappings",
@@ -74,7 +76,9 @@ class Migration(migrations.Migration):
                 ("is_enabled", models.BooleanField(default=True)),
                 (
                     "is_default",
-                    models.BooleanField(default=False, help_text="Default login provider"),
+                    models.BooleanField(
+                        default=False, help_text="Default login provider"
+                    ),
                 ),
                 ("trust_email", models.BooleanField(default=True)),
                 ("store_token", models.BooleanField(default=True)),
@@ -117,7 +121,9 @@ class Migration(migrations.Migration):
                 ("description", models.TextField(blank=True, null=True)),
                 (
                     "is_system",
-                    models.BooleanField(default=False, help_text="System roles cannot be deleted"),
+                    models.BooleanField(
+                        default=False, help_text="System roles cannot be deleted"
+                    ),
                 ),
                 (
                     "platform_role",

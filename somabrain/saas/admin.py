@@ -390,7 +390,9 @@ class TenantAdmin(admin.ModelAdmin):
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = "attachment; filename=tenants.csv"
         writer = csv.writer(response)
-        writer.writerow(["ID", "Name", "Slug", "Status", "Tier", "Admin Email", "Created"])
+        writer.writerow(
+            ["ID", "Name", "Slug", "Status", "Tier", "Admin Email", "Created"]
+        )
         for t in queryset:
             writer.writerow(
                 [

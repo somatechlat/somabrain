@@ -103,7 +103,9 @@ def report_outbox_pending(tenant_id: str | None, count: int) -> None:
 def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
     """Report the circuit breaker state for a tenant."""
     try:
-        CIRCUIT_STATE.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(1 if is_open else 0)
+        CIRCUIT_STATE.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(
+            1 if is_open else 0
+        )
     except Exception:
         pass
 

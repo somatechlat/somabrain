@@ -109,7 +109,8 @@ def process_search_response(
         filtered_hits = [
             hit
             for hit in hits
-            if str((hit.payload or {}).get("universe") or universe_value) == universe_value
+            if str((hit.payload or {}).get("universe") or universe_value)
+            == universe_value
         ]
         hits = filtered_hits
         if not hits:
@@ -175,7 +176,9 @@ def memories_search_sync(
     if tenant:
         body["filters"]["tenant"] = str(tenant)
 
-    success, status, data = http_post_fn("/memories/search", body, headers, operation="recall")
+    success, status, data = http_post_fn(
+        "/memories/search", body, headers, operation="recall"
+    )
     if success:
         # SECURITY: Filter by tenant client-side as defense-in-depth
         return process_search_response(

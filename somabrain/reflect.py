@@ -228,7 +228,9 @@ def cluster_episodics(
     return clusters
 
 
-def summarize_cluster(payloads: List[dict], indices: List[int], max_keywords: int = 8) -> str:
+def summarize_cluster(
+    payloads: List[dict], indices: List[int], max_keywords: int = 8
+) -> str:
     """
     Generate a keyword-based summary for a cluster of memory payloads.
 
@@ -251,6 +253,8 @@ def summarize_cluster(payloads: List[dict], indices: List[int], max_keywords: in
         >>> summary = summarize_cluster(payloads, [0, 1])
         >>> print(summary)  # "machine, learning, neural, network"
     """
-    texts = [str(payloads[i].get("task") or payloads[i].get("fact") or "") for i in indices]
+    texts = [
+        str(payloads[i].get("task") or payloads[i].get("fact") or "") for i in indices
+    ]
     keys = top_keywords(texts, k=max_keywords)
     return ", ".join(keys) if keys else "summary"

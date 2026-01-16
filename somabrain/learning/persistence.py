@@ -26,7 +26,9 @@ def get_redis() -> "Redis | None":
     Strict mode: requires real Redis (SOMABRAIN_REDIS_URL).
     Returns None if Redis is not available or not required.
     """
-    require_backends = getattr(settings, "require_external_backends", False) if settings else False
+    require_backends = (
+        getattr(settings, "require_external_backends", False) if settings else False
+    )
     require_backends = str(require_backends).strip().lower() in {
         "1",
         "true",

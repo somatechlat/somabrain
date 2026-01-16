@@ -84,12 +84,18 @@ class TestContextAndAttention:
 
         # Context should now be non-zero (superposition of anchor)
         context_norm = np.linalg.norm(ctx.context)
-        assert context_norm > 0, f"Context should be non-zero after admit: norm={context_norm}"
+        assert (
+            context_norm > 0
+        ), f"Context should be non-zero after admit: norm={context_norm}"
 
         # Cleanup should find the anchor
         result = ctx.cleanup(anchor_vec)
-        assert result.best_id == "anchor_1", f"Cleanup should find anchor_1: {result.best_id}"
-        assert result.best_score > 0, f"Cleanup score should be positive: {result.best_score}"
+        assert (
+            result.best_id == "anchor_1"
+        ), f"Cleanup should find anchor_1: {result.best_id}"
+        assert (
+            result.best_score > 0
+        ), f"Cleanup score should be positive: {result.best_score}"
 
     def test_context_decays_over_time(self) -> None:
         """C4.2: Context decays over time.
@@ -194,7 +200,9 @@ class TestContextAndAttention:
             ctx.admit(f"anchor_{i}", vec)
 
         # Verify context is non-zero
-        assert np.linalg.norm(ctx.context) > 0, "Context should be non-zero after admits"
+        assert (
+            np.linalg.norm(ctx.context) > 0
+        ), "Context should be non-zero after admits"
 
         # Create fresh context (simulates clear)
         fresh_ctx = self._create_context(dim=512)
@@ -279,7 +287,9 @@ class TestNoveltyDetection:
         novelty = ctx.novelty(new_vec)
         # Allow tolerance for floating point precision in HRR operations
         # Novelty can slightly exceed 1.0 due to numerical precision in cosine similarity
-        assert -0.1 <= novelty <= 1.1, f"Novelty should be approximately in [0, 1]: {novelty}"
+        assert (
+            -0.1 <= novelty <= 1.1
+        ), f"Novelty should be approximately in [0, 1]: {novelty}"
 
     def test_novelty_low_for_similar_vectors(self) -> None:
         """Novelty is low for vectors similar to context.
@@ -322,7 +332,9 @@ class TestCleanupResult:
 
         result = CleanupResult(best_id="test", best_score=0.9, second_score=0.7)
 
-        assert abs(result.margin - 0.2) < 1e-10, f"Margin should be ~0.2: {result.margin}"
+        assert (
+            abs(result.margin - 0.2) < 1e-10
+        ), f"Margin should be ~0.2: {result.margin}"
 
     def test_cleanup_result_tuple_unpacking(self) -> None:
         """CleanupResult supports tuple unpacking.
@@ -369,7 +381,9 @@ class TestContextProperties:
         max_anchors = 10
         q_cfg = HRRConfig(dim=128)
         q = QuantumLayer(q_cfg)
-        cfg = HRRContextConfig(max_anchors=max_anchors, decay_lambda=0.0, min_confidence=0.0)
+        cfg = HRRContextConfig(
+            max_anchors=max_anchors, decay_lambda=0.0, min_confidence=0.0
+        )
         ctx = HRRContext(q, cfg, context_id="test")
 
         # Admit n_anchors
@@ -397,7 +411,9 @@ class TestContextProperties:
 
         q_cfg = HRRConfig(dim=128)
         q = QuantumLayer(q_cfg)
-        cfg = HRRContextConfig(max_anchors=10, decay_lambda=decay_lambda, min_confidence=0.0)
+        cfg = HRRContextConfig(
+            max_anchors=10, decay_lambda=decay_lambda, min_confidence=0.0
+        )
         ctx = HRRContext(q, cfg, context_id="test")
 
         # Admit an anchor

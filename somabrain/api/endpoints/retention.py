@@ -446,7 +446,9 @@ def preview_cleanup(
         # Real counts from Django ORM
         estimated = 0
         if policy["data_type"] == DataType.AUDIT_LOGS:
-            estimated = AuditLog.objects.filter(tenant_id=tenant_id, created_at__lt=cutoff).count()
+            estimated = AuditLog.objects.filter(
+                tenant_id=tenant_id, created_at__lt=cutoff
+            ).count()
 
         preview[policy["data_type"]] = {
             "cutoff_date": cutoff.isoformat(),

@@ -72,7 +72,9 @@ def validate(request: HttpRequest, req: ValidateRequest):
                 "user": user,
                 "input": req.input,
                 "decision": result.get("allowed") if isinstance(result, dict) else None,
-                "violated": (result.get("violations") if isinstance(result, dict) else None),
+                "violated": (
+                    result.get("violations") if isinstance(result, dict) else None
+                ),
                 "constitution_sha": engine.get_checksum(),
                 "constitution_sig": engine.get_signature(),
             }

@@ -171,7 +171,9 @@ def search_tenant_audit_logs(
     if data.actor_type:
         queryset = queryset.filter(actor_type=data.actor_type)
     if data.start_date:
-        queryset = queryset.filter(timestamp__gte=datetime.fromisoformat(data.start_date))
+        queryset = queryset.filter(
+            timestamp__gte=datetime.fromisoformat(data.start_date)
+        )
     if data.end_date:
         queryset = queryset.filter(timestamp__lte=datetime.fromisoformat(data.end_date))
     if data.search:
@@ -225,7 +227,9 @@ def get_tenant_audit_stats(
 
     total = queryset.count()
     by_action = dict(
-        queryset.values("action").annotate(count=Count("id")).values_list("action", "count")
+        queryset.values("action")
+        .annotate(count=Count("id"))
+        .values_list("action", "count")
     )
     by_resource_type = dict(
         queryset.values("resource_type")
@@ -233,7 +237,9 @@ def get_tenant_audit_stats(
         .values_list("resource_type", "count")
     )
     by_actor_type = dict(
-        queryset.values("actor_type").annotate(count=Count("id")).values_list("actor_type", "count")
+        queryset.values("actor_type")
+        .annotate(count=Count("id"))
+        .values_list("actor_type", "count")
     )
 
     return AuditLogStatsOut(
@@ -300,7 +306,9 @@ def export_tenant_audit_logs(
             )
 
         response = HttpResponse(output.getvalue(), content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="audit_logs_{tenant_id}.csv"'
+        response["Content-Disposition"] = (
+            f'attachment; filename="audit_logs_{tenant_id}.csv"'
+        )
         return response
 
     # VIBE RULES: No fallbacks - require explicit format
@@ -368,7 +376,9 @@ def get_platform_audit_stats(
 
     total = queryset.count()
     by_action = dict(
-        queryset.values("action").annotate(count=Count("id")).values_list("action", "count")[:20]
+        queryset.values("action")
+        .annotate(count=Count("id"))
+        .values_list("action", "count")[:20]
     )
     by_resource_type = dict(
         queryset.values("resource_type")
@@ -376,7 +386,9 @@ def get_platform_audit_stats(
         .values_list("resource_type", "count")[:20]
     )
     by_actor_type = dict(
-        queryset.values("actor_type").annotate(count=Count("id")).values_list("actor_type", "count")
+        queryset.values("actor_type")
+        .annotate(count=Count("id"))
+        .values_list("actor_type", "count")
     )
 
     return AuditLogStatsOut(

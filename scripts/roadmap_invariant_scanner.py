@@ -94,7 +94,9 @@ class RoadmapInvariantScanner:
             stripped = re.sub(r"#.*$", "", line)
             for keyword in BANNED_KEYWORDS:
                 if keyword.lower() in stripped.lower():
-                    self._record_violation(file_path, lineno, "BANNED_KEYWORD", line.strip())
+                    self._record_violation(
+                        file_path, lineno, "BANNED_KEYWORD", line.strip()
+                    )
 
     def _check_banned_identifiers(self, file_path: Path, content: str) -> None:
         """Execute check banned identifiers.
@@ -145,7 +147,9 @@ class RoadmapInvariantScanner:
         if visitor.found:
             self._record_violation(file_path, 0, "BANNED_IDENTIFIER", "AST usage")
 
-    def _record_violation(self, file_path: Path, lineno: int, typ: str, detail: str) -> None:
+    def _record_violation(
+        self, file_path: Path, lineno: int, typ: str, detail: str
+    ) -> None:
         """Execute record violation.
 
         Args:

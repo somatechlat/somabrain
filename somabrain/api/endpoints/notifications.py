@@ -209,7 +209,9 @@ def get_notification_count(
     total = queryset.count()
     unread = queryset.filter(is_read=False).count()
 
-    by_type = dict(queryset.values("type").annotate(count=Count("id")).values_list("type", "count"))
+    by_type = dict(
+        queryset.values("type").annotate(count=Count("id")).values_list("type", "count")
+    )
 
     return NotificationCountOut(total=total, unread=unread, by_type=by_type)
 
@@ -384,7 +386,9 @@ def create_notification(
         is_read=False,
         action_url=notification.action_url,
         created_at=notification.created_at.isoformat(),
-        expires_at=(notification.expires_at.isoformat() if notification.expires_at else None),
+        expires_at=(
+            notification.expires_at.isoformat() if notification.expires_at else None
+        ),
     )
 
 

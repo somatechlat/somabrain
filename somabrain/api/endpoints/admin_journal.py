@@ -83,7 +83,9 @@ def cleanup_journal(
 ):
     """Clean up old journal events."""
     try:
-        deleted_count = outbox_journal.cleanup_old_journal_events(older_than_days=older_than_days)
+        deleted_count = outbox_journal.cleanup_old_journal_events(
+            older_than_days=older_than_days
+        )
 
         logger.info(
             f"Cleaned up {deleted_count} old journal events (older than {older_than_days} days)"

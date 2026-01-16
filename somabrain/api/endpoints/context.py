@@ -95,7 +95,9 @@ def feedback_endpoint(request: HttpRequest, payload: dict):
                 tenant_id: The tenant_id.
             """
 
-            return get_context_route_state().get_adaptation_engine(builder, planner, tenant_id)
+            return get_context_route_state().get_adaptation_engine(
+                builder, planner, tenant_id
+            )
 
         adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
 
@@ -154,7 +156,9 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: Optional[str] = N
                 tenant_id: The tenant_id.
             """
 
-            return get_context_route_state().get_adaptation_engine(builder, planner, tenant_id)
+            return get_context_route_state().get_adaptation_engine(
+                builder, planner, tenant_id
+            )
 
         adapter = _get_adaptation(builder, planner, tenant_id=target_tenant)
         route_state = get_context_route_state()
@@ -207,7 +211,9 @@ def adaptation_reset_endpoint(request: HttpRequest, payload: dict):
                 tenant_id: The tenant_id.
             """
 
-            return get_context_route_state().get_adaptation_engine(builder, planner, tenant_id)
+            return get_context_route_state().get_adaptation_engine(
+                builder, planner, tenant_id
+            )
 
         adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
         adapter.reset(clear_history=payload.get("reset_history", True))

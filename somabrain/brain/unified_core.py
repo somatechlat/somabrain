@@ -20,13 +20,17 @@ class UnifiedBrainCore:
         self.dopamine_baseline = 0.4
         self.serotonin_baseline = 0.5
 
-    def process_memory(self, content: Dict[str, Any], importance: float = 0.8) -> Dict[str, Any]:
+    def process_memory(
+        self, content: Dict[str, Any], importance: float = 0.8
+    ) -> Dict[str, Any]:
         """Single entry point for memory processing."""
         neuro_state = self.neuromods.get_state()
         adjusted_importance = importance * (0.7 + 0.3 * neuro_state.dopamine)
         adjusted_importance = min(1.0, max(0.1, adjusted_importance))
 
-        fractal_nodes = self.fractal.encode_fractal(content, importance=adjusted_importance)
+        fractal_nodes = self.fractal.encode_fractal(
+            content, importance=adjusted_importance
+        )
         fnom_result = self.fnom.encode(content, importance=adjusted_importance)
         self._update_neuromodulators(len(fractal_nodes), fnom_result)
 
@@ -53,7 +57,9 @@ class UnifiedBrainCore:
 
     def _update_neuromodulators(self, fractal_nodes: int, fnom_result):
         """Update dopamine/serotonin based on processing success."""
-        success_score = min(1.0, (fractal_nodes + len(fnom_result.frequency_spectrum)) / 50.0)
+        success_score = min(
+            1.0, (fractal_nodes + len(fnom_result.frequency_spectrum)) / 50.0
+        )
 
         new_dopamine = self.dopamine_baseline + (success_score - 0.5) * 0.2
         new_dopamine = max(0.2, min(0.8, new_dopamine))

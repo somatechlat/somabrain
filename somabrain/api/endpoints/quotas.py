@@ -139,7 +139,9 @@ def get_tenant_quotas_real(tenant: Tenant) -> List[QuotaStatus]:
 
     # Audit logs this month - REAL count
     month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0)
-    logs_used = AuditLog.objects.filter(tenant_id=tenant.id, timestamp__gte=month_start).count()
+    logs_used = AuditLog.objects.filter(
+        tenant_id=tenant.id, timestamp__gte=month_start
+    ).count()
     logs_quota = calculate_quota(logs_used, 100000)  # 100k logs/month
     logs_quota.resource = "audit_logs_monthly"
     quotas.append(logs_quota)

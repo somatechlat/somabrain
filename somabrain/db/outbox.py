@@ -50,7 +50,9 @@ class OutboxBackpressureError(Exception):
     Per Requirement E2.5: Backpressure when outbox > 10000 entries.
     """
 
-    def __init__(self, pending_count: int, threshold: int = OUTBOX_BACKPRESSURE_THRESHOLD):
+    def __init__(
+        self, pending_count: int, threshold: int = OUTBOX_BACKPRESSURE_THRESHOLD
+    ):
         """Initialize the instance."""
 
         self.pending_count = pending_count
@@ -219,7 +221,9 @@ def enqueue_event(
     return event
 
 
-def get_pending_events(limit: int = 100, tenant_id: Optional[str] = None) -> List[OutboxEvent]:
+def get_pending_events(
+    limit: int = 100, tenant_id: Optional[str] = None
+) -> List[OutboxEvent]:
     """Fetch a batch of pending events from the outbox.
 
     Uses the optimized index ix_outbox_status_tenant_created for efficient queries.
@@ -268,7 +272,9 @@ def get_pending_events_by_tenant_batch(
     """
     # Get distinct tenant IDs with pending events
     tenant_ids = (
-        OutboxEvent.objects.filter(status="pending").values_list("tenant_id", flat=True).distinct()
+        OutboxEvent.objects.filter(status="pending")
+        .values_list("tenant_id", flat=True)
+        .distinct()
     )
 
     if max_tenants:
@@ -276,7 +282,9 @@ def get_pending_events_by_tenant_batch(
 
     # If no tenants found, check for NULL tenant_id events
     if not tenant_ids:
-        null_count = OutboxEvent.objects.filter(status="pending", tenant_id__isnull=True).count()
+        null_count = OutboxEvent.objects.filter(
+            status="pending", tenant_id__isnull=True
+        ).count()
         if null_count > 0:
             tenant_ids = [None]
 
@@ -310,7 +318,9 @@ def get_pending_count(tenant_id: Optional[str] = None) -> int:
 def get_pending_counts_by_tenant() -> dict[str, int]:
     """Return the current pending event count per tenant."""
     counts = (
-        OutboxEvent.objects.filter(status="pending").values("tenant_id").annotate(count=Count("id"))
+        OutboxEvent.objects.filter(status="pending")
+        .values("tenant_id")
+        .annotate(count=Count("id"))
     )
     return {row["tenant_id"] or "default": row["count"] for row in counts}
 

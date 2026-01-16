@@ -49,7 +49,9 @@ class TestNormalizationIdempotence:
 
     @given(
         dim=st.integers(min_value=2, max_value=512),
-        scale=st.floats(min_value=1e-6, max_value=1e6, allow_nan=False, allow_infinity=False),
+        scale=st.floats(
+            min_value=1e-6, max_value=1e6, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_idempotence_scaled_vectors(self, dim: int, scale: float) -> None:
@@ -106,7 +108,9 @@ class TestNormalizationUnitNorm:
 
     @given(
         dim=st.integers(min_value=2, max_value=512),
-        scale=st.floats(min_value=1e-6, max_value=1e6, allow_nan=False, allow_infinity=False),
+        scale=st.floats(
+            min_value=1e-6, max_value=1e6, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_unit_norm_scaled_vectors(self, dim: int, scale: float) -> None:
@@ -168,7 +172,9 @@ class TestNormalizationDirectionPreservation:
 
     @given(
         dim=st.integers(min_value=2, max_value=512),
-        scale=st.floats(min_value=1e-6, max_value=1e6, allow_nan=False, allow_infinity=False),
+        scale=st.floats(
+            min_value=1e-6, max_value=1e6, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_direction_preservation_scaled(self, dim: int, scale: float) -> None:
@@ -202,7 +208,9 @@ class TestScaleInvariance:
 
     @given(
         dim=st.integers(min_value=2, max_value=512),
-        scale=st.floats(min_value=0.001, max_value=1000, allow_nan=False, allow_infinity=False),
+        scale=st.floats(
+            min_value=0.001, max_value=1000, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_scale_invariance(self, dim: int, scale: float) -> None:

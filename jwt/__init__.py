@@ -37,4 +37,6 @@ sys.modules["_pyjwt_real"] = _mod
 spec.loader.exec_module(_mod)
 
 # Re-export everything from the real PyJWT
-globals().update({k: v for k, v in _mod.__dict__.items() if not k.startswith("__loader__")})
+globals().update(
+    {k: v for k, v in _mod.__dict__.items() if not k.startswith("__loader__")}
+)

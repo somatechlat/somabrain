@@ -78,12 +78,16 @@ def salience_inputs_strategy(draw: st.DrawFn) -> tuple[float, float, float, floa
 
 
 @st.composite
-def signal_strategy(draw: st.DrawFn, min_len: int = 10, max_len: int = 100) -> np.ndarray:
+def signal_strategy(
+    draw: st.DrawFn, min_len: int = 10, max_len: int = 100
+) -> np.ndarray:
     """Generate random signals for FD energy testing."""
     length = draw(st.integers(min_value=min_len, max_value=max_len))
     signal = draw(
         st.lists(
-            st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+            st.floats(
+                min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False
+            ),
             min_size=length,
             max_size=length,
         )
@@ -203,7 +207,9 @@ class TestNeuromodulatorModulation:
         st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
     )
     @settings(max_examples=100, deadline=None)
-    def test_modulation_preserves_bounds(self, base_threshold: float, modulator: float) -> None:
+    def test_modulation_preserves_bounds(
+        self, base_threshold: float, modulator: float
+    ) -> None:
         """Modulation preserves threshold bounds.
 
         **Feature: full-capacity-testing, Property (supporting)**
@@ -270,7 +276,9 @@ class TestHysteresis:
         st.floats(min_value=0.1, max_value=0.3, allow_nan=False),
     )
     @settings(max_examples=50, deadline=None)
-    def test_hysteresis_prevents_oscillation(self, threshold: float, margin: float) -> None:
+    def test_hysteresis_prevents_oscillation(
+        self, threshold: float, margin: float
+    ) -> None:
         """Hysteresis prevents rapid oscillation near threshold.
 
         **Feature: full-capacity-testing, Property (supporting)**
@@ -306,4 +314,6 @@ class TestHysteresis:
 
         # With hysteresis and small oscillations, no transitions should occur
         # because oscillation never crosses threshold ± margin
-        assert transitions == 0, f"Unexpected transitions ({transitions}) with small oscillation"
+        assert (
+            transitions == 0
+        ), f"Unexpected transitions ({transitions}) with small oscillation"

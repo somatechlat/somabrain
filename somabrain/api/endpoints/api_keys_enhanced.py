@@ -136,7 +136,9 @@ def list_available_scopes():
 
     📚 Technical Writer: Scope documentation
     """
-    return [ScopeOut(name=name, description=desc) for name, desc in AVAILABLE_SCOPES.items()]
+    return [
+        ScopeOut(name=name, description=desc) for name, desc in AVAILABLE_SCOPES.items()
+    ]
 
 
 # =============================================================================
@@ -538,6 +540,10 @@ def get_keys_overview(
         "total_keys": keys.count(),
         "active_keys": keys.filter(is_active=True).count(),
         "test_keys": keys.filter(is_test=True).count(),
-        "expiring_soon": keys.filter(expires_at__lte=timezone.now() + timedelta(days=7)).count(),
-        "unused_30d": keys.filter(last_used_at__lte=timezone.now() - timedelta(days=30)).count(),
+        "expiring_soon": keys.filter(
+            expires_at__lte=timezone.now() + timedelta(days=7)
+        ).count(),
+        "unused_30d": keys.filter(
+            last_used_at__lte=timezone.now() - timedelta(days=30)
+        ).count(),
     }

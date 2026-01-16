@@ -91,9 +91,11 @@ def get_request_logs(
     logs = cache.get(key, [])
 
     if method:
-        logs = [l for l in logs if l["method"] == method]
+        logs = [log_entry for log_entry in logs if log_entry["method"] == method]
     if status_code:
-        logs = [l for l in logs if l["status_code"] == status_code]
+        logs = [
+            log_entry for log_entry in logs if log_entry["status_code"] == status_code
+        ]
 
     return logs[:limit]
 
@@ -385,7 +387,9 @@ def get_hourly_stats(
         HourlyStats(
             hour=hour,
             requests=data["count"],
-            avg_response_time_ms=(data["total_time"] / data["count"] if data["count"] else 0),
+            avg_response_time_ms=(
+                data["total_time"] / data["count"] if data["count"] else 0
+            ),
             error_count=data["errors"],
         )
         for hour, data in sorted(by_hour.items())
@@ -449,7 +453,7 @@ def get_error_logs(
             raise HttpError(403, "Access denied")
 
     logs = get_request_logs(str(tenant_id), 10000)
-    errors = [l for l in logs if l["status_code"] >= 400]
+    errors = [log_entry for log_entry in logs if log_entry["status_code"] >= 400]
 
     return {
         "total_errors": len(errors),

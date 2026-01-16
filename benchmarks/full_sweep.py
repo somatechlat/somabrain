@@ -34,7 +34,10 @@ def run_all():
             Path(__file__).resolve().parent.joinpath("results_stress.json").read_text()
         ),
         "extended": json.loads(
-            Path(__file__).resolve().parent.joinpath("results_numerics.json").read_text()
+            Path(__file__)
+            .resolve()
+            .parent.joinpath("results_numerics.json")
+            .read_text()
         ),
     }
     OUT.write_text(json.dumps(merged, indent=2))

@@ -178,7 +178,9 @@ def health_view(request):
         client = MilvusClient()
         return {
             "connected": client.collection is not None,
-            "collection": (getattr(client.collection, "name", None) if client.collection else None),
+            "collection": (
+                getattr(client.collection, "name", None) if client.collection else None
+            ),
         }
 
     health["infrastructure"]["milvus"] = timed_check("Milvus", check_milvus)
@@ -209,7 +211,9 @@ def health_view(request):
     def check_schema_registry():
         """Execute check schema registry."""
 
-        url = getattr(settings, "SCHEMA_REGISTRY_URL", "http://somabrain_schema_registry:8081")
+        url = getattr(
+            settings, "SCHEMA_REGISTRY_URL", "http://somabrain_schema_registry:8081"
+        )
         with httpx.Client(timeout=3) as c:
             r = c.get(f"{url}/subjects")
             return {
@@ -258,7 +262,9 @@ def health_view(request):
             r = c.get(f"{url}/healthz")
             return {"healthy": r.status_code == 200}
 
-    health["internal_services"]["soma_fractal_memory"] = timed_check("SomaFractalMemory", check_sfm)
+    health["internal_services"]["soma_fractal_memory"] = timed_check(
+        "SomaFractalMemory", check_sfm
+    )
 
     def check_cognitive():
         """Execute check cognitive."""
@@ -279,12 +285,16 @@ def health_view(request):
     health["internal_services"]["embedder"] = timed_check("Embedder", check_embedder)
 
     # Count statuses
-    all_svc = list(health["infrastructure"].values()) + list(health["internal_services"].values())
+    all_svc = list(health["infrastructure"].values()) + list(
+        health["internal_services"].values()
+    )
     health["healthy_count"] = sum(1 for s in all_svc if s.get("status") == "healthy")
     health["degraded_count"] = sum(
         1 for s in all_svc if s.get("status") in ("degraded", "unavailable")
     )
-    health["unhealthy_count"] = sum(1 for s in all_svc if s.get("status") == "unhealthy")
+    health["unhealthy_count"] = sum(
+        1 for s in all_svc if s.get("status") == "unhealthy"
+    )
 
     # Overall
     if health["unhealthy_count"] > 0:

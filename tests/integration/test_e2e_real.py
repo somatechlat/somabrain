@@ -199,11 +199,15 @@ class TestE2EMemoryFlow:
                 },
             )
 
-            assert recall_resp.status_code == 200, f"Recall failed: {recall_resp.status_code}"
+            assert (
+                recall_resp.status_code == 200
+            ), f"Recall failed: {recall_resp.status_code}"
 
             recall_data = recall_resp.json()
             assert (
-                "results" in recall_data or "wm_hits" in recall_data or "ltm_hits" in recall_data
+                "results" in recall_data
+                or "wm_hits" in recall_data
+                or "ltm_hits" in recall_data
             ), "Recall response missing memory results"
 
     def test_recall_with_empty_query(self) -> None:
@@ -260,7 +264,9 @@ class TestE2ENeuromodulators:
                 headers=_get_test_headers(),
             )
 
-            assert resp.status_code == 200, f"Get neuromodulators failed: {resp.status_code}"
+            assert (
+                resp.status_code == 200
+            ), f"Get neuromodulators failed: {resp.status_code}"
 
             data = resp.json()
 

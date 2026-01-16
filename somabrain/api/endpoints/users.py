@@ -104,9 +104,12 @@ class UserOut(Schema):
 
         from somabrain.saas.models import TenantUserRole
 
-        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
+        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
+            "role"
+        )
         return [
-            {"id": str(a.role.id), "name": a.role.name, "slug": a.role.slug} for a in assignments
+            {"id": str(a.role.id), "name": a.role.name, "slug": a.role.slug}
+            for a in assignments
         ]
 
 
@@ -141,7 +144,9 @@ class UserListOut(Schema):
 
         from somabrain.saas.models import TenantUserRole
 
-        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
+        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
+            "role"
+        )
         return [a.role.slug for a in assignments]
 
 
@@ -194,7 +199,8 @@ def list_all_users(
     # Apply filters
     if filters.search:
         queryset = queryset.filter(
-            Q(email__icontains=filters.search) | Q(display_name__icontains=filters.search)
+            Q(email__icontains=filters.search)
+            | Q(display_name__icontains=filters.search)
         )
 
     if filters.status == "active":
@@ -245,7 +251,8 @@ def list_tenant_users(
     # Apply filters
     if filters.search:
         queryset = queryset.filter(
-            Q(email__icontains=filters.search) | Q(display_name__icontains=filters.search)
+            Q(email__icontains=filters.search)
+            | Q(display_name__icontains=filters.search)
         )
 
     if filters.status == "active":
@@ -288,7 +295,9 @@ def create_tenant_user(
     if TenantUser.objects.filter(tenant=tenant, email=data.email).exists():
         from ninja.errors import HttpError
 
-        raise HttpError(400, f"User with email {data.email} already exists in this tenant")
+        raise HttpError(
+            400, f"User with email {data.email} already exists in this tenant"
+        )
 
     with transaction.atomic():
         # Create user
@@ -673,9 +682,7 @@ def get_user_audit_log(
     logs = AuditLog.objects.filter(
         resource_type="TenantUser",
         resource_id=str(user.id),
-    ).order_by(
-        "-timestamp"
-    )[:50]
+    ).order_by("-timestamp")[:50]
 
     return [
         {

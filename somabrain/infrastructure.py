@@ -119,7 +119,9 @@ def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
 
     if default:
         scheme, host, port = _parse_url(default)
-        return MemoryEndpoint(scheme=scheme, host=host, port=port, url=default.rstrip("/"))
+        return MemoryEndpoint(
+            scheme=scheme, host=host, port=port, url=default.rstrip("/")
+        )
 
     raise RuntimeError("Memory HTTP endpoint is not configured")
 

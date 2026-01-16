@@ -131,12 +131,16 @@ def _get_graph_client(mem) -> Optional["GraphClient"]:
             tenant = getattr(mem, "_tenant", "default")
             return GraphClient(mem._transport, tenant=tenant)
         except Exception as exc:
-            logger.debug("Could not construct GraphClient from transport", error=str(exc))
+            logger.debug(
+                "Could not construct GraphClient from transport", error=str(exc)
+            )
 
     return None
 
 
-def _task_key_to_coord(task_key: str, mem, universe: Optional[str]) -> Optional[Tuple[float, ...]]:
+def _task_key_to_coord(
+    task_key: str, mem, universe: Optional[str]
+) -> Optional[Tuple[float, ...]]:
     """Convert task_key to coordinate.
 
     This attempts to:

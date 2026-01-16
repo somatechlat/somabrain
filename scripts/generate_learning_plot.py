@@ -32,7 +32,9 @@ def _get(path: str) -> requests.Response:
     return resp
 
 
-def _post(path: str, payload: dict, headers: Dict[str, str] | None = None) -> requests.Response:
+def _post(
+    path: str, payload: dict, headers: Dict[str, str] | None = None
+) -> requests.Response:
     """Execute post.
 
     Args:

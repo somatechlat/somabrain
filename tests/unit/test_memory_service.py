@@ -63,7 +63,9 @@ async def test_arecall_with_scores_returns_results(
     memory_service: MemoryService,
 ) -> None:
     """Test that arecall_with_scores returns results from real backend."""
-    hits = await memory_service.arecall_with_scores("test query", top_k=1, universe=None)
+    hits = await memory_service.arecall_with_scores(
+        "test query", top_k=1, universe=None
+    )
 
     # Results should be a list (may be empty if no data)
     assert isinstance(hits, list)

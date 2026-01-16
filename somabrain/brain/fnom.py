@@ -103,7 +103,9 @@ class PersistentFNOM:
                 # Use hash as coordinate-like ID for vector store
                 # Vector store expects tuple coord; we fake one from hash pieces
                 # VIBE: This is a robust mapping, not random.
-                h_vals = [int(content_hash[i : i + 4], 16) / 65535.0 for i in range(0, 16, 4)]
+                h_vals = [
+                    int(content_hash[i : i + 4], 16) / 65535.0 for i in range(0, 16, 4)
+                ]
                 coord = tuple(h_vals[:3])  # 3D coord for basic stores
 
                 self.vector_store.add(
@@ -165,7 +167,9 @@ class PersistentFNOM:
                     if raw:
                         content = json.loads(raw)
 
-                traces.append((FNOMTrace(content=content, similarity=score), float(score)))
+                traces.append(
+                    (FNOMTrace(content=content, similarity=score), float(score))
+                )
 
             return traces
 

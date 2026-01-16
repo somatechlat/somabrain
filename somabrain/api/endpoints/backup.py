@@ -367,8 +367,12 @@ def download_backup(
 
         raise HttpError(404, "Backup data not found or expired")
 
-    response = HttpResponse(json.dumps(backup_data, indent=2), content_type="application/json")
-    response["Content-Disposition"] = f'attachment; filename="backup_{tenant_id}_{backup_id}.json"'
+    response = HttpResponse(
+        json.dumps(backup_data, indent=2), content_type="application/json"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="backup_{tenant_id}_{backup_id}.json"'
+    )
     return response
 
 
@@ -418,7 +422,9 @@ def restore_backup(
     # Restore users
     if "users" in components and "users" in backup_data:
         for user_data in backup_data["users"]:
-            existing = TenantUser.objects.filter(tenant=tenant, email=user_data["email"]).first()
+            existing = TenantUser.objects.filter(
+                tenant=tenant, email=user_data["email"]
+            ).first()
 
             if existing and not data.overwrite:
                 continue
@@ -442,7 +448,9 @@ def restore_backup(
     # Restore webhooks
     if "webhooks" in components and "webhooks" in backup_data:
         for webhook_data in backup_data["webhooks"]:
-            existing = Webhook.objects.filter(tenant=tenant, url=webhook_data["url"]).first()
+            existing = Webhook.objects.filter(
+                tenant=tenant, url=webhook_data["url"]
+            ).first()
 
             if existing and not data.overwrite:
                 continue

@@ -172,7 +172,9 @@ def record_http_metrics(
     """
     try:
         status_label = str(status or (200 if success else 0))
-        M.MEMORY_HTTP_REQUESTS.labels(operation=operation, tenant=tenant, status=status_label).inc()
+        M.MEMORY_HTTP_REQUESTS.labels(
+            operation=operation, tenant=tenant, status=status_label
+        ).inc()
         M.MEMORY_HTTP_LATENCY.labels(operation=operation, tenant=tenant).observe(
             max(0.0, float(duration))
         )

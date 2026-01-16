@@ -224,7 +224,9 @@ class TenantRegistry:
         """Get system tenant ID by name (e.g., 'agent_zero')."""
         return self._system_tenant_ids.get(name.lower())
 
-    async def get_all_tenants(self, tier: Optional[TenantTier] = None) -> List[TenantMetadata]:
+    async def get_all_tenants(
+        self, tier: Optional[TenantTier] = None
+    ) -> List[TenantMetadata]:
         """Get all tenants with optional tier filtering."""
         if not self._initialized:
             await self.initialize()
@@ -247,7 +249,9 @@ class TenantRegistry:
             logger.error("Failed to get all tenants: %s", e)
             return []
 
-    async def update_tenant_status(self, tenant_id: str, status: Union[TenantStatus, str]) -> bool:
+    async def update_tenant_status(
+        self, tenant_id: str, status: Union[TenantStatus, str]
+    ) -> bool:
         """Update tenant status with validation."""
         if not self._initialized:
             await self.initialize()
@@ -269,7 +273,9 @@ class TenantRegistry:
         self._tenant_cache[tenant_id] = metadata
 
         # Audit log
-        await self._audit_log("tenant_status_updated", tenant_id, {"status": status.value})
+        await self._audit_log(
+            "tenant_status_updated", tenant_id, {"status": status.value}
+        )
 
         logger.info("Tenant status updated: %s -> %s", tenant_id, status.value)
         return True
@@ -399,14 +405,18 @@ class TenantRegistry:
                     if metadata.is_exempt:
                         self._exempt_cache.add(tenant_id)
                     if metadata.tier == TenantTier.SYSTEM:
-                        self._system_tenant_ids[metadata.display_name.lower()] = tenant_id
+                        self._system_tenant_ids[metadata.display_name.lower()] = (
+                            tenant_id
+                        )
 
             logger.info("Loaded %d tenants from storage", len(self._tenant_cache))
 
         except RedisError as e:
             logger.error("Failed to load tenants from storage: %s", e)
 
-    async def _audit_log(self, action: str, tenant_id: str, details: Dict[str, Any]) -> None:
+    async def _audit_log(
+        self, action: str, tenant_id: str, details: Dict[str, Any]
+    ) -> None:
         """Audit log tenant operations."""
         if not self._redis:
             return
@@ -448,7 +458,9 @@ class TenantRegistry:
             status = metadata.status.value
 
             stats["tenants_by_tier"][tier] = stats["tenants_by_tier"].get(tier, 0) + 1
-            stats["tenants_by_status"][status] = stats["tenants_by_status"].get(status, 0) + 1
+            stats["tenants_by_status"][status] = (
+                stats["tenants_by_status"].get(status, 0) + 1
+            )
 
         return stats
 

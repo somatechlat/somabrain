@@ -2,7 +2,9 @@ import sys
 import os
 
 # Add local directory to path to find the built module if not installed
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../rust_core/target/release"))
+sys.path.insert(
+    0, os.path.join(os.path.dirname(__file__), "../rust_core/target/release")
+)
 
 try:
     import somabrain_rs as rust

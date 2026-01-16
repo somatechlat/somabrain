@@ -99,7 +99,9 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
     instantiated.
     """
     # ``settings`` may expose the URL via ``opa_url`` or the legacy env var.
-    opa_url = getattr(settings, "opa_url", None) or getattr(settings, "SOMABRAIN_OPA_URL", None)
+    opa_url = getattr(settings, "opa_url", None) or getattr(
+        settings, "SOMABRAIN_OPA_URL", None
+    )
     if opa_url:
         app.state.opa_engine = SimpleOPAEngine(opa_url)
     else:
@@ -318,7 +320,11 @@ def _apply_diversity_reranking(
 
         doc_norms = [np.linalg.norm(v) for v in doc_vecs]
         relevance_scores = [
-            (np.dot(query_vec, doc_vecs[i]) / (q_norm * doc_norms[i]) if doc_norms[i] > 0 else 0.0)
+            (
+                np.dot(query_vec, doc_vecs[i]) / (q_norm * doc_norms[i])
+                if doc_norms[i] > 0
+                else 0.0
+            )
             for i in range(len(valid_candidates))
         ]
 
@@ -585,7 +591,9 @@ class CognitiveErrorHandler:
     """
 
     @staticmethod
-    def handle_error(error: Exception, context: str = "", request_id: str | None = None) -> dict:
+    def handle_error(
+        error: Exception, context: str = "", request_id: str | None = None
+    ) -> dict:
         """
         Handle errors with brain-like analysis and recovery suggestions.
 
@@ -690,7 +698,9 @@ class CognitiveMiddleware:
             raise
         except Exception as e:
             processing_time = time.time() - start_time
-            error_info = CognitiveErrorHandler.handle_error(e, f"{method} {path}", request_id)
+            error_info = CognitiveErrorHandler.handle_error(
+                e, f"{method} {path}", request_id
+            )
 
             # Send error response
             error_response = JSONResponse(
@@ -823,7 +833,9 @@ class SecurityMiddleware:
         # Security checks
         if self._is_suspicious_request(path, method, headers):
             if cognitive_logger:
-                cognitive_logger.warning(f"🚨 Suspicious request blocked: {method} {path}")
+                cognitive_logger.warning(
+                    f"🚨 Suspicious request blocked: {method} {path}"
+                )
             response = JSONResponse(
                 status_code=403,
                 content={"error": "Request blocked for security reasons"},
@@ -899,10 +911,14 @@ try:
     async def _startup_diagnostics() -> None:
         try:
             _log = _logging.getLogger("somabrain")
-            mem_ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
+            mem_ep = str(
+                getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
+            ).strip()
             token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
             # Use centralized Settings flag for Docker detection
-            in_docker = bool(_os.path.exists("/.dockerenv")) or settings.running_in_docker
+            in_docker = (
+                bool(_os.path.exists("/.dockerenv")) or settings.running_in_docker
+            )
             # Prefer shared settings for mode and policy flags
             try:
                 from common.config.settings import settings as _shared
@@ -914,7 +930,9 @@ try:
             try:
                 if _shared is not None:
                     mode = str(getattr(_shared, "mode", "") or "").strip()
-                    ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
+                    ext_req = bool(
+                        getattr(_shared, "mode_require_external_backends", False)
+                    )
                     require_memory = bool(getattr(_shared, "require_memory", True))
                 else:
                     mode = settings.mode.strip()
@@ -936,7 +954,10 @@ try:
             if (
                 in_docker
                 and mem_ep
-                and (mem_ep.startswith("http://127.0.0.1") or mem_ep.startswith("http://localhost"))
+                and (
+                    mem_ep.startswith("http://127.0.0.1")
+                    or mem_ep.startswith("http://localhost")
+                )
             ):
                 _log.warning(
                     "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
@@ -1026,7 +1047,9 @@ def _supervisor() -> ServerProxy:
     try:
         return ServerProxy(_SUPERVISOR_URL, allow_none=True)  # type: ignore[arg-type]
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"supervisor client init failed: {e}")
+        raise HTTPException(
+            status_code=503, detail=f"supervisor client init failed: {e}"
+        )
 
 
 def _admin_guard_dep(request: Request):
@@ -1064,7 +1087,9 @@ async def admin_features_update(
     # Ensure only known flags are referenced
     unknown = [f for f in body.disabled if f not in FeatureFlags.KEYS]
     if unknown:
-        raise HTTPException(status_code=400, detail=f"unknown flags: {', '.join(unknown)}")
+        raise HTTPException(
+            status_code=400, detail=f"unknown flags: {', '.join(unknown)}"
+        )
 
     # Attempt to persist the overrides; ``False`` indicates the operation is not
     # permitted in the current mode.
@@ -1161,7 +1186,9 @@ async def admin_list_outbox(
     # Record metrics for failed events inspection
     if status.lower().strip() == "failed":
         for ev in events:
-            tenant_label = (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            tenant_label = (
+                (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            )
             try:
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
             except Exception:
@@ -1188,7 +1215,9 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
         raise exc
     if count == 0:
         try:
-            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(len(body.event_ids))
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(
+                len(body.event_ids)
+            )
         except Exception:
             pass
         raise HTTPException(status_code=404, detail="No matching events to replay")
@@ -1296,7 +1325,9 @@ async def admin_get_outbox_summary():
         # Build summary for each tenant
         tenant_summaries = []
         all_tenants = (
-            set(pending_counts.keys()) | set(failed_counts.keys()) | set(sent_counts.keys())
+            set(pending_counts.keys())
+            | set(failed_counts.keys())
+            | set(sent_counts.keys())
         )
 
         for tenant in sorted(all_tenants):
@@ -1323,7 +1354,9 @@ async def admin_get_outbox_summary():
         )
 
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to get outbox summary: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get outbox summary: {exc}"
+        )
 
 
 @app.get("/admin/quotas", dependencies=[Depends(_admin_guard_dep)])
@@ -1331,7 +1364,9 @@ async def admin_list_quotas(
     request: Request,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    tenant_filter: Optional[str] = Query(None, description="Filter by tenant ID prefix"),
+    tenant_filter: Optional[str] = Query(
+        None, description="Filter by tenant ID prefix"
+    ),
 ):
     """List quota status for all tenants.
 
@@ -1353,7 +1388,9 @@ async def admin_list_quotas(
         # default ``Query`` object is passed, so guard against non‑string
         # values.
         if tenant_filter and isinstance(tenant_filter, str):
-            all_quotas = [q for q in all_quotas if q.tenant_id.startswith(tenant_filter)]
+            all_quotas = [
+                q for q in all_quotas if q.tenant_id.startswith(tenant_filter)
+            ]
 
         # Apply pagination
         total_count = len(all_quotas)
@@ -1406,9 +1443,9 @@ async def admin_reset_quota(
         # Reset the quota
         old_rem = quota_manager.remaining(tenant_id)
         if inspect.isawaitable(old_rem):
-            old_remaining = await old_rem
+            _old_remaining = await old_rem
         else:
-            old_remaining = old_rem
+            _old_remaining = old_rem
         reset_res = quota_manager.reset_quota(tenant_id)
         if inspect.isawaitable(reset_res):
             await reset_res
@@ -1530,11 +1567,23 @@ async def _startup_mode_banner() -> None:
     try:
         mode = getattr(_shared, "mode", "prod") if _shared else "prod"
         mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
-        api_auth = bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
-        mem_auth = bool(getattr(_shared, "mode_memory_auth_required", True)) if _shared else True
+        api_auth = (
+            bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
+        )
+        mem_auth = (
+            bool(getattr(_shared, "mode_memory_auth_required", True))
+            if _shared
+            else True
+        )
         opa_closed = True  # Strict: always fail-closed
-        log_level = str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
-        bundle = str(getattr(_shared, "mode_opa_policy_bundle", "prod")) if _shared else "prod"
+        log_level = (
+            str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
+        )
+        bundle = (
+            str(getattr(_shared, "mode_opa_policy_bundle", "prod"))
+            if _shared
+            else "prod"
+        )
         lg.warning(
             "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memory_auth=%s opa_fail_closed=%s log_level=%s opa_bundle=%s",
             mode,
@@ -1759,7 +1808,9 @@ if settings is not None:
         if mode_policy:
             BACKEND_ENFORCEMENT = True
         else:
-            BACKEND_ENFORCEMENT = bool(getattr(settings, "require_external_backends", False))
+            BACKEND_ENFORCEMENT = bool(
+                getattr(settings, "require_external_backends", False)
+            )
     except Exception:
         pass
 if not BACKEND_ENFORCEMENT:
@@ -1841,7 +1892,9 @@ try:
     _EMBED_DIM = int(getattr(embedder, "dim"))
 except Exception:
     try:
-        _EMBED_DIM = int(np.asarray(embedder.embed("___dim_probe___"), dtype=float).size)
+        _EMBED_DIM = int(
+            np.asarray(embedder.embed("___dim_probe___"), dtype=float).size
+        )
     except Exception as exc:
         raise RuntimeError("embedder failed to produce vector dimension") from exc
 # Ensure config reflects the actual embedder dimension at runtime
@@ -1949,7 +2002,9 @@ mc_wm = MultiColumnWM(
 # Load the ``runtime.py`` file as a distinct module to avoid colliding with the
 # ``somabrain.runtime`` package (which only re‑exports ``WorkingMemoryBuffer``).
 _runtime_path = os.path.join(os.path.dirname(__file__), "runtime.py")
-_spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+_spec = importlib.util.spec_from_file_location(
+    "somabrain.runtime_module", _runtime_path
+)
 assert _spec and _spec.loader  # sanity check
 # If an initializer already loaded the runtime module into sys.modules, reuse it
 if _spec.name in sys.modules:
@@ -2082,7 +2137,9 @@ class UnifiedBrainCore:
         self.dopamine_baseline = 0.4
         self.serotonin_baseline = 0.5
 
-    def process_memory(self, content: Dict[str, Any], importance: float = 0.8) -> Dict[str, Any]:
+    def process_memory(
+        self, content: Dict[str, Any], importance: float = 0.8
+    ) -> Dict[str, Any]:
         """UNIFIED: Single entry point for memory processing"""
 
         # Get current neuromodulator state
@@ -2093,7 +2150,9 @@ class UnifiedBrainCore:
         adjusted_importance = min(1.0, max(0.1, adjusted_importance))
 
         # Process through fractal system (fast, mathematical)
-        fractal_nodes = self.fractal.encode_fractal(content, importance=adjusted_importance)
+        fractal_nodes = self.fractal.encode_fractal(
+            content, importance=adjusted_importance
+        )
 
         # Process through FNOM system (optimized, oscillatory)
         fnom_result = self.fnom.encode(content, importance=adjusted_importance)
@@ -2132,7 +2191,9 @@ class UnifiedBrainCore:
         """SIMPLIFIED: Update dopamine/serotonin based on processing success"""
 
         # Success metric: more nodes/components = better processing
-        success_score = min(1.0, (fractal_nodes + len(fnom_result.frequency_spectrum)) / 50.0)
+        success_score = min(
+            1.0, (fractal_nodes + len(fnom_result.frequency_spectrum)) / 50.0
+        )
 
         # Update dopamine (reward/motivation)
         new_dopamine = self.dopamine_baseline + (success_score - 0.5) * 0.2
@@ -2275,7 +2336,9 @@ class AutoScalingFractalIntelligence:
             "optimal_level": optimal_level,
         }
 
-    def _determine_optimal_level(self, complexity: float, target_performance: float) -> str:
+    def _determine_optimal_level(
+        self, complexity: float, target_performance: float
+    ) -> str:
         """Determine the optimal intelligence level based on complexity and performance targets"""
 
         # Find the minimal level that can handle the complexity within performance targets
@@ -2357,7 +2420,9 @@ class AutoScalingFractalIntelligence:
 
         return base_time * complexity_multiplier
 
-    def _record_performance(self, complexity: float, processing_time: float, result: Dict):
+    def _record_performance(
+        self, complexity: float, processing_time: float, result: Dict
+    ):
         """Record performance metrics for continuous learning"""
         performance_record = {
             "timestamp": time.time(),
@@ -2442,7 +2507,11 @@ drift_mon = (
     if cfg.use_drift_monitor
     else None
 )
-_sdr_enc = SDREncoder(dim=cfg.sdr_dim, density=cfg.sdr_density) if cfg.use_sdr_prefilter else None
+_sdr_enc = (
+    SDREncoder(dim=cfg.sdr_dim, density=cfg.sdr_density)
+    if cfg.use_sdr_prefilter
+    else None
+)
 _sdr_idx: dict[str, LSHIndex] = {}
 
 
@@ -2510,7 +2579,9 @@ async def health(request: Request) -> S.HealthResponse:
     resp["idempotency_key"] = idempotency_key
     # Constitution information (if engine loaded)
     try:
-        engine: Optional["ConstitutionEngine"] = getattr(app.state, "constitution_engine", None)
+        engine: Optional["ConstitutionEngine"] = getattr(
+            app.state, "constitution_engine", None
+        )
         if engine:
             resp["constitution_version"] = engine.get_checksum()
             resp["constitution_status"] = "loaded"
@@ -2522,7 +2593,9 @@ async def health(request: Request) -> S.HealthResponse:
         resp["constitution_status"] = None
     # External backend requirement flag from settings
     try:
-        resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
+        resp["external_backends_required"] = getattr(
+            settings, "require_external_backends", None
+        )
     except Exception:
         resp["external_backends_required"] = None
     # Full‑stack mode flag (legacy)
@@ -2557,7 +2630,9 @@ async def health(request: Request) -> S.HealthResponse:
     # -------------------------------------------------------------------
     try:
         resp["memory_degrade_queue"] = getattr(settings, "memory_degrade_queue", None)
-        resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", None)
+        resp["memory_degrade_readonly"] = getattr(
+            settings, "memory_degrade_readonly", None
+        )
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
     except Exception:
         resp["memory_degrade_queue"] = None
@@ -2672,7 +2747,12 @@ async def health(request: Request) -> S.HealthResponse:
     resp["embedder_ok"] = bool(embedder_ok)
 
     resp["ready"] = bool(
-        memory_ok and not circuit_open and predictor_ok and embedder_ok and kafka_ok and postgres_ok
+        memory_ok
+        and not circuit_open
+        and predictor_ok
+        and embedder_ok
+        and kafka_ok
+        and postgres_ok
     )
 
     # Minimal API flag for diagnostics
@@ -2722,7 +2802,9 @@ async def diagnostics() -> dict:
         "require_memory": require_memory,
         "memory_endpoint": ep or "",
         "env_memory_endpoint": settings.memory_http_endpoint,
-        "memory_token_present": bool(getattr(getattr(cfg, "http", object()), "token", None)),
+        "memory_token_present": bool(
+            getattr(getattr(cfg, "http", object()), "token", None)
+        ),
         "api_version": int(API_VERSION),
     }
 
@@ -2767,7 +2849,9 @@ if not _MINIMAL_API:
     def _cog_http_base() -> str:
         return "http://somabrain_cog"
 
-    async def _probe_service_http(path: str, port: int, *, timeout: float = 1.5) -> bool:
+    async def _probe_service_http(
+        path: str, port: int, *, timeout: float = 1.5
+    ) -> bool:
         try:
             import httpx  # type: ignore
 
@@ -2833,7 +2917,9 @@ if not _MINIMAL_API:
             # Align with test skip semantics when the producer is not reachable
             from fastapi import HTTPException as _HE
 
-            raise _HE(status_code=503, detail="Reward producer unavailable (Kafka not ready)")
+            raise _HE(
+                status_code=503, detail="Reward producer unavailable (Kafka not ready)"
+            )
 
 
 @app.post("/recall", response_model=S.RecallResponse)
@@ -2859,7 +2945,9 @@ async def recall(req: S.RecallRequest, request: Request):
 
     data = thalamus.normalize(req.model_dump())
     # Apply thalamic filtering based on attention and neuromodulators
-    data = thalamus.filter_input(data, per_tenant_neuromodulators.get_state(ctx.tenant_id))
+    data = thalamus.filter_input(
+        data, per_tenant_neuromodulators.get_state(ctx.tenant_id)
+    )
     cohort = request.headers.get("X-Backend-Cohort", "baseline").strip() or "baseline"
     # Universe scoping: request field overrides header if provided
     req_u = getattr(req, "universe", None) or None
@@ -2881,7 +2969,9 @@ async def recall(req: S.RecallRequest, request: Request):
 
     _e0 = _t.perf_counter()
     wm_qv = embedder.embed(text)
-    M.EMBED_LAT.labels(provider=_EMBED_PROVIDER).observe(max(0.0, _t.perf_counter() - _e0))
+    M.EMBED_LAT.labels(provider=_EMBED_PROVIDER).observe(
+        max(0.0, _t.perf_counter() - _e0)
+    )
     query_vec = np.asarray(wm_qv, dtype=float).reshape(-1)
     embed_cache: dict[str, np.ndarray] = {}
     hrr_qv = quantum.encode_text(text) if quantum else None
@@ -2928,7 +3018,9 @@ async def recall(req: S.RecallRequest, request: Request):
                         reranked.append((s, p))
                         continue
                     hv = quantum.encode_text(text_p)
-                    hsim = QuantumLayer.cosine(hrr_qv, hv) if hrr_qv is not None else 0.0
+                    hsim = (
+                        QuantumLayer.cosine(hrr_qv, hv) if hrr_qv is not None else 0.0
+                    )
                     alpha = max(0.0, min(1.0, float(cfg.hrr_rerank_weight)))
                     combined = (1.0 - alpha) * float(s) + alpha * float(hsim)
                     reranked.append((combined, p))
@@ -2942,7 +3034,10 @@ async def recall(req: S.RecallRequest, request: Request):
         wm_hits = [
             (s, p)
             for s, p in wm_hits
-            if (isinstance(p, dict) and str(p.get("universe") or "real") == str(universe))
+            if (
+                isinstance(p, dict)
+                and str(p.get("universe") or "real") == str(universe)
+            )
         ]
     if wm_hits:
         M.WM_HITS.inc()
@@ -2994,19 +3089,28 @@ async def recall(req: S.RecallRequest, request: Request):
             cfg.graph_hops,
             cfg.graph_limit,
         )
-        M.RECALL_LTM_LAT.labels(cohort=cohort).observe(max(0.0, _t.perf_counter() - _t1))
+        M.RECALL_LTM_LAT.labels(cohort=cohort).observe(
+            max(0.0, _t.perf_counter() - _t1)
+        )
         # Read-your-writes alternative: if LTM recall returned nothing, try direct
         # coordinate lookup based on the query text used as key.
         if not mem_payloads:
             try:
                 direct_coord = mem_client.coord_for_key(text, universe=universe)
-                direct = mem_client.payloads_for_coords([direct_coord], universe=universe)
+                direct = mem_client.payloads_for_coords(
+                    [direct_coord], universe=universe
+                )
                 if direct:
                     mem_payloads = direct
             except Exception:
                 pass
         # Optional HRR-first rerank of LTM payloads (no scores available: use HRR sim only)
-        if cfg.use_hrr_first and quantum is not None and hrr_qv is not None and mem_payloads:
+        if (
+            cfg.use_hrr_first
+            and quantum is not None
+            and hrr_qv is not None
+            and mem_payloads
+        ):
             try:
                 ranked: list[tuple[float, dict]] = []
                 alpha = max(0.0, min(1.0, float(cfg.hrr_rerank_weight)))
@@ -3036,10 +3140,14 @@ async def recall(req: S.RecallRequest, request: Request):
                 for _s, cand in wm_hits:
                     if not isinstance(cand, dict):
                         continue
-                    txt = str(cand.get("task") or cand.get("fact") or cand.get("text") or "")
+                    txt = str(
+                        cand.get("task") or cand.get("fact") or cand.get("text") or ""
+                    )
                     if txt and ql and (ql in txt.lower() or txt.lower() in ql):
                         # Universe-filter if requested
-                        if universe and str(cand.get("universe") or "real") != str(universe):
+                        if universe and str(cand.get("universe") or "real") != str(
+                            universe
+                        ):
                             continue
                         backfill.append(cand)
                 # Keep order as in WM hits, but unique by 'task' text
@@ -3067,11 +3175,17 @@ async def recall(req: S.RecallRequest, request: Request):
                     if not isinstance(p, dict):
                         continue
                     t = str(
-                        p.get("task") or p.get("fact") or p.get("text") or p.get("content") or ""
+                        p.get("task")
+                        or p.get("fact")
+                        or p.get("text")
+                        or p.get("content")
+                        or ""
                     )
                     tl = t.lower()
                     if t and (ql in tl or tl in ql):
-                        if not universe or str(p.get("universe") or "real") == str(universe):
+                        if not universe or str(p.get("universe") or "real") == str(
+                            universe
+                        ):
                             lifted.append(p)
                 if lifted:
                     mem_payloads = lifted
@@ -3080,7 +3194,9 @@ async def recall(req: S.RecallRequest, request: Request):
         # Optional graph augmentation: expand k-hop from query key coord
         if cfg.use_graph_augment:
             start = mem_client.coord_for_key(text, universe=universe)
-            coords = mem_client.k_hop([start], depth=cfg.graph_hops, limit=cfg.graph_limit)
+            coords = mem_client.k_hop(
+                [start], depth=cfg.graph_hops, limit=cfg.graph_limit
+            )
             graph_payloads = mem_client.payloads_for_coords(coords, universe=universe)
             # append unique payloads by coordinate if available
             seen_coords = {
@@ -3119,7 +3235,9 @@ async def recall(req: S.RecallRequest, request: Request):
             if _tokish:
                 try:
                     direct_coord = mem_client.coord_for_key(text, universe=universe)
-                    direct = mem_client.payloads_for_coords([direct_coord], universe=universe)
+                    direct = mem_client.payloads_for_coords(
+                        [direct_coord], universe=universe
+                    )
                     if direct:
                         # Insert at front if not already present (by coordinate if available)
                         d0 = direct[0]
@@ -3127,7 +3245,9 @@ async def recall(req: S.RecallRequest, request: Request):
                         def _coord_of(p):
                             c = p.get("coordinate") if isinstance(p, dict) else None
                             return (
-                                tuple(c) if isinstance(c, (list, tuple)) and len(c) == 3 else None
+                                tuple(c)
+                                if isinstance(c, (list, tuple)) and len(c) == 3
+                                else None
                             )
 
                         dcoord = _coord_of(d0)
@@ -3226,9 +3346,13 @@ async def recall(req: S.RecallRequest, request: Request):
                             txt = _extract_text_from_candidate(cand)
                             if not txt:
                                 continue
-                            embs.append(_np.array(embedder.embed(txt), dtype=_np.float32))
+                            embs.append(
+                                _np.array(embedder.embed(txt), dtype=_np.float32)
+                            )
                         if len(embs) >= 2:
-                            embs = [e / (float(_np.linalg.norm(e)) + 1e-8) for e in embs]
+                            embs = [
+                                e / (float(_np.linalg.norm(e)) + 1e-8) for e in embs
+                            ]
                             dsum = 0.0
                             cnt = 0
                             for i in range(len(embs)):
@@ -3253,7 +3377,11 @@ async def recall(req: S.RecallRequest, request: Request):
     # Base response payloads from the recall pipeline.
     resp = {
         "wm": [{"score": s, "payload": p} for s, p in wm_hits],
-        "memory": [_normalize_payload_timestamps(p) for p in mem_payloads if isinstance(p, dict)],
+        "memory": [
+            _normalize_payload_timestamps(p)
+            for p in mem_payloads
+            if isinstance(p, dict)
+        ],
         "namespace": ctx.namespace,
         "trace_id": trace_id,
         "deadline_ms": deadline_ms,
@@ -3265,7 +3393,9 @@ async def recall(req: S.RecallRequest, request: Request):
         try:
             memsvc = MemoryService(mt_memory, ctx.namespace)
             coord = memsvc.coord_for_key(req.query, universe=universe)
-            alternative_payloads = memsvc.payloads_for_coords([coord], universe=universe)
+            alternative_payloads = memsvc.payloads_for_coords(
+                [coord], universe=universe
+            )
             if alternative_payloads:
                 normalized = [
                     _normalize_payload_timestamps(p)
@@ -3319,7 +3449,9 @@ async def remember(body: dict, request: Request):
     # Input validation for brain safety (task text & coordinate format).
     try:
         if payload_obj.task:
-            payload_obj.task = CognitiveInputValidator.validate_text_input(payload_obj.task, "task")
+            payload_obj.task = CognitiveInputValidator.validate_text_input(
+                payload_obj.task, "task"
+            )
         if coord:
             coord_parts = str(coord).split(",")
             if len(coord_parts) == 3:
@@ -3361,7 +3493,11 @@ async def remember(body: dict, request: Request):
     ):
         fields = extract_event_fields(str(payload.get("task")))
         payload.update(
-            {k: v for k, v in fields.items() if k in ("who", "did", "what", "where", "when", "why")}
+            {
+                k: v
+                for k, v in fields.items()
+                if k in ("who", "did", "what", "where", "when", "why")
+            }
         )
     memsvc = MemoryService(mt_memory, ctx.namespace)
     # Reset circuit breaker state before write
@@ -3388,7 +3524,9 @@ async def remember(body: dict, request: Request):
 
     _e1 = _t.perf_counter()
     wm_vec = embedder.embed(text)
-    M.EMBED_LAT.labels(provider=_EMBED_PROVIDER).observe(max(0.0, _t.perf_counter() - _e1))
+    M.EMBED_LAT.labels(provider=_EMBED_PROVIDER).observe(
+        max(0.0, _t.perf_counter() - _e1)
+    )
     hrr_vec = quantum.encode_text(text) if quantum else None
     cleanup_overlap = None
     cleanup_margin = None
@@ -3464,7 +3602,9 @@ async def remember(body: dict, request: Request):
 if not _MINIMAL_API:
 
     @app.post("/sleep/run", response_model=S.SleepRunResponse)
-    async def sleep_run(body: S.SleepRunRequest, request: Request) -> S.SleepRunResponse:
+    async def sleep_run(
+        body: S.SleepRunRequest, request: Request
+    ) -> S.SleepRunResponse:
         require_auth(request, cfg)
         # Retrieve tenant context
         ctx = await get_tenant_async(request, cfg.namespace)
@@ -3559,10 +3699,14 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
     task_key = str(getattr(body, "task_key", None) or "").strip()
     if not task_key:
         raise HTTPException(status_code=400, detail="missing task_key")
-    max_steps = int(getattr(body, "max_steps", None) or getattr(cfg, "plan_max_steps", 5) or 5)
+    max_steps = int(
+        getattr(body, "max_steps", None) or getattr(cfg, "plan_max_steps", 5) or 5
+    )
     rel_types = getattr(body, "rel_types", None)
     if rel_types is not None and not isinstance(rel_types, list):
-        raise HTTPException(status_code=400, detail="rel_types must be a list of strings")
+        raise HTTPException(
+            status_code=400, detail="rel_types must be a list of strings"
+        )
     # Universe scoping: body value overrides header when set
     header_u = request.headers.get("X-Universe", "").strip() or None
     universe = getattr(body, "universe", None) or header_u
@@ -3647,7 +3791,9 @@ async def recall_delete(req: S.DeleteRequest, request: Request):
 
 # Add POST endpoint for setting personality traits (used by tests)
 @app.post("/personality", response_model=S.PersonalityState)
-async def set_personality(state: S.PersonalityState, request: Request) -> S.PersonalityState:
+async def set_personality(
+    state: S.PersonalityState, request: Request
+) -> S.PersonalityState:
     raise HTTPException(status_code=404, detail="Not Found")
 
 
@@ -3794,7 +3940,7 @@ async def health_memory(request: Request) -> Dict[str, Any]:
     # Get outbox pending count for this tenant
     from somabrain.db.outbox import get_pending_events
 
-    tenant_id = memsvc.tenant_id
+    _tenant_id = memsvc.tenant_id
     try:
         pending_count = len(get_pending_events(limit=1000))
         # Filter by tenant if possible
@@ -3806,7 +3952,9 @@ async def health_memory(request: Request) -> Dict[str, Any]:
         "tenant": ctx.tenant_id,
         "circuit_breaker": circuit_state,
         "outbox_pending": pending_count,
-        "memory_service": ("healthy" if not circuit_state["circuit_open"] else "unavailable"),
+        "memory_service": (
+            "healthy" if not circuit_state["circuit_open"] else "unavailable"
+        ),
         "timestamp": time.time(),
     }
 
@@ -3901,10 +4049,14 @@ async def _health_watchdog_coroutine():
                             or (isinstance(health, dict) and health.get("ok", False))
                         ):
                             MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
-                            logger.info(f"Circuit breaker reset for tenant {memsvc.tenant_id}")
+                            logger.info(
+                                f"Circuit breaker reset for tenant {memsvc.tenant_id}"
+                            )
 
                 except Exception as e:
-                    logger.error(f"Health check failed for tenant {tenant_namespace}: {e}")
+                    logger.error(
+                        f"Health check failed for tenant {tenant_namespace}: {e}"
+                    )
 
         except Exception as e:
             logger.error(f"Health watchdog error: {e}")
@@ -3927,10 +4079,16 @@ async def _health_watchdog_coroutine():
     @app.get("/admin/journal/events", dependencies=[Depends(_admin_guard_dep)])
     async def admin_list_journal_events(
         tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-        status: Optional[str] = Query(None, description="Filter by status (pending|sent|failed)"),
+        status: Optional[str] = Query(
+            None, description="Filter by status (pending|sent|failed)"
+        ),
         topic: Optional[str] = Query(None, description="Filter by topic"),
-        limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to return"),
-        since: Optional[str] = Query(None, description="Only events after this ISO datetime"),
+        limit: int = Query(
+            100, ge=1, le=1000, description="Maximum number of events to return"
+        ),
+        since: Optional[str] = Query(
+            None, description="Only events after this ISO datetime"
+        ),
     ):
         """List journal events with filtering options."""
         try:
@@ -3971,8 +4129,12 @@ async def _health_watchdog_coroutine():
     @app.post("/admin/journal/replay", dependencies=[Depends(_admin_guard_dep)])
     async def admin_replay_journal_events(
         tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-        limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to replay"),
-        mark_processed: bool = Query(True, description="Mark replayed events as processed"),
+        limit: int = Query(
+            100, ge=1, le=1000, description="Maximum number of events to replay"
+        ),
+        mark_processed: bool = Query(
+            True, description="Mark replayed events as processed"
+        ),
     ):
         """Replay journal events to the database outbox."""
         try:
@@ -4004,9 +4166,13 @@ async def _health_watchdog_coroutine():
     @app.post("/admin/journal/init", dependencies=[Depends(_admin_guard_dep)])
     async def admin_init_journal(
         journal_dir: Optional[str] = Query(None, description="Journal directory path"),
-        max_file_size: Optional[int] = Query(None, description="Max file size in bytes"),
+        max_file_size: Optional[int] = Query(
+            None, description="Max file size in bytes"
+        ),
         max_files: Optional[int] = Query(None, description="Max number of files"),
-        retention_days: Optional[int] = Query(None, description="Retention period in days"),
+        retention_days: Optional[int] = Query(
+            None, description="Retention period in days"
+        ),
     ):
         """Initialize or reconfigure the journal."""
         try:
@@ -4057,7 +4223,7 @@ async def _init_tenant_manager():
     try:
         from somabrain.tenant_manager import get_tenant_manager
 
-        tenant_manager = await get_tenant_manager()
+        _tenant_manager = await get_tenant_manager()
         logger.info("Tenant manager initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize tenant manager: {e}")

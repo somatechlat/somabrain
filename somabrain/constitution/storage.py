@@ -64,7 +64,9 @@ class ConstitutionStorage:
 
     # ------------------------------------------------------------------
     @transaction.atomic
-    def save_new(self, document: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> str:
+    def save_new(
+        self, document: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
         """Execute save new.
 
         Args:
@@ -100,7 +102,9 @@ class ConstitutionStorage:
         try:
             # Try to get active version
             version = (
-                ConstitutionVersion.objects.filter(is_active=True).order_by("-created_at").first()
+                ConstitutionVersion.objects.filter(is_active=True)
+                .order_by("-created_at")
+                .first()
             )
 
             if version is None:
@@ -160,7 +164,9 @@ class ConstitutionStorage:
         """
 
         try:
-            rows = ConstitutionSignature.objects.filter(checksum=checksum).order_by("created_at")
+            rows = ConstitutionSignature.objects.filter(checksum=checksum).order_by(
+                "created_at"
+            )
 
             results = [
                 {
@@ -281,7 +287,9 @@ class ConstitutionStorage:
         except Exception as exc:
             LOGGER.debug("Failed to write constitution cache to redis: %s", exc)
 
-    def _write_redis_metadata(self, metadata: Dict[str, Any], created_at: dt.datetime) -> None:
+    def _write_redis_metadata(
+        self, metadata: Dict[str, Any], created_at: dt.datetime
+    ) -> None:
         """Execute write redis metadata.
 
         Args:
@@ -295,7 +303,9 @@ class ConstitutionStorage:
         try:
             client.set(
                 self._redis_meta_key,
-                json.dumps({"metadata": metadata, "created_at": created_at.isoformat()}),
+                json.dumps(
+                    {"metadata": metadata, "created_at": created_at.isoformat()}
+                ),
             )
         except Exception as exc:
             LOGGER.debug("Failed to write constitution metadata to redis: %s", exc)
@@ -316,7 +326,9 @@ class ConstitutionStorage:
             return None
         checksum_raw = client.get(self._redis_checksum_key)
         checksum = (
-            checksum_raw.decode("utf-8") if checksum_raw else self._compute_checksum(document)
+            checksum_raw.decode("utf-8")
+            if checksum_raw
+            else self._compute_checksum(document)
         )
         raw_meta = client.get(self._redis_meta_key)
         metadata: Optional[Dict[str, Any]] = None
@@ -365,7 +377,9 @@ class ConstitutionStorage:
             document: The document.
         """
 
-        payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
         return hashlib.sha3_512(payload).hexdigest()
 
     @staticmethod
