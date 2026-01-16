@@ -806,6 +806,14 @@ SOMABRAIN_HRR_RENORM = env.bool("SOMABRAIN_HRR_RENORM", default=True)
 SOMABRAIN_HRR_VECTOR_FAMILY = env.str("SOMABRAIN_HRR_VECTOR_FAMILY", default="bhdc")
 SOMABRAIN_BHDC_SPARSITY = env.float("SOMABRAIN_BHDC_SPARSITY", default=0.1)
 
+# Lowercase aliases for compatibility with quantum.py, agent_memory.py, etc.
+hrr_dim = SOMABRAIN_HRR_DIM
+hrr_dtype = SOMABRAIN_HRR_DTYPE
+hrr_renorm = SOMABRAIN_HRR_RENORM
+quantum_dim = SOMABRAIN_HRR_DIM
+quantum_sparsity = SOMABRAIN_BHDC_SPARSITY
+global_seed = SOMABRAIN_GLOBAL_SEED
+
 # SDR configuration
 SOMABRAIN_SDR_BITS = env.int("SOMABRAIN_SDR_BITS", default=2048)
 SOMABRAIN_SDR_DENSITY = env.float("SOMABRAIN_SDR_DENSITY", default=0.03)

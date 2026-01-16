@@ -1,0 +1,299 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: somabrain-config
+  namespace: somabrain
+data:
+  SOMABRAIN_LOG_LEVEL: "INFO"
+  SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma@postgres:5432/somabrain"
+  SOMABRAIN_REDIS_URL: "redis://redis:6379/0"
+  SOMABRAIN_REDIS_HOST: "redis"
+  SOMABRAIN_REDIS_PORT: "6379"
+  SOMABRAIN_KAFKA_URL: "kafka:9092"
+  SOMABRAIN_KAFKA_HOST: "kafka"
+  SOMABRAIN_KAFKA_PORT: "9092"
+  SOMABRAIN_MILVUS_HOST: "milvus"
+  SOMABRAIN_MILVUS_PORT: "19530"
+  ALLOWED_HOSTS: "*"
+  SOMA_API_TOKEN: "dev-token-somastack2024"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: somabrain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_USER
+              value: soma
+            - name: POSTGRES_PASSWORD
+              value: soma
+            - name: POSTGRES_DB
+              value: somabrain
+          ports:
+            - containerPort: 5432
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: somabrain
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: somabrain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              memory: "1Gi"
+              cpu: "0.5"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: somabrain
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: milvus
+  namespace: somabrain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: milvus
+  template:
+    metadata:
+      labels:
+        app: milvus
+    spec:
+      containers:
+        - name: milvus
+          image: milvusdb/milvus:v2.3.9
+          command: ["milvus", "run", "standalone"]
+          env:
+            - name: ETCD_USE_EMBED
+              value: "true"
+            - name: ETCD_DATA_DIR
+              value: "/var/lib/milvus/etcd"
+            - name: COMMON_STORAGETYPE
+              value: "local"
+          ports:
+            - containerPort: 19530
+          resources:
+            limits:
+              memory: "4Gi"
+              cpu: "2"
+          livenessProbe:
+            tcpSocket:
+              port: 19530
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: milvus
+  namespace: somabrain
+spec:
+  selector:
+    app: milvus
+  ports:
+    - port: 19530
+      targetPort: 19530
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: somabrain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:3.7.0
+          env:
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka:9092"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@localhost:9093"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+            - name: KAFKA_NUM_PARTITIONS
+              value: "1"
+          ports:
+            - containerPort: 9092
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: somabrain
+spec:
+  selector:
+    app: kafka
+  ports:
+    - port: 9092
+      targetPort: 9092
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain-api
+  namespace: somabrain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-api
+  template:
+    metadata:
+      labels:
+        app: somabrain-api
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15-alpine
+          command: ['sh', '-c', 'until pg_isready -h postgres -p 5432 -U soma; do echo waiting for postgres; sleep 2; done;']
+        - name: wait-for-redis
+          image: redis:7-alpine
+          command: ['sh', '-c', 'until redis-cli -h redis -p 6379 ping; do echo waiting for redis; sleep 2; done;']
+        - name: wait-for-kafka
+          image: busybox
+          command: ['sh', '-c', 'until nc -z kafka 9092; do echo waiting for kafka; sleep 2; done;']
+      containers:
+        - name: somabrain-api
+          image: somabrain-api:latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "uvicorn somabrain.asgi:application --host 0.0.0.0 --port 20020 --reload"]
+          ports:
+            - containerPort: 20020
+          envFrom:
+            - configMapRef:
+                name: somabrain-config
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+          resources:
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 20020
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-api
+  namespace: somabrain
+spec:
+  selector:
+    app: somabrain-api
+  ports:
+    - port: 20020
+      targetPort: 20020
+      nodePort: 20020
+  type: NodePort
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: somabrain-migrate
+  namespace: somabrain
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      containers:
+      - name: migrate
+        image: somabrain-api:latest
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "python manage.py migrate"]
+        envFrom:
+          - configMapRef:
+              name: somabrain-config
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-postgres-job
+          image: postgres:15-alpine
+          command: ['sh', '-c', 'until pg_isready -h postgres -p 5432 -U soma; do echo waiting for postgres; sleep 2; done;']

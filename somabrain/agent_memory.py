@@ -33,8 +33,8 @@ def _to_unit(vec: Any) -> Any:
     from somabrain.math import normalize_vector
 
     s = _get_settings()
-    hrr_dim = s.hrr_dim
-    hrr_dtype = s.hrr_dtype
+    hrr_dim = s.SOMABRAIN_HRR_DIM
+    hrr_dtype = s.SOMABRAIN_HRR_DTYPE
 
     v = cast(np.ndarray, np.asarray(vec, dtype=hrr_dtype).reshape(-1))
     if v.size != hrr_dim:
