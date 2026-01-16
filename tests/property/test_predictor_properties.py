@@ -171,9 +171,9 @@ class TestChebyshevHeatApproximation:
 
         # Verify convergence: relative error should be small
         rel_err = relative_error(y_cheb, y_exact)
-        assert rel_err < 0.1, (
-            f"Chebyshev relative error {rel_err:.6f} > 0.1 (n={n}, t={t}, K=40)"
-        )
+        assert (
+            rel_err < 0.1
+        ), f"Chebyshev relative error {rel_err:.6f} > 0.1 (n={n}, t={t}, K=40)"
 
     @given(
         n=dim_strategy,
@@ -208,9 +208,9 @@ class TestChebyshevHeatApproximation:
         # we can't expect further improvement - this is success
         if errors[0] < 1e-20:
             # Already converged to machine precision
-            assert errors[2] < 1e-15, (
-                f"Error at machine precision but K=40 MSE={errors[2]:.6e} too large"
-            )
+            assert (
+                errors[2] < 1e-15
+            ), f"Error at machine precision but K=40 MSE={errors[2]:.6e} too large"
         else:
             # Error should generally decrease (allow some tolerance for numerical noise)
             # At minimum, K=40 should be better than K=10
@@ -244,9 +244,9 @@ class TestChebyshevHeatApproximation:
         output_norm = np.linalg.norm(y_cheb)
 
         # Allow small numerical tolerance
-        assert output_norm <= input_norm * 1.01, (
-            f"Heat kernel not contractive: ||y||={output_norm:.6f} > ||x||={input_norm:.6f}"
-        )
+        assert (
+            output_norm <= input_norm * 1.01
+        ), f"Heat kernel not contractive: ||y||={output_norm:.6f} > ||x||={input_norm:.6f}"
 
     @given(
         n=dim_strategy,
@@ -275,9 +275,9 @@ class TestChebyshevHeatApproximation:
         inner1 = np.dot(exp_x, y)
         inner2 = np.dot(x, exp_y)
 
-        assert abs(inner1 - inner2) < 0.1 * (abs(inner1) + abs(inner2) + 1e-6), (
-            f"Symmetry violated: <exp(-tA)x, y>={inner1:.6f} != <x, exp(-tA)y>={inner2:.6f}"
-        )
+        assert abs(inner1 - inner2) < 0.1 * (
+            abs(inner1) + abs(inner2) + 1e-6
+        ), f"Symmetry violated: <exp(-tA)x, y>={inner1:.6f} != <x, exp(-tA)y>={inner2:.6f}"
 
 
 class TestLanczosSpectralBounds:
@@ -317,12 +317,12 @@ class TestLanczosSpectralBounds:
         # but with randomness and finite m, we allow some tolerance)
         tolerance = 0.5 * (true_max - true_min)  # 50% of spectral range
 
-        assert est_min >= true_min - tolerance, (
-            f"Lanczos min {est_min:.4f} too far below true min {true_min:.4f}"
-        )
-        assert est_max <= true_max + tolerance, (
-            f"Lanczos max {est_max:.4f} too far above true max {true_max:.4f}"
-        )
+        assert (
+            est_min >= true_min - tolerance
+        ), f"Lanczos min {est_min:.4f} too far below true min {true_min:.4f}"
+        assert (
+            est_max <= true_max + tolerance
+        ), f"Lanczos max {est_max:.4f} too far above true max {true_max:.4f}"
 
     @given(
         n=dim_strategy,
@@ -381,9 +381,9 @@ class TestLanczosSpectralBounds:
 
         # Verify convergence
         rel_err = relative_error(y_lanc, y_exact)
-        assert rel_err < 0.1, (
-            f"Lanczos relative error {rel_err:.6f} > 0.1 (n={n}, t={t}, m=32)"
-        )
+        assert (
+            rel_err < 0.1
+        ), f"Lanczos relative error {rel_err:.6f} > 0.1 (n={n}, t={t}, m=32)"
 
     @given(
         n=dim_strategy,
@@ -405,9 +405,9 @@ class TestLanczosSpectralBounds:
         output_norm = np.linalg.norm(y_lanc)
 
         # Allow small numerical tolerance
-        assert output_norm <= input_norm * 1.01, (
-            f"Lanczos expv not contractive: ||y||={output_norm:.6f} > ||x||={input_norm:.6f}"
-        )
+        assert (
+            output_norm <= input_norm * 1.01
+        ), f"Lanczos expv not contractive: ||y||={output_norm:.6f} > ||x||={input_norm:.6f}"
 
     @given(
         n=dim_strategy,
@@ -422,9 +422,9 @@ class TestLanczosSpectralBounds:
         x0 = np.zeros(n)
         y_lanc = lanczos_expv(apply_A, x0, t=0.5, m=16)
 
-        assert np.allclose(y_lanc, np.zeros(n)), (
-            f"Lanczos expv(0) should be 0, got norm={np.linalg.norm(y_lanc)}"
-        )
+        assert np.allclose(
+            y_lanc, np.zeros(n)
+        ), f"Lanczos expv(0) should be 0, got norm={np.linalg.norm(y_lanc)}"
 
 
 class TestChebyshevLanczosConsistency:
@@ -460,9 +460,9 @@ class TestChebyshevLanczosConsistency:
 
         # They should agree reasonably well
         rel_diff = relative_error(y_cheb, y_lanc)
-        assert rel_diff < 0.2, (
-            f"Chebyshev and Lanczos disagree: relative diff={rel_diff:.6f}"
-        )
+        assert (
+            rel_diff < 0.2
+        ), f"Chebyshev and Lanczos disagree: relative diff={rel_diff:.6f}"
 
     @given(
         n=dim_strategy,

@@ -129,9 +129,9 @@ class TestResilienceUnderFailure:
         memory_component = components.get("memory", {})
 
         # Check memory health indicators
-        assert "memory_ok" in health or "memory" in components, (
-            "Missing memory health status"
-        )
+        assert (
+            "memory_ok" in health or "memory" in components
+        ), "Missing memory health status"
 
         # If memory circuit is open, system should report not ok
         circuit_open = health.get("memory_circuit_open") or components.get(
@@ -210,9 +210,9 @@ class TestResilienceUnderFailure:
                 "search_latency_p95_seconds" in milvus_metrics
                 or "ingest_latency_p95_seconds" in milvus_metrics
             )
-            assert has_latency or milvus_metrics == {}, (
-                "Milvus metrics should track latency or be empty dict"
-            )
+            assert (
+                has_latency or milvus_metrics == {}
+            ), "Milvus metrics should track latency or be empty dict"
 
         # Verify the system has circuit breaker for memory
         assert "memory_circuit_open" in health, "Missing circuit breaker state"
@@ -253,9 +253,9 @@ class TestResilienceUnderFailure:
 
         # If Postgres is not OK, system should not be fully ready
         if not health.get("postgres_ok"):
-            assert not health.get("ready"), (
-                "System reports ready but Postgres is not OK"
-            )
+            assert not health.get(
+                "ready"
+            ), "System reports ready but Postgres is not OK"
 
         # Verify metrics_ready reflects backend status
         assert "metrics_ready" in health, "Missing metrics_ready"
@@ -292,9 +292,9 @@ class TestResilienceUnderFailure:
             # When OPA is required but unavailable, fail-closed means
             # the system should deny requests or report not ready
             # We verify the health endpoint reports this state
-            assert health.get("opa_ok") is False, (
-                "OPA required but status not correctly reported"
-            )
+            assert (
+                health.get("opa_ok") is False
+            ), "OPA required but status not correctly reported"
 
 
 # ---------------------------------------------------------------------------
@@ -364,14 +364,14 @@ class TestCircuitBreakerDegradation:
 
         # Pending should be a number (or None if not available)
         pending = outbox.get("pending")
-        assert pending is None or isinstance(pending, int), (
-            f"Pending should be int or None, got {type(pending)}"
-        )
+        assert pending is None or isinstance(
+            pending, int
+        ), f"Pending should be int or None, got {type(pending)}"
 
         # Should also track last pending timestamp
-        assert "last_pending_created_at" in outbox, (
-            "Outbox should track last pending timestamp"
-        )
+        assert (
+            "last_pending_created_at" in outbox
+        ), "Outbox should track last pending timestamp"
 
 
 # ---------------------------------------------------------------------------
@@ -433,9 +433,9 @@ class TestBackendRecoveryVerification:
             predictor_ok = health.get("predictor_ok", True)
             embedder_ok = health.get("embedder_ok", True)
             if predictor_ok and embedder_ok:
-                assert ready, (
-                    "Ready should be True when all backends OK and circuit closed"
-                )
+                assert (
+                    ready
+                ), "Ready should be True when all backends OK and circuit closed"
 
     def test_sleep_state_reflects_degradation(self) -> None:
         """Verify system state reflects circuit breaker degradation.
@@ -457,9 +457,9 @@ class TestBackendRecoveryVerification:
 
         # Verify health response has required fields for degradation tracking
         assert "ready" in health, "Missing ready field in health"
-        assert "memory_ok" in health or "components" in health, (
-            "Missing memory status in health"
-        )
+        assert (
+            "memory_ok" in health or "components" in health
+        ), "Missing memory status in health"
 
 
 # ---------------------------------------------------------------------------

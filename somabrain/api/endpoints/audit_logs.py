@@ -273,7 +273,9 @@ def export_tenant_audit_logs(
     logs = AuditLog.objects.filter(
         tenant_id=tenant_id,
         timestamp__gte=period_start,
-    ).order_by("-timestamp")[:10000]  # Limit to 10k records
+    ).order_by("-timestamp")[
+        :10000
+    ]  # Limit to 10k records
 
     if format == "csv":
         output = io.StringIO()

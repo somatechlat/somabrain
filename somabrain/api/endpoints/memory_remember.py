@@ -50,11 +50,6 @@ def _ensure_runtime():
     pass
 
 
-
-
-
-
-
 # Splitting logic to handle async nature properly
 # We need to redefine the view as async because memsvc likely uses async HTTP/DB
 @router.post("/remember", response=MemoryWriteResponse, auth=bearer_auth)

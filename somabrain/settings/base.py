@@ -5,10 +5,9 @@ Generated from legacy Pydantic settings files - django-environ migration.
 All configuration loaded from environment variables.
 """
 
-from pathlib import Path
 import environ
 
-from urllib.parse import urlparse
+
 
 # Helper for K8s Service env var collision (tcp://host:port)
 def _parse_port(value: str | int | None, default: int) -> int:
@@ -25,6 +24,7 @@ def _parse_port(value: str | int | None, default: int) -> int:
         return int(value)
     except ValueError:
         return default
+
 
 # ... (rest of imports)
 
@@ -100,7 +100,9 @@ DATABASES = {
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},

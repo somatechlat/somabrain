@@ -178,9 +178,9 @@ def health_view(request):
         client = MilvusClient()
         return {
             "connected": client.collection is not None,
-            "collection": getattr(client.collection, "name", None)
-            if client.collection
-            else None,
+            "collection": (
+                getattr(client.collection, "name", None) if client.collection else None
+            ),
         }
 
     health["infrastructure"]["milvus"] = timed_check("Milvus", check_milvus)

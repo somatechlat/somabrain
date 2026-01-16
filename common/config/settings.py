@@ -183,9 +183,7 @@ class Settings(BaseSettings):
     # Flag to enable the Oak option manager and planner. All Oak‑related code should
     # check this flag before executing. Default is disabled to preserve existing
     # behaviour.
-    ENABLE_OAK: bool = Field(
-        default_factory=lambda: _bool_env("ENABLE_OAK", False)
-    )
+    ENABLE_OAK: bool = Field(default_factory=lambda: _bool_env("ENABLE_OAK", False))
 
     # Similarity threshold used by the Oak planner to decide if an option is
     # considered "similar enough" to an existing one. Expressed as a float in the
@@ -195,12 +193,8 @@ class Settings(BaseSettings):
     )
 
     # Minimum and maximum time‑to‑live (tau) for an option, expressed in seconds.
-    OAK_TAU_MIN: float = Field(
-        default_factory=lambda: _float_env("OAK_TAU_MIN", 30.0)
-    )
-    OAK_TAU_MAX: float = Field(
-        default_factory=lambda: _float_env("OAK_TAU_MAX", 300.0)
-    )
+    OAK_TAU_MIN: float = Field(default_factory=lambda: _float_env("OAK_TAU_MIN", 30.0))
+    OAK_TAU_MAX: float = Field(default_factory=lambda: _float_env("OAK_TAU_MAX", 300.0))
 
     # Upper bound on the number of active options the planner will maintain.
     OAK_MAX_OPTIONS: int = Field(
@@ -233,7 +227,9 @@ class Settings(BaseSettings):
     # It defaults to ``False`` for local development (mirroring ``config.yaml``).
     # ``api_token`` holds the static token value when ``auth_required`` is True.
     # Both values can be overridden via environment variables for production.
-    auth_required: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_AUTH_REQUIRED", False))
+    auth_required: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_AUTH_REQUIRED", False)
+    )
     api_token: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_TOKEN", ""))
     learner_dlq_path: str = Field(
         default=_str_env("SOMABRAIN_LEARNER_DLQ_PATH", "./data/learner_dlq.jsonl")
@@ -461,7 +457,11 @@ class Settings(BaseSettings):
     api_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_URL", ""))
     # Base URL used for local development and fallback when no explicit URL is provided.
     # Defaults to ``http://localhost:9696`` which matches historic hard‑coded values.
-    default_base_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_DEFAULT_BASE_URL", "http://localhost:9696"))
+    default_base_url: str = Field(
+        default_factory=lambda: _str_env(
+            "SOMABRAIN_DEFAULT_BASE_URL", "http://localhost:9696"
+        )
+    )
 
     # OPA service URL (policy engine)
     opa_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_OPA_URL", ""))
@@ -584,10 +584,14 @@ class Settings(BaseSettings):
         default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
     )
     # Calibration
-    calibration_enabled: bool = Field(default=False, description="Enable predictor calibration service")
+    calibration_enabled: bool = Field(
+        default=False, description="Enable predictor calibration service"
+    )
 
     # Feature Flags
-    enable_cog_threads: bool = Field(default=False, description="Enable Cognitive Threads v2")
+    enable_cog_threads: bool = Field(
+        default=False, description="Enable Cognitive Threads v2"
+    )
 
     # Predictor timeout (ms) – used when constructing the budgeted predictor.
     # The historic default was 1000 ms; we keep that value here.
@@ -618,9 +622,7 @@ class Settings(BaseSettings):
     wm_alpha: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_WM_ALPHA", 0.6)
     )
-    wm_beta: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_WM_BETA", 0.3)
-    )
+    wm_beta: float = Field(default_factory=lambda: _float_env("SOMABRAIN_WM_BETA", 0.3))
     wm_gamma: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_WM_GAMMA", 0.1)
     )

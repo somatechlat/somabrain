@@ -47,7 +47,9 @@ def _http_get(url: str, timeout: float) -> Optional[int]:
             return None
     # Fallback to urllib
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as resp:  # noqa: S310 – URL is provided by caller.
+        with urllib.request.urlopen(
+            url, timeout=timeout
+        ) as resp:  # noqa: S310 – URL is provided by caller.
             return resp.getcode()
     except Exception:
         return None

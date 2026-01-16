@@ -15,12 +15,30 @@ FORBIDDEN = ("mock", "stub", "placeholder", "todo", "fixme", "dummy")
 # Allow forbidden terms when used in policy documentation context
 # e.g., "no stubs allowed", "VIBE RULES: NO mocks", "stub embedder (fallback)"
 ALLOWED_PATTERNS = (
-    "no stub", "no mock", "no placeholder", "no dummy", "not permitted",
-    "stub embedder", "stub audit", "stub_", "'stub'", "stub provider",
-    "without stub", "return a stub", "fall back to a stub",
-    "object/mock", "not mock", "placeholder -",  # legitimate code comments
-    "stub usage", "disallow stub", "\"stub\"", "stub count",
-    "blocks stub", "local/stub", "instantiating a stub", "than a stub",
+    "no stub",
+    "no mock",
+    "no placeholder",
+    "no dummy",
+    "not permitted",
+    "stub embedder",
+    "stub audit",
+    "stub_",
+    "'stub'",
+    "stub provider",
+    "without stub",
+    "return a stub",
+    "fall back to a stub",
+    "object/mock",
+    "not mock",
+    "placeholder -",  # legitimate code comments
+    "stub usage",
+    "disallow stub",
+    '"stub"',
+    "stub count",
+    "blocks stub",
+    "local/stub",
+    "instantiating a stub",
+    "than a stub",
     "sync mock",  # test documentation reference
 )
 
@@ -63,8 +81,12 @@ def test_no_forbidden_terms_in_comments(path: Path) -> None:
     """**Feature: memory-client-api-alignment, Property 4: Production comments/docstrings never contain forbidden terms**"""
     tokens = _comment_and_docstring_tokens(path)
     # Exclude tokens that contain allowed patterns (VIBE policy documentation)
-    bad = [t for t in tokens if any(term in t for term in FORBIDDEN) 
-           and not any(allowed in t for allowed in ALLOWED_PATTERNS)]
+    bad = [
+        t
+        for t in tokens
+        if any(term in t for term in FORBIDDEN)
+        and not any(allowed in t for allowed in ALLOWED_PATTERNS)
+    ]
     assert not bad, f"Forbidden term found in comments/docstrings of {path}"
 
 
@@ -74,8 +96,12 @@ def test_all_files_checked() -> None:
     for path in _prod_files():
         tokens = _comment_and_docstring_tokens(path)
         # Exclude tokens that contain allowed patterns (VIBE policy documentation)
-        hits = [t for t in tokens if any(term in t for term in FORBIDDEN)
-                and not any(allowed in t for allowed in ALLOWED_PATTERNS)]
+        hits = [
+            t
+            for t in tokens
+            if any(term in t for term in FORBIDDEN)
+            and not any(allowed in t for allowed in ALLOWED_PATTERNS)
+        ]
         if hits:
             failures[str(path)] = hits
     if failures:

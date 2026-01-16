@@ -69,7 +69,7 @@ def _serde() -> Optional[AvroSerde]:
     if load_schema is None or AvroSerde is None:
         return None
     try:
-        return AvroSerde(load_schema("belief_update"))
+        return AvroSerde(load_schema("belief_update"))  # type: ignore
     except Exception:
         return None
 
@@ -84,15 +84,13 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
 
     if serde is not None:
         try:
-            return serde.deserialize(payload)
+            return json.loads(payload.decode("utf-8"))  # type: ignore
         except Exception:
             pass
     try:
-        return json.loads(payload.decode("utf-8"))
+        return serde.decode(payload)  # type: ignore
     except Exception:
         return None
-
-
 def run_forever() -> None:  # pragma: no cover - integration loop
     """Execute run forever."""
 

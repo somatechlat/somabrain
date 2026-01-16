@@ -391,9 +391,9 @@ def get_top_consumers(
                 "tenant_name": tenant.name,
                 "requests_minute": used,
                 "limit": tier_limit,
-                "usage_percent": round((used / tier_limit * 100), 2)
-                if tier_limit > 0
-                else 0,
+                "usage_percent": (
+                    round((used / tier_limit * 100), 2) if tier_limit > 0 else 0
+                ),
             }
         )
 

@@ -170,9 +170,9 @@ def list_webhook_configs(
             url=c.get("url", ""),
             events=c.get("events", []),
             is_active=c.get("is_active", True),
-            secret_masked="****" + c.get("secret", "")[-4:]
-            if c.get("secret")
-            else "****",
+            secret_masked=(
+                "****" + c.get("secret", "")[-4:] if c.get("secret") else "****"
+            ),
             created_at=c.get("created_at", ""),
         )
         for c in configs

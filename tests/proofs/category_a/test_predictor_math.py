@@ -205,9 +205,9 @@ class TestUncertaintyMonotonicity:
 
         # Verify strict monotonicity for t > 0
         for i in range(1, len(uncertainties)):
-            assert uncertainties[i] >= uncertainties[i - 1], (
-                f"Monotonicity violated: σ({i - 1})={uncertainties[i - 1]}, σ({i})={uncertainties[i]}"
-            )
+            assert (
+                uncertainties[i] >= uncertainties[i - 1]
+            ), f"Monotonicity violated: σ({i - 1})={uncertainties[i - 1]}, σ({i})={uncertainties[i]}"
 
 
 # ---------------------------------------------------------------------------
@@ -238,9 +238,9 @@ class TestSpectralMethods:
             coeffs = [0] * n + [1]  # T_n
             values = chebval(x_values, coeffs)
 
-            assert np.all(np.abs(values) <= 1.0 + 1e-10), (
-                f"Chebyshev T_{n} exceeded bounds: max={np.max(np.abs(values))}"
-            )
+            assert np.all(
+                np.abs(values) <= 1.0 + 1e-10
+            ), f"Chebyshev T_{n} exceeded bounds: max={np.max(np.abs(values))}"
 
     def test_eigenvalue_bounds_symmetric_matrix(self) -> None:
         """A3.2: Eigenvalues of symmetric matrices are real and bounded.

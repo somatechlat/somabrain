@@ -210,9 +210,9 @@ def check_milvus() -> Dict[str, Any]:
 
         return {
             "connected": client.collection is not None,
-            "collection_name": getattr(client.collection, "name", None)
-            if client.collection
-            else None,
+            "collection_name": (
+                getattr(client.collection, "name", None) if client.collection else None
+            ),
             "embedding_dim": getattr(settings, "MILVUS_EMBEDDING_DIM", 256),
         }
 
@@ -306,9 +306,9 @@ def check_schema_registry() -> Dict[str, Any]:
             return {
                 "status_code": response.status_code,
                 "healthy": response.status_code == 200,
-                "subjects_count": len(response.json())
-                if response.status_code == 200
-                else 0,
+                "subjects_count": (
+                    len(response.json()) if response.status_code == 200 else 0
+                ),
             }
 
     result, time_ms, error = timed_check(_check)
@@ -603,12 +603,14 @@ def get_database_health(request):
     try:
         with connection.cursor() as cursor:
             # Table counts
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT schemaname, relname, n_live_tup 
                 FROM pg_stat_user_tables 
                 ORDER BY n_live_tup DESC 
                 LIMIT 10
-            """)
+            """
+            )
             tables = [
                 {"schema": r[0], "table": r[1], "rows": r[2]} for r in cursor.fetchall()
             ]

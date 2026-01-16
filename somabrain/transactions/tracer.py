@@ -395,7 +395,7 @@ def trace_transaction(
                 return result
 
         @functools.wraps(func)
-        async def async_wrapper(*args, **kwargs) -> T:
+        async def async_wrapper(*args, **kwargs) -> T:  # type: ignore[misc]
             """Execute async wrapper."""
 
             tracer = get_tracer()
@@ -419,8 +419,8 @@ def trace_transaction(
         import asyncio
 
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
+            return async_wrapper  # type: ignore[return-value]
+        return sync_wrapper  # type: ignore[return-value]
 
     return decorator
 

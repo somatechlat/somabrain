@@ -209,9 +209,9 @@ class TestGraphAugmentedRecall:
                 "strength": link_strength,
             }
             response = client.post("/graph/link", json=body, headers=headers)
-            assert response.status_code == 200, (
-                f"Failed to create link: {response.text}"
-            )
+            assert (
+                response.status_code == 200
+            ), f"Failed to create link: {response.text}"
 
             # Query neighbors of A to verify link exists
             params = {

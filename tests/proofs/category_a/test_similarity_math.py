@@ -91,9 +91,9 @@ class TestSimilarityMathematicalCorrectness:
         sim_ab = cosine_similarity(a, b)
         sim_ba = cosine_similarity(b, a)
 
-        assert abs(sim_ab - sim_ba) < 1e-10, (
-            f"Symmetry violated: cos(a,b)={sim_ab}, cos(b,a)={sim_ba}"
-        )
+        assert (
+            abs(sim_ab - sim_ba) < 1e-10
+        ), f"Symmetry violated: cos(a,b)={sim_ab}, cos(b,a)={sim_ba}"
 
     @given(nonzero_vector_strategy())
     @settings(max_examples=200, deadline=None)
@@ -227,9 +227,9 @@ class TestSimilarityDerivedFunctions:
 
         # Compare
         for i, (batch, indiv) in enumerate(zip(batch_sims, individual_sims)):
-            assert abs(batch - indiv) < 1e-10, (
-                f"Batch mismatch at {i}: batch={batch}, individual={indiv}"
-            )
+            assert (
+                abs(batch - indiv) < 1e-10
+            ), f"Batch mismatch at {i}: batch={batch}, individual={indiv}"
 
 
 # ---------------------------------------------------------------------------

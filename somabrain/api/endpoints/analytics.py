@@ -380,9 +380,9 @@ def get_usage_quota(
             metric="api_calls",
             current_usage=api_usage,
             quota_limit=api_limit,
-            usage_percent=round((api_usage / api_limit) * 100, 1)
-            if api_limit > 0
-            else 0,
+            usage_percent=(
+                round((api_usage / api_limit) * 100, 1) if api_limit > 0 else 0
+            ),
             reset_date=(month_start + timedelta(days=32)).replace(day=1).isoformat(),
         )
     )
@@ -396,9 +396,9 @@ def get_usage_quota(
             metric="memory_operations",
             current_usage=mem_usage,
             quota_limit=mem_limit,
-            usage_percent=round((mem_usage / mem_limit) * 100, 1)
-            if mem_limit > 0
-            else 0,
+            usage_percent=(
+                round((mem_usage / mem_limit) * 100, 1) if mem_limit > 0 else 0
+            ),
             reset_date=(month_start + timedelta(days=32)).replace(day=1).isoformat(),
         )
     )

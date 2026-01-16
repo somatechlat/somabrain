@@ -82,9 +82,9 @@ class TestCircuitBreakerStateMachine:
 
         # should_attempt_reset should be False immediately after opening
         # (reset interval not elapsed)
-        assert not cb.should_attempt_reset(tenant), (
-            "should_attempt_reset should be False immediately after opening"
-        )
+        assert not cb.should_attempt_reset(
+            tenant
+        ), "should_attempt_reset should be False immediately after opening"
 
     def test_open_to_half_open_on_timeout(self) -> None:
         """F1.3: Circuit transitions to HALF_OPEN after reset timeout.
@@ -110,17 +110,17 @@ class TestCircuitBreakerStateMachine:
         assert cb.is_open(tenant), "Circuit should be OPEN"
 
         # Immediately after opening, should not attempt reset
-        assert not cb.should_attempt_reset(tenant), (
-            "should_attempt_reset should be False before timeout"
-        )
+        assert not cb.should_attempt_reset(
+            tenant
+        ), "should_attempt_reset should be False before timeout"
 
         # Wait for reset interval
         time.sleep(1.5)
 
         # Now should_attempt_reset should return True (HALF_OPEN state)
-        assert cb.should_attempt_reset(tenant), (
-            "should_attempt_reset should be True after reset timeout (HALF_OPEN)"
-        )
+        assert cb.should_attempt_reset(
+            tenant
+        ), "should_attempt_reset should be True after reset timeout (HALF_OPEN)"
 
     def test_half_open_to_closed_on_success(self) -> None:
         """F1.4: HALF_OPEN transitions to CLOSED on success.

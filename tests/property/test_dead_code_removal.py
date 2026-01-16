@@ -29,9 +29,9 @@ def test_dead_code_module_removed(module_path: str) -> None:
     workspace_root = Path(__file__).resolve().parents[2]
     full_path = workspace_root / module_path.replace("somabrain/", "", 1)
 
-    assert not full_path.exists(), (
-        f"Dead code module should be removed: {module_path}\nFull path: {full_path}"
-    )
+    assert (
+        not full_path.exists()
+    ), f"Dead code module should be removed: {module_path}\nFull path: {full_path}"
 
 
 def test_planning_service_not_importable() -> None:
@@ -42,6 +42,7 @@ def test_planning_service_not_importable() -> None:
     """
     with pytest.raises(ImportError):
         from somabrain.services import planning_service  # noqa: F401
+
 
 # NOTE: test_cognitive_planning_not_importable removed - cognitive.planning is ACTIVE
 # The Planner class in somabrain/cognitive/planning.py is used in production workflows
