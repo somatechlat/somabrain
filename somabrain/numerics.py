@@ -100,9 +100,7 @@ def irfft_norm(X: _ArrayLike, n: int, axis: int = -1) -> np.ndarray:
     return np.fft.irfft(np.asarray(X), n=n, axis=axis, norm="ortho")
 
 
-def _baseline_unit(
-    shape: Sequence[int], axis: int = -1, dtype: Any = np.float32
-) -> np.ndarray:
+def _baseline_unit(shape: Sequence[int], axis: int = -1, dtype: Any = np.float32) -> np.ndarray:
     """Deterministic baseline unit-vector (ones / sqrt(D)) broadcastable to `shape`."""
     axis_norm = axis if axis >= 0 else len(shape) + axis
     D = shape[axis_norm]

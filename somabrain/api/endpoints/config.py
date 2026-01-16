@@ -33,9 +33,7 @@ def get_config(request: HttpRequest):
         "namespace": ctx.namespace,
         "features": {
             "enable_sleep": getattr(settings, "SOMABRAIN_ENABLE_SLEEP", True),
-            "consolidation_enabled": getattr(
-                settings, "SOMABRAIN_CONSOLIDATION_ENABLED", True
-            ),
+            "consolidation_enabled": getattr(settings, "SOMABRAIN_CONSOLIDATION_ENABLED", True),
             "use_planner": getattr(settings, "USE_PLANNER", False),
             "use_microcircuits": getattr(settings, "USE_MICROCIRCUITS", False),
         },

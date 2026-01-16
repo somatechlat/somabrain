@@ -30,9 +30,7 @@ def test_mtwm_defaults_follow_settings() -> None:
 
     cfg = MTWMConfig()
     assert cfg.max_tenants == settings.SOMABRAIN_MTWM_MAX_TENANTS
-    assert cfg.per_tenant_capacity == max(
-        1, int(settings.SOMABRAIN_WM_PER_TENANT_CAPACITY)
-    )
+    assert cfg.per_tenant_capacity == max(1, int(settings.SOMABRAIN_WM_PER_TENANT_CAPACITY))
     assert cfg.recency_time_scale == settings.SOMABRAIN_WM_RECENCY_TIME_SCALE
     assert cfg.recency_max_steps == settings.SOMABRAIN_WM_RECENCY_MAX_STEPS
 

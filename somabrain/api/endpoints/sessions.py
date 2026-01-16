@@ -245,10 +245,7 @@ def get_session_detail(
         raise HttpError(404, "Session not found")
 
     # User can only see their own sessions
-    if (
-        str(session.get("user_id")) != str(request.user_id)
-        and not request.is_super_admin
-    ):
+    if str(session.get("user_id")) != str(request.user_id) and not request.is_super_admin:
         raise HttpError(403, "Access denied")
 
     return SessionDetailOut(
@@ -288,10 +285,7 @@ def revoke_session_endpoint(
         raise HttpError(404, "Session not found")
 
     # User can only revoke their own sessions
-    if (
-        str(session.get("user_id")) != str(request.user_id)
-        and not request.is_super_admin
-    ):
+    if str(session.get("user_id")) != str(request.user_id) and not request.is_super_admin:
         raise HttpError(403, "Access denied")
 
     success = revoke_session(session_id)

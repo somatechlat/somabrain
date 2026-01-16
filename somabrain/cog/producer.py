@@ -32,9 +32,7 @@ class BeliefUpdatePublisher:
         self._producer = None
         bootstrap = _bootstrap_from_env()
         if not bootstrap:
-            raise RuntimeError(
-                "SOMABRAIN_KAFKA_URL not configured for BeliefUpdatePublisher"
-            )
+            raise RuntimeError("SOMABRAIN_KAFKA_URL not configured for BeliefUpdatePublisher")
         # Strict: confluent-kafka producer and Avro-only serialization
         self._producer = make_producer()
         self.enabled = True

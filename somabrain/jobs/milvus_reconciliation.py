@@ -160,12 +160,8 @@ def reconcile() -> None:
                 delete_expr = f"option_id == '{orphan_id}' && tenant_id == '{tenant}'"
                 milvus.collection.delete(expr=delete_expr)
                 MILVUS_RECONCILE_ORPHAN.labels(tenant_id=tenant).inc()
-                logger.info(
-                    "Removed orphan Milvus vector %s for tenant %s", orphan_id, tenant
-                )
+                logger.info("Removed orphan Milvus vector %s for tenant %s", orphan_id, tenant)
         except Exception as exc:
             # Any failure in orphan detection should be logged but must not
             # abort the entire reconciliation run.
-            logger.error(
-                "Failed to reconcile orphan vectors for tenant %s: %s", tenant, exc
-            )
+            logger.error("Failed to reconcile orphan vectors for tenant %s: %s", tenant, exc)

@@ -395,9 +395,7 @@ def rate_limit(rps: int = 10, burst: int = 20):
                 request: The request.
             """
 
-            identifier = (
-                f"view:{func.__name__}:{request.META.get('REMOTE_ADDR', 'unknown')}"
-            )
+            identifier = f"view:{func.__name__}:{request.META.get('REMOTE_ADDR', 'unknown')}"
 
             allowed, limit, remaining, reset_time = limiter.check_and_consume(
                 identifier, rps=rps, burst=burst

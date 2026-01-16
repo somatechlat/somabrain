@@ -35,9 +35,7 @@ def _load_agent_operator() -> Tuple[callable, int]:
     # explicit error to fail fast.
     graph_path = settings.graph_file_agent
     if not graph_path:
-        raise RuntimeError(
-            "Agent predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_AGENT."
-        )
+        raise RuntimeError("Agent predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_AGENT.")
     return load_operator_from_file(graph_path)
 
 
@@ -61,9 +59,7 @@ class AgentPredictor(HeatDiffusionPredictor):
         )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 
-    def predict(
-        self, source_idx: int, observed: np.ndarray
-    ) -> Tuple[np.ndarray, float, float]:
+    def predict(self, source_idx: int, observed: np.ndarray) -> Tuple[np.ndarray, float, float]:
         """Run a single prediction step for the agent domain.
 
         Parameters

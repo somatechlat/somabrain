@@ -63,9 +63,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def fetch_by_coord(
-        self, coord: Coordinate, universe: Optional[str] = None
-    ) -> List[Any]:
+    def fetch_by_coord(self, coord: Coordinate, universe: Optional[str] = None) -> List[Any]:
         """Execute fetch by coord.
 
         Args:

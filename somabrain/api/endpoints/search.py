@@ -342,9 +342,7 @@ def search_audit_trail(
 
     if q:
         queryset = queryset.filter(
-            Q(action__icontains=q)
-            | Q(resource_type__icontains=q)
-            | Q(resource_id__icontains=q)
+            Q(action__icontains=q) | Q(resource_type__icontains=q) | Q(resource_id__icontains=q)
         )
 
     if action:
@@ -362,9 +360,7 @@ def search_audit_trail(
 
     # Get facets
     action_facets = dict(
-        queryset.values("action")
-        .annotate(count=Count("id"))
-        .values_list("action", "count")[:10]
+        queryset.values("action").annotate(count=Count("id")).values_list("action", "count")[:10]
     )
 
     return {
@@ -482,9 +478,9 @@ def get_search_suggestions(
     suggestions = []
 
     # User suggestions
-    users = TenantUser.objects.filter(
-        tenant_id=tenant_id, email__istartswith=q
-    ).values_list("email", flat=True)[: limit // 2]
+    users = TenantUser.objects.filter(tenant_id=tenant_id, email__istartswith=q).values_list(
+        "email", flat=True
+    )[: limit // 2]
     suggestions.extend([{"type": "user", "value": u} for u in users])
 
     # Action suggestions from audit logs

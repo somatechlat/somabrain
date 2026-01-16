@@ -39,9 +39,7 @@ class MetricsInterface(Protocol):
         """Record an observation in a histogram."""
         ...
 
-    def set_gauge(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Set a gauge metric value."""
         ...
 
@@ -79,9 +77,7 @@ class NullMetrics:
 
         pass
 
-    def set_gauge(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Set gauge.
 
         Args:

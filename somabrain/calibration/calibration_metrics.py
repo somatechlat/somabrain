@@ -47,9 +47,7 @@ class CalibrationTracker:
         )
         self.lock = threading.RLock()
 
-    def add_observation(
-        self, domain: str, tenant: str, confidence: float, accuracy: float
-    ) -> None:
+    def add_observation(self, domain: str, tenant: str, confidence: float, accuracy: float) -> None:
         """
         Add a calibration observation.
 
@@ -177,9 +175,7 @@ class CalibrationTracker:
                 except Exception:
                     continue
 
-    def should_calibrate(
-        self, domain: str, tenant: str, ece_threshold: float = 0.1
-    ) -> bool:
+    def should_calibrate(self, domain: str, tenant: str, ece_threshold: float = 0.1) -> bool:
         """
         Determine if calibration is needed based on ECE.
 

@@ -30,15 +30,9 @@ class UtilityWeights:
         nu: Tertiary utility weight (default from settings or 0.05)
     """
 
-    lambda_: float = float(
-        getattr(settings, "SOMABRAIN_UTILITY_LAMBDA", 1.0) if settings else 1.0
-    )
-    mu: float = float(
-        getattr(settings, "SOMABRAIN_UTILITY_MU", 0.1) if settings else 0.1
-    )
-    nu: float = float(
-        getattr(settings, "SOMABRAIN_UTILITY_NU", 0.05) if settings else 0.05
-    )
+    lambda_: float = float(getattr(settings, "SOMABRAIN_UTILITY_LAMBDA", 1.0) if settings else 1.0)
+    mu: float = float(getattr(settings, "SOMABRAIN_UTILITY_MU", 0.1) if settings else 0.1)
+    nu: float = float(getattr(settings, "SOMABRAIN_UTILITY_NU", 0.05) if settings else 0.05)
 
     def clamp(
         self,
@@ -98,29 +92,19 @@ class AdaptationGains:
         """Construct gains from centralized settings only."""
         return cls(
             alpha=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_ALPHA", 1.0)
-                if settings
-                else 1.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_ALPHA", 1.0) if settings else 1.0
             ),
             gamma=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_GAMMA", -0.5)
-                if settings
-                else -0.5
+                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_GAMMA", -0.5) if settings else -0.5
             ),
             lambda_=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_LAMBDA", 1.0)
-                if settings
-                else 1.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_LAMBDA", 1.0) if settings else 1.0
             ),
             mu=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_MU", -0.25)
-                if settings
-                else -0.25
+                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_MU", -0.25) if settings else -0.25
             ),
             nu=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_NU", -0.25)
-                if settings
-                else -0.25
+                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_NU", -0.25) if settings else -0.25
             ),
         )
 
@@ -176,53 +160,33 @@ class AdaptationConstraints:
         """Construct constraints from centralized settings only."""
         return cls(
             alpha_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MIN", 0.1)
-                if settings
-                else 0.1
+                getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MIN", 0.1) if settings else 0.1
             ),
             alpha_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MAX", 5.0)
-                if settings
-                else 5.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MAX", 5.0) if settings else 5.0
             ),
             gamma_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MIN", 0.0)
-                if settings
-                else 0.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MIN", 0.0) if settings else 0.0
             ),
             gamma_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MAX", 1.0)
-                if settings
-                else 1.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MAX", 1.0) if settings else 1.0
             ),
             lambda_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MIN", 0.1)
-                if settings
-                else 0.1
+                getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MIN", 0.1) if settings else 0.1
             ),
             lambda_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MAX", 5.0)
-                if settings
-                else 5.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MAX", 5.0) if settings else 5.0
             ),
             mu_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_MU_MIN", 0.01)
-                if settings
-                else 0.01
+                getattr(settings, "SOMABRAIN_ADAPTATION_MU_MIN", 0.01) if settings else 0.01
             ),
             mu_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_MU_MAX", 5.0)
-                if settings
-                else 5.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_MU_MAX", 5.0) if settings else 5.0
             ),
             nu_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_NU_MIN", 0.01)
-                if settings
-                else 0.01
+                getattr(settings, "SOMABRAIN_ADAPTATION_NU_MIN", 0.01) if settings else 0.01
             ),
             nu_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_NU_MAX", 5.0)
-                if settings
-                else 5.0
+                getattr(settings, "SOMABRAIN_ADAPTATION_NU_MAX", 5.0) if settings else 5.0
             ),
         )

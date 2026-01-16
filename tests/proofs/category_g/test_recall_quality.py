@@ -114,9 +114,7 @@ class TestRecallQualityUnderScale:
             results = wm.recall(center, top_k=10)
 
             # Count how many results are from the correct cluster
-            correct = sum(
-                1 for _, _, payload in results if payload.get("cluster") == cluster_id
-            )
+            correct = sum(1 for _, _, payload in results if payload.get("cluster") == cluster_id)
             precision = correct / 10 if results else 0
             precisions.append(precision)
 
@@ -168,9 +166,7 @@ class TestRecallQualityUnderScale:
         results = wm.recall(query, top_k=10)
 
         # Count how many relevant items were retrieved
-        retrieved_relevant = sum(
-            1 for _, _, payload in results if payload.get("relevant", False)
-        )
+        retrieved_relevant = sum(1 for _, _, payload in results if payload.get("relevant", False))
 
         # Recall@10 = retrieved_relevant / min(10, num_relevant)
         recall = retrieved_relevant / min(10, num_relevant)
@@ -277,9 +273,7 @@ class TestRecallQualityUnderScale:
                 sim = cosine_similarity(result_vecs[i], result_vecs[j])
                 pairwise_sims.append(sim)
 
-        avg_pairwise_sim = (
-            sum(pairwise_sims) / len(pairwise_sims) if pairwise_sims else 0
-        )
+        avg_pairwise_sim = sum(pairwise_sims) / len(pairwise_sims) if pairwise_sims else 0
 
         # Average pairwise similarity should be below 90% (diverse)
         assert (
@@ -361,9 +355,7 @@ class TestQualityMetrics:
         relevances = [3, 2, 1, 0]
         ndcg = ndcg_at_k(relevances, 4)
 
-        assert (
-            abs(ndcg - 1.0) < 0.01
-        ), f"nDCG for perfect ranking should be 1.0, got {ndcg}"
+        assert abs(ndcg - 1.0) < 0.01, f"nDCG for perfect ranking should be 1.0, got {ndcg}"
 
     def test_cosine_similarity_bounds(self) -> None:
         """Cosine similarity is bounded [-1, 1].

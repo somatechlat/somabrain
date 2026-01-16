@@ -101,9 +101,7 @@ class TestPlanningAndDecisionMaking:
 
         # Both should produce plans
         assert len(plan_with_memory) > 0, "Plan with memory context should not be empty"
-        assert (
-            len(plan_without_memory) > 0
-        ), "Plan without memory context should not be empty"
+        assert len(plan_without_memory) > 0, "Plan without memory context should not be empty"
 
         # Plans may differ based on context
         # At minimum, analyze_goal should always be present
@@ -139,9 +137,7 @@ class TestPlanningAndDecisionMaking:
         assert len(plan1) == len(plan2), "Plans should have same length"
 
         for s1, s2 in zip(plan1, plan2):
-            assert (
-                s1.name == s2.name
-            ), f"Step names should match: {s1.name} vs {s2.name}"
+            assert s1.name == s2.name, f"Step names should match: {s1.name} vs {s2.name}"
 
     def test_timeout_returns_best_so_far(self) -> None:
         """C2.4: Timeout returns best so far.
@@ -228,9 +224,7 @@ class TestStepValidation:
 
         # Should be applicable with query_text
         context_with_query = {"query_text": "test query"}
-        assert step.is_applicable(
-            context_with_query
-        ), "Step should be applicable with query_text"
+        assert step.is_applicable(context_with_query), "Step should be applicable with query_text"
 
         # Should not be applicable without query_text
         context_without_query: Dict[str, Any] = {}
@@ -271,14 +265,10 @@ class TestStepValidation:
         )
 
         # Validate with matching context
-        assert planner.validate_step(
-            step, {"snapshot": {}}
-        ), "Should validate with snapshot"
+        assert planner.validate_step(step, {"snapshot": {}}), "Should validate with snapshot"
 
         # Validate with non-matching context
-        assert not planner.validate_step(
-            step, {}
-        ), "Should not validate without snapshot"
+        assert not planner.validate_step(step, {}), "Should not validate without snapshot"
 
 
 # ---------------------------------------------------------------------------
@@ -423,9 +413,7 @@ class TestGoalSatisfaction:
 
         # Should find the matching step
         assert len(plan) > 0, "Plan should not be empty"
-        assert any(
-            s.name == "analyze_goal" for s in plan
-        ), "Should include analyze_goal step"
+        assert any(s.name == "analyze_goal" for s in plan), "Should include analyze_goal step"
 
     def test_callable_goal(self) -> None:
         """Callable goal is evaluated correctly.

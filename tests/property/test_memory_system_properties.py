@@ -26,9 +26,7 @@ from somabrain.wm import WorkingMemory
 
 dim_strategy = st.sampled_from([256, 512, 1024])
 seed_strategy = st.integers(min_value=1, max_value=2**31 - 1)
-eta_strategy = st.floats(
-    min_value=0.01, max_value=1.0, allow_nan=False, allow_infinity=False
-)
+eta_strategy = st.floats(min_value=0.01, max_value=1.0, allow_nan=False, allow_infinity=False)
 
 
 def random_unit_vector(dim: int, seed: int) -> np.ndarray:
@@ -101,9 +99,7 @@ class TestSuperposedTraceDecayFormula:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=50, deadline=10000)
-    def test_decay_accumulates_multiple_upserts(
-        self, dim: int, eta: float, seed: int
-    ) -> None:
+    def test_decay_accumulates_multiple_upserts(self, dim: int, eta: float, seed: int) -> None:
         """Verify decay accumulates correctly over multiple upserts."""
         cfg = TraceConfig(dim=dim, eta=eta, rotation_enabled=False, rotation_seed=seed)
         trace = SuperposedTrace(cfg)
@@ -137,9 +133,7 @@ class TestWorkingMemoryRecall:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_recall_returns_descending_similarity(
-        self, dim: int, capacity: int, seed: int
-    ) -> None:
+    def test_recall_returns_descending_similarity(self, dim: int, capacity: int, seed: int) -> None:
         """Verify recall returns items in descending similarity order."""
         wm = WorkingMemory(capacity=capacity, dim=dim)
 
@@ -232,9 +226,7 @@ class TestWorkingMemoryNovelty:
 
         novelty = wm.novelty(vec)
 
-        assert (
-            novelty < 0.01
-        ), f"Novelty for identical vector should be ~0.0, got {novelty}"
+        assert novelty < 0.01, f"Novelty for identical vector should be ~0.0, got {novelty}"
 
 
 class TestSuperposedTraceCleanup:

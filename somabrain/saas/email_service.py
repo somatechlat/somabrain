@@ -59,9 +59,7 @@ def send_invitation_email(
             "inviter_name": inviter_name or "A team member",
             "custom_message": custom_message,
             "invite_url": invite_link,
-            "support_email": getattr(
-                settings, "DEFAULT_FROM_EMAIL", "support@somabrain.ai"
-            ),
+            "support_email": getattr(settings, "DEFAULT_FROM_EMAIL", "support@somabrain.ai"),
         }
 
         # Build HTML email body

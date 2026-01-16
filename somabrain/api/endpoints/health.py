@@ -89,9 +89,7 @@ def health(request: HttpRequest) -> Dict[str, Any]:
 
     # Settings flags
     try:
-        resp["external_backends_required"] = getattr(
-            settings, "REQUIRE_EXTERNAL_BACKENDS", None
-        )
+        resp["external_backends_required"] = getattr(settings, "REQUIRE_EXTERNAL_BACKENDS", None)
     except Exception:
         resp["external_backends_required"] = None
 
@@ -123,9 +121,7 @@ def health(request: HttpRequest) -> Dict[str, Any]:
     # Memory degradation config
     try:
         resp["memory_degrade_queue"] = True
-        resp["memory_degrade_readonly"] = getattr(
-            settings, "MEMORY_DEGRADE_READONLY", False
-        )
+        resp["memory_degrade_readonly"] = getattr(settings, "MEMORY_DEGRADE_READONLY", False)
         resp["memory_degrade_topic"] = getattr(settings, "MEMORY_DEGRADE_TOPIC", None)
     except Exception:
         resp["memory_degrade_queue"] = None

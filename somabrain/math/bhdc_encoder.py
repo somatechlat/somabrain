@@ -274,9 +274,7 @@ class PermutationBinder:
         b_arr = np.asarray(b, dtype=self._dtype)
         denom_abs = np.abs(b_arr)
         if np.any(denom_abs < self._eps):
-            raise ValueError(
-                "PermutationBinder cannot unbind with zero-valued role components"
-            )
+            raise ValueError("PermutationBinder cannot unbind with zero-valued role components")
         return c_arr / b_arr
 
     # ------------------------------------------------------------------

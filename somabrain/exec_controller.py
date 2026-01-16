@@ -205,9 +205,7 @@ class ExecutiveController:
             arm = self.choose_arm(tenant)
             use_graph = bool(arm == 1)
             try:
-                EXEC_BANDIT_ARM.labels(
-                    arm=("explore" if use_graph else "baseline")
-                ).inc()
+                EXEC_BANDIT_ARM.labels(arm=("explore" if use_graph else "baseline")).inc()
             except Exception as exc:
                 logger.debug("Failed to record EXEC_BANDIT_ARM metric: %s", exc)
         adj_top_k = int(base_top_k + (self.cfg.explore_boost_k if use_graph else 0))

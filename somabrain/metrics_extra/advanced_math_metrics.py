@@ -14,9 +14,7 @@ quantum_state_purity = Gauge(
     "quantum_state_purity", "Measure of quantum state purity tr(ρ²)", ["state_type"]
 )
 
-quantum_entropy = Gauge(
-    "quantum_entropy", "Von Neumann entropy of quantum states", ["state_type"]
-)
+quantum_entropy = Gauge("quantum_entropy", "Von Neumann entropy of quantum states", ["state_type"])
 
 quantum_interference = Histogram(
     "quantum_interference_pattern",
@@ -25,17 +23,11 @@ quantum_interference = Histogram(
 )
 
 # Advanced Mathematical Properties
-spectral_gap = Gauge(
-    "density_matrix_spectral_gap", "Spectral gap in density matrix eigenvalues"
-)
+spectral_gap = Gauge("density_matrix_spectral_gap", "Spectral gap in density matrix eigenvalues")
 
-frame_condition_number = Gauge(
-    "role_frame_condition_number", "Condition number of the role frame"
-)
+frame_condition_number = Gauge("role_frame_condition_number", "Condition number of the role frame")
 
-binding_condition_number = Gauge(
-    "binding_condition_number", "Condition number of binding operands"
-)
+binding_condition_number = Gauge("binding_condition_number", "Condition number of binding operands")
 
 permutation_cycle_length = Histogram(
     "permutation_cycle_length",
@@ -107,11 +99,7 @@ class AdvancedMathematicalMetrics:
 
         # Calculate condition number
         eigvals = np.linalg.eigvalsh(frame_op)
-        cond = (
-            float(np.max(eigvals) / np.min(eigvals))
-            if np.min(eigvals) > 0
-            else float("inf")
-        )
+        cond = float(np.max(eigvals) / np.min(eigvals)) if np.min(eigvals) > 0 else float("inf")
         frame_condition_number.set(cond)
 
     @staticmethod
@@ -125,9 +113,7 @@ class AdvancedMathematicalMetrics:
     ) -> None:
         """Verify and record energy conservation."""
         # ``initial_energy`` should be a numeric type; ensure float arithmetic.
-        relative_error = abs(float(final_energy) - float(initial_energy)) / float(
-            initial_energy
-        )
+        relative_error = abs(float(final_energy) - float(initial_energy)) / float(initial_energy)
         energy_conservation.labels(operation=operation).set(relative_error)
 
     @staticmethod

@@ -29,9 +29,7 @@ def make_colored_noise_spectrum(n_bins, exponent=1.0, seed=0):
     return spec
 
 
-def run_bench(
-    out_path: Path, D_list=(512, 1024), exponents=(0.5, 1.0, 2.0), seeds=(0, 1, 2)
-):
+def run_bench(out_path: Path, D_list=(512, 1024), exponents=(0.5, 1.0, 2.0), seeds=(0, 1, 2)):
     """Execute run bench.
 
     Args:
@@ -100,16 +98,13 @@ def run_bench(
             subset = [e for e in results["data"] if e["D"] == D]
             exps = sorted(set(e["exponent"] for e in subset))
             mean_exact = [
-                np.mean([e["cosine_exact"] for e in subset if e["exponent"] == ex])
-                for ex in exps
+                np.mean([e["cosine_exact"] for e in subset if e["exponent"] == ex]) for ex in exps
             ]
             mean_robust = [
-                np.mean([e["cosine_robust"] for e in subset if e["exponent"] == ex])
-                for ex in exps
+                np.mean([e["cosine_robust"] for e in subset if e["exponent"] == ex]) for ex in exps
             ]
             mean_wiener = [
-                np.mean([e["cosine_wiener"] for e in subset if e["exponent"] == ex])
-                for ex in exps
+                np.mean([e["cosine_wiener"] for e in subset if e["exponent"] == ex]) for ex in exps
             ]
 
             plt.figure()
@@ -131,9 +126,7 @@ def main():
     """Execute main."""
 
     p = argparse.ArgumentParser()
-    p.add_argument(
-        "--out", type=Path, default=Path("benchmarks/colored_noise_results.json")
-    )
+    p.add_argument("--out", type=Path, default=Path("benchmarks/colored_noise_results.json"))
     args = p.parse_args()
     run_bench(args.out)
 

@@ -278,20 +278,14 @@ def download_export(
             writer.writerow(["users"])
             writer.writerow(["id", "email", "display_name", "role", "is_active"])
             for u in export_data["users"]:
-                writer.writerow(
-                    [u["id"], u["email"], u["display_name"], u["role"], u["is_active"]]
-                )
+                writer.writerow([u["id"], u["email"], u["display_name"], u["role"], u["is_active"]])
 
         response = HttpResponse(output.getvalue(), content_type="text/csv")
-        response["Content-Disposition"] = (
-            f'attachment; filename="export_{tenant_id}.csv"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="export_{tenant_id}.csv"'
         return response
 
     # JSON format
-    response = HttpResponse(
-        json.dumps(export_data, indent=2), content_type="application/json"
-    )
+    response = HttpResponse(json.dumps(export_data, indent=2), content_type="application/json")
     response["Content-Disposition"] = f'attachment; filename="export_{tenant_id}.json"'
     return response
 

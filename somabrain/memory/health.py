@@ -138,9 +138,5 @@ def require_healthy(health_fn: callable) -> None:
     """
     health = health_fn()
     if not health.get("healthy"):
-        missing = [
-            c for c in ("kv_store", "vector_store", "graph_store") if not health.get(c)
-        ]
-        raise RuntimeError(
-            f"Memory service unavailable: {', '.join(missing) or 'unknown'}"
-        )
+        missing = [c for c in ("kv_store", "vector_store", "graph_store") if not health.get(c)]
+        raise RuntimeError(f"Memory service unavailable: {', '.join(missing) or 'unknown'}")

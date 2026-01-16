@@ -16,9 +16,7 @@ from scipy.linalg import expm
 try:
     import matplotlib.pyplot as plt
 except Exception:  # pragma: no cover
-    raise SystemExit(
-        "matplotlib is required to run this benchmark. Install it and retry."
-    )
+    raise SystemExit("matplotlib is required to run this benchmark. Install it and retry.")
 
 from somabrain.predictors.base import (
     HeatDiffusionPredictor,
@@ -40,9 +38,7 @@ from somabrain.predictors.base import (
 try:
     import matplotlib.pyplot as plt
 except Exception:  # pragma: no cover
-    raise SystemExit(
-        "matplotlib is required to run this benchmark. Install it and retry."
-    )
+    raise SystemExit("matplotlib is required to run this benchmark. Install it and retry.")
 
 
 @dataclass
@@ -104,9 +100,7 @@ def _predict(
     return y, dt
 
 
-def _exact(
-    L: NDArray[np.float_], x0: NDArray[np.float_], t: float
-) -> NDArray[np.float_]:
+def _exact(L: NDArray[np.float_], x0: NDArray[np.float_], t: float) -> NDArray[np.float_]:
     """Execute exact.
 
     Args:
@@ -142,9 +136,7 @@ def accuracy_sweep(res_dir: Path, plots_dir: Path) -> Dict[str, List[TrialResult
             for K in cheb_Ks:
                 y, rt = _predict("chebyshev", L, x0, t, K=K, m=20)
                 mse = float(np.mean((y - y_exact) ** 2))
-                results["chebyshev"].append(
-                    TrialResult("chebyshev", n, t, K, 20, mse, rt)
-                )
+                results["chebyshev"].append(TrialResult("chebyshev", n, t, K, 20, mse, rt))
             # Lanczos sweep
             for m in lanc_m:
                 y, rt = _predict("lanczos", L, x0, t, K=40, m=m)

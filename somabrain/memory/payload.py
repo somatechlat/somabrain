@@ -101,11 +101,7 @@ def normalize_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             dval = payload["domains"]
             if isinstance(dval, str):
                 # split on comma or whitespace
-                parts = [
-                    p.strip().lower()
-                    for p in dval.replace(",", " ").split()
-                    if p.strip()
-                ]
+                parts = [p.strip().lower() for p in dval.replace(",", " ").split() if p.strip()]
                 payload["domains"] = parts or []
             elif isinstance(dval, (list, tuple)):
                 cleaned = []

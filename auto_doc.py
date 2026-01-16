@@ -182,9 +182,7 @@ def process_file(filepath):
         missing_module = False
 
     if missing_module:
-        insertions.append(
-            (0, f'"""Module {os.path.basename(filepath).replace(".py", "")}."""\n')
-        )
+        insertions.append((0, f'"""Module {os.path.basename(filepath).replace(".py", "")}."""\n'))
 
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):

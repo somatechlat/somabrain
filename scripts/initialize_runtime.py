@@ -37,9 +37,7 @@ try:
                     mix=getattr(cfg, "math_bhdc_mix", "none"),
                     binding_seed=getattr(cfg, "math_binding_seed", None),
                     binding_tenant=getattr(cfg, "default_tenant", None),
-                    binding_model_version=getattr(
-                        cfg, "math_binding_model_version", None
-                    ),
+                    binding_model_version=getattr(cfg, "math_binding_model_version", None),
                 )
             )
         except Exception:
@@ -56,9 +54,7 @@ try:
                         mix=getattr(cfg, "math_bhdc_mix", "none"),
                         binding_seed=getattr(cfg, "math_binding_seed", None),
                         binding_tenant=getattr(cfg, "default_tenant", None),
-                        binding_model_version=getattr(
-                            cfg, "math_binding_model_version", None
-                        ),
+                        binding_model_version=getattr(cfg, "math_binding_model_version", None),
                     )
                 )
             except Exception:
@@ -94,9 +90,7 @@ try:
             dim=cfg.embed_dim,
             cfg=MCConfig(
                 columns=max(1, int(cfg.micro_circuits)),
-                per_col_capacity=max(
-                    16, int(cfg.wm_size // max(1, int(cfg.micro_circuits)))
-                ),
+                per_col_capacity=max(16, int(cfg.wm_size // max(1, int(cfg.micro_circuits)))),
                 vote_temperature=cfg.micro_vote_temperature,
                 recency_time_scale=cfg.wm_recency_time_scale,
                 recency_max_steps=cfg.wm_recency_max_steps,
@@ -124,9 +118,7 @@ try:
             if pkg_spec and getattr(pkg_spec, "submodule_search_locations", None):
                 pkg_path = list(pkg_spec.submodule_search_locations)[0]
             else:
-                pkg_path = os.path.join(
-                    os.path.dirname(os.path.dirname(__file__)), "somabrain"
-                )
+                pkg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "somabrain")
             _runtime_path = os.path.join(pkg_path, "runtime.py")
             print(f"initialize_runtime: loading runtime.py from path: {_runtime_path}")
             _spec = importlib.util.spec_from_file_location(
@@ -181,9 +173,7 @@ try:
                 pass
             print("initialize_runtime: set_singletons executed")
         except Exception:
-            print(
-                "initialize_runtime: set_singletons failed:\n", traceback.format_exc()
-            )
+            print("initialize_runtime: set_singletons failed:\n", traceback.format_exc())
     else:
         print("initialize_runtime: runtime module not loaded; skipping set_singletons")
 

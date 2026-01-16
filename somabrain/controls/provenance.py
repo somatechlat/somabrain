@@ -73,9 +73,7 @@ def verify_hmac_sha256(secret: Optional[str], body: bytes, header: str) -> bool:
     algo, _, hexsig = header.partition("=")
     if algo.lower() != "hmac-sha256" or not hexsig:
         return False
-    mac = hmac.new(
-        secret.encode("utf-8"), canonical_body(body), hashlib.sha256
-    ).hexdigest()
+    mac = hmac.new(secret.encode("utf-8"), canonical_body(body), hashlib.sha256).hexdigest()
     try:
         return hmac.compare_digest(mac, hexsig)
     except Exception:

@@ -30,13 +30,9 @@ except Exception as e:
 
 from django.conf import settings as _settings
 
-print(
-    "Checking OPA at", getattr(_settings, "SOMABRAIN_OPA_URL", "http://localhost:8181")
-)
+print("Checking OPA at", getattr(_settings, "SOMABRAIN_OPA_URL", "http://localhost:8181"))
 try:
-    resp = requests.get(
-        getattr(_settings, "SOMABRAIN_OPA_URL", "http://localhost:8181"), timeout=3
-    )
+    resp = requests.get(getattr(_settings, "SOMABRAIN_OPA_URL", "http://localhost:8181"), timeout=3)
     if resp.status_code != 200:
         print("OPA health status", resp.status_code)
         sys.exit(4)

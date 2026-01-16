@@ -93,18 +93,14 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     degraded_warnings: List[str] = []
 
     if memsvc._is_circuit_open():
-        memsvc._queue_degraded(
-            "remember", {"key": payload.key, "payload": stored_payload}
-        )
+        memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
         degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
     else:
         try:
             coord = await memsvc.aremember(payload.key, stored_payload)
             persisted_to_ltm = True
         except RuntimeError as exc:
-            memsvc._queue_degraded(
-                "remember", {"key": payload.key, "payload": stored_payload}
-            )
+            memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
             degraded_warnings.append(f"memory-backend-failed:queued-for-replay:{exc}")
         except Exception as exc:
             raise HttpError(502, f"store failed: {exc}")

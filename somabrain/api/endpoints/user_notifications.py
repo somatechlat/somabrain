@@ -149,9 +149,7 @@ def mark_notification_read(notification_id: str) -> bool:
     if notification:
         notification["is_read"] = True
         notification["read_at"] = timezone.now().isoformat()
-        cache.set(
-            get_notification_key(notification_id), notification, timeout=86400 * 7
-        )
+        cache.set(get_notification_key(notification_id), notification, timeout=86400 * 7)
         return True
     return False
 
@@ -272,10 +270,7 @@ def get_notification(
         raise HttpError(404, "Notification not found")
 
     # User can only see their own notifications
-    if (
-        notification.get("user_id") != str(request.user_id)
-        and not request.is_super_admin
-    ):
+    if notification.get("user_id") != str(request.user_id) and not request.is_super_admin:
         raise HttpError(403, "Access denied")
 
     return NotificationOut(
@@ -308,10 +303,7 @@ def mark_as_read(
     if not notification:
         raise HttpError(404, "Notification not found")
 
-    if (
-        notification.get("user_id") != str(request.user_id)
-        and not request.is_super_admin
-    ):
+    if notification.get("user_id") != str(request.user_id) and not request.is_super_admin:
         raise HttpError(403, "Access denied")
 
     success = mark_notification_read(notification_id)
@@ -358,10 +350,7 @@ def delete_notification(
     if not notification:
         raise HttpError(404, "Notification not found")
 
-    if (
-        notification.get("user_id") != str(request.user_id)
-        and not request.is_super_admin
-    ):
+    if notification.get("user_id") != str(request.user_id) and not request.is_super_admin:
         raise HttpError(403, "Access denied")
 
     # Delete from cache

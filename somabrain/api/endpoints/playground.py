@@ -217,9 +217,7 @@ def _execute_internal_request(
             "status_code": 200,
             "headers": {"Content-Type": "application/json"},
             "body": {
-                "users": [
-                    {"id": str(u.id), "email": u.email, "role": u.role} for u in users
-                ],
+                "users": [{"id": str(u.id), "email": u.email, "role": u.role} for u in users],
                 "count": users.count(),
             },
         }
@@ -230,10 +228,7 @@ def _execute_internal_request(
             "status_code": 200,
             "headers": {"Content-Type": "application/json"},
             "body": {
-                "keys": [
-                    {"id": str(k.id), "name": k.name, "prefix": k.key_prefix}
-                    for k in keys
-                ],
+                "keys": [{"id": str(k.id), "name": k.name, "prefix": k.key_prefix} for k in keys],
                 "count": keys.count(),
             },
         }

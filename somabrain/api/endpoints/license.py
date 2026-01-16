@@ -210,9 +210,7 @@ def get_tenant_license(
         agents_limit=tier.max_agents or 0,
         rate_limit_rpm=tier.rate_limit_rpm or 0,
         features=tier.features or {},
-        trial_ends_at=(
-            tenant.trial_ends_at.isoformat() if tenant.trial_ends_at else None
-        ),
+        trial_ends_at=(tenant.trial_ends_at.isoformat() if tenant.trial_ends_at else None),
         valid_until=None,  # Would come from billing system
     )
 
@@ -307,15 +305,11 @@ def check_entitlement(
         return EntitlementCheck(
             allowed=allowed,
             feature=feature,
-            reason=(
-                None if allowed else f"Feature '{feature}' not in tier '{tier.name}'"
-            ),
+            reason=(None if allowed else f"Feature '{feature}' not in tier '{tier.name}'"),
         )
 
     # Default: deny unknown features
-    return EntitlementCheck(
-        allowed=False, feature=feature, reason=f"Unknown feature: {feature}"
-    )
+    return EntitlementCheck(allowed=False, feature=feature, reason=f"Unknown feature: {feature}")
 
 
 @router.get("/{tenant_id}/limits")

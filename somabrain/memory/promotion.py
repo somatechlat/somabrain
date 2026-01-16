@@ -185,11 +185,7 @@ class PromotionTracker:
 
     def get_pending_candidates(self) -> List[PromotionCandidate]:
         """Get all candidates ready for promotion."""
-        return [
-            c
-            for c in self._candidates.values()
-            if c.consecutive_count >= self._min_ticks
-        ]
+        return [c for c in self._candidates.values() if c.consecutive_count >= self._min_ticks]
 
     def clear(self) -> None:
         """Clear all tracking state."""

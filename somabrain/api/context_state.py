@@ -43,8 +43,8 @@ class ContextRouteState:
         self._token_ledger: Optional[TokenLedger] = None
         self._adaptation_engines: Dict[str, AdaptationEngine] = {}
         self._feedback_counter: int = 0
-        self._feedback_rate_window: Dict[str, collections.deque] = (
-            collections.defaultdict(collections.deque)
+        self._feedback_rate_window: Dict[str, collections.deque] = collections.defaultdict(
+            collections.deque
         )
 
     def get_feedback_store(self) -> FeedbackStore:

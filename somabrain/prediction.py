@@ -140,9 +140,7 @@ class SlowPredictor:
         time.sleep(self.delay_ms / 1000.0)
         predicted = expected_vec
         err = cosine_error(predicted, actual_vec)
-        return PredictionResult(
-            predicted_vec=predicted, actual_vec=actual_vec, error=err
-        )
+        return PredictionResult(predicted_vec=predicted, actual_vec=actual_vec, error=err)
 
 
 class BudgetedPredictor:
@@ -235,9 +233,7 @@ class BudgetedPredictor:
         loop = asyncio.get_event_loop()
         try:
             return await asyncio.wait_for(
-                loop.run_in_executor(
-                    None, self.predict_and_compare, expected_vec, actual_vec
-                ),
+                loop.run_in_executor(None, self.predict_and_compare, expected_vec, actual_vec),
                 timeout=self.timeout_ms / 1000.0,
             )
         except asyncio.TimeoutError as e:
@@ -342,9 +338,7 @@ class MahalanobisPredictor:
         surprise = self._mahal_bounded(actual_vec.astype("float32"))
         # Small blend to avoid large behavior change; can tune later
         err = float(min(1.0, max(0.0, 0.8 * cos_err + 0.2 * surprise)))
-        return PredictionResult(
-            predicted_vec=expected_vec, actual_vec=actual_vec, error=err
-        )
+        return PredictionResult(predicted_vec=expected_vec, actual_vec=actual_vec, error=err)
 
 
 class LLMPredictor:
@@ -404,15 +398,9 @@ class LLMPredictor:
 
             headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
             with httpx.Client(timeout=self.timeout_ms / 1000.0) as client:
-                r = client.post(
-                    self.endpoint, json={"signal": float(base_err)}, headers=headers
-                )
+                r = client.post(self.endpoint, json={"signal": float(base_err)}, headers=headers)
                 data = r.json() if r.status_code == 200 else {}
-                adj = (
-                    float(data.get("error", base_err))
-                    if isinstance(data, dict)
-                    else base_err
-                )
+                adj = float(data.get("error", base_err)) if isinstance(data, dict) else base_err
                 err = max(0.0, min(1.0, adj))
                 return PredictionResult(
                     predicted_vec=expected_vec, actual_vec=actual_vec, error=err

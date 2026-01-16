@@ -55,9 +55,7 @@ def _get_runtime():
     _runtime_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "runtime.py"
     )
-    _spec = importlib.util.spec_from_file_location(
-        "somabrain.runtime_module", _runtime_path
-    )
+    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -226,9 +224,7 @@ def _compose_memory_payload(
     stored_payload.setdefault("namespace", namespace)
     stored_payload.setdefault("tenant", tenant)
     stored_payload.setdefault("key", key)
-    stored_payload.setdefault(
-        "memory_type", stored_payload.get("memory_type", "episodic")
-    )
+    stored_payload.setdefault("memory_type", stored_payload.get("memory_type", "episodic"))
     if meta:
         incoming_meta = dict(meta)
         existing_meta = stored_payload.get("meta")
@@ -421,9 +417,7 @@ def _coerce_to_retrieval_request(
         req = RetrievalRequest(query=obj, top_k=default_top_k)
         req.rerank = eff_rerank or req.rerank
         req.persist = (
-            eff_persist
-            if req.persist is None or isinstance(req.persist, bool)
-            else req.persist
+            eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
         )
         if not req.retrievers:
             req.retrievers = eff_retrievers or req.retrievers
@@ -437,9 +431,7 @@ def _coerce_to_retrieval_request(
         )
         req.rerank = eff_rerank or req.rerank
         req.persist = (
-            eff_persist
-            if req.persist is None or isinstance(req.persist, bool)
-            else req.persist
+            eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
         )
         if not req.retrievers:
             req.retrievers = eff_retrievers or req.retrievers
@@ -466,11 +458,7 @@ def _coerce_to_retrieval_request(
             top_k=tk,
             retrievers=(list(retr) if isinstance(retr, list) else default_retrievers),
             rerank=str(rk) if isinstance(rk, str) else default_rerank,
-            persist=(
-                bool(d.get("persist"))
-                if d.get("persist") is not None
-                else default_persist
-            ),
+            persist=(bool(d.get("persist")) if d.get("persist") is not None else default_persist),
             universe=str(uni) if isinstance(uni, str) else None,
             mode=str(mode) if isinstance(mode, str) else None,
             id=str(idv) if isinstance(idv, str) else None,
@@ -488,9 +476,7 @@ def _coerce_to_retrieval_request(
     req = RetrievalRequest(query=str(obj), top_k=default_top_k)
     req.rerank = eff_rerank or req.rerank
     req.persist = (
-        eff_persist
-        if req.persist is None or isinstance(req.persist, bool)
-        else req.persist
+        eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
     )
     if not req.retrievers:
         req.retrievers = eff_retrievers or req.retrievers

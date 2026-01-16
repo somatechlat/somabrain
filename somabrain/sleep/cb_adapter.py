@@ -19,17 +19,9 @@ def map_cb_to_sleep(cb, tenant_id: str, current: SleepState) -> SleepState:
     """
     try:
         if cb.is_open(tenant_id):
-            nxt = (
-                SleepState.LIGHT
-                if cb.should_attempt_reset(tenant_id)
-                else SleepState.FREEZE
-            )
+            nxt = SleepState.LIGHT if cb.should_attempt_reset(tenant_id) else SleepState.FREEZE
         else:
-            nxt = (
-                SleepState.LIGHT
-                if cb.should_attempt_reset(tenant_id)
-                else SleepState.ACTIVE
-            )
+            nxt = SleepState.LIGHT if cb.should_attempt_reset(tenant_id) else SleepState.ACTIVE
     except Exception:
         nxt = _LAST_STATE.get(tenant_id, current)
     _LAST_STATE[tenant_id] = nxt

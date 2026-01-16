@@ -213,9 +213,7 @@ def list_webhooks(
             event_types=wh.event_types,
             is_active=wh.is_active,
             secret_prefix=wh.secret[:8] + "..." if wh.secret else "",
-            last_triggered_at=(
-                wh.last_triggered_at.isoformat() if wh.last_triggered_at else None
-            ),
+            last_triggered_at=(wh.last_triggered_at.isoformat() if wh.last_triggered_at else None),
             failure_count=wh.failure_count,
             created_at=wh.created_at.isoformat(),
         )
@@ -528,9 +526,7 @@ def rotate_webhook_secret(
     }
 
 
-@router.get(
-    "/{tenant_id}/webhooks/{webhook_id}/deliveries", response=List[WebhookDeliveryOut]
-)
+@router.get("/{tenant_id}/webhooks/{webhook_id}/deliveries", response=List[WebhookDeliveryOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.WEBHOOKS_READ.value)
 def get_webhook_deliveries(

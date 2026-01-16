@@ -162,17 +162,17 @@ class GraphClient:
                     SB_GRAPH_LINK_TOTAL.labels(
                         tenant=self._tenant, link_type=link_type, status="success"
                     ).inc()
-                    SB_GRAPH_LINK_LATENCY.labels(
-                        tenant=self._tenant, link_type=link_type
-                    ).observe(duration)
+                    SB_GRAPH_LINK_LATENCY.labels(tenant=self._tenant, link_type=link_type).observe(
+                        duration
+                    )
                     return True
                 else:
                     SB_GRAPH_LINK_TOTAL.labels(
                         tenant=self._tenant, link_type=link_type, status="http_error"
                     ).inc()
-                    SB_GRAPH_LINK_LATENCY.labels(
-                        tenant=self._tenant, link_type=link_type
-                    ).observe(duration)
+                    SB_GRAPH_LINK_LATENCY.labels(tenant=self._tenant, link_type=link_type).observe(
+                        duration
+                    )
                     logger.warning(
                         "Graph link creation failed",
                         status=response.status_code,
@@ -195,9 +195,9 @@ class GraphClient:
                 SB_GRAPH_LINK_TOTAL.labels(
                     tenant=self._tenant, link_type=link_type, status="exception"
                 ).inc()
-                SB_GRAPH_LINK_LATENCY.labels(
-                    tenant=self._tenant, link_type=link_type
-                ).observe(duration)
+                SB_GRAPH_LINK_LATENCY.labels(tenant=self._tenant, link_type=link_type).observe(
+                    duration
+                )
                 span.record_exception(exc)
                 logger.error("Graph link creation exception", error=str(exc))
                 self._queue_to_outbox(
@@ -247,9 +247,7 @@ class GraphClient:
 
             if self._transport is None or self._transport.client is None:
                 logger.warning("GraphClient: transport not available for get_neighbors")
-                SB_GRAPH_NEIGHBORS_TOTAL.labels(
-                    tenant=self._tenant, status="no_transport"
-                ).inc()
+                SB_GRAPH_NEIGHBORS_TOTAL.labels(tenant=self._tenant, status="no_transport").inc()
                 return []
 
             params = {
@@ -287,20 +285,12 @@ class GraphClient:
                                 )
                             )
                     span.set_attribute("neighbors_count", len(neighbors))
-                    SB_GRAPH_NEIGHBORS_TOTAL.labels(
-                        tenant=self._tenant, status="success"
-                    ).inc()
-                    SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=self._tenant).observe(
-                        duration
-                    )
+                    SB_GRAPH_NEIGHBORS_TOTAL.labels(tenant=self._tenant, status="success").inc()
+                    SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=self._tenant).observe(duration)
                     return neighbors
                 else:
-                    SB_GRAPH_NEIGHBORS_TOTAL.labels(
-                        tenant=self._tenant, status="http_error"
-                    ).inc()
-                    SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=self._tenant).observe(
-                        duration
-                    )
+                    SB_GRAPH_NEIGHBORS_TOTAL.labels(tenant=self._tenant, status="http_error").inc()
+                    SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=self._tenant).observe(duration)
                     logger.warning(
                         "Graph neighbors query failed",
                         status=response.status_code,
@@ -309,9 +299,7 @@ class GraphClient:
                     return []
             except Exception as exc:
                 duration = time.perf_counter() - start_time
-                SB_GRAPH_NEIGHBORS_TOTAL.labels(
-                    tenant=self._tenant, status="exception"
-                ).inc()
+                SB_GRAPH_NEIGHBORS_TOTAL.labels(tenant=self._tenant, status="exception").inc()
                 SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=self._tenant).observe(duration)
                 span.record_exception(exc)
                 # B2.6: Return empty on timeout (degraded mode)
@@ -390,9 +378,7 @@ class GraphClient:
                         SB_GRAPH_PATH_TOTAL.labels(
                             tenant=self._tenant, status="success", found="true"
                         ).inc()
-                        SB_GRAPH_PATH_LATENCY.labels(tenant=self._tenant).observe(
-                            duration
-                        )
+                        SB_GRAPH_PATH_LATENCY.labels(tenant=self._tenant).observe(duration)
                         return path
                     span.set_attribute("path_found", False)
                     SB_GRAPH_PATH_TOTAL.labels(

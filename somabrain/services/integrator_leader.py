@@ -158,10 +158,7 @@ class IntegratorLeaderElection:
 
                         # Load entropy_cap
                         entropy_cap = tenant_cfg.get("entropy_cap")
-                        if (
-                            isinstance(entropy_cap, (int, float))
-                            and 0 < entropy_cap <= 1.0
-                        ):
+                        if isinstance(entropy_cap, (int, float)) and 0 < entropy_cap <= 1.0:
                             config.entropy_cap = float(entropy_cap)
 
                         # Load other settings
@@ -240,9 +237,7 @@ class IntegratorLeaderElection:
 
                 # Update metrics
                 LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="success").inc()
-                LEADER_CURRENT.labels(tenant=tenant, instance_id=self._instance_id).set(
-                    1
-                )
+                LEADER_CURRENT.labels(tenant=tenant, instance_id=self._instance_id).set(1)
                 LEADER_TENURE.labels(tenant=tenant).set(0)
 
             else:
@@ -317,9 +312,7 @@ class IntegratorLeaderElection:
             if success:
                 if tenant in self._leader_states:
                     del self._leader_states[tenant]
-                LEADER_CURRENT.labels(tenant=tenant, instance_id=self._instance_id).set(
-                    0
-                )
+                LEADER_CURRENT.labels(tenant=tenant, instance_id=self._instance_id).set(0)
                 LEADER_TENURE.labels(tenant=tenant).set(0)
 
             return success
@@ -386,10 +379,7 @@ class IntegratorLeaderElection:
 
             # Wait for next heartbeat interval
             heartbeat_interval = (
-                min(
-                    config.heartbeat_interval_seconds
-                    for config in self._configs.values()
-                )
+                min(config.heartbeat_interval_seconds for config in self._configs.values())
                 if self._configs
                 else 10
             )

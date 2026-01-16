@@ -164,9 +164,7 @@ class JWTAuth(HttpBearer):
                 return None
 
             # Build JWKS URI
-            jwks_uri = (
-                f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/certs"
-            )
+            jwks_uri = f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/certs"
 
             # Get signing key from JWKS
             try:
@@ -468,9 +466,7 @@ def require_auth(roles: list = None, any_role: bool = False):
                 if any_role:
                     # Any matching role is sufficient
                     if not any(r in user_roles for r in roles):
-                        raise HttpError(
-                            403, f"Missing required role. Need one of: {roles}"
-                        )
+                        raise HttpError(403, f"Missing required role. Need one of: {roles}")
                 else:
                     # All roles required
                     missing = [r for r in roles if r not in user_roles]
@@ -549,9 +545,7 @@ class FieldPermissionChecker:
                 self._permissions[perm.model_name] = {}
 
             # Merge permissions (OR logic - any role grants access)
-            existing = self._permissions[perm.model_name].get(
-                perm.field_name, (False, False)
-            )
+            existing = self._permissions[perm.model_name].get(perm.field_name, (False, False))
             self._permissions[perm.model_name][perm.field_name] = (
                 existing[0] or perm.can_view,
                 existing[1] or perm.can_edit,

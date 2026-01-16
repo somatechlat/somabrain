@@ -49,9 +49,7 @@ from .mt_wm import MultiTenantWM
 from .reflect import top_keywords
 
 
-def _episodics_from_wm(
-    mtwm: MultiTenantWM, tenant_id: str, limit: int = 256
-) -> List[dict]:
+def _episodics_from_wm(mtwm: MultiTenantWM, tenant_id: str, limit: int = 256) -> List[dict]:
     """Execute episodics from wm.
 
     Args:

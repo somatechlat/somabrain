@@ -83,9 +83,7 @@ class ConfigService:
 
         return await self._apply_patch("global", patch, actor, "", "")
 
-    async def patch_tenant(
-        self, tenant: str, patch: Dict[str, Any], *, actor: str
-    ) -> ConfigEvent:
+    async def patch_tenant(self, tenant: str, patch: Dict[str, Any], *, actor: str) -> ConfigEvent:
         """Execute patch tenant.
 
         Args:
@@ -148,9 +146,7 @@ class ConfigService:
         if tenant:
             merged = self._deep_merge(merged, self._tenant_layer.get(tenant, {}))
         if tenant and namespace:
-            merged = self._deep_merge(
-                merged, self._namespace_layer.get((tenant, namespace), {})
-            )
+            merged = self._deep_merge(merged, self._namespace_layer.get((tenant, namespace), {}))
         merged.setdefault("tenant", tenant)
         merged.setdefault("namespace", namespace)
         merged["version"] = self._version
@@ -232,9 +228,7 @@ class ConfigService:
             return layer, copy.deepcopy(layer)
         raise ConfigMergeError(f"unknown scope: {scope}")
 
-    def _set_layer(
-        self, scope: str, tenant: str, namespace: str, data: Dict[str, Any]
-    ) -> None:
+    def _set_layer(self, scope: str, tenant: str, namespace: str, data: Dict[str, Any]) -> None:
         """Execute set layer.
 
         Args:
@@ -262,9 +256,7 @@ class ConfigService:
 
         for key, value in patch.items():
             if isinstance(value, dict) and isinstance(base.get(key), dict):
-                base[key] = ConfigService._deep_merge(
-                    copy.deepcopy(base.get(key, {})), value
-                )
+                base[key] = ConfigService._deep_merge(copy.deepcopy(base.get(key, {})), value)
             else:
                 base[key] = copy.deepcopy(value)
         return base

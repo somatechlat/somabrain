@@ -95,9 +95,7 @@ class OpaMiddleware:
                 allowed = opa_client.evaluate(input_payload)
                 if not allowed:
                     app_metrics.OPA_DENY_TOTAL.inc()
-                    return JsonResponse(
-                        {"detail": "OPA policy denied request"}, status=403
-                    )
+                    return JsonResponse({"detail": "OPA policy denied request"}, status=403)
                 else:
                     app_metrics.OPA_ALLOW_TOTAL.inc()
                     return self.get_response(request)
@@ -124,9 +122,7 @@ class OpaMiddleware:
 
                 if not allowed:
                     app_metrics.OPA_DENY_TOTAL.inc()
-                    return JsonResponse(
-                        {"detail": "OPA policy denied request"}, status=403
-                    )
+                    return JsonResponse({"detail": "OPA policy denied request"}, status=403)
                 else:
                     app_metrics.OPA_ALLOW_TOTAL.inc()
             else:

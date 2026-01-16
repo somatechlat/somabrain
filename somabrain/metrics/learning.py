@@ -275,9 +275,7 @@ def update_learning_retrieval_weights(
     LEARNING_RETRIEVAL_TAU.labels(tenant_id=tenant_id).set(tau)
 
 
-def update_learning_utility_weights(
-    tenant_id: str, lambda_: float, mu: float, nu: float
-) -> None:
+def update_learning_utility_weights(tenant_id: str, lambda_: float, mu: float, nu: float) -> None:
     """Update per-tenant utility weight metrics."""
     LEARNING_UTILITY_LAMBDA.labels(tenant_id=tenant_id).set(lambda_)
     LEARNING_UTILITY_MU.labels(tenant_id=tenant_id).set(mu)
@@ -295,14 +293,14 @@ def update_learning_bounds(tenant_id: str, **bounds: float) -> None:
     for key, value in bounds.items():
         if key.endswith("_min"):
             component = key[:-4]
-            LEARNING_BOUND.labels(
-                tenant_id=tenant_id, component=component, bound="min"
-            ).set(float(value))
+            LEARNING_BOUND.labels(tenant_id=tenant_id, component=component, bound="min").set(
+                float(value)
+            )
         elif key.endswith("_max"):
             component = key[:-4]
-            LEARNING_BOUND.labels(
-                tenant_id=tenant_id, component=component, bound="max"
-            ).set(float(value))
+            LEARNING_BOUND.labels(tenant_id=tenant_id, component=component, bound="max").set(
+                float(value)
+            )
 
 
 def record_learning_feedback_applied(tenant_id: str) -> None:

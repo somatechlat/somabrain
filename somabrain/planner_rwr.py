@@ -223,9 +223,7 @@ def _get_graph_client(mem) -> Optional["GraphClient"]:
     return None
 
 
-def _task_key_to_coord(
-    task_key: str, mem, universe: Optional[str]
-) -> Optional[Tuple[float, ...]]:
+def _task_key_to_coord(task_key: str, mem, universe: Optional[str]) -> Optional[Tuple[float, ...]]:
     """Convert task_key to coordinate."""
     # Try parsing as coordinate string
     try:

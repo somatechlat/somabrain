@@ -76,9 +76,7 @@ class StatePredictorService:
         except Exception as e:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-    def _extract_state_vector(
-        self, message_data: Dict[str, Any]
-    ) -> Optional[np.ndarray]:
+    def _extract_state_vector(self, message_data: Dict[str, Any]) -> Optional[np.ndarray]:
         """Extract state vector from global frame message."""
         try:
             # Assuming global frame contains a 'state_vector' field
@@ -142,17 +140,13 @@ class StatePredictorService:
         latency_ms = (end_time - start_time) * 1000
 
         # Create and publish predictor update
-        update_event = self._create_predictor_update(
-            prediction_result, latency_ms, domain="state"
-        )
+        update_event = self._create_predictor_update(prediction_result, latency_ms, domain="state")
 
         try:
             encoded_message = encode(update_event, SCHEMA_NAME)
             future = self.producer.send(PUBLISH_TOPIC, encoded_message)
             future.get(timeout=5.0)  # Strict: fail if publish times out
-            logger.debug(
-                f"Published state predictor update: error={prediction_result.error:.4f}"
-            )
+            logger.debug(f"Published state predictor update: error={prediction_result.error:.4f}")
         except Exception as e:
             logger.error(f"Failed to publish predictor update: {e}")
             raise RuntimeError(f"Failed to publish predictor update: {e}")

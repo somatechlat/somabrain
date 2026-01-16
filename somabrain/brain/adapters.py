@@ -26,9 +26,7 @@ class FractalClientAdapter:
 
         self.client = client
 
-    def encode_fractal(
-        self, content: Dict[str, Any], importance: float = 1.0
-    ) -> List[Any]:
+    def encode_fractal(self, content: Dict[str, Any], importance: float = 1.0) -> List[Any]:
         """Persist content via the Memory Service.
 
         Translates the Brain's 'fractal encoding' request into a standard 'remember' call.
@@ -58,9 +56,7 @@ class FractalClientAdapter:
         # This adapts the interface without changing the Brain's logic flow yet.
         return [coord]
 
-    def retrieve_fractal(
-        self, query: Dict[str, Any], top_k: int = 3
-    ) -> List[Tuple[Any, float]]:
+    def retrieve_fractal(self, query: Dict[str, Any], top_k: int = 3) -> List[Tuple[Any, float]]:
         """Retrieve memories via the Memory Service.
 
         Translates Brain's 'retrieve_fractal' to 'recall'.

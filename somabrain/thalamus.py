@@ -72,9 +72,7 @@ class ThalamusRouter:
 
         # Compute attention level from neuromodulator state
         # High dopamine + noradrenaline + acetylcholine = high attention/focus
-        self._attention_level = min(
-            1.0, (dopamine + noradrenaline + acetylcholine) / 2.0 + 0.5
-        )
+        self._attention_level = min(1.0, (dopamine + noradrenaline + acetylcholine) / 2.0 + 0.5)
 
         # Pass through data unchanged - attention affects downstream processing
         return data

@@ -80,14 +80,10 @@ class SegmentationService:
             settings, "kafka_bootstrap_servers", None
         )
         if not bs:
-            raise RuntimeError(
-                "Kafka bootstrap servers required for segmentation_service"
-            )
+            raise RuntimeError("Kafka bootstrap servers required for segmentation_service")
         self.bootstrap = bs.replace("kafka://", "")
         if not PUBLISH_TOPIC:
-            raise RuntimeError(
-                "SegmentationService requires PUBLISH_TOPIC for segments"
-            )
+            raise RuntimeError("SegmentationService requires PUBLISH_TOPIC for segments")
         self.consumer = self._create_consumer()
         self.tenant = getattr(settings, "tenant_id", "default")
         self.producer = make_producer()
@@ -95,9 +91,7 @@ class SegmentationService:
             self._health_port = int(getattr(settings, "segment_health_port", 9016))
         except Exception:
             self._health_port = 9016
-        start_health = str(
-            getattr(settings, "segment_health_enable", "1")
-        ).strip().lower() in {
+        start_health = str(getattr(settings, "segment_health_enable", "1")).strip().lower() in {
             "1",
             "true",
             "yes",
@@ -111,12 +105,8 @@ class SegmentationService:
         else:
             self._health_thread = None
         # Runtime refresh of thresholds from settings/runtime_config
-        self._grad_thresh = float(
-            getattr(settings, "segment_grad_threshold", GRAD_THRESH)
-        )
-        self._hmm_thresh = float(
-            getattr(settings, "segment_hmm_threshold", HMM_THRESHOLD)
-        )
+        self._grad_thresh = float(getattr(settings, "segment_grad_threshold", GRAD_THRESH))
+        self._hmm_thresh = float(getattr(settings, "segment_hmm_threshold", HMM_THRESHOLD))
 
     def _create_consumer(self) -> CKConsumer:
         """Execute create consumer."""

@@ -236,11 +236,7 @@ def update_branding(
     # Update provided fields
     for field, value in data.dict(exclude_unset=True).items():
         if value is not None:
-            if (
-                isinstance(value, dict)
-                and field in branding
-                and isinstance(branding[field], dict)
-            ):
+            if isinstance(value, dict) and field in branding and isinstance(branding[field], dict):
                 branding[field].update(value)
             else:
                 branding[field] = value

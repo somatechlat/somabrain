@@ -12,9 +12,7 @@ from somabrain import metrics as M
 from somabrain.constitution import ConstitutionEngine
 
 
-def compute_utility(
-    p_confidence: float, cost: float, latency: float, const_params: dict
-) -> float:
+def compute_utility(p_confidence: float, cost: float, latency: float, const_params: dict) -> float:
     # default params
     """Execute compute utility.
 
@@ -30,11 +28,7 @@ def compute_utility(
     nu = const_params.get("nu", 0.0)
     import math
 
-    return (
-        lam * math.log(max(1e-12, p_confidence))
-        - mu * float(cost)
-        - nu * float(latency)
-    )
+    return lam * math.log(max(1e-12, p_confidence)) - mu * float(cost) - nu * float(latency)
 
 
 def _get_constitution_engine() -> Optional[ConstitutionEngine]:

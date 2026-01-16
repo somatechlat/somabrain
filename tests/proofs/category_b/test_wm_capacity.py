@@ -73,9 +73,7 @@ class TestWMCapacityAndEviction:
             wm.admit(vec, {"index": i})
 
         # Verify capacity is enforced
-        assert (
-            len(wm._items) == capacity
-        ), f"Expected {capacity} items, got {len(wm._items)}"
+        assert len(wm._items) == capacity, f"Expected {capacity} items, got {len(wm._items)}"
 
     def test_salience_based_eviction(self) -> None:
         """B1.1: Salience-based eviction removes lowest salience items.
@@ -95,9 +93,7 @@ class TestWMCapacityAndEviction:
             wm.admit(vec, {"index": i})
 
         # Verify capacity is maintained
-        assert (
-            len(wm._items) == capacity
-        ), f"Expected {capacity} items, got {len(wm._items)}"
+        assert len(wm._items) == capacity, f"Expected {capacity} items, got {len(wm._items)}"
 
         # The most recent items should generally be retained due to recency boost
         # The exact items retained depend on the salience calculation
@@ -107,9 +103,7 @@ class TestWMCapacityAndEviction:
         assert 4 in indices, f"Most recent item (4) should be retained, got {indices}"
 
         # Second most recent (3) should also likely be retained
-        assert (
-            3 in indices
-        ), f"Second most recent item (3) should be retained, got {indices}"
+        assert 3 in indices, f"Second most recent item (3) should be retained, got {indices}"
 
     def test_recency_set_on_admission(self) -> None:
         """B1.2: Recency score is set on admission.
@@ -199,25 +193,19 @@ class TestWMCapacityAndEviction:
         # Empty WM should have max novelty
         vec1 = make_random_vector(128, seed=1)
         novelty_empty = wm.novelty(vec1)
-        assert (
-            novelty_empty == 1.0
-        ), f"Empty WM should have novelty=1.0, got {novelty_empty}"
+        assert novelty_empty == 1.0, f"Empty WM should have novelty=1.0, got {novelty_empty}"
 
         # Add the vector
         wm.admit(vec1, {"test": 1})
 
         # Same vector should have low novelty
         novelty_same = wm.novelty(vec1)
-        assert (
-            novelty_same < 0.1
-        ), f"Same vector should have low novelty, got {novelty_same}"
+        assert novelty_same < 0.1, f"Same vector should have low novelty, got {novelty_same}"
 
         # Different vector should have higher novelty
         vec2 = make_random_vector(128, seed=999)
         novelty_diff = wm.novelty(vec2)
-        assert (
-            novelty_diff > novelty_same
-        ), "Different vector should have higher novelty"
+        assert novelty_diff > novelty_same, "Different vector should have higher novelty"
 
     def test_dimension_normalization_padding(self) -> None:
         """Vectors shorter than dim are padded.
@@ -298,9 +286,7 @@ class TestWMPropertyBased:
             vec = np.random.randn(64).astype(np.float32)
             wm.admit(vec, {"i": i})
 
-        assert (
-            len(wm._items) <= capacity
-        ), f"WM exceeded capacity: {len(wm._items)} > {capacity}"
+        assert len(wm._items) <= capacity, f"WM exceeded capacity: {len(wm._items)} > {capacity}"
 
     @given(st.integers(min_value=1, max_value=50))
     @settings(max_examples=20, deadline=None)
@@ -322,9 +308,7 @@ class TestWMPropertyBased:
         query = np.random.randn(64).astype(np.float32)
         results = wm.recall(query, top_k=top_k)
 
-        assert (
-            len(results) <= top_k
-        ), f"Recall returned more than top_k: {len(results)} > {top_k}"
+        assert len(results) <= top_k, f"Recall returned more than top_k: {len(results)} > {top_k}"
 
     @given(st.integers(min_value=1, max_value=100))
     @settings(max_examples=20, deadline=None)
@@ -376,9 +360,7 @@ class TestRecencyDecay:
 
         # Initial recency should be 1.0
         initial_recency = wm.get_item_recency("test_item")
-        assert (
-            initial_recency == 1.0
-        ), f"Initial recency should be 1.0, got {initial_recency}"
+        assert initial_recency == 1.0, f"Initial recency should be 1.0, got {initial_recency}"
 
         # Apply decay for 1 second
         wm.decay_recency(elapsed_seconds=1.0)
@@ -557,6 +539,4 @@ class TestDuplicateHandling:
             wm.admit("same_id", vec, {"iteration": i})
 
         # Should only have 1 item
-        assert (
-            len(wm._items) == 1
-        ), f"Should have 1 item after {num_duplicates} duplicates"
+        assert len(wm._items) == 1, f"Should have 1 item after {num_duplicates} duplicates"

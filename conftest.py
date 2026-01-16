@@ -28,9 +28,7 @@ os.environ.setdefault(
     "SOMABRAIN_MEMORY_HTTP_TOKEN", os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
 )
 os.environ.setdefault("SOMABRAIN_API_URL", "http://localhost:30101")
-os.environ.setdefault(
-    "TEST_PG_DSN", "postgresql://soma:soma_pass@localhost:30106/somabrain"
-)
+os.environ.setdefault("TEST_PG_DSN", "postgresql://soma:soma_pass@localhost:30106/somabrain")
 os.environ.setdefault("DATABASE_URL", os.environ["TEST_PG_DSN"])
 os.environ.setdefault("SOMABRAIN_POSTGRES_DSN", os.environ["TEST_PG_DSN"])
 try:

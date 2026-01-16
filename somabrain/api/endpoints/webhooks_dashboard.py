@@ -170,9 +170,7 @@ def list_webhook_configs(
             url=c.get("url", ""),
             events=c.get("events", []),
             is_active=c.get("is_active", True),
-            secret_masked=(
-                "****" + c.get("secret", "")[-4:] if c.get("secret") else "****"
-            ),
+            secret_masked=("****" + c.get("secret", "")[-4:] if c.get("secret") else "****"),
             created_at=c.get("created_at", ""),
         )
         for c in configs
@@ -201,9 +199,7 @@ def create_webhook_config(
             raise HttpError(403, "Access denied")
 
     config_id = str(uuid4())
-    secret = hashlib.sha256(
-        f"{config_id}:{timezone.now().isoformat()}".encode()
-    ).hexdigest()[:32]
+    secret = hashlib.sha256(f"{config_id}:{timezone.now().isoformat()}".encode()).hexdigest()[:32]
 
     config = {
         "id": config_id,

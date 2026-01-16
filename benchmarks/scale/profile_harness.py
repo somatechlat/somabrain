@@ -36,9 +36,7 @@ def profile_benchmark():
     ps = pstats.Stats(pr, stream=s).sort_stats("cumulative")
     ps.print_stats(20)
     print(f"--- CPU Profile (top 20 cumulative) ---\n{s.getvalue()}")
-    print(
-        f"--- Memory usage: current={current / 1e6:.2f}MB, peak={peak / 1e6:.2f}MB ---"
-    )
+    print(f"--- Memory usage: current={current / 1e6:.2f}MB, peak={peak / 1e6:.2f}MB ---")
     print(f"--- Wall time: {t1 - t0:.2f}s ---")
 
 

@@ -80,7 +80,5 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
     except Exception:
         # If the option manager cannot be imported (e.g., missing cfg), fallback to empty list.
         options = []
-    sorted_opts = sorted(
-        options, key=lambda o: getattr(o, "utility", 0.0), reverse=True
-    )
+    sorted_opts = sorted(options, key=lambda o: getattr(o, "utility", 0.0), reverse=True)
     return [opt.option_id for opt in sorted_opts[:limit]]

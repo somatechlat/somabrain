@@ -62,8 +62,6 @@ def update_policy(request: HttpRequest):
                 "OPA reload failed – continuing without error"
             )
     except Exception:
-        logging.getLogger("somabrain.opa").exception(
-            "Exception during OPA reload – ignoring"
-        )
+        logging.getLogger("somabrain.opa").exception("Exception during OPA reload – ignoring")
 
     return {"detail": "OPA policy updated and reloaded", "signature": sig}

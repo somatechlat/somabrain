@@ -209,9 +209,7 @@ class TestGraphAugmentedRecall:
                 "strength": link_strength,
             }
             response = client.post("/graph/link", json=body, headers=headers)
-            assert (
-                response.status_code == 200
-            ), f"Failed to create link: {response.text}"
+            assert response.status_code == 200, f"Failed to create link: {response.text}"
 
             # Query neighbors of A to verify link exists
             params = {
@@ -275,9 +273,7 @@ class TestGraphAugmentedRecall:
 
         # Verify B's score was boosted
         # Expected boost: link_strength × graph_boost_factor
-        b_hit = next(
-            (h for h in boosted_hits if h.payload.get("content") == "Memory B"), None
-        )
+        b_hit = next((h for h in boosted_hits if h.payload.get("content") == "Memory B"), None)
         assert b_hit is not None, "Memory B should be in results"
 
         # B should have received a boost (exact value depends on link strength)

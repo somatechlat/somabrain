@@ -21,12 +21,8 @@ def get_runtime():
 
     # Assuming runtime.py is in somabrain root
     # __file__ is somabrain/health/helpers.py, so up 2 levels
-    _runtime_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "somabrain.runtime_module", _runtime_path
-    )
+    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
+    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -154,12 +150,8 @@ def milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
             return None
 
     return {
-        "search_latency_p95_seconds": _read(
-            M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id
-        ),
-        "ingest_latency_p95_seconds": _read(
-            M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id
-        ),
+        "search_latency_p95_seconds": _read(M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id),
+        "ingest_latency_p95_seconds": _read(M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id),
         "segment_load": _read(
             M.MILVUS_SEGMENT_LOAD,
             collection=getattr(settings, "SOMABRAIN_MILVUS_COLLECTION", "oak_options"),

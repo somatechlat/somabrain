@@ -129,9 +129,7 @@ def decode_jwt_token(token: str) -> Optional[dict]:
 # =============================================================================
 
 
-@router.post(
-    "/login", response={200: TokenResponse, 401: ErrorResponse, 429: ErrorResponse}
-)
+@router.post("/login", response={200: TokenResponse, 401: ErrorResponse, 429: ErrorResponse})
 def login(request, data: LoginRequest):
     """
     Authenticate with email and password.
@@ -146,9 +144,7 @@ def login(request, data: LoginRequest):
     from django.core.cache import cache
 
     # VIBE COMPLIANT: Real rate limiting using Django cache
-    client_ip = request.META.get(
-        "HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", "")
-    )
+    client_ip = request.META.get("HTTP_X_FORWARDED_FOR", request.META.get("REMOTE_ADDR", ""))
     if client_ip:
         client_ip = client_ip.split(",")[0].strip()
 
@@ -196,9 +192,7 @@ def login(request, data: LoginRequest):
 
         # Try TenantUser model
         try:
-            tenant_user = TenantUser.objects.select_related("tenant").get(
-                email=data.email
-            )
+            tenant_user = TenantUser.objects.select_related("tenant").get(email=data.email)
 
             # For TenantUser, check password hash
             if not tenant_user.password_hash:
@@ -260,9 +254,7 @@ async def oauth_callback(request, data: OAuthCallbackRequest):
     try:
         # Exchange code with Keycloak
         if keycloak_url:
-            token_url = (
-                f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/token"
-            )
+            token_url = f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/token"
 
             async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
                 response = await client.post(
@@ -278,14 +270,14 @@ async def oauth_callback(request, data: OAuthCallbackRequest):
 
                 if response.status_code != 200:
                     logger.error(f"Keycloak token exchange failed: {response.text}")
-                    raise HttpError(
-                        400, f"Token exchange failed: {response.status_code}"
-                    )
+                    raise HttpError(400, f"Token exchange failed: {response.status_code}")
 
                 tokens = response.json()
 
                 # Get user info
-                userinfo_url = f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/userinfo"
+                userinfo_url = (
+                    f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/userinfo"
+                )
                 userinfo_response = await client.get(
                     userinfo_url,
                     headers={"Authorization": f"Bearer {tokens['access_token']}"},
@@ -300,9 +292,7 @@ async def oauth_callback(request, data: OAuthCallbackRequest):
                     "id": user_info.get("sub", ""),
                     "email": user_info.get("email", ""),
                     "name": user_info.get("name", ""),
-                    "roles": user_info.get("realm_access", {}).get(
-                        "roles", ["tenant-admin"]
-                    ),
+                    "roles": user_info.get("realm_access", {}).get("roles", ["tenant-admin"]),
                     "tenant_id": user_info.get("tenant_id"),
                 }
 

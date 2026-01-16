@@ -82,9 +82,7 @@ async def post_remember(client: httpx.AsyncClient, i: int):
     hdrs = dict(HEADERS)
     hdrs["X-Request-ID"] = rid
     try:
-        r = await client.post(
-            "/memory/remember", json=body, headers=hdrs, timeout=bench_timeout
-        )
+        r = await client.post("/memory/remember", json=body, headers=hdrs, timeout=bench_timeout)
         elapsed = (time.perf_counter() - start) * 1000.0
         return (i, rid, r.status_code, r.text[:200], elapsed)
     except Exception as e:

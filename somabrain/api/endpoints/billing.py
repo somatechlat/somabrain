@@ -206,9 +206,7 @@ def list_subscription_tiers(request):
     Public endpoint - no auth required.
     Returns active tiers sorted by price.
     """
-    return list(
-        SubscriptionTier.objects.filter(is_active=True).order_by("price_monthly")
-    )
+    return list(SubscriptionTier.objects.filter(is_active=True).order_by("price_monthly"))
 
 
 @router.get("/tiers/{tier_id}", response=SubscriptionTierOut)
@@ -356,9 +354,7 @@ def change_subscription_plan(
     new_tier = get_object_or_404(SubscriptionTier, id=data.new_tier_id, is_active=True)
 
     subscription = (
-        Subscription.objects.filter(tenant=tenant, status="active")
-        .select_related("tier")
-        .first()
+        Subscription.objects.filter(tenant=tenant, status="active").select_related("tier").first()
     )
 
     if not subscription:
@@ -500,9 +496,7 @@ def get_usage_history(
 
             raise HttpError(403, "Access denied")
 
-    records = UsageRecord.objects.filter(tenant_id=tenant_id).order_by("-recorded_at")[
-        :limit
-    ]
+    records = UsageRecord.objects.filter(tenant_id=tenant_id).order_by("-recorded_at")[:limit]
 
     return list(records)
 

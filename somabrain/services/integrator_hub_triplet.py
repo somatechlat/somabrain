@@ -51,12 +51,8 @@ def _load_schema(path: str):
 
 
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SCHEMA_PREDICTOR_UPDATE = _load_schema(
-    os.path.join(_ROOT, "proto", "cog", "predictor_update.avsc")
-)
-SCHEMA_GLOBAL_FRAME = _load_schema(
-    os.path.join(_ROOT, "proto", "cog", "global_frame.avsc")
-)
+SCHEMA_PREDICTOR_UPDATE = _load_schema(os.path.join(_ROOT, "proto", "cog", "predictor_update.avsc"))
+SCHEMA_GLOBAL_FRAME = _load_schema(os.path.join(_ROOT, "proto", "cog", "global_frame.avsc"))
 
 # Metrics
 INTEGRATOR_LEADER = metrics.get_counter(
@@ -106,9 +102,7 @@ class IntegratorHub:
             alpha = getattr(ss, "SOMABRAIN_PREDICTOR_ALPHA", 2.0)
         self.alpha = float(alpha)
         self.domains = domains or ["state", "agent", "action"]
-        self._initial_temperature = float(
-            getattr(ss, "SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
-        )
+        self._initial_temperature = float(getattr(ss, "SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0))
         self._initial_enable_flag = bool(getattr(ss, "ENABLE_COG_THREADS", False))
         self._initial_opa_url = (getattr(ss, "SOMABRAIN_OPA_URL", "") or "").strip()
         # Determine Kafka bootstrap configuration. If external backends are not required,
@@ -124,9 +118,7 @@ class IntegratorHub:
         self.topic_updates = topic_updates or {
             "state": getattr(ss, "SOMABRAIN_TOPIC_STATE_UPDATES", "cog.state.updates"),
             "agent": getattr(ss, "SOMABRAIN_TOPIC_AGENT_UPDATES", "cog.agent.updates"),
-            "action": getattr(
-                ss, "SOMABRAIN_TOPIC_ACTION_UPDATES", "cog.action.updates"
-            ),
+            "action": getattr(ss, "SOMABRAIN_TOPIC_ACTION_UPDATES", "cog.action.updates"),
         }
         self.topic_global = topic_global or getattr(
             ss, "SOMABRAIN_TOPIC_GLOBAL_FRAME", "cog.global.frame"
@@ -226,13 +218,9 @@ class IntegratorHub:
         """Load current config from Django settings."""
         ss = settings
         alpha = float(getattr(ss, "SOMABRAIN_PREDICTOR_ALPHA", self.alpha))
-        temp = float(
-            getattr(ss, "SOMABRAIN_INTEGRATOR_TEMPERATURE", self._initial_temperature)
-        )
+        temp = float(getattr(ss, "SOMABRAIN_INTEGRATOR_TEMPERATURE", self._initial_temperature))
         flag = bool(getattr(ss, "ENABLE_COG_THREADS", self._initial_enable_flag))
-        opa_url = (
-            getattr(ss, "SOMABRAIN_OPA_URL", self._initial_opa_url) or ""
-        ).strip()
+        opa_url = (getattr(ss, "SOMABRAIN_OPA_URL", self._initial_opa_url) or "").strip()
         return {"alpha": alpha, "temperature": temp, "enable": flag, "opa_url": opa_url}
 
     def _select_leader(self) -> Optional[str]:
@@ -335,9 +323,7 @@ class IntegratorHub:
         opa_url = cfg["opa_url"]
         if opa_url:
             try:
-                if not self._opa_request(
-                    opa_url, {"leader": leader, "weights": weights}
-                ):
+                if not self._opa_request(opa_url, {"leader": leader, "weights": weights}):
                     INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                     return
             except Exception as exc:

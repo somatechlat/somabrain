@@ -38,9 +38,7 @@ class AuthClient:
         resp.raise_for_status()
         return resp.json()
 
-    def issue_service_token(
-        self, subject: str, scopes: Optional[list[str]] = None
-    ) -> str:
+    def issue_service_token(self, subject: str, scopes: Optional[list[str]] = None) -> str:
         """Execute issue service token.
 
         Args:
@@ -48,9 +46,7 @@ class AuthClient:
             scopes: The scopes.
         """
 
-        resp = self._client.post(
-            "/token", json={"subject": subject, "scopes": scopes or []}
-        )
+        resp = self._client.post("/token", json={"subject": subject, "scopes": scopes or []})
         resp.raise_for_status()
         payload = resp.json()
         token = payload.get("token")

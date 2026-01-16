@@ -36,40 +36,24 @@ class FeatureFlags:
     def get_status(cls) -> Dict[str, bool]:
         """Return the current status of all feature flags."""
         return {
-            "minimal_public_api": getattr(
-                settings, "SOMABRAIN_MINIMAL_PUBLIC_API", False
-            ),
+            "minimal_public_api": getattr(settings, "SOMABRAIN_MINIMAL_PUBLIC_API", False),
             "allow_anonymous_tenants": getattr(
                 settings, "SOMABRAIN_ALLOW_ANONYMOUS_TENANTS", False
             ),
             "kill_switch": getattr(settings, "SOMABRAIN_KILL_SWITCH", False),
-            "allow_tiny_embedder": getattr(
-                settings, "SOMABRAIN_ALLOW_TINY_EMBEDDER", False
-            ),
+            "allow_tiny_embedder": getattr(settings, "SOMABRAIN_ALLOW_TINY_EMBEDDER", False),
             "enable_cog_threads": getattr(settings, "ENABLE_COG_THREADS", False),
             "enable_sleep": getattr(settings, "SOMABRAIN_ENABLE_SLEEP", True),
-            "consolidation_enabled": getattr(
-                settings, "SOMABRAIN_CONSOLIDATION_ENABLED", True
-            ),
+            "consolidation_enabled": getattr(settings, "SOMABRAIN_CONSOLIDATION_ENABLED", True),
             "use_planner": getattr(settings, "SOMABRAIN_USE_PLANNER", False),
             "use_focus_state": getattr(settings, "SOMABRAIN_USE_FOCUS_STATE", True),
-            "use_microcircuits": getattr(
-                settings, "SOMABRAIN_USE_MICROCIRCUITS", False
-            ),
+            "use_microcircuits": getattr(settings, "SOMABRAIN_USE_MICROCIRCUITS", False),
             "use_hrr": getattr(settings, "SOMABRAIN_USE_HRR", False),
             "use_meta_brain": getattr(settings, "SOMABRAIN_USE_META_BRAIN", False),
-            "use_exec_controller": getattr(
-                settings, "SOMABRAIN_USE_EXEC_CONTROLLER", False
-            ),
-            "use_drift_monitor": getattr(
-                settings, "SOMABRAIN_USE_DRIFT_MONITOR", False
-            ),
-            "use_sdr_prefilter": getattr(
-                settings, "SOMABRAIN_USE_SDR_PREFILTER", False
-            ),
-            "use_graph_augment": getattr(
-                settings, "SOMABRAIN_USE_GRAPH_AUGMENT", False
-            ),
+            "use_exec_controller": getattr(settings, "SOMABRAIN_USE_EXEC_CONTROLLER", False),
+            "use_drift_monitor": getattr(settings, "SOMABRAIN_USE_DRIFT_MONITOR", False),
+            "use_sdr_prefilter": getattr(settings, "SOMABRAIN_USE_SDR_PREFILTER", False),
+            "use_graph_augment": getattr(settings, "SOMABRAIN_USE_GRAPH_AUGMENT", False),
         }
 
     @classmethod

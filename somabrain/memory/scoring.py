@@ -283,13 +283,9 @@ def apply_weighting_to_hits(hits: List[RecallHit]) -> None:
     quality_exp = 1.0
     if settings is not None:
         try:
-            weighting_enabled = bool(
-                getattr(settings, "SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
-            )
+            weighting_enabled = bool(getattr(settings, "SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False))
             priors_env = getattr(settings, "SOMABRAIN_MEMORY_PHASE_PRIORS", "") or ""
-            quality_exp = float(
-                getattr(settings, "SOMABRAIN_MEMORY_QUALITY_EXP", 1.0) or 1.0
-            )
+            quality_exp = float(getattr(settings, "SOMABRAIN_MEMORY_QUALITY_EXP", 1.0) or 1.0)
         except Exception:
             weighting_enabled = False
     else:
@@ -297,13 +293,9 @@ def apply_weighting_to_hits(hits: List[RecallHit]) -> None:
         try:
             from django.conf import settings as _settings
 
-            weighting_enabled = bool(
-                getattr(_settings, "SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
-            )
+            weighting_enabled = bool(getattr(_settings, "SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False))
             priors_env = getattr(_settings, "SOMABRAIN_MEMORY_PHASE_PRIORS", "") or ""
-            quality_exp = float(
-                getattr(_settings, "SOMABRAIN_MEMORY_QUALITY_EXP", 1.0) or 1.0
-            )
+            quality_exp = float(getattr(_settings, "SOMABRAIN_MEMORY_QUALITY_EXP", 1.0) or 1.0)
         except Exception:
             weighting_enabled = False
     if not weighting_enabled:
@@ -403,9 +395,7 @@ def rescore_and_rank_hits(
                     if ts_epoch is not None:
                         break
             if ts_epoch is not None:
-                recency_steps, recency_boost = compute_recency_features(
-                    ts_epoch, now_ts, cfg
-                )
+                recency_steps, recency_boost = compute_recency_features(ts_epoch, now_ts, cfg)
 
             new_score = scorer.score(
                 query_vec,

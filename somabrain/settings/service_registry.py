@@ -17,9 +17,7 @@ class ServiceEndpoint:
     required: bool = True
     health_check: Optional[str] = None
 
-    def get_url(
-        self, environment: str = "development", host: Optional[str] = None
-    ) -> str:
+    def get_url(self, environment: str = "development", host: Optional[str] = None) -> str:
         """Resolve service URL from environment or defaults."""
         url = os.environ.get(self.env_var)
         if url:

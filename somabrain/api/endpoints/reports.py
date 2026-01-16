@@ -225,9 +225,7 @@ def get_tenant_summary(
     keys = APIKey.objects.filter(tenant=tenant).count()
 
     # API calls this month
-    month_start = timezone.now().replace(
-        day=1, hour=0, minute=0, second=0, microsecond=0
-    )
+    month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     api_calls = (
         UsageRecord.objects.filter(
             tenant=tenant,
@@ -285,9 +283,7 @@ def export_usage_data(
     if format == "csv":
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow(
-            ["timestamp", "metric_name", "quantity", "api_key_id", "user_id"]
-        )
+        writer.writerow(["timestamp", "metric_name", "quantity", "api_key_id", "user_id"])
 
         for r in records:
             writer.writerow(
@@ -301,9 +297,7 @@ def export_usage_data(
             )
 
         response = HttpResponse(output.getvalue(), content_type="text/csv")
-        response["Content-Disposition"] = (
-            f'attachment; filename="usage_{tenant_id}_{days}d.csv"'
-        )
+        response["Content-Disposition"] = f'attachment; filename="usage_{tenant_id}_{days}d.csv"'
         return response
 
     # JSON
@@ -367,15 +361,12 @@ def get_platform_report(
     # Revenue estimate (from subscriptions)
     subscriptions = Subscription.objects.filter(status="active").select_related("tier")
     revenue = sum(
-        float(s.tier.price_monthly) if s.tier and s.tier.price_monthly else 0
-        for s in subscriptions
+        float(s.tier.price_monthly) if s.tier and s.tier.price_monthly else 0 for s in subscriptions
     )
 
     # Tier distribution
     tier_dist = dict(
-        Tenant.objects.values("tier")
-        .annotate(count=Count("id"))
-        .values_list("tier", "count")
+        Tenant.objects.values("tier").annotate(count=Count("id")).values_list("tier", "count")
     )
 
     # Growth metrics
@@ -389,9 +380,7 @@ def get_platform_report(
     growth = {
         "new_tenants": new_tenants,
         "previous_period_tenants": prev_new_tenants,
-        "growth_rate": round(
-            (new_tenants - prev_new_tenants) / max(prev_new_tenants, 1) * 100, 2
-        ),
+        "growth_rate": round((new_tenants - prev_new_tenants) / max(prev_new_tenants, 1) * 100, 2),
     }
 
     return PlatformReportOut(
@@ -438,9 +427,7 @@ def list_tenant_reports(
         users = TenantUser.objects.filter(tenant=tenant).count()
         keys = APIKey.objects.filter(tenant=tenant).count()
 
-        month_start = timezone.now().replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
-        )
+        month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         api_calls = (
             UsageRecord.objects.filter(
                 tenant=tenant,
@@ -450,9 +437,7 @@ def list_tenant_reports(
             or 0
         )
 
-        last_audit = (
-            AuditLog.objects.filter(tenant=tenant).order_by("-timestamp").first()
-        )
+        last_audit = AuditLog.objects.filter(tenant=tenant).order_by("-timestamp").first()
 
         reports.append(
             TenantReportOut(

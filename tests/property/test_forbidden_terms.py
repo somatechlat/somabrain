@@ -47,9 +47,7 @@ def _prod_files() -> list[Path]:
     """Execute prod files."""
 
     root = Path(__file__).resolve().parents[2]  # repo root
-    return [
-        p for p in root.joinpath("somabrain").rglob("*.py") if "tests" not in p.parts
-    ]
+    return [p for p in root.joinpath("somabrain").rglob("*.py") if "tests" not in p.parts]
 
 
 def _comment_and_docstring_tokens(path: Path) -> list[str]:
@@ -106,6 +104,4 @@ def test_all_files_checked() -> None:
             failures[str(path)] = hits
     if failures:
         summary = "; ".join(f"{p}: {len(v)} hits" for p, v in failures.items())
-        pytest.fail(
-            f"Forbidden terms present in production comments/docstrings: {summary}"
-        )
+        pytest.fail(f"Forbidden terms present in production comments/docstrings: {summary}")

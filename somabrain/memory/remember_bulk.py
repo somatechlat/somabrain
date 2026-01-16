@@ -78,9 +78,7 @@ def remember_bulk_optimized(
     for chunk_idx, chunk in enumerate(chunks):
         chunk_rid = f"{rid}:chunk{chunk_idx}"
         try:
-            prepared, universes, coords, _, namespace = prepare_bulk_items_fn(
-                cfg, chunk
-            )
+            prepared, universes, coords, _, namespace = prepare_bulk_items_fn(cfg, chunk)
             if not prepared:
                 for i in range(len(chunk)):
                     failed_indices.append(current_index + i)
@@ -104,9 +102,7 @@ def remember_bulk_optimized(
             success, status, response = store_bulk_http_sync_fn(batch_payload, headers)
 
             if success and response is not None:
-                chunk_coords = process_bulk_response_fn(
-                    response, prepared, coords, chunk_rid
-                )
+                chunk_coords = process_bulk_response_fn(response, prepared, coords, chunk_rid)
                 all_coords.extend(chunk_coords)
                 succeeded_count += len(chunk)
             elif status in (404, 405):

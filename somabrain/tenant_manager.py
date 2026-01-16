@@ -55,9 +55,7 @@ class TenantManager:
             self._system_tenant_ids[tenant.display_name.lower()] = tenant.tenant_id
 
         self._initialized = True
-        logger.info(
-            "Tenant manager initialized with %d system tenants", len(system_tenants)
-        )
+        logger.info("Tenant manager initialized with %d system tenants", len(system_tenants))
 
     async def resolve_tenant_from_request(self, request: HttpRequest) -> str:
         """Resolve tenant ID from HTTP request with fallback chain."""
@@ -187,9 +185,7 @@ class TenantManager:
             expires_at=expires_at,
         )
 
-    async def update_tenant_config(
-        self, tenant_id: str, config: Dict[str, Any]
-    ) -> bool:
+    async def update_tenant_config(self, tenant_id: str, config: Dict[str, Any]) -> bool:
         """Update tenant-specific configuration."""
         if not self._initialized:
             await self.initialize()
@@ -210,30 +206,22 @@ class TenantManager:
 
         return True
 
-    async def suspend_tenant(
-        self, tenant_id: str, reason: str = "Administrative action"
-    ) -> bool:
+    async def suspend_tenant(self, tenant_id: str, reason: str = "Administrative action") -> bool:
         """Suspend a tenant."""
-        return await self.registry.update_tenant_status(
-            tenant_id, TenantStatus.SUSPENDED
-        )
+        return await self.registry.update_tenant_status(tenant_id, TenantStatus.SUSPENDED)
 
     async def activate_tenant(self, tenant_id: str) -> bool:
         """Activate a suspended tenant."""
         return await self.registry.update_tenant_status(tenant_id, TenantStatus.ACTIVE)
 
-    async def disable_tenant(
-        self, tenant_id: str, reason: str = "Violation of terms"
-    ) -> bool:
+    async def disable_tenant(self, tenant_id: str, reason: str = "Violation of terms") -> bool:
         """Disable a tenant permanently."""
         metadata = await self.registry.get_tenant(tenant_id)
         if metadata and metadata.tier == TenantTier.SYSTEM:
             logger.warning("Cannot disable system tenant: %s", tenant_id)
             return False
 
-        return await self.registry.update_tenant_status(
-            tenant_id, TenantStatus.DISABLED
-        )
+        return await self.registry.update_tenant_status(tenant_id, TenantStatus.DISABLED)
 
     async def delete_tenant(self, tenant_id: str) -> bool:
         """Delete a tenant."""

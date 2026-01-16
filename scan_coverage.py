@@ -29,14 +29,10 @@ def check_file(filepath):
             if node.name.startswith("_") and node.name != "__init__":
                 continue  # Skip private methods (optional, but good for noise reduction if strictly public APIs)
             if not ast.get_docstring(node):
-                missing.append(
-                    (node.lineno, f"Function '{node.name}'", "Missing docstring")
-                )
+                missing.append((node.lineno, f"Function '{node.name}'", "Missing docstring"))
         elif isinstance(node, ast.ClassDef):
             if not ast.get_docstring(node):
-                missing.append(
-                    (node.lineno, f"Class '{node.name}'", "Missing docstring")
-                )
+                missing.append((node.lineno, f"Class '{node.name}'", "Missing docstring"))
 
     return missing
 
