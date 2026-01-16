@@ -81,14 +81,20 @@ class Command(BaseCommand):
 
         if dry_run:
             self._print_config(realm_config)
-            self.stdout.write(self.style.SUCCESS("\n✅ Dry run complete - no changes made"))
+            self.stdout.write(
+                self.style.SUCCESS("\n✅ Dry run complete - no changes made")
+            )
             return
 
         # Apply configuration via Keycloak Admin API
         try:
-            self._apply_config(keycloak_url, admin_user, admin_password, realm_config, force)
+            self._apply_config(
+                keycloak_url, admin_user, admin_password, realm_config, force
+            )
             self.stdout.write(
-                self.style.SUCCESS(f"\n✅ Realm '{realm_name}' configured successfully!")
+                self.style.SUCCESS(
+                    f"\n✅ Realm '{realm_name}' configured successfully!"
+                )
             )
         except Exception as e:
             raise CommandError(f"Failed to configure realm: {e}")
@@ -346,7 +352,9 @@ class Command(BaseCommand):
             for idp in config["identityProviders"]:
                 self.stdout.write(f"  • {idp['displayName']} ({idp['alias']})")
         else:
-            self.stdout.write("\n⚠️  No identity providers configured (set GOOGLE_OAUTH_CLIENT_ID)")
+            self.stdout.write(
+                "\n⚠️  No identity providers configured (set GOOGLE_OAUTH_CLIENT_ID)"
+            )
 
     def _apply_config(
         self,

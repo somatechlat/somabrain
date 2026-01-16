@@ -37,7 +37,9 @@ class RoadmapComplianceVerifier:
 
         # Verify vector normalization
         normalized = test_vector / norm
-        assert abs(np.linalg.norm(normalized) - 1.0) < 1e-6, "Vector normalization failed"
+        assert (
+            abs(np.linalg.norm(normalized) - 1.0) < 1e-6
+        ), "Vector normalization failed"
 
         print("✅ BHDC foundations verified")
         return True
@@ -58,13 +60,17 @@ class RoadmapComplianceVerifier:
 
         # Calculate weights: w_d = softmax(-α * e_norm_d)
         alpha = 2.0
-        exp_weights = {d: math.exp(-alpha * e_norm) for d, e_norm in normalized_errors.items()}
+        exp_weights = {
+            d: math.exp(-alpha * e_norm) for d, e_norm in normalized_errors.items()
+        }
         weights_sum = sum(exp_weights.values())
         final_weights = {d: w / weights_sum for d, w in exp_weights.items()}
 
         # Verify weights sum to 1
         assert abs(sum(final_weights.values()) - 1.0) < 1e-6, "Weights don't sum to 1"
-        assert all(0 <= w <= 1 for w in final_weights.values()), "Weight bounds violated"
+        assert all(
+            0 <= w <= 1 for w in final_weights.values()
+        ), "Weight bounds violated"
 
         print("✅ Fusion normalization verified")
         return True
@@ -97,7 +103,9 @@ class RoadmapComplianceVerifier:
         assert 0 <= ece <= 1, f"ECE {ece} out of bounds"
 
         # Test Brier score
-        brier_score = np.mean([(pred - actual) ** 2 for pred, actual in zip(predictions, actuals)])
+        brier_score = np.mean(
+            [(pred - actual) ** 2 for pred, actual in zip(predictions, actuals)]
+        )
         assert 0 <= brier_score <= 1, f"Brier score {brier_score} out of bounds"
 
         print("✅ Calibration pipeline verified")
@@ -144,7 +152,9 @@ class RoadmapComplianceVerifier:
         q = {"A": 0.3, "B": 0.4, "C": 0.3}
 
         # Calculate JSD
-        m = {k: 0.5 * (p.get(k, 0) + q.get(k, 0)) for k in set(p.keys()) | set(q.keys())}
+        m = {
+            k: 0.5 * (p.get(k, 0) + q.get(k, 0)) for k in set(p.keys()) | set(q.keys())
+        }
 
         def kl_divergence(d1, d2):
             """Execute kl divergence.

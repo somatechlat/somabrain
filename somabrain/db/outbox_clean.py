@@ -56,7 +56,9 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
 
 
 @transaction.atomic
-def mark_tenant_events_for_replay(tenant_id: str, limit: int = 100, status: str = "failed") -> int:
+def mark_tenant_events_for_replay(
+    tenant_id: str, limit: int = 100, status: str = "failed"
+) -> int:
     """Mark events for a specific tenant for replay.
 
     Args:
@@ -73,9 +75,9 @@ def mark_tenant_events_for_replay(tenant_id: str, limit: int = 100, status: str 
     limit = max(1, min(int(limit), 1000))
 
     events = list(
-        OutboxEvent.objects.filter(tenant_id=tenant_id, status=status).order_by("created_at")[
-            :limit
-        ]
+        OutboxEvent.objects.filter(tenant_id=tenant_id, status=status).order_by(
+            "created_at"
+        )[:limit]
     )
 
     count = 0
@@ -132,7 +134,9 @@ def list_tenant_events(
 def get_failed_counts_by_tenant() -> Dict[str, int]:
     """Get failed event counts per tenant."""
     counts = (
-        OutboxEvent.objects.filter(status="failed").values("tenant_id").annotate(count=Count("id"))
+        OutboxEvent.objects.filter(status="failed")
+        .values("tenant_id")
+        .annotate(count=Count("id"))
     )
     return {row["tenant_id"] or "default": row["count"] for row in counts}
 
@@ -140,7 +144,9 @@ def get_failed_counts_by_tenant() -> Dict[str, int]:
 def get_sent_counts_by_tenant() -> Dict[str, int]:
     """Get sent event counts per tenant."""
     counts = (
-        OutboxEvent.objects.filter(status="sent").values("tenant_id").annotate(count=Count("id"))
+        OutboxEvent.objects.filter(status="sent")
+        .values("tenant_id")
+        .annotate(count=Count("id"))
     )
     return {row["tenant_id"] or "default": row["count"] for row in counts}
 
@@ -215,7 +221,9 @@ def replay_journal_events(
         except Exception as e:
             import logging
 
-            logging.getLogger(__name__).warning(f"Failed to mark journal events as processed: {e}")
+            logging.getLogger(__name__).warning(
+                f"Failed to mark journal events as processed: {e}"
+            )
 
     return replayed_count
 

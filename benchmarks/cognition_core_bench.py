@@ -55,7 +55,9 @@ def percentiles(vals: List[float], ps: List[float]) -> Dict[float, float]:
     return out
 
 
-def run_quality_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str, object]]:
+def run_quality_bench(
+    dim: int = 8192, dtype: str = "float32"
+) -> List[Dict[str, object]]:
     """Execute run quality bench.
 
     Args:
@@ -114,12 +116,18 @@ def run_quality_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
             s = s / max(np.linalg.norm(s), 1e-12)
             # Wiener (adaptive; whiten only when k>1)
             if k == 1:
-                a_w = q_g.unbind_wiener(s, b_list[0], snr_db=50.0, k_est=1, alpha=0.0, whiten=False)
+                a_w = q_g.unbind_wiener(
+                    s, b_list[0], snr_db=50.0, k_est=1, alpha=0.0, whiten=False
+                )
             else:
-                a_w = q_g.unbind_wiener(s, b_list[0], snr_db=35.0, k_est=k, alpha=1e-3, whiten=True)
+                a_w = q_g.unbind_wiener(
+                    s, b_list[0], snr_db=35.0, k_est=k, alpha=1e-3, whiten=True
+                )
 
             # Naive Tikhonov (ridge) with fixed lambda for baseline comparison
-            def _tikhonov_naive(sig: np.ndarray, role: np.ndarray, lam: float = 5e-2) -> np.ndarray:
+            def _tikhonov_naive(
+                sig: np.ndarray, role: np.ndarray, lam: float = 5e-2
+            ) -> np.ndarray:
                 """Execute tikhonov naive.
 
                 Args:
@@ -189,7 +197,9 @@ def run_quality_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
     return rows
 
 
-def run_latency_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str, object]]:
+def run_latency_bench(
+    dim: int = 8192, dtype: str = "float32"
+) -> List[Dict[str, object]]:
     """Execute run latency bench.
 
     Args:
@@ -221,7 +231,9 @@ def run_latency_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
     )
 
     # Gaussian + Wiener
-    q_g = QuantumLayer(HRRConfig(dim=dim, dtype=dtype, renorm=True, roles_unitary=False))
+    q_g = QuantumLayer(
+        HRRConfig(dim=dim, dtype=dtype, renorm=True, roles_unitary=False)
+    )
     a = q_g.random_vector()
     b = q_g.random_vector()
     c = q_g.bind(a, b)
@@ -291,7 +303,11 @@ def _git_sha() -> str:
 
     try:
         root = Path(__file__).resolve().parents[1]
-        return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(root)).decode().strip()
+        return (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(root))
+            .decode()
+            .strip()
+        )
     except Exception:
         return "unknown"
 
@@ -343,7 +359,8 @@ def try_plots(
             {
                 int(r["k"])
                 for r in quality
-                if r["mode"] in ("unitary_exact", "gaussian_wiener", "gaussian_tikhonov")
+                if r["mode"]
+                in ("unitary_exact", "gaussian_wiener", "gaussian_tikhonov")
             }
         )
         modes = ["unitary_exact", "gaussian_wiener", "gaussian_tikhonov"]
@@ -428,12 +445,12 @@ def main(dim: int = 8192, dtype: str = "float32") -> None:
     # Gate 2: Gaussian+Wiener better than Tikhonov by >= 0.03 at k in {1,4,16} (raw cosine)
     gate2 = True
     for k in (1, 4, 16):
-        w = [r for r in quality if r["mode"] == "gaussian_wiener" and int(r["k"]) == k][0][
-            "cos_mean_raw"
-        ]
-        t = [r for r in quality if r["mode"] == "gaussian_tikhonov" and int(r["k"]) == k][0][
-            "cos_mean_raw"
-        ]
+        w = [r for r in quality if r["mode"] == "gaussian_wiener" and int(r["k"]) == k][
+            0
+        ]["cos_mean_raw"]
+        t = [
+            r for r in quality if r["mode"] == "gaussian_tikhonov" and int(r["k"]) == k
+        ][0]["cos_mean_raw"]
         ok = float(w) - float(t) >= 0.03
         print(
             f"Gate2 (Wiener-Tikhonov @k={k} >= 0.03):",

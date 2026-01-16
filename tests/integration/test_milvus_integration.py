@@ -117,7 +117,9 @@ def test_create_cleanup_index_factory() -> bool:
         if isinstance(index, MilvusAnnIndex):
             print("  ✓ Factory created MilvusAnnIndex")
         else:
-            print(f"  ✗ Factory created {type(index).__name__} instead of MilvusAnnIndex")
+            print(
+                f"  ✗ Factory created {type(index).__name__} instead of MilvusAnnIndex"
+            )
             return False
 
         return True
@@ -141,7 +143,10 @@ def test_settings_configuration() -> bool:
             f"  tiered_memory_cleanup_backend: {getattr(settings, 'SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND', None)}"
         )
 
-        if getattr(settings, "SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND", None) != "milvus":
+        if (
+            getattr(settings, "SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND", None)
+            != "milvus"
+        ):
             print(
                 f"  ✗ Expected cleanup backend 'milvus', got '{getattr(settings, 'SOMABRAIN_TIERED_MEMORY_CLEANUP_BACKEND', None)}'"
             )

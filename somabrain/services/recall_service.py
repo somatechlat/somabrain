@@ -74,7 +74,9 @@ def recall_ltm(
             qbits = sdr_enc.encode(text)
             t2 = _t.perf_counter()
             cand_coords = idx.query(qbits, limit=graph_limit)
-            M.SDR_PREFILTER_LAT.labels(cohort=cohort).observe(max(0.0, _t.perf_counter() - t2))
+            M.SDR_PREFILTER_LAT.labels(cohort=cohort).observe(
+                max(0.0, _t.perf_counter() - t2)
+            )
             for _ in cand_coords:
                 M.SDR_CANDIDATES.labels(cohort=cohort).inc()
             # SDR prefilter found candidates but payloads_for_coords is not available
@@ -82,7 +84,9 @@ def recall_ltm(
         except Exception as exc:
             import logging
 
-            logging.getLogger(__name__).debug("SDR prefilter failed for cohort=%s: %s", cohort, exc)
+            logging.getLogger(__name__).debug(
+                "SDR prefilter failed for cohort=%s: %s", cohort, exc
+            )
             did_sdr = False
     if not did_sdr:
         hits = getattr(mem_client, "recall")(text, top_k=top_k)
@@ -146,7 +150,9 @@ def recall_ltm(
         except Exception as exc:
             import logging
 
-            logging.getLogger(__name__).debug("Read-your-writes fallback failed: %s", exc)
+            logging.getLogger(__name__).debug(
+                "Read-your-writes fallback failed: %s", exc
+            )
     # Lexical/token-aware boost: if the query looks like a short unique token or
     # if any payload contains the exact query string, promote those payloads to
     # the top so users don't need manual tuning to find label-like memories.
@@ -189,10 +195,14 @@ def recall_ltm(
 
     try:
         if mem_payloads and q:
-            scored = [(p, _lexical_score(p)) for p in mem_payloads if isinstance(p, dict)]
+            scored = [
+                (p, _lexical_score(p)) for p in mem_payloads if isinstance(p, dict)
+            ]
             if any(s > 0 for _, s in scored):
                 # Stable sort: keep original relative order for equal scores
-                mem_payloads = [p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)]
+                mem_payloads = [
+                    p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)
+                ]
     except Exception as exc:
         import logging
 

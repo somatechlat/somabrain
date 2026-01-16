@@ -43,7 +43,9 @@ if debug_memory_client:
     # ensure a stderr handler exists for quick interactive debugging
     if not logger.handlers:
         h = logging.StreamHandler()
-        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+        h.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+        )
         logger.addHandler(h)
     logger.setLevel(logging.DEBUG)
 
@@ -318,7 +320,9 @@ class MemoryClient:
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
-            keepalive = int(getattr(settings, "http_keepalive_connections", default_keepalive))
+            keepalive = int(
+                getattr(settings, "http_keepalive_connections", default_keepalive)
+            )
         except Exception:
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
@@ -329,7 +333,9 @@ class MemoryClient:
 
         limits = None
         try:
-            limits = httpx.Limits(max_connections=max_conns, max_keepalive_connections=keepalive)
+            limits = httpx.Limits(
+                max_connections=max_conns, max_keepalive_connections=keepalive
+            )
         except Exception:
             limits = None
 
@@ -531,7 +537,9 @@ class MemoryClient:
             "memory_type": memory_type,
         }
 
-        success, _, data = self._http_post_with_retries_sync("/memories", payload, headers)
+        success, _, data = self._http_post_with_retries_sync(
+            "/memories", payload, headers
+        )
         if success:
             return True, data
 
@@ -551,13 +559,17 @@ class MemoryClient:
             "memory_type": memory_type,
         }
 
-        success, _, data = await self._http_post_with_retries_async("/memories", payload, headers)
+        success, _, data = await self._http_post_with_retries_async(
+            "/memories", payload, headers
+        )
         if success:
             return True, data
 
         return False, data
 
-    def _store_bulk_http_sync(self, items: List[dict], headers: dict) -> tuple[bool, int, Any]:
+    def _store_bulk_http_sync(
+        self, items: List[dict], headers: dict
+    ) -> tuple[bool, int, Any]:
         if self._http is None:
             return False, 0, None
         all_ok = True
@@ -872,7 +884,9 @@ class MemoryClient:
             "top_k": fetch_limit,
         }
 
-        success, status, data = self._http_post_with_retries_sync("/memories/search", body, headers)
+        success, status, data = self._http_post_with_retries_sync(
+            "/memories/search", body, headers
+        )
         if success:
             hits = self._normalize_recall_hits(data)
             if not hits:
@@ -882,7 +896,8 @@ class MemoryClient:
                 filtered_hits = [
                     hit
                     for hit in hits
-                    if str((hit.payload or {}).get("universe") or universe_value) == universe_value
+                    if str((hit.payload or {}).get("universe") or universe_value)
+                    == universe_value
                 ]
                 hits = filtered_hits
                 if not hits:
@@ -943,7 +958,8 @@ class MemoryClient:
                 filtered_hits = [
                     hit
                     for hit in hits
-                    if str((hit.payload or {}).get("universe") or universe_value) == universe_value
+                    if str((hit.payload or {}).get("universe") or universe_value)
+                    == universe_value
                 ]
                 hits = filtered_hits
                 if not hits:
@@ -986,7 +1002,9 @@ class MemoryClient:
     ) -> List[RecallHit]:
         return await self._memories_search_async(query, top_k, universe, request_id)
 
-    def _filter_hits_by_keyword(self, hits: List[RecallHit], keyword: str) -> List[RecallHit]:
+    def _filter_hits_by_keyword(
+        self, hits: List[RecallHit], keyword: str
+    ) -> List[RecallHit]:
         if not hits:
             return []
         payloads = [h.payload for h in hits if isinstance(h.payload, dict)]
@@ -1000,7 +1018,11 @@ class MemoryClient:
 
     def _recency_normalisation(self) -> tuple[float, float]:
         scale = getattr(self.cfg, "recall_recency_time_scale", 60.0)
-        if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
+        if (
+            not isinstance(scale, (int, float))
+            or not math.isfinite(scale)
+            or scale <= 0
+        ):
             scale = 60.0
         cap = getattr(self.cfg, "recall_recency_max_steps", 4096.0)
         if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
@@ -1073,7 +1095,9 @@ class MemoryClient:
                     value = float(txt)
                 except ValueError:
                     try:
-                        txt_norm = txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
+                        txt_norm = (
+                            txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
+                        )
                         dt = datetime.fromisoformat(txt_norm)
                         if dt.tzinfo is None:
                             dt = dt.replace(tzinfo=timezone.utc)
@@ -1138,7 +1162,9 @@ class MemoryClient:
         penalty = 1.0 - (weight * deficit)
         return max(floor, min(1.0, penalty))
 
-    def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
+    def _rescore_and_rank_hits(
+        self, hits: List[RecallHit], query: str
+    ) -> List[RecallHit]:
         if not self._scorer or not self._embedder:
             # Use alternative logic if scorer is not available
             self._apply_weighting_to_hits(hits)
@@ -1170,7 +1196,9 @@ class MemoryClient:
                         if ts_epoch is not None:
                             break
                 if ts_epoch is not None:
-                    recency_steps, recency_boost = self._recency_features(ts_epoch, now_ts)
+                    recency_steps, recency_boost = self._recency_features(
+                        ts_epoch, now_ts
+                    )
 
                 new_score = self._scorer.score(
                     query_vec,
@@ -1210,7 +1238,9 @@ class MemoryClient:
         quality_exp = 1.0
         if settings is not None:
             try:
-                weighting_enabled = bool(getattr(settings, "memory_enable_weighting", False))
+                weighting_enabled = bool(
+                    getattr(settings, "memory_enable_weighting", False)
+                )
                 priors_env = getattr(settings, "memory_phase_priors", "") or ""
                 quality_exp = float(getattr(settings, "memory_quality_exp", 1.0) or 1.0)
             except Exception:
@@ -1220,9 +1250,13 @@ class MemoryClient:
             try:
                 from common.config.settings import settings as _settings
 
-                weighting_enabled = bool(getattr(_settings, "memory_enable_weighting", False))
+                weighting_enabled = bool(
+                    getattr(_settings, "memory_enable_weighting", False)
+                )
                 priors_env = getattr(_settings, "memory_phase_priors", "") or ""
-                quality_exp = float(getattr(_settings, "memory_quality_exp", 1.0) or 1.0)
+                quality_exp = float(
+                    getattr(_settings, "memory_quality_exp", 1.0) or 1.0
+                )
             except Exception:
                 weighting_enabled = False
         if not weighting_enabled:
@@ -1266,7 +1300,9 @@ class MemoryClient:
             return
 
     # --- HTTP compatibility helpers -------------------------------------------------
-    def _compat_enrich_payload(self, payload: dict, coord_key: str) -> tuple[dict, str, dict]:
+    def _compat_enrich_payload(
+        self, payload: dict, coord_key: str
+    ) -> tuple[dict, str, dict]:
         """Return an enriched (payload_copy, universe, extra_headers).
 
         Ensures downstream HTTP memory services receive common fields that many
@@ -1350,7 +1386,11 @@ class MemoryClient:
                 dval = payload["domains"]
                 if isinstance(dval, str):
                     # split on comma or whitespace
-                    parts = [p.strip().lower() for p in dval.replace(",", " ").split() if p.strip()]
+                    parts = [
+                        p.strip().lower()
+                        for p in dval.replace(",", " ").split()
+                        if p.strip()
+                    ]
                     payload["domains"] = parts or []
                 elif isinstance(dval, (list, tuple)):
                     cleaned = []
@@ -1361,7 +1401,9 @@ class MemoryClient:
                 else:
                     payload.pop("domains", None)
             # reasoning_chain: accept list[str] or single string -> keep
-            if "reasoning_chain" in payload and isinstance(payload["reasoning_chain"], str):
+            if "reasoning_chain" in payload and isinstance(
+                payload["reasoning_chain"], str
+            ):
                 rc = payload["reasoning_chain"].strip()
                 if rc:
                     payload["reasoning_chain"] = [rc]
@@ -1393,14 +1435,18 @@ class MemoryClient:
                 loop = asyncio.get_running_loop()
                 if self._http_async is not None:
                     try:
-                        loop.create_task(self._aremember_background(coord_key, payload, rid))
+                        loop.create_task(
+                            self._aremember_background(coord_key, payload, rid)
+                        )
                     except Exception as e:
                         logger.debug("_aremember_background scheduling failed: %r", e)
                         loop.run_in_executor(
                             None, self._remember_sync_persist, coord_key, payload, rid
                         )
                 else:
-                    loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
+                    loop.run_in_executor(
+                        None, self._remember_sync_persist, coord_key, payload, rid
+                    )
             except Exception:
                 try:
                     self._remember_sync_persist(coord_key, payload, rid)
@@ -1426,7 +1472,9 @@ class MemoryClient:
             try:
                 loop = asyncio.get_event_loop()
                 # schedule background sync persist in the executor so we don't block
-                loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
+                loop.run_in_executor(
+                    None, self._remember_sync_persist, coord_key, payload, rid
+                )
             except Exception:
                 # last resort: run sync persist (best-effort)
                 try:
@@ -1476,7 +1524,9 @@ class MemoryClient:
             enriched_payload.setdefault("coordinate", coord)
             enriched_payload.setdefault("memory_type", "episodic")
             memory_type = str(
-                enriched_payload.get("memory_type") or enriched_payload.get("type") or "episodic"
+                enriched_payload.get("memory_type")
+                or enriched_payload.get("type")
+                or "episodic"
             )
             body = {
                 "coord": f"{coord[0]},{coord[1]},{coord[2]}",
@@ -1519,7 +1569,9 @@ class MemoryClient:
             elif isinstance(response, list):
                 returned = response
             for idx, entry in enumerate(returned[: len(prepared)]):
-                server_coord = _extract_memory_coord(entry, idempotency_key=f"{rid}:{idx}")
+                server_coord = _extract_memory_coord(
+                    entry, idempotency_key=f"{rid}:{idx}"
+                )
                 if server_coord:
                     coords[idx] = server_coord
                     try:
@@ -1558,11 +1610,15 @@ class MemoryClient:
         p2: dict[str, Any] | None = None
         if self._http_async is not None:
             try:
-                enriched, universe, compat_hdr = self._compat_enrich_payload(payload, coord_key)
+                enriched, universe, compat_hdr = self._compat_enrich_payload(
+                    payload, coord_key
+                )
                 coord = _stable_coord(f"{universe}::{coord_key}")
                 enriched = dict(enriched)
                 enriched.setdefault("coordinate", coord)
-                memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
+                memory_type = str(
+                    enriched.get("memory_type") or enriched.get("type") or "episodic"
+                )
                 body = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
                     "payload": enriched,
@@ -1576,7 +1632,9 @@ class MemoryClient:
                 rid_hdr.update(compat_hdr)
                 ok, response_data = await self._store_http_async(body, rid_hdr)
                 if ok and response_data is not None:
-                    server_coord = _extract_memory_coord(response_data, idempotency_key=rid)
+                    server_coord = _extract_memory_coord(
+                        response_data, idempotency_key=rid
+                    )
                     if server_coord:
                         try:
                             enriched["coordinate"] = server_coord
@@ -1656,7 +1714,9 @@ class MemoryClient:
             elif isinstance(response, list):
                 returned = response
             for idx, entry in enumerate(returned[: len(prepared)]):
-                server_coord = _extract_memory_coord(entry, idempotency_key=f"{rid}:{idx}")
+                server_coord = _extract_memory_coord(
+                    entry, idempotency_key=f"{rid}:{idx}"
+                )
                 if server_coord:
                     coords[idx] = server_coord
                     try:
@@ -1707,7 +1767,9 @@ class MemoryClient:
 
         if self._http is not None:
             rid = request_id or str(uuid.uuid4())
-            hits = self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
+            hits = self._http_recall_aggregate_sync(
+                query, top_k, universe or "real", rid
+            )
             if hits:
                 return hits
         return self.recall(query, top_k, universe, request_id)
@@ -1722,9 +1784,13 @@ class MemoryClient:
         """Async recall for HTTP mode; falls back to sync execution when needed."""
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
-            return await self._http_recall_aggregate_async(query, top_k, universe or "real", rid)
+            return await self._http_recall_aggregate_async(
+                query, top_k, universe or "real", rid
+            )
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.recall, query, top_k, universe, request_id)
+        return await loop.run_in_executor(
+            None, self.recall, query, top_k, universe, request_id
+        )
 
     async def arecall_with_scores(
         self,
@@ -1737,7 +1803,9 @@ class MemoryClient:
 
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
-            hits = await self._http_recall_aggregate_async(query, top_k, universe or "real", rid)
+            hits = await self._http_recall_aggregate_async(
+                query, top_k, universe or "real", rid
+            )
             if hits:
                 return hits
         return await self.arecall(query, top_k, universe, request_id)
@@ -1752,7 +1820,9 @@ class MemoryClient:
     ) -> None:
         """Create or strengthen a typed edge in the memory graph."""
         if self._http is None:
-            raise RuntimeError("MEMORY SERVICE UNAVAILABLE: link requires an HTTP memory backend.")
+            raise RuntimeError(
+                "MEMORY SERVICE UNAVAILABLE: link requires an HTTP memory backend."
+            )
         try:
             import uuid
 
@@ -1876,7 +1946,11 @@ class MemoryClient:
                             "weight": float(edge.get("weight", 1.0)),
                         }
                     )
-                    if not unlimited and max_items is not None and len(out) >= max_items:
+                    if (
+                        not unlimited
+                        and max_items is not None
+                        and len(out) >= max_items
+                    ):
                         break
                 except Exception:
                     continue
@@ -1946,7 +2020,9 @@ class MemoryClient:
                 ],
                 "type": link_type,
             }
-            success, _, _ = await self._http_post_with_retries_async("/unlink", body, headers)
+            success, _, _ = await self._http_post_with_retries_async(
+                "/unlink", body, headers
+            )
             if success:
                 return True
 
@@ -2015,7 +2091,9 @@ class MemoryClient:
                 "max_degree": max_degree,
                 "type": type_filter,
             }
-            success, _, data = await self._http_post_with_retries_async("/prune", body, headers)
+            success, _, data = await self._http_post_with_retries_async(
+                "/prune", body, headers
+            )
             if success and isinstance(data, dict):
                 try:
                     return int(data.get("removed") or data.get("count") or 0)
@@ -2073,7 +2151,9 @@ class MemoryClient:
             return 0.0
 
     # --- Compatibility helper methods expected by migration and other code ---
-    def coord_for_key(self, key: str, universe: str | None = None) -> Tuple[float, float, float]:
+    def coord_for_key(
+        self, key: str, universe: str | None = None
+    ) -> Tuple[float, float, float]:
         """Return a deterministic coordinate for *key* and optional *universe*.
 
         This is a lightweight compatibility shim used by migration scripts and
@@ -2110,7 +2190,9 @@ class MemoryClient:
                     seen.add(node)
                     # gather neighbors
                     try:
-                        neigh = self.links_from(node, type_filter=type_filter, limit=limit)
+                        neigh = self.links_from(
+                            node, type_filter=type_filter, limit=limit
+                        )
                     except Exception:
                         neigh = []
                     for e in neigh:
@@ -2183,7 +2265,9 @@ class MemoryClient:
                     parsed_coord: Tuple[float, float, float] | None = None
                     if isinstance(coord_value, str):
                         parsed_coord = _parse_coord_string(coord_value)
-                    elif isinstance(coord_value, (list, tuple)) and len(coord_value) >= 3:
+                    elif (
+                        isinstance(coord_value, (list, tuple)) and len(coord_value) >= 3
+                    ):
                         try:
                             parsed_coord = (
                                 float(coord_value[0]),
@@ -2258,7 +2342,9 @@ class MemoryClient:
         enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
         sc = _stable_coord(f"{uni}::{coord_key}")
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
-        memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
+        memory_type = str(
+            enriched.get("memory_type") or enriched.get("type") or "episodic"
+        )
         body = {
             "coord": coord_str,
             "payload": enriched,
@@ -2279,7 +2365,9 @@ class MemoryClient:
         server_coord: Tuple[float, float, float] | None = None
         if stored and response_payload is not None:
             try:
-                server_coord = _extract_memory_coord(response_payload, idempotency_key=rid)
+                server_coord = _extract_memory_coord(
+                    response_payload, idempotency_key=rid
+                )
             except Exception:
                 server_coord = None
 
@@ -2305,7 +2393,9 @@ class MemoryClient:
         rid_hdr.update(compat_hdr)
         sc = _stable_coord(f"{uni}::{coord_key}")
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
-        memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
+        memory_type = str(
+            enriched.get("memory_type") or enriched.get("type") or "episodic"
+        )
         body = {
             "coord": coord_str,
             "payload": enriched,

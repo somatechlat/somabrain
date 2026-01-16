@@ -116,7 +116,9 @@ class TestThroughputCapacity:
         elapsed = time.perf_counter() - start
 
         # Should complete within 10 seconds
-        assert elapsed < 10, f"Storing 1000 memories took {elapsed:.2f}s, exceeds 10s SLO"
+        assert (
+            elapsed < 10
+        ), f"Storing 1000 memories took {elapsed:.2f}s, exceeds 10s SLO"
 
         # Verify no data loss (check WM has items)
         # Note: WM may have evicted some due to capacity, but should have stored all
@@ -327,4 +329,6 @@ class TestConcurrentOperations:
                     successes += 1
 
         success_rate = successes / total
-        assert success_rate >= 0.95, f"Mixed ops success rate {success_rate:.2%} below 95%"
+        assert (
+            success_rate >= 0.95
+        ), f"Mixed ops success rate {success_rate:.2%} below 95%"

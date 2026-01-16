@@ -22,9 +22,15 @@ from dataclasses import dataclass
 learning_rate_strategy = st.floats(
     min_value=0.001, max_value=0.5, allow_nan=False, allow_infinity=False
 )
-signal_strategy = st.floats(min_value=-2.0, max_value=2.0, allow_nan=False, allow_infinity=False)
-gain_strategy = st.floats(min_value=-2.0, max_value=2.0, allow_nan=False, allow_infinity=False)
-weight_strategy = st.floats(min_value=0.1, max_value=5.0, allow_nan=False, allow_infinity=False)
+signal_strategy = st.floats(
+    min_value=-2.0, max_value=2.0, allow_nan=False, allow_infinity=False
+)
+gain_strategy = st.floats(
+    min_value=-2.0, max_value=2.0, allow_nan=False, allow_infinity=False
+)
+weight_strategy = st.floats(
+    min_value=0.1, max_value=5.0, allow_nan=False, allow_infinity=False
+)
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +75,8 @@ class TestAdaptationDeltaFormula:
         expected = lr * gain * signal
 
         assert abs(delta - expected) < 1e-12, (
-            f"Delta {delta} != expected {expected} " f"(lr={lr}, gain={gain}, signal={signal})"
+            f"Delta {delta} != expected {expected} "
+            f"(lr={lr}, gain={gain}, signal={signal})"
         )
 
     @given(
@@ -98,7 +105,9 @@ class TestAdaptationDeltaFormula:
         gain=gain_strategy,
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_delta_sign_matches_product(self, lr: float, signal: float, gain: float) -> None:
+    def test_delta_sign_matches_product(
+        self, lr: float, signal: float, gain: float
+    ) -> None:
         """Verify delta sign matches sign of (gain × signal)."""
         assume(abs(signal) > 1e-6 and abs(gain) > 1e-6)
         delta = compute_delta(lr, gain, signal)
@@ -120,12 +129,20 @@ class TestConstraintClamping:
     """
 
     @given(
-        value=st.floats(min_value=-100.0, max_value=100.0, allow_nan=False, allow_infinity=False),
-        min_val=st.floats(min_value=-50.0, max_value=0.0, allow_nan=False, allow_infinity=False),
-        max_val=st.floats(min_value=1.0, max_value=50.0, allow_nan=False, allow_infinity=False),
+        value=st.floats(
+            min_value=-100.0, max_value=100.0, allow_nan=False, allow_infinity=False
+        ),
+        min_val=st.floats(
+            min_value=-50.0, max_value=0.0, allow_nan=False, allow_infinity=False
+        ),
+        max_val=st.floats(
+            min_value=1.0, max_value=50.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_clamp_within_bounds(self, value: float, min_val: float, max_val: float) -> None:
+    def test_clamp_within_bounds(
+        self, value: float, min_val: float, max_val: float
+    ) -> None:
         """Verify clamped value is always within [min, max]."""
         assume(min_val < max_val)
 
@@ -135,9 +152,15 @@ class TestConstraintClamping:
         assert result <= max_val, f"Clamped {result} > max {max_val}"
 
     @given(
-        value=st.floats(min_value=10.0, max_value=100.0, allow_nan=False, allow_infinity=False),
-        min_val=st.floats(min_value=0.0, max_value=5.0, allow_nan=False, allow_infinity=False),
-        max_val=st.floats(min_value=6.0, max_value=9.0, allow_nan=False, allow_infinity=False),
+        value=st.floats(
+            min_value=10.0, max_value=100.0, allow_nan=False, allow_infinity=False
+        ),
+        min_val=st.floats(
+            min_value=0.0, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
+        max_val=st.floats(
+            min_value=6.0, max_value=9.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_clamp_above_max_returns_max(
@@ -152,9 +175,15 @@ class TestConstraintClamping:
         assert result == max_val, f"Expected {max_val}, got {result}"
 
     @given(
-        value=st.floats(min_value=-100.0, max_value=-10.0, allow_nan=False, allow_infinity=False),
-        min_val=st.floats(min_value=-5.0, max_value=0.0, allow_nan=False, allow_infinity=False),
-        max_val=st.floats(min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        value=st.floats(
+            min_value=-100.0, max_value=-10.0, allow_nan=False, allow_infinity=False
+        ),
+        min_val=st.floats(
+            min_value=-5.0, max_value=0.0, allow_nan=False, allow_infinity=False
+        ),
+        max_val=st.floats(
+            min_value=1.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_clamp_below_min_returns_min(
@@ -169,11 +198,17 @@ class TestConstraintClamping:
         assert result == min_val, f"Expected {min_val}, got {result}"
 
     @given(
-        min_val=st.floats(min_value=0.0, max_value=5.0, allow_nan=False, allow_infinity=False),
-        max_val=st.floats(min_value=6.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+        min_val=st.floats(
+            min_value=0.0, max_value=5.0, allow_nan=False, allow_infinity=False
+        ),
+        max_val=st.floats(
+            min_value=6.0, max_value=10.0, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_clamp_value_in_range_unchanged(self, min_val: float, max_val: float) -> None:
+    def test_clamp_value_in_range_unchanged(
+        self, min_val: float, max_val: float
+    ) -> None:
         """Verify values within range are unchanged."""
         assume(min_val < max_val)
         value = (min_val + max_val) / 2  # Midpoint is always in range
@@ -194,9 +229,15 @@ class TestTauExponentialAnnealing:
     """
 
     @given(
-        initial_tau=st.floats(min_value=0.1, max_value=1.0, allow_nan=False, allow_infinity=False),
-        anneal_rate=st.floats(min_value=0.01, max_value=0.5, allow_nan=False, allow_infinity=False),
-        floor=st.floats(min_value=0.01, max_value=0.1, allow_nan=False, allow_infinity=False),
+        initial_tau=st.floats(
+            min_value=0.1, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
+        anneal_rate=st.floats(
+            min_value=0.01, max_value=0.5, allow_nan=False, allow_infinity=False
+        ),
+        floor=st.floats(
+            min_value=0.01, max_value=0.1, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_exponential_anneal_formula(
@@ -206,14 +247,22 @@ class TestTauExponentialAnnealing:
         result = exponential_anneal(initial_tau, anneal_rate, floor)
         expected = max(floor, initial_tau * (1.0 - anneal_rate))
 
-        assert abs(result - expected) < 1e-12, f"Annealed tau {result} != expected {expected}"
+        assert (
+            abs(result - expected) < 1e-12
+        ), f"Annealed tau {result} != expected {expected}"
 
     @given(
-        initial_tau=st.floats(min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False),
-        anneal_rate=st.floats(min_value=0.01, max_value=0.3, allow_nan=False, allow_infinity=False),
+        initial_tau=st.floats(
+            min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
+        anneal_rate=st.floats(
+            min_value=0.01, max_value=0.3, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_exponential_anneal_decreases(self, initial_tau: float, anneal_rate: float) -> None:
+    def test_exponential_anneal_decreases(
+        self, initial_tau: float, anneal_rate: float
+    ) -> None:
         """Verify exponential annealing always decreases tau (above floor)."""
         floor = 0.01
         result = exponential_anneal(initial_tau, anneal_rate, floor)
@@ -221,9 +270,15 @@ class TestTauExponentialAnnealing:
         assert result <= initial_tau, f"Annealed tau {result} > initial {initial_tau}"
 
     @given(
-        initial_tau=st.floats(min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False),
-        anneal_rate=st.floats(min_value=0.01, max_value=0.3, allow_nan=False, allow_infinity=False),
-        floor=st.floats(min_value=0.1, max_value=0.4, allow_nan=False, allow_infinity=False),
+        initial_tau=st.floats(
+            min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
+        anneal_rate=st.floats(
+            min_value=0.01, max_value=0.3, allow_nan=False, allow_infinity=False
+        ),
+        floor=st.floats(
+            min_value=0.1, max_value=0.4, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_exponential_anneal_respects_floor(
@@ -235,15 +290,23 @@ class TestTauExponentialAnnealing:
         assert result >= floor, f"Annealed tau {result} < floor {floor}"
 
     @given(
-        initial_tau=st.floats(min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False),
-        floor=st.floats(min_value=0.01, max_value=0.1, allow_nan=False, allow_infinity=False),
+        initial_tau=st.floats(
+            min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False
+        ),
+        floor=st.floats(
+            min_value=0.01, max_value=0.1, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_exponential_anneal_zero_rate_unchanged(self, initial_tau: float, floor: float) -> None:
+    def test_exponential_anneal_zero_rate_unchanged(
+        self, initial_tau: float, floor: float
+    ) -> None:
         """Verify zero anneal rate leaves tau unchanged."""
         result = exponential_anneal(initial_tau, 0.0, floor)
 
-        assert result == initial_tau, f"Tau changed from {initial_tau} to {result} with zero rate"
+        assert (
+            result == initial_tau
+        ), f"Tau changed from {initial_tau} to {result} with zero rate"
 
 
 @dataclass
@@ -279,7 +342,9 @@ class TestAdaptationReset:
         modified_gamma=st.floats(
             min_value=0.5, max_value=0.9, allow_nan=False, allow_infinity=False
         ),
-        modified_tau=st.floats(min_value=0.1, max_value=0.5, allow_nan=False, allow_infinity=False),
+        modified_tau=st.floats(
+            min_value=0.1, max_value=0.5, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_reset_restores_defaults(
@@ -315,10 +380,14 @@ class TestAdaptationReset:
         default_alpha=st.floats(
             min_value=0.5, max_value=2.0, allow_nan=False, allow_infinity=False
         ),
-        default_tau=st.floats(min_value=0.3, max_value=0.9, allow_nan=False, allow_infinity=False),
+        default_tau=st.floats(
+            min_value=0.3, max_value=0.9, allow_nan=False, allow_infinity=False
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_reset_uses_provided_defaults(self, default_alpha: float, default_tau: float) -> None:
+    def test_reset_uses_provided_defaults(
+        self, default_alpha: float, default_tau: float
+    ) -> None:
         """Verify reset() uses the provided default values."""
         # Create modified state
         state = WeightState(alpha=5.0, beta=0.8, gamma=0.9, tau=0.1)
@@ -356,4 +425,6 @@ class TestAdaptationReset:
         state.reset_to(defaults)
         second_alpha = state.alpha
 
-        assert first_alpha == second_alpha, f"Reset not idempotent: {first_alpha} != {second_alpha}"
+        assert (
+            first_alpha == second_alpha
+        ), f"Reset not idempotent: {first_alpha} != {second_alpha}"

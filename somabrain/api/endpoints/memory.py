@@ -33,7 +33,9 @@ def _get_runtime():
     _runtime_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "runtime.py"
     )
-    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+    _spec = importlib.util.spec_from_file_location(
+        "somabrain.runtime_module", _runtime_path
+    )
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -95,7 +97,10 @@ def recall_memory(request: HttpRequest, payload: dict):
             wm_items = wm.items(ctx.tenant_id)
             wm_hits = len(wm_items)
             results.extend(
-                [{"content": str(item), "layer": "wm", "score": 1.0} for item in wm_items[:top_k]]
+                [
+                    {"content": str(item), "layer": "wm", "score": 1.0}
+                    for item in wm_items[:top_k]
+                ]
             )
         except Exception as exc:
             logger.warning(f"WM recall failed: {exc}")

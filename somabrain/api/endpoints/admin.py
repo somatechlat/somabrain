@@ -116,7 +116,9 @@ def service_restart(request: HttpRequest, name: str):
         try:
             s.supervisor.stopProcess(name, False)
         except Exception as stop_exc:
-            logger.debug("Stop before restart failed (expected if not running): %s", stop_exc)
+            logger.debug(
+                "Stop before restart failed (expected if not running): %s", stop_exc
+            )
         res = s.supervisor.startProcess(name, False)
         return {"ok": bool(res), "action": "restart", "service": name}
     except XMLRPCError as e:
@@ -149,7 +151,9 @@ def admin_list_outbox(
 
     if status.lower().strip() == "failed":
         for ev in events:
-            tenant_label = (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            tenant_label = (
+                (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            )
             try:
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
             except Exception as metric_exc:
@@ -177,7 +181,9 @@ def admin_replay_outbox(request: HttpRequest, body: OutboxReplayRequest):
 
     if count == 0:
         try:
-            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(len(body.event_ids))
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(
+                len(body.event_ids)
+            )
         except Exception:
             pass
         raise HttpError(404, "No matching events to replay")
@@ -205,7 +211,9 @@ def admin_list_quotas(
         all_quotas = quota_manager.get_all_quotas()
 
         if tenant_filter and isinstance(tenant_filter, str):
-            all_quotas = [q for q in all_quotas if q.tenant_id.startswith(tenant_filter)]
+            all_quotas = [
+                q for q in all_quotas if q.tenant_id.startswith(tenant_filter)
+            ]
 
         total_count = len(all_quotas)
         paginated_quotas = all_quotas[offset : offset + limit]

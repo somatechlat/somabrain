@@ -471,7 +471,9 @@ def list_api_keys(request, tenant_id: UUID):
     ]
 
 
-@router.post("/tenants/{tenant_id}/api-keys", response=APIKeyCreatedSchema, auth=APIKeyAuth())
+@router.post(
+    "/tenants/{tenant_id}/api-keys", response=APIKeyCreatedSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:tenants")
 def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
     """
@@ -661,7 +663,9 @@ def create_tier(request, data: SubscriptionTierCreateSchema):
         is_active=data.is_active,
     )
 
-    log_api_action(request, "tier.created", "tier", tier.id, details={"slug": tier.slug})
+    log_api_action(
+        request, "tier.created", "tier", tier.id, details={"slug": tier.slug}
+    )
 
     return {
         "id": tier.id,
@@ -674,7 +678,9 @@ def create_tier(request, data: SubscriptionTierCreateSchema):
     }
 
 
-@router.get("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@router.get(
+    "/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:billing")
 def get_tier(request, tier_id: UUID):
     """Get subscription tier details."""
@@ -690,7 +696,9 @@ def get_tier(request, tier_id: UUID):
     }
 
 
-@router.patch("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@router.patch(
+    "/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:billing")
 def update_tier(request, tier_id: UUID, data: SubscriptionTierUpdateSchema):
     """Update subscription tier."""

@@ -216,7 +216,9 @@ class MemoryHTTPTransport:
         data: Any = None
         for attempt in range(max_retries + 1):
             try:
-                resp = await self._async_client.post(endpoint, json=body, headers=headers)
+                resp = await self._async_client.post(
+                    endpoint, json=body, headers=headers
+                )
             except Exception:
                 if attempt < max_retries:
                     await asyncio.sleep(0.01 + random.random() * 0.02)
@@ -281,7 +283,9 @@ def create_memory_transport(
     try:
         import httpx
 
-        limits = httpx.Limits(max_connections=max_conns, max_keepalive_connections=keepalive)
+        limits = httpx.Limits(
+            max_connections=max_conns, max_keepalive_connections=keepalive
+        )
     except Exception:
         limits = None
 

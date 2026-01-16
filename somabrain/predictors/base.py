@@ -60,7 +60,9 @@ class PredictorBase:
       - confidence(error) = exp(-alpha * error)
     """
 
-    def __init__(self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None):
+    def __init__(
+        self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None
+    ):
         """Initialize the instance."""
 
         self.apply_A = apply_A
@@ -124,7 +126,9 @@ class HeatDiffusionPredictor(PredictorBase):
     It expects callers to supply a one-hot source vector and an observed vector.
     """
 
-    def step(self, source_idx: int, observed: np.ndarray) -> Tuple[np.ndarray, float, float]:
+    def step(
+        self, source_idx: int, observed: np.ndarray
+    ) -> Tuple[np.ndarray, float, float]:
         """Execute step.
 
         Args:

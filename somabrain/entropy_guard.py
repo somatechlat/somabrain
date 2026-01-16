@@ -30,14 +30,18 @@ def get_entropy_cap() -> float:
     """
     cap = getattr(settings, "SOMABRAIN_ENTROPY_CAP", None)
     if cap is None:
-        raise RuntimeError("Entropy cap is not configured. Set 'entropy_cap' in the settings.")
+        raise RuntimeError(
+            "Entropy cap is not configured. Set 'entropy_cap' in the settings."
+        )
     try:
         return float(cap)
     except Exception as exc:
         raise RuntimeError(f"Invalid entropy_cap value: {cap}") from exc
 
 
-def should_switch_leader(current_entropy: float, candidate: Optional[str] = None) -> bool:
+def should_switch_leader(
+    current_entropy: float, candidate: Optional[str] = None
+) -> bool:
     """Determine whether the leader should be switched.
 
     Parameters

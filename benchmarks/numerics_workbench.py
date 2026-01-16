@@ -125,7 +125,9 @@ def run(
             C = irfft_norm(A * R, n=D).astype(dt)
             # unbind exact via spectrum division where safe
             a_est = irfft_norm(rfft_norm(C, n=D) / R, n=D).astype(dt)
-            cos = float(np.dot(a, a_est) / (np.linalg.norm(a) * np.linalg.norm(a_est) + 1e-30))
+            cos = float(
+                np.dot(a, a_est) / (np.linalg.norm(a) * np.linalg.norm(a_est) + 1e-30)
+            )
             results["bind_unbind"][key] = cos
 
     OUT.write_text(json.dumps(results, indent=2))
@@ -162,9 +164,9 @@ def extended_snr_capacity_run(
             for snr_db in snr_db_list:
                 snr_lin = 10.0 ** (snr_db / 10.0)
                 noise_power = mean_power / max(snr_lin, 1e-12)
-                noise = (rng.normal(size=C.shape) + 1j * rng.normal(size=C.shape)).astype(
-                    np.complex128
-                )
+                noise = (
+                    rng.normal(size=C.shape) + 1j * rng.normal(size=C.shape)
+                ).astype(np.complex128)
                 cur_noise_power = float(np.mean((noise * np.conjugate(noise)).real))
                 if cur_noise_power <= 0:
                     cur_noise_power = 1.0

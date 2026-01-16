@@ -28,7 +28,9 @@ def configure_tracing(
     """Initialise OpenTelemetry tracing for a service."""
 
     if trace is None:  # pragma: no cover - executed when OTel missing
-        _LOG.warning("OpenTelemetry SDK not installed; tracing disabled for %s", service_name)
+        _LOG.warning(
+            "OpenTelemetry SDK not installed; tracing disabled for %s", service_name
+        )
         return
 
     provider = TracerProvider(resource=Resource.create({"service.name": service_name}))

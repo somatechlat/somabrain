@@ -66,7 +66,9 @@ except Exception:  # pragma: no cover - exercised only when pymilvus missing
 
 logger = logging.getLogger(__name__)
 
-_LATENCY_WINDOW_SIZE = max(1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW", 50)))
+_LATENCY_WINDOW_SIZE = max(
+    1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW", 50))
+)
 _LATENCY_WINDOWS: Dict[str, Dict[str, Deque[float]]] = {
     "ingest": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
     "search": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
@@ -151,7 +153,9 @@ class MilvusClient:
             )
 
         self.dim: int = int(getattr(settings, "SOMABRAIN_EMBED_DIM", 128))
-        self.collection_name: str = getattr(settings, "SOMABRAIN_MILVUS_COLLECTION", "oak_options")
+        self.collection_name: str = getattr(
+            settings, "SOMABRAIN_MILVUS_COLLECTION", "oak_options"
+        )
         host = getattr(settings, "SOMABRAIN_MILVUS_HOST", None) or "localhost"
         port = int(getattr(settings, "SOMABRAIN_MILVUS_PORT", 19530))
         user = getattr(settings, "SOMABRAIN_MILVUS_USER", None)
@@ -175,11 +179,15 @@ class MilvusClient:
                 timeout=timeout,
             )
             if not utility.has_collection(self.collection_name):
-                logger.info("Milvus collection %s missing – creating", self.collection_name)
+                logger.info(
+                    "Milvus collection %s missing – creating", self.collection_name
+                )
                 self._create_collection()
             self.collection = Collection(self.collection_name)  # type: ignore[arg-type]
         except MilvusException as exc:
-            logger.warning("Milvus connection failed (%s); collection operations unavailable", exc)
+            logger.warning(
+                "Milvus connection failed (%s); collection operations unavailable", exc
+            )
             self.collection = None
 
         if self.collection is not None:
@@ -218,13 +226,17 @@ class MilvusClient:
         """Execute verify collection schema."""
 
         if self.collection is None:
-            raise RuntimeError("Cannot verify schema: Milvus collection is not initialized")
+            raise RuntimeError(
+                "Cannot verify schema: Milvus collection is not initialized"
+            )
         try:
             desc = self.collection.describe()
         except AttributeError:
             schema_obj = getattr(self.collection, "schema", None)
             if schema_obj is None:
-                logger.warning("Milvus Collection schema attribute missing; skipping verification")
+                logger.warning(
+                    "Milvus Collection schema attribute missing; skipping verification"
+                )
                 return
             raw_fields = []
             for field in getattr(schema_obj, "fields", []):
@@ -243,7 +255,9 @@ class MilvusClient:
                         }
                     )
             if not raw_fields:
-                logger.warning("Milvus schema inspection yielded no fields; skipping verification")
+                logger.warning(
+                    "Milvus schema inspection yielded no fields; skipping verification"
+                )
                 return
             desc = {"fields": raw_fields}
         try:
@@ -277,13 +291,19 @@ class MilvusClient:
                     actual_val = field.get("params", {}).get(param_key)
                     if actual_val != param_val:
                         # Dimension mismatch - adapt instead of fail (dev/Docker flexibility)
-                        if param_key == "dim" and name == "embedding" and actual_val is not None:
+                        if (
+                            param_key == "dim"
+                            and name == "embedding"
+                            and actual_val is not None
+                        ):
                             logger.warning(
                                 "Milvus embedding dim=%s differs from expected %s; adapting",
                                 actual_val,
                                 param_val,
                             )
-                            self.dim = int(actual_val)  # Adapt to collection's actual dim
+                            self.dim = int(
+                                actual_val
+                            )  # Adapt to collection's actual dim
                         else:
                             logger.warning(
                                 "Milvus field %s param %s=%s differs from expected %s",
@@ -309,7 +329,9 @@ class MilvusClient:
             if not force and (now - self._segment_last_refresh) < interval:
                 return
             try:
-                segments = utility.get_query_segment_info(collection_name=self.collection_name)
+                segments = utility.get_query_segment_info(
+                    collection_name=self.collection_name
+                )
             except Exception as exc:
                 logger.debug("Milvus segment info query failed: %s", exc)
                 return
@@ -346,7 +368,9 @@ class MilvusClient:
             raise RuntimeError("Milvus collection unavailable – cannot upsert option")
 
         max_retries = int(getattr(settings, "SOMABRAIN_MILVUS_UPSERT_RETRIES", 3))
-        backoff_base = float(getattr(settings, "SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE", 0.5))
+        backoff_base = float(
+            getattr(settings, "SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE", 0.5)
+        )
         attempt = 0
         while True:
             attempt += 1
@@ -399,7 +423,11 @@ class MilvusClient:
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot search")
 
-        top_k = top_k if top_k is not None else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10))
+        top_k = (
+            top_k
+            if top_k is not None
+            else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10))
+        )
         similarity_threshold = (
             similarity_threshold
             if similarity_threshold is not None

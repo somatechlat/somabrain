@@ -65,7 +65,9 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
 
 
 @transaction.atomic
-def mark_tenant_events_for_replay(tenant_id: str, limit: int = 100, status: str = "failed") -> int:
+def mark_tenant_events_for_replay(
+    tenant_id: str, limit: int = 100, status: str = "failed"
+) -> int:
     """Mark events for a specific tenant for replay.
 
     Args:
@@ -82,9 +84,9 @@ def mark_tenant_events_for_replay(tenant_id: str, limit: int = 100, status: str 
     limit = max(1, min(int(limit), 1000))
 
     events = list(
-        OutboxEvent.objects.filter(tenant_id=tenant_id, status=status).order_by("created_at")[
-            :limit
-        ]
+        OutboxEvent.objects.filter(tenant_id=tenant_id, status=status).order_by(
+            "created_at"
+        )[:limit]
     )
 
     count = 0
@@ -100,7 +102,9 @@ def mark_tenant_events_for_replay(tenant_id: str, limit: int = 100, status: str 
         try:
             report_outbox_replayed(tenant_id, count)
         except Exception as exc:
-            logger.debug("Failed to report outbox replayed for tenant=%s: %s", tenant_id, exc)
+            logger.debug(
+                "Failed to report outbox replayed for tenant=%s: %s", tenant_id, exc
+            )
 
     return count
 
@@ -145,7 +149,9 @@ def get_failed_counts_by_tenant() -> Dict[str, int]:
         Dict mapping tenant_id to failed event count
     """
     counts = (
-        OutboxEvent.objects.filter(status="failed").values("tenant_id").annotate(count=Count("id"))
+        OutboxEvent.objects.filter(status="failed")
+        .values("tenant_id")
+        .annotate(count=Count("id"))
     )
     return {row["tenant_id"] or "default": row["count"] for row in counts}
 
@@ -157,6 +163,8 @@ def get_sent_counts_by_tenant() -> Dict[str, int]:
         Dict mapping tenant_id to sent event count
     """
     counts = (
-        OutboxEvent.objects.filter(status="sent").values("tenant_id").annotate(count=Count("id"))
+        OutboxEvent.objects.filter(status="sent")
+        .values("tenant_id")
+        .annotate(count=Count("id"))
     )
     return {row["tenant_id"] or "default": row["count"] for row in counts}

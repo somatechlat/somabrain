@@ -416,7 +416,9 @@ def get_all_permissions(user_roles: List[str]) -> Set[str]:
     return all_perms
 
 
-def check_permissions(user_roles: List[str], required: List[str], require_all: bool = True) -> bool:
+def check_permissions(
+    user_roles: List[str], required: List[str], require_all: bool = True
+) -> bool:
     """
     Check multiple permissions.
 
@@ -488,10 +490,14 @@ def require_permission(*permissions: str, require_all: bool = True):
                     f"Permission denied: user={auth.get('user_id')} "
                     f"roles={user_roles} required={permissions}"
                 )
-                raise HttpError(403, f"Missing required permission(s): {', '.join(permissions)}")
+                raise HttpError(
+                    403, f"Missing required permission(s): {', '.join(permissions)}"
+                )
 
             # Log successful check
-            logger.debug(f"Permission granted: {permissions} for user={auth.get('user_id')}")
+            logger.debug(
+                f"Permission granted: {permissions} for user={auth.get('user_id')}"
+            )
 
             return func(request, *args, **kwargs)
 
@@ -543,6 +549,7 @@ def filter_by_permissions(
         for item in items
         if getattr(item, item_tenant_field, None) == user_tenant
         or (
-            hasattr(item, item_tenant_field) and getattr(item, item_tenant_field) is None
+            hasattr(item, item_tenant_field)
+            and getattr(item, item_tenant_field) is None
         )  # Platform-level items
     ]

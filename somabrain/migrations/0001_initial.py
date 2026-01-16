@@ -37,8 +37,12 @@ class Migration(migrations.Migration):
                         fields=["tenant_id", "status"],
                         name="cognitive_t_tenant__248af9_idx",
                     ),
-                    models.Index(fields=["thread_id"], name="cognitive_t_thread__33ff7a_idx"),
-                    models.Index(fields=["created_at"], name="cognitive_t_created_f2863c_idx"),
+                    models.Index(
+                        fields=["thread_id"], name="cognitive_t_thread__33ff7a_idx"
+                    ),
+                    models.Index(
+                        fields=["created_at"], name="cognitive_t_created_f2863c_idx"
+                    ),
                 ],
             },
         ),
@@ -104,7 +108,9 @@ class Migration(migrations.Migration):
                 ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
                 (
                     "tenant_id",
-                    models.CharField(blank=True, db_index=True, max_length=255, null=True),
+                    models.CharField(
+                        blank=True, db_index=True, max_length=255, null=True
+                    ),
                 ),
                 ("namespace", models.CharField(blank=True, max_length=255, null=True)),
                 ("key", models.CharField(max_length=500)),
@@ -154,8 +160,12 @@ class Migration(migrations.Migration):
                         fields=["tenant_id", "timestamp"],
                         name="feedback_re_tenant__f987e4_idx",
                     ),
-                    models.Index(fields=["feedback_type"], name="feedback_re_feedbac_4b93ee_idx"),
-                    models.Index(fields=["rating"], name="feedback_re_rating_895e0c_idx"),
+                    models.Index(
+                        fields=["feedback_type"], name="feedback_re_feedbac_4b93ee_idx"
+                    ),
+                    models.Index(
+                        fields=["rating"], name="feedback_re_rating_895e0c_idx"
+                    ),
                 ],
             },
         ),
@@ -165,7 +175,9 @@ class Migration(migrations.Migration):
                 ("id", models.BigAutoField(primary_key=True, serialize=False)),
                 (
                     "created_at",
-                    models.DateTimeField(db_index=True, default=django.utils.timezone.now),
+                    models.DateTimeField(
+                        db_index=True, default=django.utils.timezone.now
+                    ),
                 ),
                 ("topic", models.CharField(max_length=255)),
                 ("payload", models.JSONField()),
@@ -177,7 +189,9 @@ class Migration(migrations.Migration):
                 ("dedupe_key", models.CharField(max_length=255)),
                 (
                     "tenant_id",
-                    models.CharField(blank=True, db_index=True, max_length=255, null=True),
+                    models.CharField(
+                        blank=True, db_index=True, max_length=255, null=True
+                    ),
                 ),
                 ("last_error", models.TextField(blank=True, null=True)),
             ],
@@ -239,7 +253,9 @@ class Migration(migrations.Migration):
                         fields=["tenant_id", "timestamp"],
                         name="token_ledge_tenant__733bdf_idx",
                     ),
-                    models.Index(fields=["endpoint"], name="token_ledge_endpoin_9ecd01_idx"),
+                    models.Index(
+                        fields=["endpoint"], name="token_ledge_endpoin_9ecd01_idx"
+                    ),
                 ],
             },
         ),

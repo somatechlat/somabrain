@@ -201,7 +201,9 @@ class QuotaManager:
         if cur_day != day:
             cnt = 0
         now = datetime.now(timezone.utc)
-        reset_time = datetime(now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc)
+        reset_time = datetime(
+            now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc
+        )
         # Move to next day safely
         reset_time = reset_time + timedelta(days=1)
         return QuotaInfo(

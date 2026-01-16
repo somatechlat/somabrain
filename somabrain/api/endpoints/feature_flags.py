@@ -265,7 +265,9 @@ def create_feature_flag(request: AuthenticatedRequest, data: FeatureFlagCreate):
 @router.patch("/flags/{flag_key}", response=FeatureFlagOut)
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
-def update_feature_flag(request: AuthenticatedRequest, flag_key: str, data: FeatureFlagUpdate):
+def update_feature_flag(
+    request: AuthenticatedRequest, flag_key: str, data: FeatureFlagUpdate
+):
     """Update a feature flag (super admin only)."""
     flag = get_flag(flag_key)
     if not flag:

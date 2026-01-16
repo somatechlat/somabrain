@@ -100,7 +100,9 @@ def produce_teach_feedback(prod: KafkaProducer, frame_id: str) -> None:
     fut.get(timeout=10)
 
 
-def consume_reward_for_frame(consumer: KafkaConsumer, frame_id: str, timeout_s: int = 60) -> bool:
+def consume_reward_for_frame(
+    consumer: KafkaConsumer, frame_id: str, timeout_s: int = 60
+) -> bool:
     """Execute consume reward for frame.
 
     Args:
@@ -165,7 +167,9 @@ def main() -> None:
             pass
 
     if not ok:
-        print("Teach->Reward smoke failed: no matching reward received", file=sys.stderr)
+        print(
+            "Teach->Reward smoke failed: no matching reward received", file=sys.stderr
+        )
         sys.exit(1)
     print("Teach->Reward smoke passed.")
 

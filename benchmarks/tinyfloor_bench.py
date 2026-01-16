@@ -192,7 +192,9 @@ def run_all():
             u_linear = unbind_fidelity(
                 D, dtype, n_pairs=200 if D == 2048 else 40, strategy="linear"
             )
-            u_sqrt = unbind_fidelity(D, dtype, n_pairs=200 if D == 2048 else 40, strategy="sqrt")
+            u_sqrt = unbind_fidelity(
+                D, dtype, n_pairs=200 if D == 2048 else 40, strategy="sqrt"
+            )
 
             entry = {
                 "dim": D,

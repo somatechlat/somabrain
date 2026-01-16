@@ -455,7 +455,9 @@ class GraphLinksResponse(BaseModel):
 
 class SleepRunResponse(BaseModel):
     ok: bool = Field(..., description="Whether the sleep run started successfully")
-    run_id: Optional[str] = Field(None, description="Identifier for the initiated sleep run")
+    run_id: Optional[str] = Field(
+        None, description="Identifier for the initiated sleep run"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -496,8 +498,12 @@ class FeatureFlagsUpdateResponse(BaseModel):
     """
 
     overrides: List[str]
-    started_at_ms: Optional[int] = Field(None, description="Epoch ms when the run started")
-    mode: Optional[str] = Field(None, description="Sleep mode executed, e.g. 'nrem' or 'rem'")
+    started_at_ms: Optional[int] = Field(
+        None, description="Epoch ms when the run started"
+    )
+    mode: Optional[str] = Field(
+        None, description="Sleep mode executed, e.g. 'nrem' or 'rem'"
+    )
     details: Optional[Dict[str, Any]] = Field(
         None, description="Optional additional runtime details"
     )
@@ -873,11 +879,15 @@ class OutboxTenantReplayRequest(BaseModel):
 
     tenant_id: str = Field(..., description="Tenant ID to replay events for")
     status: str = Field("failed", description="Status to filter: pending|failed|sent")
-    topic_filter: Optional[str] = Field(None, description="Optional topic pattern filter")
+    topic_filter: Optional[str] = Field(
+        None, description="Optional topic pattern filter"
+    )
     before_timestamp: Optional[datetime] = Field(
         None, description="Only replay events before this time"
     )
-    limit: int = Field(100, ge=1, le=1000, description="Maximum number of events to replay")
+    limit: int = Field(
+        100, ge=1, le=1000, description="Maximum number of events to replay"
+    )
 
 
 class OutboxTenantReplayResponse(BaseModel):

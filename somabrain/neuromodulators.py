@@ -79,16 +79,24 @@ class NeuromodState:
     """
 
     dopamine: float = field(
-        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4))
+        default_factory=lambda: float(
+            getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4)
+        )
     )
     serotonin: float = field(
-        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5))
+        default_factory=lambda: float(
+            getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5)
+        )
     )
     noradrenaline: float = field(
-        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE", 0.0))
+        default_factory=lambda: float(
+            getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE", 0.0)
+        )
     )
     acetylcholine: float = field(
-        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE", 0.0))
+        default_factory=lambda: float(
+            getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE", 0.0)
+        )
     )
     timestamp: float = field(default_factory=lambda: time.time())
 
@@ -223,7 +231,9 @@ class PerTenantNeuromodulators:
             try:
                 cb(state)
             except Exception as cb_exc:
-                logger.debug("Per-tenant neuromod subscriber callback failed: %s", cb_exc)
+                logger.debug(
+                    "Per-tenant neuromod subscriber callback failed: %s", cb_exc
+                )
 
 
 @dataclass
@@ -309,7 +319,9 @@ class AdaptiveNeuromodulators:
         return self.get_current_state()
 
 
-def _calculate_dopamine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_dopamine_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate dopamine feedback based on reward prediction errors."""
     # Higher dopamine for successful reward-based learning
     boost = (
@@ -318,23 +330,33 @@ def _calculate_dopamine_feedback(performance: PerformanceMetrics, task_type: str
         else 0.0
     )
     return (
-        performance.success_rate + getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BIAS", 0.05) + boost
+        performance.success_rate
+        + getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BIAS", 0.05)
+        + boost
     )
 
 
-def _calculate_serotonin_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_serotonin_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate serotonin feedback based on emotional stability."""
     # Higher serotonin for stable, consistent performance
     return 1.0 - performance.error_rate
 
 
-def _calculate_noradrenaline_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_noradrenaline_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
     urgency_factor = (
-        getattr(settings, "SOMABRAIN_NEURO_URGENCY_FACTOR", 0.02) if task_type == "urgent" else 0.0
+        getattr(settings, "SOMABRAIN_NEURO_URGENCY_FACTOR", 0.02)
+        if task_type == "urgent"
+        else 0.0
     )
-    floor = max(0.0, min(1.0, float(getattr(settings, "SOMABRAIN_NEURO_LATENCY_FLOOR", 0.1))))
+    floor = max(
+        0.0, min(1.0, float(getattr(settings, "SOMABRAIN_NEURO_LATENCY_FLOOR", 0.1)))
+    )
     latency_term = (1.0 / max(floor, performance.latency)) * getattr(
         settings, "SOMABRAIN_NEURO_LATENCY_SCALE", 0.01
     )
@@ -344,11 +366,15 @@ def _calculate_noradrenaline_feedback(performance: PerformanceMetrics, task_type
     )
 
 
-def _calculate_acetylcholine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_acetylcholine_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
     memory_factor = (
-        getattr(settings, "SOMABRAIN_NEURO_MEMORY_FACTOR", 0.02) if task_type == "memory" else 0.0
+        getattr(settings, "SOMABRAIN_NEURO_MEMORY_FACTOR", 0.02)
+        if task_type == "memory"
+        else 0.0
     )
     return (
         performance.accuracy * getattr(settings, "SOMABRAIN_NEURO_ACCURACY_SCALE", 0.05)

@@ -28,7 +28,9 @@ def _git_sha() -> str:
 
     try:
         return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL)
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
+            )
             .decode()
             .strip()
         )
@@ -78,7 +80,10 @@ def load_manifest() -> Dict:
 
 def autoseed(base: str, tenant: str, count: int) -> Dict:
     """Create a synthetic book/author set via /remember and return a manifest dict."""
-    items = [{"i": i, "book": f"Book{i}", "author": f"Author{i}"} for i in range(1, count + 1)]
+    items = [
+        {"i": i, "book": f"Book{i}", "author": f"Author{i}"}
+        for i in range(1, count + 1)
+    ]
     client = httpx.Client(timeout=20.0)
     for it in items:
         fact = f"{it['author']} wrote {it['book']}"
@@ -93,7 +98,9 @@ def autoseed(base: str, tenant: str, count: int) -> Dict:
                 "importance": 1,
             }
         }
-        r = client.post(base.rstrip("/") + "/memory/remember", json=body, headers=_headers(tenant))
+        r = client.post(
+            base.rstrip("/") + "/memory/remember", json=body, headers=_headers(tenant)
+        )
         if r.status_code != 200:
             raise RuntimeError(f"/remember failed: {r.status_code} {r.text}")
     manifest = {
@@ -149,7 +156,9 @@ def eval_precision_at_1(
 def main():
     """Execute main."""
 
-    ap = argparse.ArgumentParser(description="Evaluate learning speed (precision@1 vs N)")
+    ap = argparse.ArgumentParser(
+        description="Evaluate learning speed (precision@1 vs N)"
+    )
     from django.conf import settings
 
     # Use centralized Settings for defaults
@@ -161,7 +170,9 @@ def main():
         default="10,50,100,500,1000",
         help="Comma-separated checkpoints to evaluate; 'max' is appended automatically",
     )
-    ap.add_argument("--autoseed", type=int, default=0, help="If >0, auto-seed this many items")
+    ap.add_argument(
+        "--autoseed", type=int, default=0, help="If >0, auto-seed this many items"
+    )
     ap.add_argument(
         "--plot",
         action="store_true",

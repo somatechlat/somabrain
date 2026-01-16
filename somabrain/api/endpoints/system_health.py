@@ -102,7 +102,9 @@ def check_postgresql() -> Dict[str, Any]:
             cursor.execute("SELECT pg_database_size(current_database())")
             db_size = cursor.fetchone()[0]
 
-            cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'")
+            cursor.execute(
+                "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
+            )
             active_conns = cursor.fetchone()[0]
 
             return {
@@ -164,7 +166,9 @@ def check_kafka() -> Dict[str, Any]:
     def _check():
         """Execute check."""
 
-        kafka_host = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "somabrain_kafka:9094")
+        kafka_host = getattr(
+            settings, "KAFKA_BOOTSTRAP_SERVERS", "somabrain_kafka:9094"
+        )
         if ":" in kafka_host:
             host, port = kafka_host.split(":")
         else:
@@ -302,7 +306,9 @@ def check_schema_registry() -> Dict[str, Any]:
             return {
                 "status_code": response.status_code,
                 "healthy": response.status_code == 200,
-                "subjects_count": (len(response.json()) if response.status_code == 200 else 0),
+                "subjects_count": (
+                    len(response.json()) if response.status_code == 200 else 0
+                ),
             }
 
     result, time_ms, error = timed_check(_check)
@@ -538,7 +544,9 @@ def get_full_health(request):
     all_services = list(infrastructure.values()) + list(internal_services.values())
     healthy = sum(1 for s in all_services if s["status"] == "healthy")
     degraded = sum(
-        1 for s in all_services if s["status"] in ("degraded", "unavailable", "not_configured")
+        1
+        for s in all_services
+        if s["status"] in ("degraded", "unavailable", "not_configured")
     )
     unhealthy = sum(1 for s in all_services if s["status"] == "unhealthy")
 
@@ -603,7 +611,9 @@ def get_database_health(request):
                 LIMIT 10
             """
             )
-            tables = [{"schema": r[0], "table": r[1], "rows": r[2]} for r in cursor.fetchall()]
+            tables = [
+                {"schema": r[0], "table": r[1], "rows": r[2]} for r in cursor.fetchall()
+            ]
             result["details"]["top_tables"] = tables
     except Exception:
         pass

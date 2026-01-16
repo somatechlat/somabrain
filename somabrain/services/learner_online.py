@@ -80,7 +80,9 @@ class LearnerService:
             )
         # Use Settings for the next-event topic; fallback handled by Settings default.
         topic_next = getattr(self._settings, "topic_next_event", None)
-        topic_cfg = getattr(self._settings, "topic_config_updates", "cog.config.updates")
+        topic_cfg = getattr(
+            self._settings, "topic_config_updates", "cog.config.updates"
+        )
         try:
             import confluent_kafka as ck
         except Exception as exc:  # pragma: no cover
@@ -111,7 +113,9 @@ class LearnerService:
         )
         self._producer = producer
         consumer.subscribe([topic_next])
-        logger.info("LearnerService consuming %s and emitting %s", topic_next, topic_cfg)
+        logger.info(
+            "LearnerService consuming %s and emitting %s", topic_next, topic_cfg
+        )
 
         while True:
             msg = consumer.poll(1.0)
@@ -187,7 +191,9 @@ class LearnerService:
         elapsed = time.perf_counter() - t_start
         LEARNER_EVENT_LATENCY.labels(tenant_id=tenant).observe(elapsed)
 
-    def _emit_cfg(self, tenant: str, tau: float, lr: float, event_id: str | None = None) -> None:
+    def _emit_cfg(
+        self, tenant: str, tau: float, lr: float, event_id: str | None = None
+    ) -> None:
         """Emit a configuration update for *tenant*.
 
         The ``tau`` value is adjusted by the tenant‑specific ``tau_decay_rate``
@@ -197,7 +203,9 @@ class LearnerService:
         logs delivery results.
         """
         # Apply decay if an override exists.
-        decay_rate = self._tenant_overrides.get(tenant, {}).get("tau_decay_rate", 0.0) or 0.0
+        decay_rate = (
+            self._tenant_overrides.get(tenant, {}).get("tau_decay_rate", 0.0) or 0.0
+        )
         try:
             decay_rate = float(decay_rate)
         except Exception:
@@ -245,7 +253,9 @@ class LearnerService:
             from somabrain.metrics import LEARNER_LAG_SECONDS
 
             last = self._last_seen_ts.get(tenant, time.time())
-            LEARNER_LAG_SECONDS.labels(tenant_id=tenant).set(max(0.0, time.time() - last))
+            LEARNER_LAG_SECONDS.labels(tenant_id=tenant).set(
+                max(0.0, time.time() - last)
+            )
         except Exception as exc:  # pragma: no cover – defensive
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="produce").inc()
             logger.exception("Error emitting config update: %s", exc)

@@ -72,7 +72,11 @@ class CognitiveLoopState:
             # Use Django ORM to fetch sleep state
             # order_by('-timestamp') to get the latest if multiple exist (though ideally unique per tenant)
             # The model has index on [tenant_id, timestamp]
-            ss = DbSleepState.objects.filter(tenant_id=tenant_id).order_by("-timestamp").first()
+            ss = (
+                DbSleepState.objects.filter(tenant_id=tenant_id)
+                .order_by("-timestamp")
+                .first()
+            )
 
             if ss:
                 # Map string state from DB to Enum
@@ -173,7 +177,9 @@ def eval_step(
             PREDICT_COMPARE_MISSING_PREV.inc()
         except Exception:
             pass
-        pred = type("PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0})()
+        pred = type(
+            "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
+        )()
         result_extras["no_prev_focus"] = True
     else:
         try:
@@ -183,9 +189,15 @@ def eval_step(
             try:
                 PREDICTOR_ALTERNATIVE.inc()
             except Exception as metric_exc:
-                logger.debug("Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc)
-            pred = type("PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0})()
-            logger.exception("Predictor failed, falling back to zero-error recovery path: %s", exc)
+                logger.debug(
+                    "Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc
+                )
+            pred = type(
+                "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
+            )()
+            logger.exception(
+                "Predictor failed, falling back to zero-error recovery path: %s", exc
+            )
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
     base_nm = neuromods.get_state()
@@ -211,7 +223,9 @@ def eval_step(
             from typing import Any, cast
 
             if hasattr(supervisor, "adjust"):
-                nm, F, mag = cast(Any, supervisor).adjust(nm, float(novelty), float(pred.error))
+                nm, F, mag = cast(Any, supervisor).adjust(
+                    nm, float(novelty), float(pred.error)
+                )
         except Exception as exc:
             logger.exception("Supervisor adjustment failed: %s", exc)
 

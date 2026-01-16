@@ -158,7 +158,9 @@ class UnifiedScorer:
             M.SCORER_COMPONENT.labels(component="recency").observe(rec)
 
         total = (
-            self._weights.w_cosine * cos + self._weights.w_fd * fd + self._weights.w_recency * rec
+            self._weights.w_cosine * cos
+            + self._weights.w_fd * fd
+            + self._weights.w_recency * rec
         )
         total_score = max(0.0, min(1.0, float(total)))
 

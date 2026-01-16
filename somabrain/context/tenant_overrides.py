@@ -32,7 +32,9 @@ def load_tenant_overrides() -> Dict[str, Dict[str, Any]]:
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             if isinstance(data, dict):
-                overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                overrides = {
+                    str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
+                }
         except Exception:
             try:
                 import json as _json
@@ -40,7 +42,11 @@ def load_tenant_overrides() -> Dict[str, Dict[str, Any]]:
                 with open(path, "r", encoding="utf-8") as f:
                     data = _json.load(f)
                 if isinstance(data, dict):
-                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                    overrides = {
+                        str(k): (v or {})
+                        for k, v in data.items()
+                        if isinstance(v, dict)
+                    }
             except Exception:
                 overrides = {}
 
@@ -52,7 +58,11 @@ def load_tenant_overrides() -> Dict[str, Dict[str, Any]]:
 
                 data = _json.loads(raw)
                 if isinstance(data, dict):
-                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                    overrides = {
+                        str(k): (v or {})
+                        for k, v in data.items()
+                        if isinstance(v, dict)
+                    }
             except Exception:
                 overrides = {}
 

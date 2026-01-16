@@ -10,7 +10,9 @@ os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = (
     "http://localhost:9595"  # SFM API (Updated from docker ps)
 )
 os.environ["SOMABRAIN_REDIS_URL"] = "redis://localhost:30100/0"  # SomaBrain Redis
-os.environ["SOMABRAIN_POSTGRES_DSN"] = "postgresql://soma:soma@localhost:30106/somabrain"
+os.environ["SOMABRAIN_POSTGRES_DSN"] = (
+    "postgresql://soma:soma@localhost:30106/somabrain"
+)
 # Disable other strict checks that might block simple script execution if services aren't perfect yet
 os.environ["SOMABRAIN_STRICT_REAL"] = "0"
 
@@ -96,7 +98,9 @@ async def verify_adapter_flow():
         results = adapter.retrieve_fractal({"content": query_text}, top_k=5)
 
         if results:
-            print(f"    ✅ VIBE CHECK 2 PASSED: Semantic Search found {len(results)} results.")
+            print(
+                f"    ✅ VIBE CHECK 2 PASSED: Semantic Search found {len(results)} results."
+            )
         else:
             print(
                 "    ⚠️ VIBE CHECK 2 WARNING: Semantic Search returned no results (Possible embedding model loading issue)."
@@ -116,7 +120,9 @@ async def verify_adapter_flow():
             print(f"    Score: {score}")
 
             if top_node.memory_trace.get("id") == trace_id:
-                print("\n✅ VIBE CHECK PASSED: Data Round-Tripped via Single Point of Access!")
+                print(
+                    "\n✅ VIBE CHECK PASSED: Data Round-Tripped via Single Point of Access!"
+                )
             else:
                 print("\n❌ DATA MISMATCH: Retrieved ID does not match.")
 

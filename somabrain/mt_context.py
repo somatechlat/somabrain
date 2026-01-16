@@ -43,7 +43,9 @@ from .quantum import QuantumLayer
 class MultiTenantHRRContext:
     """Multitenanthrrcontext class implementation."""
 
-    def __init__(self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int | None = None):
+    def __init__(
+        self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int | None = None
+    ):
         """Initialize the instance."""
 
         self.q = q

@@ -35,7 +35,8 @@ def _default_base_url() -> str:
     from django.conf import settings
 
     return (
-        get_api_base_url() or getattr(settings, "SOMABRAIN_API_URL", "http://localhost:30101")
+        get_api_base_url()
+        or getattr(settings, "SOMABRAIN_API_URL", "http://localhost:30101")
     ).rstrip("/")
 
 
@@ -55,7 +56,9 @@ def _auth_headers(token: str | None) -> dict[str, str]:
     """
 
     if not token:
-        raise SystemExit("Admin token required. Pass --token or set SOMABRAIN_API_TOKEN.")
+        raise SystemExit(
+            "Admin token required. Pass --token or set SOMABRAIN_API_TOKEN."
+        )
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -253,7 +256,9 @@ def build_parser() -> argparse.ArgumentParser:
     sub = ap.add_subparsers(dest="command", required=True)
 
     ap_list = sub.add_parser("list", help="List outbox events")
-    ap_list.add_argument("--status", default="pending", choices=["pending", "failed", "sent"])
+    ap_list.add_argument(
+        "--status", default="pending", choices=["pending", "failed", "sent"]
+    )
     ap_list.add_argument("--tenant", default=None)
     ap_list.add_argument("--limit", type=int, default=50)
     ap_list.add_argument("--offset", type=int, default=0)
@@ -265,7 +270,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap_replay.set_defaults(func=cmd_replay)
 
     ap_tail = sub.add_parser("tail", help="Watch outbox events in real time")
-    ap_tail.add_argument("--status", default="pending", choices=["pending", "failed", "sent"])
+    ap_tail.add_argument(
+        "--status", default="pending", choices=["pending", "failed", "sent"]
+    )
     ap_tail.add_argument("--tenant", default=None)
     ap_tail.add_argument("--limit", type=int, default=50)
     ap_tail.add_argument("--interval", type=float, default=2.0)
@@ -273,7 +280,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap_tail.set_defaults(func=cmd_tail)
 
     ap_check = sub.add_parser("check", help="Fail if pending exceeds threshold")
-    ap_check.add_argument("--status", default="pending", choices=["pending", "failed", "sent"])
+    ap_check.add_argument(
+        "--status", default="pending", choices=["pending", "failed", "sent"]
+    )
     ap_check.add_argument("--tenant", default=None)
     ap_check.add_argument("--max-pending", type=int, default=100)
     ap_check.add_argument("--page-size", type=int, default=500)

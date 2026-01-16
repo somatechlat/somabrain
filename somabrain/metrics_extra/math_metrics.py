@@ -58,7 +58,9 @@ class MathematicalMetrics:
     @staticmethod
     def verify_role_orthogonality(role1: str, role2: str, cosine_sim: float) -> None:
         """Verify and record role vector orthogonality."""
-        quantum_role_orthogonality.labels(role_pair=f"{role1}:{role2}").set(abs(cosine_sim))
+        quantum_role_orthogonality.labels(role_pair=f"{role1}:{role2}").set(
+            abs(cosine_sim)
+        )
 
     @staticmethod
     def verify_density_matrix(trace_value: float, min_eigenval: float) -> None:

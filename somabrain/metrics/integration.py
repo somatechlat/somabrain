@@ -142,7 +142,9 @@ def record_sfm_request(
         duration_seconds: Request duration in seconds
     """
     SFM_REQUEST_TOTAL.labels(operation=operation, tenant=tenant, status=status).inc()
-    SFM_REQUEST_DURATION.labels(operation=operation, tenant=tenant).observe(duration_seconds)
+    SFM_REQUEST_DURATION.labels(operation=operation, tenant=tenant).observe(
+        duration_seconds
+    )
 
 
 def update_circuit_breaker_state(tenant: str, state: int) -> None:
@@ -206,7 +208,9 @@ def record_graph_operation(
         duration_seconds: Operation duration in seconds
     """
     SFM_GRAPH_OPERATIONS.labels(tenant=tenant, operation=operation, status=status).inc()
-    SFM_GRAPH_LATENCY.labels(tenant=tenant, operation=operation).observe(duration_seconds)
+    SFM_GRAPH_LATENCY.labels(tenant=tenant, operation=operation).observe(
+        duration_seconds
+    )
 
 
 def record_bulk_store(
@@ -246,7 +250,9 @@ def record_hybrid_recall(
         duration_seconds: Operation duration in seconds
     """
     fallback_label = "true" if fallback else "false"
-    SFM_HYBRID_RECALL_TOTAL.labels(tenant=tenant, status=status, fallback=fallback_label).inc()
+    SFM_HYBRID_RECALL_TOTAL.labels(
+        tenant=tenant, status=status, fallback=fallback_label
+    ).inc()
     SFM_HYBRID_RECALL_LATENCY.labels(tenant=tenant).observe(duration_seconds)
 
 

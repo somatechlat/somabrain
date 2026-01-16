@@ -85,7 +85,9 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
             # 1️⃣ Fetch pending events (limit can be tuned via env var later).
             # -----------------------------------------------------------------
             # Using Django Async ORM
-            pending_qs = OutboxEvent.objects.filter(status="pending").order_by("created_at")[:200]
+            pending_qs = OutboxEvent.objects.filter(status="pending").order_by(
+                "created_at"
+            )[:200]
 
             # Evaluate queryset asynchronously to get list
             pending_events = []

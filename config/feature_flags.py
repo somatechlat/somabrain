@@ -84,6 +84,8 @@ class FeatureFlags:
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8")
+            p.write_text(
+                json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
+            )
         except Exception:
             pass

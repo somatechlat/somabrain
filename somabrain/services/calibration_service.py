@@ -19,13 +19,17 @@ from somabrain.calibration.calibration_metrics import CalibrationTracker
 class CalibrationService:
     """Service for managing predictor calibration."""
 
-    enabled: bool = field(default_factory=lambda: getattr(settings, "CALIBRATION_ENABLED", False))
+    enabled: bool = field(
+        default_factory=lambda: getattr(settings, "CALIBRATION_ENABLED", False)
+    )
     trackers: Dict[str, CalibrationTracker] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)
     _temperature: Dict[Tuple[str, str], float] = field(default_factory=dict, init=False)
 
-    def record_prediction(self, domain: str, tenant: str, confidence: float, correct: bool) -> None:
+    def record_prediction(
+        self, domain: str, tenant: str, confidence: float, correct: bool
+    ) -> None:
         """Execute record prediction.
 
         Args:

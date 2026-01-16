@@ -19,7 +19,9 @@ class CognitiveErrorHandler:
     """Advanced error handling for brain-like cognitive processing."""
 
     @staticmethod
-    def handle_error(error: Exception, context: str = "", request_id: str | None = None) -> dict:
+    def handle_error(
+        error: Exception, context: str = "", request_id: str | None = None
+    ) -> dict:
         """Handle errors with brain-like analysis and recovery suggestions."""
         import traceback
 
@@ -87,7 +89,9 @@ class CognitiveMiddleware:
         method = request.method
         start_time = time.time()
 
-        logger.info(f"🧠 Request {request_id}: {method} {path} - Cognitive processing initiated")
+        logger.info(
+            f"🧠 Request {request_id}: {method} {path} - Cognitive processing initiated"
+        )
 
         try:
             response = self.get_response(request)
@@ -113,7 +117,9 @@ class CognitiveMiddleware:
             # Typically CognitiveMiddleware should be high up (outer).
 
             processing_time = time.time() - start_time
-            error_info = CognitiveErrorHandler.handle_error(e, f"{method} {path}", request_id)
+            error_info = CognitiveErrorHandler.handle_error(
+                e, f"{method} {path}", request_id
+            )
 
             logger.error(
                 f"🧠 Request {request_id}: {method} {path} - Error after {processing_time:.4f}s: {str(e)}"

@@ -149,7 +149,9 @@ class CircuitBreaker:
             self._ensure_tenant(tenant)
             self._failure_count[tenant] += 1
             self._last_failure_time[tenant] = now
-            threshold = self._failure_threshold.get(tenant, self._global_failure_threshold)
+            threshold = self._failure_threshold.get(
+                tenant, self._global_failure_threshold
+            )
             if self._failure_count[tenant] >= max(1, int(threshold)):
                 self._circuit_open[tenant] = True
             self._set_metrics(tenant)
@@ -166,7 +168,9 @@ class CircuitBreaker:
                 return False
             now = time.monotonic()
             interval = self._reset_interval.get(tenant, self._global_reset_interval)
-            if now - self._last_failure_time.get(tenant, 0.0) < max(1.0, float(interval)):
+            if now - self._last_failure_time.get(tenant, 0.0) < max(
+                1.0, float(interval)
+            ):
                 return False
             if now - self._last_reset_attempt.get(tenant, 0.0) < 5.0:
                 return False

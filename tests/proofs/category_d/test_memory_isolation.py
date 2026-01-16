@@ -192,7 +192,9 @@ class TestMemoryIsolation:
             tenant_vecs[tenant_id] = vec
 
             # Store tenant-specific data
-            wm.admit(f"item_{tenant_id}", vec, {"tenant": tenant_id, "secret": f"secret_{i}"})
+            wm.admit(
+                f"item_{tenant_id}", vec, {"tenant": tenant_id, "secret": f"secret_{i}"}
+            )
 
         # Verify isolation: each tenant should only see their own data
         leakage_count = 0
@@ -210,7 +212,9 @@ class TestMemoryIsolation:
                 if payload.get("tenant") != tenant_id:
                     leakage_count += 1
 
-        assert leakage_count == 0, f"Cross-tenant leakage detected: {leakage_count} items leaked"
+        assert (
+            leakage_count == 0
+        ), f"Cross-tenant leakage detected: {leakage_count} items leaked"
 
 
 # ---------------------------------------------------------------------------
@@ -299,7 +303,9 @@ class TestWorkingMemoryTenantIsolation:
             wm_a.admit(f"item_a_{i}", vec, {"tenant": "A"})
 
         # Tenant A should have at most capacity items
-        assert len(wm_a._items) <= 5, f"Tenant A should have at most 5 items: {len(wm_a._items)}"
+        assert (
+            len(wm_a._items) <= 5
+        ), f"Tenant A should have at most 5 items: {len(wm_a._items)}"
 
         # Tenant B should still have full capacity available
         for i in range(5):
@@ -308,4 +314,6 @@ class TestWorkingMemoryTenantIsolation:
             wm_b.admit(f"item_b_{i}", vec, {"tenant": "B"})
 
         # Tenant B should have all 5 items
-        assert len(wm_b._items) == 5, f"Tenant B should have 5 items: {len(wm_b._items)}"
+        assert (
+            len(wm_b._items) == 5
+        ), f"Tenant B should have 5 items: {len(wm_b._items)}"

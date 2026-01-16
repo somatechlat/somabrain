@@ -331,7 +331,9 @@ from somabrain.api.endpoints.user_notifications import (
     router as user_notifications_router,
 )
 
-_safe_add_router(api, "/notifications/", user_notifications_router, tags=["Notifications"])
+_safe_add_router(
+    api, "/notifications/", user_notifications_router, tags=["Notifications"]
+)
 
 # Webhooks Dashboard Router
 from somabrain.api.endpoints.webhooks_dashboard import (
@@ -345,12 +347,16 @@ _safe_add_router(
 # Service Health Router
 from somabrain.api.endpoints.service_health import router as service_health_router
 
-_safe_add_router(api, "/service-health/", service_health_router, tags=["Service Health"])
+_safe_add_router(
+    api, "/service-health/", service_health_router, tags=["Service Health"]
+)
 
 # Admin Override Router
 from somabrain.api.endpoints.admin_override import router as admin_override_router
 
-_safe_add_router(api, "/admin-override/", admin_override_router, tags=["Admin Override"])
+_safe_add_router(
+    api, "/admin-override/", admin_override_router, tags=["Admin Override"]
+)
 
 # Environment Router
 from somabrain.api.endpoints.environment import router as environment_router

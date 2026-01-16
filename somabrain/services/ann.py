@@ -98,7 +98,9 @@ class SimpleAnnIndex(CleanupIndex):
         scores.sort(key=lambda item: item[1], reverse=True)
         return scores[: max(0, int(top_k))]
 
-    def configure(self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None) -> None:
+    def configure(
+        self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
+    ) -> None:
         # Simple backend does not require tuning.
         """Execute configure."""
 
@@ -108,14 +110,18 @@ class SimpleAnnIndex(CleanupIndex):
 class HNSWAnnIndex(CleanupIndex):
     """Thin wrapper around hnswlib; fails fast if the optional library is missing."""
 
-    def __init__(self, dim: int, *, m: int, ef_construction: int, ef_search: int) -> None:
+    def __init__(
+        self, dim: int, *, m: int, ef_construction: int, ef_search: int
+    ) -> None:
         """Initialize the instance."""
 
         import hnswlib
 
         self._dim = int(dim)
         self._index = hnswlib.Index(space="cosine", dim=self._dim)
-        self._index.init_index(max_elements=200000, ef_construction=ef_construction, M=m)
+        self._index.init_index(
+            max_elements=200000, ef_construction=ef_construction, M=m
+        )
         self._index.set_ef(ef_search)
         self._lock = threading.Lock()
         self._id_counter = 0
@@ -180,7 +186,9 @@ class HNSWAnnIndex(CleanupIndex):
         results.sort(key=lambda item: item[1], reverse=True)
         return results[:k]
 
-    def configure(self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None) -> None:
+    def configure(
+        self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
+    ) -> None:
         """Execute configure."""
 
         if ef_search is None:

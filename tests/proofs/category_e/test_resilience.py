@@ -129,10 +129,14 @@ class TestResilienceUnderFailure:
         memory_component = components.get("memory", {})
 
         # Check memory health indicators
-        assert "memory_ok" in health or "memory" in components, "Missing memory health status"
+        assert (
+            "memory_ok" in health or "memory" in components
+        ), "Missing memory health status"
 
         # If memory circuit is open, system should report not ok
-        circuit_open = health.get("memory_circuit_open") or components.get("memory_circuit_open")
+        circuit_open = health.get("memory_circuit_open") or components.get(
+            "memory_circuit_open"
+        )
         if circuit_open:
             # When circuit is open, memory_ok should be False
             # Note: In degraded mode, system may still report healthy
@@ -194,7 +198,9 @@ class TestResilienceUnderFailure:
         health = _get_health()
 
         # Verify Milvus metrics are tracked
-        milvus_metrics = health.get("milvus_metrics") or health.get("components", {}).get("milvus")
+        milvus_metrics = health.get("milvus_metrics") or health.get(
+            "components", {}
+        ).get("milvus")
         assert milvus_metrics is not None, "Missing Milvus metrics"
 
         # Check for latency tracking (p95 metrics)
@@ -247,7 +253,9 @@ class TestResilienceUnderFailure:
 
         # If Postgres is not OK, system should not be fully ready
         if not health.get("postgres_ok"):
-            assert not health.get("ready"), "System reports ready but Postgres is not OK"
+            assert not health.get(
+                "ready"
+            ), "System reports ready but Postgres is not OK"
 
         # Verify metrics_ready reflects backend status
         assert "metrics_ready" in health, "Missing metrics_ready"
@@ -284,7 +292,9 @@ class TestResilienceUnderFailure:
             # When OPA is required but unavailable, fail-closed means
             # the system should deny requests or report not ready
             # We verify the health endpoint reports this state
-            assert health.get("opa_ok") is False, "OPA required but status not correctly reported"
+            assert (
+                health.get("opa_ok") is False
+            ), "OPA required but status not correctly reported"
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +369,9 @@ class TestCircuitBreakerDegradation:
         ), f"Pending should be int or None, got {type(pending)}"
 
         # Should also track last pending timestamp
-        assert "last_pending_created_at" in outbox, "Outbox should track last pending timestamp"
+        assert (
+            "last_pending_created_at" in outbox
+        ), "Outbox should track last pending timestamp"
 
 
 # ---------------------------------------------------------------------------
@@ -386,7 +398,9 @@ class TestBackendRecoveryVerification:
         # Make multiple health requests to verify stability
         for i in range(5):
             try:
-                r = httpx.get(f"http://localhost:{APP_PORT}/health", timeout=NORMAL_TIMEOUT)
+                r = httpx.get(
+                    f"http://localhost:{APP_PORT}/health", timeout=NORMAL_TIMEOUT
+                )
                 assert r.status_code == 200, f"Health failed on attempt {i + 1}"
                 data = r.json()
                 assert "ok" in data, f"Missing ok field on attempt {i + 1}"
@@ -419,7 +433,9 @@ class TestBackendRecoveryVerification:
             predictor_ok = health.get("predictor_ok", True)
             embedder_ok = health.get("embedder_ok", True)
             if predictor_ok and embedder_ok:
-                assert ready, "Ready should be True when all backends OK and circuit closed"
+                assert (
+                    ready
+                ), "Ready should be True when all backends OK and circuit closed"
 
     def test_sleep_state_reflects_degradation(self) -> None:
         """Verify system state reflects circuit breaker degradation.
@@ -441,7 +457,9 @@ class TestBackendRecoveryVerification:
 
         # Verify health response has required fields for degradation tracking
         assert "ready" in health, "Missing ready field in health"
-        assert "memory_ok" in health or "components" in health, "Missing memory status in health"
+        assert (
+            "memory_ok" in health or "components" in health
+        ), "Missing memory status in health"
 
 
 # ---------------------------------------------------------------------------
@@ -482,7 +500,9 @@ class TestSFMDegradationMode:
 
         # Create a fresh DegradationManager without circuit breaker
         # to test the degradation logic directly
-        manager = DegradationManager(circuit_breaker=None, alert_threshold_seconds=300.0)
+        manager = DegradationManager(
+            circuit_breaker=None, alert_threshold_seconds=300.0
+        )
 
         tenant = f"test_degraded_{uuid.uuid4().hex[:8]}"
 

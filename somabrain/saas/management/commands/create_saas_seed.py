@@ -54,7 +54,9 @@ class Command(BaseCommand):
 
         # Create tiers
         tiers = self._create_tiers()
-        self.stdout.write(self.style.SUCCESS(f"Created {len(tiers)} subscription tiers"))
+        self.stdout.write(
+            self.style.SUCCESS(f"Created {len(tiers)} subscription tiers")
+        )
 
         # Create test tenant if requested
         if options["with_test_tenant"]:

@@ -71,7 +71,8 @@ def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List
     # Assuming list of dicts based on previous context.
     results = body.get("results", []) if isinstance(body, dict) else body
     return [
-        str(item.get("payload", {}).get("content") or item.get("content") or "") for item in results
+        str(item.get("payload", {}).get("content") or item.get("content") or "")
+        for item in results
     ]
 
 
@@ -118,7 +119,9 @@ def test_memory_workbench(http_client: httpx.Client, tenant, corpus) -> None:
         relevant: Set[str] = meta["relevant"]
         precisions.append(precision_at_k(relevant, retrieved, k=5))
         recalls.append(recall_at_k(relevant, retrieved, k=5))
-        ndcgs.append(ndcg_at_k([1 if item in relevant else 0 for item in retrieved[:5]], k=5))
+        ndcgs.append(
+            ndcg_at_k([1 if item in relevant else 0 for item in retrieved[:5]], k=5)
+        )
     # Relaxed assertions for E2E variability
     assert all(p >= 0.0 for p in precisions), f"Precision too low: {precisions}"
     assert all(r >= 0.0 for r in recalls), f"Recall too low: {recalls}"

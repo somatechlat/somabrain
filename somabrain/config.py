@@ -111,7 +111,9 @@ class Config:
             try:
                 return getattr(settings, name)
             except AttributeError:
-                raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
+                raise AttributeError(
+                    f"'{type(self).__name__}' has no attribute '{name}'"
+                )
 
 
 # Singleton instance for convenience

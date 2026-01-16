@@ -59,7 +59,9 @@ def find_lowest_salience_idx(
     min_idx = 0
 
     for idx, item in enumerate(items):
-        salience = compute_eviction_salience(item, items, alpha, gamma, now, recency_scale)
+        salience = compute_eviction_salience(
+            item, items, alpha, gamma, now, recency_scale
+        )
         if salience < min_salience:
             min_salience = salience
             min_idx = idx

@@ -94,7 +94,8 @@ def run_bench(
             subset = [e for e in results["data"] if e["D"] == D]
             nulls = sorted(set(e["null_frac"] for e in subset))
             mean_exact = [
-                np.mean([e["cosine_exact"] for e in subset if e["null_frac"] == nf]) for nf in nulls
+                np.mean([e["cosine_exact"] for e in subset if e["null_frac"] == nf])
+                for nf in nulls
             ]
             mean_robust = [
                 np.mean([e["cosine_robust"] for e in subset if e["null_frac"] == nf])

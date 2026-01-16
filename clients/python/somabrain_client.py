@@ -89,7 +89,9 @@ class SomaBrainClient:
             self.headers["Authorization"] = f"Bearer {token}"
         if tenant:
             self.headers["X-Tenant-ID"] = str(tenant)
-        self._http = httpx.Client(base_url=self.base, headers=self.headers, timeout=timeout_s)
+        self._http = httpx.Client(
+            base_url=self.base, headers=self.headers, timeout=timeout_s
+        )
         self._health = SomaBrainHealth(status="unknown")
         self._health_ttl_s = max(0.0, float(health_ttl_s))
 
@@ -199,7 +201,9 @@ class SomaBrainClient:
     # Core API methods
     # ------------------------------------------------------------------
 
-    def remember(self, payload: Dict[str, Any], coord: Optional[str] = None) -> Dict[str, Any]:
+    def remember(
+        self, payload: Dict[str, Any], coord: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Store a memory payload in SomaBrain.
 
         This method always sends the request to SomaBrain; callers that
@@ -211,7 +215,9 @@ class SomaBrainClient:
         r.raise_for_status()
         return r.json()
 
-    def recall(self, query: str, top_k: int = 3, universe: Optional[str] = None) -> Dict[str, Any]:
+    def recall(
+        self, query: str, top_k: int = 3, universe: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Recall memories relevant to `query` from SomaBrain.
 
         This method always calls SomaBrain. Agents that must never hit

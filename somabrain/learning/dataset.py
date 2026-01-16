@@ -100,7 +100,9 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
                 response=assistant.strip(),
                 tenant=tenant,
                 namespace=namespace,
-                metadata={k: v for k, v in payload.items() if k not in {"conversation"}},
+                metadata={
+                    k: v for k, v in payload.items() if k not in {"conversation"}
+                },
             )
 
     prompt = payload.get("prompt")
@@ -111,7 +113,9 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
             response=response.strip(),
             tenant=tenant,
             namespace=namespace,
-            metadata={k: v for k, v in payload.items() if k not in {"prompt", "response"}},
+            metadata={
+                k: v for k, v in payload.items() if k not in {"prompt", "response"}
+            },
         )
 
     # alternative: treat current text as response and use previous text as prompt

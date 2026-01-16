@@ -52,7 +52,9 @@ def _get_runtime():
     _runtime_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "runtime.py"
     )
-    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+    _spec = importlib.util.spec_from_file_location(
+        "somabrain.runtime_module", _runtime_path
+    )
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -88,7 +90,9 @@ def _get_app_singletons():
 
         return {
             "predictor_factory": getattr(app_module, "_make_predictor", None),
-            "per_tenant_neuromodulators": getattr(app_module, "per_tenant_neuromodulators", None),
+            "per_tenant_neuromodulators": getattr(
+                app_module, "per_tenant_neuromodulators", None
+            ),
             "personality_store": getattr(app_module, "personality_store", None),
             "amygdala": getattr(app_module, "amygdala", None),
         }
@@ -96,7 +100,9 @@ def _get_app_singletons():
         return {}
 
 
-def _get_or_create_focus_state(session_id: str, tenant_id: str, cfg) -> Optional[FocusState]:
+def _get_or_create_focus_state(
+    session_id: str, tenant_id: str, cfg
+) -> Optional[FocusState]:
     """Get or create FocusState for session."""
     if not getattr(cfg, "USE_FOCUS_STATE", True):
         return None
@@ -110,7 +116,9 @@ def _get_or_create_focus_state(session_id: str, tenant_id: str, cfg) -> Optional
 
         dim = int(getattr(cfg, "HRR_DIM", 512) or 512)
         hrr = HRRContext(dim=dim)
-        focus = FocusState(hrr_context=hrr, cfg=cfg, session_id=session_id, tenant_id=tenant_id)
+        focus = FocusState(
+            hrr_context=hrr, cfg=cfg, session_id=session_id, tenant_id=tenant_id
+        )
         _focus_state_cache[cache_key] = focus
         return focus
     except Exception as exc:
@@ -144,7 +152,9 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
         raise HttpError(400, "missing task_key")
 
     max_steps = int(
-        getattr(body, "max_steps", None) or getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS", 5) or 5
+        getattr(body, "max_steps", None)
+        or getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS", 5)
+        or 5
     )
 
     rel_types = getattr(body, "rel_types", None)
@@ -220,7 +230,9 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
         focus_state.update(wm_vec, recall_hits)
 
     initial_novelty = float(
-        getattr(body, "novelty", None) or getattr(settings, "SOMABRAIN_DEFAULT_NOVELTY", 0.0) or 0.0
+        getattr(body, "novelty", None)
+        or getattr(settings, "SOMABRAIN_DEFAULT_NOVELTY", 0.0)
+        or 0.0
     )
 
     step_result = _eval_step(
@@ -265,7 +277,9 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
             mem_client = mt_memory.for_namespace(ctx.namespace) if mt_memory else None
             if mem_client:
                 graph_client = _get_graph_client(mem_client)
-                engine = PlanEngine(settings, mem_client=mem_client, graph_client=graph_client)
+                engine = PlanEngine(
+                    settings, mem_client=mem_client, graph_client=graph_client
+                )
                 task_vec = wm_vec if wm_vec is not None else np.zeros(512)
                 plan_ctx = PlanRequestContext(
                     tenant_id=ctx.tenant_id,
@@ -276,7 +290,9 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
                     time_budget_ms=int(
                         getattr(settings, "SOMABRAIN_PLAN_TIME_BUDGET_MS", 50) or 50
                     ),
-                    max_steps=int(getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS", 5) or 5),
+                    max_steps=int(
+                        getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS", 5) or 5
+                    ),
                     rel_types=[],
                     universe=getattr(body, "universe", None),
                 )
@@ -285,7 +301,9 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
         except Exception as exc:
             logger.warning(f"PlanEngine failed in /act: {exc}")
 
-    log_truncate_len = int(getattr(settings, "SOMABRAIN_LOG_TASK_TRUNCATE_LEN", 50) or 50)
+    log_truncate_len = int(
+        getattr(settings, "SOMABRAIN_LOG_TASK_TRUNCATE_LEN", 50) or 50
+    )
     task_preview = body.task[:log_truncate_len] if body.task else ""
 
     logger.debug(

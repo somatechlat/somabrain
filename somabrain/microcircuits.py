@@ -48,7 +48,9 @@ from django.conf import settings
 class MCConfig:
     """Mcconfig class implementation."""
 
-    columns: int = field(default_factory=lambda: max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS)))
+    columns: int = field(
+        default_factory=lambda: max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS))
+    )
     per_col_capacity: int = field(
         default_factory=lambda: max(
             int(settings.SOMABRAIN_WM_PER_COL_MIN_CAPACITY),
@@ -58,7 +60,9 @@ class MCConfig:
     vote_temperature: float = field(
         default_factory=lambda: float(settings.SOMABRAIN_MICRO_VOTE_TEMPERATURE)
     )
-    max_tenants: int = field(default_factory=lambda: int(settings.SOMABRAIN_MICRO_MAX_TENANTS))
+    max_tenants: int = field(
+        default_factory=lambda: int(settings.SOMABRAIN_MICRO_MAX_TENANTS)
+    )
     recency_time_scale: float = field(
         default_factory=lambda: float(settings.SOMABRAIN_WM_RECENCY_TIME_SCALE)
     )
@@ -157,7 +161,9 @@ class MultiColumnWM:
         except Exception as metric_exc:
             logger.debug("Failed to record micro_column_admit metric: %s", metric_exc)
 
-    def recall(self, tenant_id: str, vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dict]]:
+    def recall(
+        self, tenant_id: str, vec: np.ndarray, top_k: int = 3
+    ) -> List[Tuple[float, dict]]:
         """Execute recall.
 
         Args:
@@ -181,7 +187,9 @@ class MultiColumnWM:
         except Exception as metric_exc:
             logger.debug("Failed to record micro_column_best metric: %s", metric_exc)
         # softmax weights over best scores
-        T = max(settings.SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR, float(self.cfg.vote_temperature))
+        T = max(
+            settings.SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR, float(self.cfg.vote_temperature)
+        )
         xs = [b / T for b in bests]
         m = max(xs) if xs else 0.0
         exps = [math.exp(x - m) for x in xs]
@@ -210,7 +218,9 @@ class MultiColumnWM:
         cols = self._ensure(tenant_id)
         best = 0.0
         for wm in cols:
-            best = max(best, 1.0 - wm.novelty(vec))  # wm.novelty returns 1 - best_cosine
+            best = max(
+                best, 1.0 - wm.novelty(vec)
+            )  # wm.novelty returns 1 - best_cosine
         return max(0.0, 1.0 - best)
 
     def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:

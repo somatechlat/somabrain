@@ -29,4 +29,6 @@ sys.modules["_pyjwt_exceptions_real"] = _mod
 spec.loader.exec_module(_mod)
 
 # Re-export everything from the real exceptions module
-globals().update({k: v for k, v in _mod.__dict__.items() if not k.startswith("__loader__")})
+globals().update(
+    {k: v for k, v in _mod.__dict__.items() if not k.startswith("__loader__")}
+)
