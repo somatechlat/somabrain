@@ -40,9 +40,7 @@ def create_mt_wm(cfg, scorer: "UnifiedScorer"):
                 getattr(settings, "SOMABRAIN_WM_SIZE", 512),
             ),
             max_tenants=getattr(settings, "SOMABRAIN_MTWM_MAX_TENANTS", 100),
-            recency_time_scale=getattr(
-                settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
-            ),
+            recency_time_scale=getattr(settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600),
             recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 100),
         ),
         scorer=scorer,
@@ -74,9 +72,7 @@ def create_mc_wm(cfg, scorer: "UnifiedScorer"):
             per_col_capacity=per_col_capacity,
             vote_temperature=getattr(settings, "SOMABRAIN_MICRO_VOTE_TEMPERATURE", 0.5),
             max_tenants=getattr(settings, "SOMABRAIN_MICRO_MAX_TENANTS", 100),
-            recency_time_scale=getattr(
-                settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
-            ),
+            recency_time_scale=getattr(settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600),
             recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 100),
         ),
         scorer=scorer,
@@ -104,9 +100,7 @@ def create_mt_ctx(cfg, quantum: Optional["QuantumLayer"]):
         HRRContextConfig(
             max_anchors=getattr(settings, "SOMABRAIN_HRR_ANCHORS_MAX", 256),
             decay_lambda=getattr(settings, "SOMABRAIN_HRR_DECAY_LAMBDA", 0.05),
-            min_confidence=getattr(
-                settings, "SOMABRAIN_HRR_CLEANUP_MIN_CONFIDENCE", 0.1
-            ),
+            min_confidence=getattr(settings, "SOMABRAIN_HRR_CLEANUP_MIN_CONFIDENCE", 0.1),
         ),
         max_tenants=1000,
     )
@@ -124,9 +118,7 @@ def create_quotas(cfg):
     from somabrain.quotas import QuotaConfig, QuotaManager
 
     return QuotaManager(
-        QuotaConfig(
-            daily_writes=getattr(settings, "SOMABRAIN_WRITE_DAILY_LIMIT", 10000)
-        )
+        QuotaConfig(daily_writes=getattr(settings, "SOMABRAIN_WRITE_DAILY_LIMIT", 10000))
     )
 
 
@@ -165,20 +157,14 @@ def create_amygdala(cfg, fd_sketch: Any = None):
         SalienceConfig(
             w_novelty=getattr(settings, "SOMABRAIN_SALIENCE_W_NOVELTY", 0.5),
             w_error=getattr(settings, "SOMABRAIN_SALIENCE_W_ERROR", 0.3),
-            threshold_store=getattr(
-                settings, "SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.6
-            ),
+            threshold_store=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.6),
             threshold_act=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_ACT", 0.4),
             hysteresis=getattr(settings, "SOMABRAIN_SALIENCE_HYSTERESIS", 0.05),
             use_soft=getattr(settings, "SOMABRAIN_USE_SOFT_SALIENCE", True),
-            soft_temperature=getattr(
-                settings, "SOMABRAIN_SOFT_SALIENCE_TEMPERATURE", 1.0
-            ),
+            soft_temperature=getattr(settings, "SOMABRAIN_SOFT_SALIENCE_TEMPERATURE", 1.0),
             method=getattr(settings, "SOMABRAIN_SALIENCE_METHOD", "hybrid"),
             w_fd=getattr(settings, "SOMABRAIN_SALIENCE_FD_WEIGHT", 0.1),
-            fd_energy_floor=getattr(
-                settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.01
-            ),
+            fd_energy_floor=getattr(settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.01),
         ),
         fd_backend=fd_sketch,
     )
@@ -234,9 +220,7 @@ def create_exec_controller(cfg):
     return ExecutiveController(
         ExecConfig(
             window=getattr(settings, "SOMABRAIN_EXEC_WINDOW", 64),
-            conflict_threshold=getattr(
-                settings, "SOMABRAIN_EXEC_CONFLICT_THRESHOLD", 0.4
-            ),
+            conflict_threshold=getattr(settings, "SOMABRAIN_EXEC_CONFLICT_THRESHOLD", 0.4),
             explore_boost_k=getattr(settings, "SOMABRAIN_EXEC_EXPLORE_BOOST_K", 1.2),
             use_bandits=bool(getattr(settings, "SOMABRAIN_EXEC_USE_BANDITS", False)),
             bandit_eps=getattr(settings, "SOMABRAIN_EXEC_BANDIT_EPS", 0.1),

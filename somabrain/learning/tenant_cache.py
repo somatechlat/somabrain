@@ -55,11 +55,7 @@ class TenantOverridesCache:
                 with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
                 if isinstance(data, dict):
-                    overrides = {
-                        str(k): (v or {})
-                        for k, v in data.items()
-                        if isinstance(v, dict)
-                    }
+                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
             except Exception:
                 # Fallback to JSON parse if YAML not available or fails
                 try:
@@ -67,27 +63,21 @@ class TenantOverridesCache:
                         data = json.load(f)
                     if isinstance(data, dict):
                         overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
+                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                         }
                 except Exception:
                     overrides = {}
 
         # Optional: overrides via env JSON string
         if not overrides:
-            raw = (
-                getattr(settings, "learning_tenants_overrides", "") if settings else ""
-            )
+            raw = getattr(settings, "learning_tenants_overrides", "") if settings else ""
             raw = (raw or "").strip()
             if raw:
                 try:
                     data = json.loads(raw)
                     if isinstance(data, dict):
                         overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
+                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                         }
                 except Exception:
                     overrides = {}

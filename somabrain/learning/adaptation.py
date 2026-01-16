@@ -101,11 +101,7 @@ class AdaptationEngine:
         lr = (
             learning_rate
             if learning_rate is not None
-            else (
-                getattr(settings, "adaptation_learning_rate", 0.05)
-                if settings
-                else 0.05
-            )
+            else (getattr(settings, "adaptation_learning_rate", 0.05) if settings else 0.05)
         )
         self._lr = lr
         self._base_lr = lr
@@ -113,9 +109,7 @@ class AdaptationEngine:
         self._max_history = int(
             max_history
             if max_history is not None
-            else (
-                getattr(settings, "adaptation_max_history", 1000) if settings else 1000
-            )
+            else (getattr(settings, "adaptation_max_history", 1000) if settings else 1000)
         )
         self._constraint_bounds = self._init_constraints(constraints)
         self._constraints = self._build_constraints_dict(self._constraint_bounds)
@@ -184,9 +178,7 @@ class AdaptationEngine:
         dyn_lr = bool(enable_dynamic_lr)
         if settings is not None:
             try:
-                dyn_lr = dyn_lr or bool(
-                    getattr(settings, "learning_rate_dynamic", False)
-                )
+                dyn_lr = dyn_lr or bool(getattr(settings, "learning_rate_dynamic", False))
             except Exception:
                 pass
         else:
@@ -205,9 +197,7 @@ class AdaptationEngine:
             from somabrain.metrics import tau_gauge
 
             offset = (hash(self._tenant_id) % 100) / 1000.0
-            tau_gauge.labels(tenant_id=self._tenant_id).set(
-                self._retrieval.tau + offset
-            )
+            tau_gauge.labels(tenant_id=self._tenant_id).set(self._retrieval.tau + offset)
         except Exception:
             pass
 
@@ -218,9 +208,7 @@ class AdaptationEngine:
             self._redis
             and self._tenant_id
             and settings
-            and str(getattr(settings, "enable_learning_state_persistence", ""))
-            .strip()
-            .lower()
+            and str(getattr(settings, "enable_learning_state_persistence", "")).strip().lower()
             in {"1", "true", "yes", "on"}
         ):
             self._load_state()
@@ -387,9 +375,7 @@ class AdaptationEngine:
 
         return float(self._retrieval.alpha)
 
-    def apply_feedback(
-        self, utility: float | Feedback, reward: Optional[float] = None
-    ) -> bool:
+    def apply_feedback(self, utility: float | Feedback, reward: Optional[float] = None) -> bool:
         """Execute apply feedback.
 
         Args:
@@ -423,9 +409,7 @@ class AdaptationEngine:
     def _update_learning_rate(self) -> None:
         """Execute update learning rate."""
 
-        dyn_lr_active = (
-            self._enable_dynamic_lr and self._gains == AdaptationGains.from_settings()
-        )
+        dyn_lr_active = self._enable_dynamic_lr and self._gains == AdaptationGains.from_settings()
         if dyn_lr_active:
             dopamine = self._get_dopamine_level()
             lr_scale = min(max(0.5 + dopamine, 0.5), 1.2)
@@ -434,9 +418,7 @@ class AdaptationEngine:
             self._lr = self._base_lr
         self._lr_eff = self._lr
 
-    def _apply_weight_updates(
-        self, semantic_signal: float, utility_signal: float
-    ) -> None:
+    def _apply_weight_updates(self, semantic_signal: float, utility_signal: float) -> None:
         """Execute apply weight updates.
 
         Args:
@@ -585,9 +567,7 @@ class AdaptationEngine:
                 mu=self._utility.mu,
                 nu=self._utility.nu,
             )
-            _metrics.update_learning_gains(
-                tenant_id=self._tenant_id, **asdict(self._gains)
-            )
+            _metrics.update_learning_gains(tenant_id=self._tenant_id, **asdict(self._gains))
             _metrics.update_learning_bounds(
                 tenant_id=self._tenant_id, **asdict(self._constraint_bounds)
             )
@@ -700,9 +680,7 @@ class AdaptationEngine:
             performance_history = getattr(self, "performance_history", [])
             performance_history.append(dict(metrics))
             self.performance_history = performance_history
-            reward = (
-                float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
-            )
+            reward = float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
             self.apply_feedback(utility=reward, reward=reward)
         except Exception:
             pass
@@ -725,9 +703,7 @@ class AdaptationEngine:
             pass
         try:
             self.apply_feedback(utility=reward, reward=reward)
-            self._retrieval.tau = _clamp(
-                self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0
-            )
+            self._retrieval.tau = _clamp(self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0)
         except Exception:
             pass
 

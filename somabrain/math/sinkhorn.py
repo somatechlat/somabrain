@@ -28,13 +28,9 @@ def sinkhorn_log_stabilized(
     """
     n, m = C.shape
     if a.shape != (n,):
-        raise ValueError(
-            f"Source marginal shape {a.shape} does not match cost matrix rows ({n},)"
-        )
+        raise ValueError(f"Source marginal shape {a.shape} does not match cost matrix rows ({n},)")
     if b.shape != (m,):
-        raise ValueError(
-            f"Target marginal shape {b.shape} does not match cost matrix cols ({m},)"
-        )
+        raise ValueError(f"Target marginal shape {b.shape} does not match cost matrix cols ({m},)")
     # log-domain potentials
     K = -C / eps
     # For stability, work with log-K and use log-sum-exp updates

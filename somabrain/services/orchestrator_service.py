@@ -80,9 +80,7 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _parse_global_frame(
-    raw: bytes, serde: Optional[AvroSerde]
-) -> Optional[GlobalFrameCtx]:
+def _parse_global_frame(raw: bytes, serde: Optional[AvroSerde]) -> Optional[GlobalFrameCtx]:
     """Execute parse global frame.
 
     Args:
@@ -120,9 +118,7 @@ def _parse_global_frame(
         return None
 
 
-def _parse_segment_boundary(
-    raw: bytes, serde: Optional[AvroSerde]
-) -> Optional[Dict[str, Any]]:
+def _parse_segment_boundary(raw: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
     """Execute parse segment boundary.
 
     Args:
@@ -252,9 +248,7 @@ class OrchestratorService:
                 if isinstance(tools, list) and tools:
                     value["route"] = {"tools": [str(t) for t in tools]}
             except Exception as e:
-                logger.debug(
-                    "Failed to apply routing tags for leader %s: %s", gf.leader, e
-                )
+                logger.debug("Failed to apply routing tags for leader %s: %s", gf.leader, e)
         tags = ["cog", "segment", str(boundary.get("domain") or "?")]
         payload = {
             "tenant": tenant,

@@ -51,9 +51,7 @@ class Hippocampus:
         """Initialize the instance."""
 
         self.cfg = cfg
-        self._buffers: Dict[str, Deque[dict]] = defaultdict(
-            lambda: deque(maxlen=cfg.buffer_max)
-        )
+        self._buffers: Dict[str, Deque[dict]] = defaultdict(lambda: deque(maxlen=cfg.buffer_max))
         # Bind to runtime singletons via DI container if not provided
         # VIBE Compliance: Use DI container instead of lazy imports from runtime module
         if mt_memory is None or mt_wm is None:

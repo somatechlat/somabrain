@@ -103,9 +103,7 @@ class SuperposedTrace:
         """Initialize the instance."""
 
         self.cfg = cfg.validate()
-        self._q = quantum or QuantumLayer(
-            HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed)
-        )
+        self._q = quantum or QuantumLayer(HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed))
         self._state = np.zeros((self.cfg.dim,), dtype=np.float32)
         self._anchors: Dict[str, np.ndarray] = {}
         self._rotation = None
@@ -169,9 +167,7 @@ class SuperposedTrace:
         key_vec = self._prepare_key(key)
         return self._q.unbind(self._state, key_vec)
 
-    def recall(
-        self, key: np.ndarray
-    ) -> Tuple[np.ndarray, Tuple[Optional[str], float, float]]:
+    def recall(self, key: np.ndarray) -> Tuple[np.ndarray, Tuple[Optional[str], float, float]]:
         """Recall a value by key with basic cleanup against managed anchors."""
 
         raw = self.recall_raw(key)
@@ -232,9 +228,7 @@ class SuperposedTrace:
             except Exception as exc:
                 logger.exception("Failed to configure cleanup index: %s", exc)
 
-    def rebuild_cleanup_index(
-        self, cleanup_index: Optional["CleanupIndex"] = None
-    ) -> int:
+    def rebuild_cleanup_index(self, cleanup_index: Optional["CleanupIndex"] = None) -> int:
         """Rebuild the cleanup index from current anchors."""
 
         if cleanup_index is not None:
@@ -301,9 +295,7 @@ class SuperposedTrace:
         else:
             candidates = [
                 (anchor_id, float(self._q.cosine(query_vec, anchor_vec)))
-                for anchor_id, anchor_vec in list(self._anchors.items())[
-                    : self.cfg.cleanup_topk
-                ]
+                for anchor_id, anchor_vec in list(self._anchors.items())[: self.cfg.cleanup_topk]
             ]
         for anchor_id, score in candidates:
             if score > best_score:
@@ -313,9 +305,7 @@ class SuperposedTrace:
             elif score > second_score:
                 second_score = score
         if best_id is None or best_score < 0.0:
-            logger.debug(
-                "SuperposedTrace.cleanup: no candidate exceeded similarity threshold"
-            )
+            logger.debug("SuperposedTrace.cleanup: no candidate exceeded similarity threshold")
             best_id = None
             best_score = 0.0
         if second_score < 0.0:
@@ -385,8 +375,6 @@ class CleanupIndex(Protocol):
         """
         ...
 
-    def configure(
-        self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
-    ) -> None:
+    def configure(self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None) -> None:
         """Execute configure."""
         ...

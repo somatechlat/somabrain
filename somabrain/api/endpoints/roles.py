@@ -240,9 +240,7 @@ def delete_role(request: AuthenticatedRequest, role_id: UUID):
 def list_role_permissions(request: AuthenticatedRequest, role_id: UUID):
     """Get all field permissions for a role."""
     role = get_object_or_404(Role, id=role_id)
-    permissions = FieldPermission.objects.filter(role=role).order_by(
-        "model_name", "field_name"
-    )
+    permissions = FieldPermission.objects.filter(role=role).order_by("model_name", "field_name")
     return list(permissions)
 
 
@@ -267,9 +265,7 @@ def create_permission(request: AuthenticatedRequest, data: FieldPermissionCreate
 
 @router.patch("/permissions/{perm_id}", response=FieldPermissionOut)
 @require_auth(roles=["super-admin"])
-def update_permission(
-    request: AuthenticatedRequest, perm_id: UUID, data: FieldPermissionUpdate
-):
+def update_permission(request: AuthenticatedRequest, perm_id: UUID, data: FieldPermissionUpdate):
     """Update a field permission."""
     perm = get_object_or_404(FieldPermission, id=perm_id)
 
@@ -366,9 +362,7 @@ def get_permission_matrix(request: AuthenticatedRequest, role_id: UUID):
 
 @router.post("/{role_id}/matrix")
 @require_auth(roles=["super-admin"])
-def update_permission_matrix(
-    request: AuthenticatedRequest, role_id: UUID, matrix: List[dict]
-):
+def update_permission_matrix(request: AuthenticatedRequest, role_id: UUID, matrix: List[dict]):
     """
     Bulk update permission matrix for a role.
 

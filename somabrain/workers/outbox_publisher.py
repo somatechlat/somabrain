@@ -114,9 +114,9 @@ def _publish_record(
         raise RuntimeError("Kafka producer not available")
     try:
         # Serialize payload
-        payload_bytes = json.dumps(
-            payload, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        payload_bytes = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(
+            "utf-8"
+        )
 
         # Handle key encoding with validation
         key_bytes = None
@@ -139,9 +139,7 @@ def _publish_record(
         header_items.append(("x-schema-version", "1.0".encode("utf-8")))
 
         # Add producer identification
-        header_items.append(
-            ("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode("utf-8"))
-        )
+        header_items.append(("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode("utf-8")))
 
         # Add custom headers
         if headers:
@@ -241,9 +239,7 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
                     "dedupe-key": ev.dedupe_key or "",
                     "event-id": str(ev.id),
                     "event-topic": ev.topic,
-                    "event-created-at": (
-                        ev.created_at.isoformat() if ev.created_at else ""
-                    ),
+                    "event-created-at": (ev.created_at.isoformat() if ev.created_at else ""),
                     "retry-count": str(ev.retries or 0),
                     "processing-attempt": str(ev.retries + 1),
                 }
@@ -336,9 +332,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
 
     # Robust startup: retry until producer is available
     while producer is None:
-        logging.warning(
-            "outbox_publisher: Kafka unavailable; retrying producer init..."
-        )
+        logging.warning("outbox_publisher: Kafka unavailable; retrying producer init...")
         time.sleep(create_retry_ms / 1000.0)
         producer = _make_producer()
 

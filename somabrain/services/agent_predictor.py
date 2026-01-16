@@ -106,9 +106,7 @@ class AgentPredictorService:
         except Exception as e:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-    def _extract_agent_vector(
-        self, message_data: Dict[str, Any]
-    ) -> Optional[np.ndarray]:
+    def _extract_agent_vector(self, message_data: Dict[str, Any]) -> Optional[np.ndarray]:
         """Extract agent behavior vector from integrator context message."""
         try:
             # Assuming integrator context contains agent-related vectors
@@ -117,9 +115,7 @@ class AgentPredictorService:
 
             if agent_data is None:
                 # Try alternative field names
-                agent_data = context.get("agent_vector") or context.get(
-                    "behavior_vector"
-                )
+                agent_data = context.get("agent_vector") or context.get("behavior_vector")
 
             if agent_data is None:
                 return None
@@ -179,17 +175,13 @@ class AgentPredictorService:
         latency_ms = (end_time - start_time) * 1000
 
         # Create and publish predictor update
-        update_event = self._create_predictor_update(
-            prediction_result, latency_ms, domain="agent"
-        )
+        update_event = self._create_predictor_update(prediction_result, latency_ms, domain="agent")
 
         try:
             encoded_message = encode(update_event, SCHEMA_NAME)
             future = self.producer.send(PUBLISH_TOPIC, encoded_message)
             future.get(timeout=5.0)  # Strict: fail if publish times out
-            logger.debug(
-                f"Published agent predictor update: error={prediction_result.error:.4f}"
-            )
+            logger.debug(f"Published agent predictor update: error={prediction_result.error:.4f}")
         except Exception as e:
             logger.error(f"Failed to publish predictor update: {e}")
             raise RuntimeError(f"Failed to publish predictor update: {e}")

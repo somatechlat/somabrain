@@ -49,9 +49,7 @@ class OPAClient:
 
         if settings is not None:
             try:
-                self.timeout = float(
-                    getattr(settings, "opa_timeout_seconds", 2.0) or 2.0
-                )
+                self.timeout = float(getattr(settings, "opa_timeout_seconds", 2.0) or 2.0)
             except Exception:
                 self.timeout = 2.0
         else:
@@ -69,9 +67,7 @@ class OPAClient:
         effective_path = (policy_path or _policy_path_for_mode()).rstrip("/")
         self.policy_path = effective_path
         self.session = requests.Session()
-        LOGGER.debug(
-            "OPA client initialized: %s (policy %s)", self.base_url, self.policy_path
-        )
+        LOGGER.debug("OPA client initialized: %s (policy %s)", self.base_url, self.policy_path)
 
     def evaluate(self, input_data: Dict[str, Any]) -> bool:
         """Evaluate policy with ``input_data``.

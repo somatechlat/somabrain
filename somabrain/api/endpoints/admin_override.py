@@ -427,9 +427,7 @@ def get_admin_audit_log(
 
     REAL audit log data.
     """
-    logs = AuditLog.objects.filter(action__startswith="admin.").order_by("-timestamp")[
-        :limit
-    ]
+    logs = AuditLog.objects.filter(action__startswith="admin.").order_by("-timestamp")[:limit]
 
     return {
         "logs": [

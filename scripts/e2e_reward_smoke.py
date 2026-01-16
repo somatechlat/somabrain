@@ -60,9 +60,7 @@ else:
 def _bootstrap() -> str:
     """Execute bootstrap."""
 
-    url = getattr(
-        settings, "SOMABRAIN_KAFKA_BOOTSTRAP_SERVERS", "kafka://127.0.0.1:30001"
-    )
+    url = getattr(settings, "SOMABRAIN_KAFKA_BOOTSTRAP_SERVERS", "kafka://127.0.0.1:30001")
     return str(url).replace("kafka://", "")
 
 
@@ -232,9 +230,7 @@ def main() -> int:
             except Exception:
                 pass
     if not ok:
-        print(
-            "no reward event observed on Kafka topic cog.reward.events within timeout"
-        )
+        print("no reward event observed on Kafka topic cog.reward.events within timeout")
         return 5
     print("reward smoke ok")
     return 0

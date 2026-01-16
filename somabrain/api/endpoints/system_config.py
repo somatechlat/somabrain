@@ -148,9 +148,7 @@ def get_config(request: AuthenticatedRequest):
     🔒 Security: Super-admin only
     """
     config = get_system_config()
-    return SystemConfigOut(
-        **{k: v for k, v in config.items() if k in SystemConfigOut.__fields__}
-    )
+    return SystemConfigOut(**{k: v for k, v in config.items() if k in SystemConfigOut.__fields__})
 
 
 @router.patch("/config", response=SystemConfigOut)
@@ -184,9 +182,7 @@ def update_config(
         details=data.dict(exclude_unset=True),
     )
 
-    return SystemConfigOut(
-        **{k: v for k, v in config.items() if k in SystemConfigOut.__fields__}
-    )
+    return SystemConfigOut(**{k: v for k, v in config.items() if k in SystemConfigOut.__fields__})
 
 
 # =============================================================================
@@ -354,9 +350,7 @@ def get_database_stats(request: AuthenticatedRequest):
             )
             tables = cursor.fetchone()[0]
 
-            cursor.execute(
-                "SELECT count(*) FROM pg_stat_activity WHERE state = 'active'"
-            )
+            cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'")
             connections = cursor.fetchone()[0]
 
             cursor.execute("SELECT current_database()")

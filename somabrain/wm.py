@@ -160,9 +160,7 @@ class WorkingMemory:
         self._recency_scale = self._validate_scale(
             r_scale, settings.SOMABRAIN_WM_RECENCY_TIME_SCALE
         )
-        self._recency_cap = self._validate_scale(
-            r_cap, settings.SOMABRAIN_WM_RECENCY_MAX_STEPS
-        )
+        self._recency_cap = self._validate_scale(r_cap, settings.SOMABRAIN_WM_RECENCY_MAX_STEPS)
         self._default_salience_threshold = float(
             settings.SOMABRAIN_WM_SALIENCE_THRESHOLD
             if salience_threshold is None
@@ -249,16 +247,20 @@ class WorkingMemory:
             payload = vector_or_payload if isinstance(vector_or_payload, dict) else {}  # type: ignore[assignment] - Union narrowing
 
             # Handle both dict and numpy arrays for shape access
-            shape_val = (vector.shape[-1] if hasattr(vector, 'shape') else len(vector)) if hasattr(vector, 'shape') and hasattr(vector, '__getitem__') else 0
+            shape_val = (
+                (vector.shape[-1] if hasattr(vector, "shape") else len(vector))
+                if hasattr(vector, "shape") and hasattr(vector, "__getitem__")
+                else 0
+            )
             dim_val = self.dim
-            vector_np: Any = vector if hasattr(vector, 'shape') else np.array(vector)
+            vector_np: Any = vector if hasattr(vector, "shape") else np.array(vector)
 
         if shape_val != dim_val:
             if shape_val < dim_val:
-                pad = np.zeros((dim_val - shape_val,), dtype=vector_np.dtype if hasattr(vector_np, 'dtype') else np.float32)  # type: ignore
-                vector_np = np.concatenate([vector_np, pad]) if hasattr(vector_np, 'shape') else vector_np  # type: ignore
+                pad = np.zeros((dim_val - shape_val,), dtype=vector_np.dtype if hasattr(vector_np, "dtype") else np.float32)  # type: ignore
+                vector_np = np.concatenate([vector_np, pad]) if hasattr(vector_np, "shape") else vector_np  # type: ignore
             else:
-                vector_np = vector_np[: dim_val] if hasattr(vector_np, '__getitem__') else vector_np
+                vector_np = vector_np[:dim_val] if hasattr(vector_np, "__getitem__") else vector_np
         vector = normalize_vector(vector_np, dtype=np.float32)  # type: ignore
         self._t += 1
         now = self._now()
@@ -305,9 +307,7 @@ class WorkingMemory:
                 if loop.is_running():
                     asyncio.create_task(self._persister.queue_persist(item))
                 else:
-                    persisted_id = loop.run_until_complete(
-                        self._persister.queue_persist(item)
-                    )
+                    persisted_id = loop.run_until_complete(self._persister.queue_persist(item))
             except RuntimeError:
                 # No event loop - try to create one
                 try:
@@ -352,9 +352,7 @@ class WorkingMemory:
 
         Delegates to wm_salience module for the actual computation.
         """
-        return compute_salience(
-            query_vec, self._items, self.alpha, self.beta, self.gamma, reward
-        )
+        return compute_salience(query_vec, self._items, self.alpha, self.beta, self.gamma, reward)
 
     def admit_if_salient(
         self,
@@ -428,9 +426,7 @@ class WorkingMemory:
             # Use adjusted score as salience proxy for promotion check
             if self._promoter is not None:
                 item_id = (
-                    self._item_ids[idx]
-                    if idx < len(self._item_ids)
-                    else f"wm_{idx}_{it.tick}"
+                    self._item_ids[idx] if idx < len(self._item_ids) else f"wm_{idx}_{it.tick}"
                 )
                 self._check_promotion(item_id, adjusted, it)
 
@@ -507,11 +503,7 @@ class WorkingMemory:
         for idx, item in enumerate(self._items):
             # Compute salience for this item
             salience = self._compute_item_salience(item, now)
-            item_id = (
-                self._item_ids[idx]
-                if idx < len(self._item_ids)
-                else f"wm_{idx}_{item.tick}"
-            )
+            item_id = self._item_ids[idx] if idx < len(self._item_ids) else f"wm_{idx}_{item.tick}"
             self._check_promotion(item_id, salience, item)
 
     def _compute_item_salience(self, item: WMItem, now: float) -> float:

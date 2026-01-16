@@ -71,9 +71,7 @@ class TestServiceHealthVerification:
             if field not in data:
                 missing_fields.append(field)
 
-        assert (
-            not missing_fields
-        ), f"Missing backend status fields: {', '.join(missing_fields)}"
+        assert not missing_fields, f"Missing backend status fields: {', '.join(missing_fields)}"
 
         # Verify components dict exists with expected structure
         assert "components" in data, "Missing 'components' field"
@@ -104,9 +102,7 @@ class TestServiceHealthVerification:
 
         # Check that degraded indicators are present
         # The system should have memory_degraded field
-        assert (
-            "memory_degraded" in data or "ready" in data
-        ), "Missing degraded status indicator"
+        assert "memory_degraded" in data or "ready" in data, "Missing degraded status indicator"
 
         # If any backend is not OK, ready should be False
         kafka_ok = data.get("kafka_ok", False)
@@ -161,9 +157,7 @@ class TestServiceHealthVerification:
         ]
 
         for metric_prefix in expected_metrics:
-            assert (
-                metric_prefix in metrics_text
-            ), f"Missing expected metric prefix: {metric_prefix}"
+            assert metric_prefix in metrics_text, f"Missing expected metric prefix: {metric_prefix}"
 
     def test_jaeger_traces_complete(self) -> None:
         """E2.4: Jaeger traces show complete request flow.
@@ -378,9 +372,7 @@ class TestBackendConnectivity:
         data = r.json()
 
         # Milvus metrics should be present
-        milvus_metrics = data.get("milvus_metrics") or data.get("components", {}).get(
-            "milvus"
-        )
+        milvus_metrics = data.get("milvus_metrics") or data.get("components", {}).get("milvus")
         assert milvus_metrics is not None, "Missing Milvus metrics"
         assert isinstance(milvus_metrics, dict), "Milvus metrics should be dict"
 
@@ -449,9 +441,7 @@ class TestSFMIntegrationHealth:
 
             # If any component is unhealthy, degraded should be True (E3.2)
             any_unhealthy = (
-                not health.sfm_kv_store
-                or not health.sfm_vector_store
-                or not health.sfm_graph_store
+                not health.sfm_kv_store or not health.sfm_vector_store or not health.sfm_graph_store
             )
             if any_unhealthy:
                 assert health.degraded, (
@@ -592,9 +582,7 @@ class TestSFMIntegrationHealth:
         # This test verifies the integration point exists
         if isinstance(memory, dict):
             # Memory component should have health indicators
-            has_health_info = (
-                "healthy" in memory or "sfm_available" in memory or "status" in memory
-            )
+            has_health_info = "healthy" in memory or "sfm_available" in memory or "status" in memory
             assert (
                 has_health_info or memory == {}
             ), "Memory component should have health info or be empty dict"

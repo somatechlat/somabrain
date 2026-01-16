@@ -30,12 +30,8 @@ def _get_runtime():
     import os
     import sys
 
-    _runtime_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "somabrain.runtime_module", _runtime_path
-    )
+    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
+    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -89,9 +85,9 @@ async def _health_watchdog_coroutine():
                                 mem = comps.get("memory", {})
                                 healthy = mem.get("healthy", False)
                             if not healthy:
-                                healthy = health_result.get(
-                                    "http", False
-                                ) or health_result.get("ok", False)
+                                healthy = health_result.get("http", False) or health_result.get(
+                                    "ok", False
+                                )
 
                         if healthy:
                             MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)

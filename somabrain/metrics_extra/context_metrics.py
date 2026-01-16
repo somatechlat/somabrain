@@ -46,9 +46,7 @@ class ContextMetrics:
     """Thin wrapper around Prometheus collectors for HRR context metrics."""
 
     @staticmethod
-    def observe_state(
-        context_id: str, anchor_count: int, capacity: float, snr_db: float
-    ) -> None:
+    def observe_state(context_id: str, anchor_count: int, capacity: float, snr_db: float) -> None:
         """Execute observe state.
 
         Args:
@@ -79,10 +77,6 @@ class ContextMetrics:
         """
 
         _cleanup_best_confidence.labels(context_id=context_id).set(float(best_score))
-        margin = (
-            float(best_score - second_score)
-            if second_score > -1.0
-            else float(best_score)
-        )
+        margin = float(best_score - second_score) if second_score > -1.0 else float(best_score)
         _cleanup_margin.labels(context_id=context_id).set(margin)
         _cleanup_threshold.labels(context_id=context_id).set(float(threshold))

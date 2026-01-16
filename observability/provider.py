@@ -62,17 +62,11 @@ def init_tracing(service_name: Optional[str] = None) -> None:
 
     endpoint = settings.otel_exporter_otlp_endpoint.strip()
     if not endpoint:
-        raise RuntimeError(
-            "OTEL_EXPORTER_OTLP_ENDPOINT is required for tracing (strict mode)"
-        )
+        raise RuntimeError("OTEL_EXPORTER_OTLP_ENDPOINT is required for tracing (strict mode)")
 
-    svc = (
-        service_name or settings.otel_service_name or settings.service_name or ""
-    ).strip()
+    svc = (service_name or settings.otel_service_name or settings.service_name or "").strip()
     if not svc:
-        raise RuntimeError(
-            "OTEL_SERVICE_NAME (or service_name) is required for tracing"
-        )
+        raise RuntimeError("OTEL_SERVICE_NAME (or service_name) is required for tracing")
 
     provider = TracerProvider(resource=Resource.create({"service.name": svc}))
     exporter = OTLPSpanExporter(endpoint=endpoint)

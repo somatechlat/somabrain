@@ -596,18 +596,14 @@ def test_identity_provider(
             issuer_url = config.get("issuer_url", "")
             if issuer_url:
                 with httpx.Client(timeout=10.0) as client:
-                    well_known = (
-                        f"{issuer_url.rstrip('/')}/.well-known/openid-configuration"
-                    )
+                    well_known = f"{issuer_url.rstrip('/')}/.well-known/openid-configuration"
                     response = client.get(well_known)
                     if response.status_code == 200:
                         test_result["success"] = True
                         test_result["message"] = "OIDC configuration verified"
                         test_result["details"]["well_known"] = "OK"
                     else:
-                        test_result["message"] = (
-                            f"OIDC endpoint returned {response.status_code}"
-                        )
+                        test_result["message"] = f"OIDC endpoint returned {response.status_code}"
 
         elif idp_type == "saml":
             # Verify SAML SSO URL is reachable
@@ -616,18 +612,14 @@ def test_identity_provider(
                 with httpx.Client(timeout=10.0) as client:
                     response = client.head(sso_url)
                     test_result["success"] = response.status_code < 500
-                    test_result["message"] = (
-                        f"SAML endpoint status: {response.status_code}"
-                    )
+                    test_result["message"] = f"SAML endpoint status: {response.status_code}"
 
         else:
             # For other types, mark as verified without network check
             test_result["success"] = True
             test_result["message"] = f"Configuration saved for {idp_type}"
 
-        test_result["details"]["response_time_ms"] = int(
-            (time.time() - start_time) * 1000
-        )
+        test_result["details"]["response_time_ms"] = int((time.time() - start_time) * 1000)
 
     except httpx.RequestError as e:
         test_result["message"] = f"Connection failed: {str(e)}"

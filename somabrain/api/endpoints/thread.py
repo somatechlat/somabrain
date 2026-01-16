@@ -85,9 +85,7 @@ def next_option(request: HttpRequest, tenant_id: str):
 
         THREAD_NEXT.labels(tenant_id=tenant_id).inc()
         # Update active gauge
-        opts = (
-            thread.get_options() if hasattr(thread, "get_options") else thread.options
-        )
+        opts = thread.get_options() if hasattr(thread, "get_options") else thread.options
         remaining = max(0, len(opts) - thread.cursor)
         THREAD_ACTIVE.labels(tenant_id=tenant_id).set(remaining)
 

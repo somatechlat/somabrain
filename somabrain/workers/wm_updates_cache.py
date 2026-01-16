@@ -45,9 +45,7 @@ def _bootstrap() -> str:
 
     url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "")
     if not url:
-        raise ValueError(
-            "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
-        )
+        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
 
 
@@ -91,6 +89,8 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
         return serde.decode(payload)  # type: ignore
     except Exception:
         return None
+
+
 def run_forever() -> None:  # pragma: no cover - integration loop
     """Execute run forever."""
 
@@ -137,9 +137,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                     evd = ev.get("evidence") or {}
                     tenant = str(evd.get("tenant") or "public").strip() or "public"
                 except Exception as parse_exc:
-                    logger.debug(
-                        "Failed to parse tenant from event evidence: %s", parse_exc
-                    )
+                    logger.debug("Failed to parse tenant from event evidence: %s", parse_exc)
                 domain = str(ev.get("domain") or "state").strip().lower()
                 key = f"wm:updates:{tenant}:{domain}"
                 if r is not None:

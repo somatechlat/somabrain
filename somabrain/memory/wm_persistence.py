@@ -67,9 +67,7 @@ class WMPersister:
         """
         self._client = memory_client
         self._tenant_id = tenant_id
-        self._queue: asyncio.Queue[WMPersistenceEntry] = asyncio.Queue(
-            maxsize=queue_size
-        )
+        self._queue: asyncio.Queue[WMPersistenceEntry] = asyncio.Queue(maxsize=queue_size)
         self._flush_interval = flush_interval_ms / 1000.0
         self._running = False
         self._task: Optional[asyncio.Task] = None
@@ -162,9 +160,7 @@ class WMPersister:
             logger.debug("Marked WM item as evicted", item_id=item_id)
             return True
         except Exception as exc:
-            logger.error(
-                "Failed to mark WM item as evicted", item_id=item_id, error=str(exc)
-            )
+            logger.error("Failed to mark WM item as evicted", item_id=item_id, error=str(exc))
             return False
 
     async def _flush_loop(self) -> None:
@@ -216,14 +212,10 @@ class WMPersister:
                 await self._client.aremember(coord_key, payload)
                 flushed += 1
             except Exception as exc:
-                logger.error(
-                    "Failed to persist WM item", item_id=entry.item_id, error=str(exc)
-                )
+                logger.error("Failed to persist WM item", item_id=entry.item_id, error=str(exc))
 
         if flushed > 0:
-            logger.debug(
-                "Flushed WM items to SFM", count=flushed, tenant=self._tenant_id
-            )
+            logger.debug("Flushed WM items to SFM", count=flushed, tenant=self._tenant_id)
 
         return flushed
 
@@ -331,9 +323,7 @@ class WMRestorer:
                 timeout=self._timeout,
             )
         except Exception as exc:
-            logger.error(
-                "WM restoration failed", tenant=self._tenant_id, error=str(exc)
-            )
+            logger.error("WM restoration failed", tenant=self._tenant_id, error=str(exc))
 
         return restored
 

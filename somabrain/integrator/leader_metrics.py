@@ -181,9 +181,9 @@ class LeaderMetrics:
 
     def update_health_score(self, health_score: float) -> None:
         """Update the overall health score metric."""
-        LEADER_HEALTH_SCORE.labels(
-            tenant=self.tenant, instance_id=self.instance_id
-        ).set(health_score)
+        LEADER_HEALTH_SCORE.labels(tenant=self.tenant, instance_id=self.instance_id).set(
+            health_score
+        )
 
     def update_dwell_metrics(
         self, current_dwell_ms: float, min_dwell_ms: int, remaining_ms: float
@@ -201,9 +201,7 @@ class LeaderMetrics:
 
     def record_decision_factor(self, factor: str, outcome: str) -> None:
         """Record a decision factor in transition logic."""
-        LEADER_DECISION_FACTOR.labels(
-            tenant=self.tenant, factor=factor, outcome=outcome
-        ).inc()
+        LEADER_DECISION_FACTOR.labels(tenant=self.tenant, factor=factor, outcome=outcome).inc()
 
 
 class LeaderMetricsCollector:
@@ -238,9 +236,7 @@ class LeaderMetricsCollector:
 
     def record_collection_event(self, tenant: str, collection_type: str) -> None:
         """Record a metrics collection event."""
-        LEADER_METRICS_COLLECTION.labels(
-            tenant=tenant, collection_type=collection_type
-        ).inc()
+        LEADER_METRICS_COLLECTION.labels(tenant=tenant, collection_type=collection_type).inc()
 
     def record_lock_expiry(self, tenant: str, expiry_type: str) -> None:
         """Record a Redis lock expiry."""
@@ -298,16 +294,12 @@ def record_constraint_check(
 
     # Record decision factors
     if dwell_ms < min_dwell_ms:
-        metrics.record_decision_factor(
-            "dwell_time", "blocked" if not allowed else "allowed"
-        )
+        metrics.record_decision_factor("dwell_time", "blocked" if not allowed else "allowed")
     else:
         metrics.record_decision_factor("dwell_time", "satisfied")
 
     if entropy > threshold:
-        metrics.record_decision_factor(
-            "entropy", "violation" if allowed else "enforced"
-        )
+        metrics.record_decision_factor("entropy", "violation" if allowed else "enforced")
     else:
         metrics.record_decision_factor("entropy", "compliant")
 
@@ -326,17 +318,11 @@ def calculate_health_score(tenant: str, instance_id: str) -> float:
     renewal_success_rate = max(
         0, 1 - (metrics.renewal_failures / max(1, metrics.transition_count * 10))
     )
-    dwell_compliance = max(
-        0, 1 - (metrics.dwell_violations / max(1, metrics.transition_count))
-    )
-    entropy_compliance = max(
-        0, 1 - (metrics.entropy_violations / max(1, metrics.transition_count))
-    )
+    dwell_compliance = max(0, 1 - (metrics.dwell_violations / max(1, metrics.transition_count)))
+    entropy_compliance = max(0, 1 - (metrics.entropy_violations / max(1, metrics.transition_count)))
 
     # Weighted health score
-    health_score = (
-        0.4 * renewal_success_rate + 0.3 * dwell_compliance + 0.3 * entropy_compliance
-    )
+    health_score = 0.4 * renewal_success_rate + 0.3 * dwell_compliance + 0.3 * entropy_compliance
 
     metrics.update_health_score(health_score)
     return health_score

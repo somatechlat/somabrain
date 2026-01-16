@@ -189,9 +189,7 @@ class LocalJournal:
                 if file_path.stem.startswith("journal_"):
                     timestamp_str = file_path.stem[8:]  # Remove "journal_" prefix
                     try:
-                        file_time = datetime.fromisoformat(
-                            timestamp_str.replace("_", ":")
-                        )
+                        file_time = datetime.fromisoformat(timestamp_str.replace("_", ":"))
                         if file_time < cutoff_time:
                             file_path.unlink()
                             logger.info(f"Cleaned up old journal file: {file_path}")
@@ -222,9 +220,7 @@ class LocalJournal:
             try:
                 self.current_file_handle.close()
             except Exception as close_exc:
-                logger.debug(
-                    "Failed to close journal file handle during rotation: %s", close_exc
-                )
+                logger.debug("Failed to close journal file handle during rotation: %s", close_exc)
             self.current_file_handle = None
 
         # Create new journal file
@@ -380,9 +376,7 @@ class LocalJournal:
             try:
                 self.current_file_handle.close()
             except Exception as close_exc:
-                logger.debug(
-                    "Failed to close journal file handle during rewrite: %s", close_exc
-                )
+                logger.debug("Failed to close journal file handle during rewrite: %s", close_exc)
             self.current_file_handle = None
 
         # Remove existing journal files
@@ -416,9 +410,7 @@ class LocalJournal:
             # Count files and total size
             journal_files = list(self.journal_dir.glob("journal_*.json*"))
             stats["file_count"] = len(journal_files)
-            stats["total_size"] = sum(
-                f.stat().st_size for f in journal_files if f.exists()
-            )
+            stats["total_size"] = sum(f.stat().st_size for f in journal_files if f.exists())
 
             # Count events by status
             events = self.read_events()

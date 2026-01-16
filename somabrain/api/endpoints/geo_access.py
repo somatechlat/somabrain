@@ -556,11 +556,7 @@ def check_access(
 @router.get("/countries")
 def list_countries():
     """List available country codes."""
-    return {
-        "countries": [
-            {"code": code, "name": name} for code, name in COUNTRY_CODES.items()
-        ]
-    }
+    return {"countries": [{"code": code, "name": name} for code, name in COUNTRY_CODES.items()]}
 
 
 @router.post("/{tenant_id}/block-country")

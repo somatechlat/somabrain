@@ -50,11 +50,7 @@ def make_predictor(cfg) -> "BudgetedPredictor":
 
     provider_override = settings.SOMABRAIN_PREDICTOR_PROVIDER
     provider = str(
-        (
-            provider_override
-            or getattr(settings, "SOMABRAIN_PREDICTOR_PROVIDER", "mahal")
-            or "mahal"
-        )
+        (provider_override or getattr(settings, "SOMABRAIN_PREDICTOR_PROVIDER", "mahal") or "mahal")
     ).lower()
 
     if provider in ("stub", "baseline"):
@@ -67,9 +63,7 @@ def make_predictor(cfg) -> "BudgetedPredictor":
     if provider in ("mahal", "mahalanobis"):
         base = MahalanobisPredictor(alpha=0.01)
     elif provider == "slow":
-        base = SlowPredictor(
-            delay_ms=getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS", 1000) * 2
-        )
+        base = SlowPredictor(delay_ms=getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS", 1000) * 2)
     elif provider == "llm":
         base = LLMPredictor(
             endpoint=getattr(settings, "SOMABRAIN_PREDICTOR_LLM_ENDPOINT", None),
@@ -114,16 +108,12 @@ def make_quantum_layer(cfg) -> Optional["QuantumLayer"]:
         hrr_cfg = HRRConfig(
             dim=getattr(settings, "SOMABRAIN_HRR_DIM", 1024),
             seed=getattr(settings, "SOMABRAIN_HRR_SEED", 42),
-            binding_method=getattr(
-                settings, "SOMABRAIN_MATH_BINDING_METHOD", "circular"
-            ),
+            binding_method=getattr(settings, "SOMABRAIN_MATH_BINDING_METHOD", "circular"),
             sparsity=getattr(settings, "SOMABRAIN_MATH_BHDC_SPARSITY", 0.1),
             binary_mode=getattr(settings, "SOMABRAIN_MATH_BHDC_BINARY_MODE", False),
             mix=getattr(settings, "SOMABRAIN_MATH_BHDC_MIX", 0.5),
             binding_seed=getattr(settings, "SOMABRAIN_MATH_BINDING_SEED", 42),
-            binding_model_version=getattr(
-                settings, "SOMABRAIN_MATH_BINDING_MODEL_VERSION", "v1"
-            ),
+            binding_model_version=getattr(settings, "SOMABRAIN_MATH_BINDING_MODEL_VERSION", "v1"),
         )
         return QuantumLayer(hrr_cfg)
     except Exception:
@@ -160,9 +150,7 @@ def make_embedder_with_dim(cfg, quantum=None):
         embed_dim = int(getattr(embedder, "dim"))
     except Exception:
         try:
-            embed_dim = int(
-                np.asarray(embedder.embed("___dim_probe___"), dtype=float).size
-            )
+            embed_dim = int(np.asarray(embedder.embed("___dim_probe___"), dtype=float).size)
         except Exception as exc:
             raise RuntimeError("embedder failed to produce vector dimension") from exc
 
@@ -202,9 +190,7 @@ def make_fd_sketch(cfg):
         dim=int(embed_dim),
         rank=max(
             1,
-            min(
-                int(getattr(settings, "SOMABRAIN_SALIENCE_FD_RANK", 32)), int(embed_dim)
-            ),
+            min(int(getattr(settings, "SOMABRAIN_SALIENCE_FD_RANK", 32)), int(embed_dim)),
         ),
         decay=float(getattr(settings, "SOMABRAIN_SALIENCE_FD_DECAY", 0.05)),
     )

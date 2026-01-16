@@ -108,14 +108,10 @@ class LagoClient:
                 tenant.lago_customer_id = lago_customer_id
                 tenant.save(update_fields=["lago_customer_id", "updated_at"])
 
-                logger.info(
-                    f"Created Lago customer for tenant {tenant.slug}: {lago_customer_id}"
-                )
+                logger.info(f"Created Lago customer for tenant {tenant.slug}: {lago_customer_id}")
                 return data
 
-            logger.error(
-                f"Lago create customer failed: {response.status_code} - {response.text}"
-            )
+            logger.error(f"Lago create customer failed: {response.status_code} - {response.text}")
             return None
 
         except Exception as e:
@@ -197,9 +193,7 @@ class LagoClient:
                 tenant.lago_subscription_id = lago_sub_id
                 tenant.save(update_fields=["lago_subscription_id", "updated_at"])
 
-                logger.info(
-                    f"Created Lago subscription for tenant {tenant.slug}: {lago_sub_id}"
-                )
+                logger.info(f"Created Lago subscription for tenant {tenant.slug}: {lago_sub_id}")
                 return data
 
             logger.error(f"Lago create subscription failed: {response.text}")
@@ -242,9 +236,7 @@ class LagoClient:
             )
 
             if response.status_code == 200:
-                logger.info(
-                    f"Changed subscription {external_id} to plan {new_plan_code}"
-                )
+                logger.info(f"Changed subscription {external_id} to plan {new_plan_code}")
                 return response.json()
 
             logger.error(f"Lago change plan failed: {response.text}")
@@ -294,9 +286,7 @@ class LagoClient:
             )
 
             if response.status_code in [200, 201]:
-                logger.debug(
-                    f"Reported usage event: {event_type} for tenant {tenant.slug}"
-                )
+                logger.debug(f"Reported usage event: {event_type} for tenant {tenant.slug}")
                 return True
 
             logger.warning(f"Lago usage event failed: {response.text}")

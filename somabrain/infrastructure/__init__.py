@@ -100,9 +100,7 @@ def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
     explicit = _first_non_empty(_from_settings("SOMABRAIN_MEMORY_HTTP_ENDPOINT"))
     if explicit:
         scheme, host, port = _parse_url(explicit)
-        return MemoryEndpoint(
-            scheme=scheme, host=host, port=port, url=explicit.rstrip("/")
-        )
+        return MemoryEndpoint(scheme=scheme, host=host, port=port, url=explicit.rstrip("/"))
 
     host = _from_settings("memory_http_host")
     port = _from_settings("memory_http_port")
@@ -118,9 +116,7 @@ def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
 
     if default:
         scheme, host, port = _parse_url(default)
-        return MemoryEndpoint(
-            scheme=scheme, host=host, port=port, url=default.rstrip("/")
-        )
+        return MemoryEndpoint(scheme=scheme, host=host, port=port, url=default.rstrip("/"))
 
     raise RuntimeError("Memory HTTP endpoint is not configured")
 

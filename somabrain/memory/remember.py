@@ -99,9 +99,7 @@ def _get_tenant_namespace(cfg: Any) -> tuple[str, str]:
     """Resolve tenant and namespace from cfg/settings."""
     from django.conf import settings
 
-    tenant = getattr(cfg, "tenant", None) or getattr(
-        settings, "SOMABRAIN_DEFAULT_TENANT", "public"
-    )
+    tenant = getattr(cfg, "tenant", None) or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "public")
     namespace = getattr(cfg, "namespace", None) or getattr(
         settings, "SOMABRAIN_NAMESPACE", "public"
     )
@@ -127,18 +125,14 @@ def remember_sync_persist(
         raise RuntimeError("HTTP memory service required for persistence")
 
     tenant, namespace = _get_tenant_namespace(cfg)
-    enriched, uni, compat_hdr = enrich_payload(
-        payload, coord_key, namespace, tenant=tenant
-    )
+    enriched, uni, compat_hdr = enrich_payload(payload, coord_key, namespace, tenant=tenant)
     sc = _stable_coord(f"{uni}::{coord_key}")
 
     coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
     body: dict[str, Any] = {
         "coord": coord_str,
         "payload": dict(enriched),
-        "memory_type": str(
-            payload.get("memory_type") or payload.get("type") or "episodic"
-        ),
+        "memory_type": str(payload.get("memory_type") or payload.get("type") or "episodic"),
     }
 
     rid = request_id or str(uuid.uuid4())
@@ -194,9 +188,7 @@ async def aremember_background(
     rid = request_id or str(uuid.uuid4())
     rid_hdr = {"X-Request-ID": rid}
     tenant, namespace = _get_tenant_namespace(cfg)
-    enriched, uni, compat_hdr = enrich_payload(
-        payload, coord_key, namespace, tenant=tenant
-    )
+    enriched, uni, compat_hdr = enrich_payload(payload, coord_key, namespace, tenant=tenant)
     rid_hdr.update(compat_hdr)
 
     # Compute stable coordinate for outbox recording
@@ -206,9 +198,7 @@ async def aremember_background(
     body: dict[str, Any] = {
         "coord": f"{sc[0]},{sc[1]},{sc[2]}",
         "payload": dict(enriched),
-        "memory_type": str(
-            payload.get("memory_type") or payload.get("type") or "episodic"
-        ),
+        "memory_type": str(payload.get("memory_type") or payload.get("type") or "episodic"),
     }
 
     # E2.1: Record to outbox before SFM call
@@ -256,9 +246,7 @@ def prepare_bulk_items(
     cfg_namespace = getattr(cfg, "namespace", None)
 
     for coord_key, payload in records:
-        enriched, universe, _ = enrich_payload(
-            payload, coord_key, cfg_namespace, tenant=tenant
-        )
+        enriched, universe, _ = enrich_payload(payload, coord_key, cfg_namespace, tenant=tenant)
         coord = _stable_coord(f"{universe}::{coord_key}")
         body: dict[str, Any] = {
             "tenant": tenant,
@@ -356,9 +344,7 @@ async def aremember_single(
             coord = _stable_coord(f"{universe}::{coord_key}")
             enriched = dict(enriched)
             enriched.setdefault("coordinate", coord)
-            memory_type = str(
-                enriched.get("memory_type") or enriched.get("type") or "episodic"
-            )
+            memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
             body = {
                 "coord": f"{coord[0]},{coord[1]},{coord[2]}",
                 "payload": enriched,

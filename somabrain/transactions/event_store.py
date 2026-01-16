@@ -153,9 +153,7 @@ class TransactionEvent:
         if output_data:
             self.output_data = output_data
         if self.created_at:
-            self.duration_ms = (
-                self.completed_at - self.created_at
-            ).total_seconds() * 1000
+            self.duration_ms = (self.completed_at - self.created_at).total_seconds() * 1000
 
     def mark_failed(self, error: str, error_code: Optional[str] = None) -> None:
         """Mark transaction as failed."""
@@ -164,18 +162,14 @@ class TransactionEvent:
         self.error = error
         self.error_code = error_code
         if self.created_at:
-            self.duration_ms = (
-                self.completed_at - self.created_at
-            ).total_seconds() * 1000
+            self.duration_ms = (self.completed_at - self.created_at).total_seconds() * 1000
 
     def mark_rolled_back(self) -> None:
         """Mark transaction as rolled back via compensation."""
         self.status = TransactionStatus.ROLLED_BACK
         self.completed_at = datetime.now(timezone.utc)
         if self.created_at:
-            self.duration_ms = (
-                self.completed_at - self.created_at
-            ).total_seconds() * 1000
+            self.duration_ms = (self.completed_at - self.created_at).total_seconds() * 1000
 
 
 # Kafka topic definitions for transactions
@@ -221,9 +215,7 @@ class TransactionEventStore:
                 bootstrap = getattr(settings, "KAFKA_BOOTSTRAP", "")
 
             if not bootstrap:
-                logger.warning(
-                    "Kafka bootstrap servers not configured, events will be logged only"
-                )
+                logger.warning("Kafka bootstrap servers not configured, events will be logged only")
                 return
 
             bootstrap = bootstrap.replace("kafka://", "")

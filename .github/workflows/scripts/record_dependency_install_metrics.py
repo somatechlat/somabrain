@@ -23,9 +23,7 @@ When run outside CI, exports ``CI=false`` in the metric payload.
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 UV_LOCK = REPO_ROOT / "uv.lock"
-ARTIFACT_PATH = (
-    REPO_ROOT / "artifacts" / "bench_logs" / "dependency_install_metrics.json"
-)
+ARTIFACT_PATH = REPO_ROOT / "artifacts" / "bench_logs" / "dependency_install_metrics.json"
 
 
 def ensure_uv_lock() -> None:

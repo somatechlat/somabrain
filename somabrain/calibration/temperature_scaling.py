@@ -100,9 +100,7 @@ class TemperatureScaler:
         return 1 / (1 + math.exp(-scaled_logit))
 
 
-def compute_ece(
-    confidences: List[float], accuracies: List[float], n_bins: int = 10
-) -> float:
+def compute_ece(confidences: List[float], accuracies: List[float], n_bins: int = 10) -> float:
     """
     Compute Expected Calibration Error (ECE).
 

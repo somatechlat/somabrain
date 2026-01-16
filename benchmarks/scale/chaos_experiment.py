@@ -63,30 +63,22 @@ def main():
 
     run_chaos_scenario(
         "Kafka broker failure (simulate by stopping broker container)",
-        chaos_action=lambda: print(
-            "[ACTION] Please stop the Kafka broker container now."
-        ),
-        recovery_action=lambda: print(
-            "[ACTION] Please restart the Kafka broker container now."
-        ),
+        chaos_action=lambda: print("[ACTION] Please stop the Kafka broker container now."),
+        recovery_action=lambda: print("[ACTION] Please restart the Kafka broker container now."),
         wait=15,
     )
     # Example: Redis node loss (manual)
     run_chaos_scenario(
         "Redis node failure (simulate by stopping Redis container)",
         chaos_action=lambda: print("[ACTION] Please stop the Redis container now."),
-        recovery_action=lambda: print(
-            "[ACTION] Please restart the Redis container now."
-        ),
+        recovery_action=lambda: print("[ACTION] Please restart the Redis container now."),
         wait=15,
     )
     # Example: Agent SLM outage (manual)
     run_chaos_scenario(
         "Agent SLM outage (simulate by stopping agent SLM container)",
         chaos_action=lambda: print("[ACTION] Please stop the agent SLM container now."),
-        recovery_action=lambda: print(
-            "[ACTION] Please restart the agent SLM container now."
-        ),
+        recovery_action=lambda: print("[ACTION] Please restart the agent SLM container now."),
         wait=15,
     )
 

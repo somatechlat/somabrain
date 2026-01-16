@@ -72,9 +72,7 @@ def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
 
 
 @router.put("/option/{option_id}", response=OakPlanSuggestResponse, auth=bearer_auth)
-def oak_option_update(
-    request: HttpRequest, option_id: str, body: OakOptionCreateRequest
-):
+def oak_option_update(request: HttpRequest, option_id: str, body: OakOptionCreateRequest):
     """Replace the payload of an existing Oak option."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)

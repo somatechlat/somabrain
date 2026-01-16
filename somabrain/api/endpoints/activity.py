@@ -404,9 +404,7 @@ def get_activity_stats(
     top_types = dict(sorted(type_counts.items(), key=lambda x: x[1], reverse=True)[:10])
     top_users = [
         {"user_id": uid, "count": count}
-        for uid, count in sorted(user_counts.items(), key=lambda x: x[1], reverse=True)[
-            :5
-        ]
+        for uid, count in sorted(user_counts.items(), key=lambda x: x[1], reverse=True)[:5]
     ]
 
     return ActivityStats(

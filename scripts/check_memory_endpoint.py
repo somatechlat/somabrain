@@ -26,9 +26,7 @@ try:
     mt_memory = getattr(app_mod, "mt_memory")
     print("mt_memory present:", mt_memory is not None)
     client = mt_memory.for_namespace("public")
-    print(
-        "Created MemoryClient, cfg.namespace=", getattr(client.cfg, "namespace", None)
-    )
+    print("Created MemoryClient, cfg.namespace=", getattr(client.cfg, "namespace", None))
     http_client = getattr(client, "_http", None)
     async_client = getattr(client, "_http_async", None)
     print("_http client:", type(http_client), "truthy=", bool(http_client))

@@ -72,9 +72,7 @@ def cosine_similarity(a: ArrayLike, b: ArrayLike) -> float:
 
     # Validate dimensions
     if a_arr.shape[0] != b_arr.shape[0]:
-        raise ValueError(
-            f"Vector dimension mismatch: {a_arr.shape[0]} vs {b_arr.shape[0]}"
-        )
+        raise ValueError(f"Vector dimension mismatch: {a_arr.shape[0]} vs {b_arr.shape[0]}")
 
     # Compute norms using float64
     na = np.linalg.norm(a_arr)
@@ -135,9 +133,7 @@ def cosine_distance(a: ArrayLike, b: ArrayLike) -> float:
     return float(1.0 - sim)
 
 
-def batch_cosine_similarity(
-    query: ArrayLike, candidates: np.ndarray, axis: int = -1
-) -> np.ndarray:
+def batch_cosine_similarity(query: ArrayLike, candidates: np.ndarray, axis: int = -1) -> np.ndarray:
     """Compute cosine similarity between a query and multiple candidates.
 
     Optimized for batch operations - more efficient than calling

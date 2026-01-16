@@ -135,18 +135,12 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
     """
 
     base_url = base or make_base()
-    limits = httpx.Limits(
-        max_keepalive_connections=concurrency, max_connections=concurrency
-    )
+    limits = httpx.Limits(max_keepalive_connections=concurrency, max_connections=concurrency)
     transport = httpx.AsyncHTTPTransport(retries=1)
-    async with httpx.AsyncClient(
-        base_url=base_url, limits=limits, transport=transport
-    ) as client:
+    async with httpx.AsyncClient(base_url=base_url, limits=limits, transport=transport) as client:
         sem = asyncio.Semaphore(concurrency)
         # create tasks explicitly so we can cancel them on interrupt and inspect partial completion
-        tasks = [
-            asyncio.create_task(post_remember(client, i, sem)) for i in range(count)
-        ]
+        tasks = [asyncio.create_task(post_remember(client, i, sem)) for i in range(count)]
         print(
             f"Posting {count} /memory/remember to {base_url}/memory/remember with concurrency={concurrency} ..."
         )
@@ -156,9 +150,7 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
             results = await asyncio.gather(*tasks, return_exceptions=True)
         except (asyncio.CancelledError, KeyboardInterrupt):
             # Cancel pending tasks and gather partial results
-            print(
-                "Run interrupted; cancelling outstanding tasks and gathering partial results..."
-            )
+            print("Run interrupted; cancelling outstanding tasks and gathering partial results...")
             for t in tasks:
                 try:
                     t.cancel()
@@ -171,9 +163,7 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
         for idx, r in enumerate(results):
             if isinstance(r, Exception):
                 # Task raised; represent as failure
-                norm_results.append(
-                    {"i": idx, "status": 0, "text": repr(r), "ms": None}
-                )
+                norm_results.append({"i": idx, "status": 0, "text": repr(r), "ms": None})
             else:
                 norm_results.append(
                     r

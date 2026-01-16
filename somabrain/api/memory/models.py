@@ -28,19 +28,13 @@ class MemoryAttachment(BaseModel):
 
     kind: str = Field(..., description="Attachment type identifier")
     uri: Optional[str] = Field(None, description="External location reference")
-    content_type: Optional[str] = Field(
-        None, description="MIME type for the attachment"
-    )
-    checksum: Optional[str] = Field(
-        None, description="Integrity checksum for validation"
-    )
+    content_type: Optional[str] = Field(None, description="MIME type for the attachment")
+    checksum: Optional[str] = Field(None, description="Integrity checksum for validation")
     data: Optional[str] = Field(
         None,
         description="Inline base64-encoded payload; use sparingly for small blobs",
     )
-    meta: Optional[Dict[str, Any]] = Field(
-        None, description="Attachment metadata annotations"
-    )
+    meta: Optional[Dict[str, Any]] = Field(None, description="Attachment metadata annotations")
 
 
 class MemoryLink(BaseModel):
@@ -55,15 +49,9 @@ class MemoryLink(BaseModel):
 class MemorySignalPayload(BaseModel):
     """Agent-provided signals guiding storage priorities."""
 
-    importance: Optional[float] = Field(
-        None, ge=0.0, description="Relative importance weight"
-    )
-    novelty: Optional[float] = Field(
-        None, ge=0.0, description="Novelty score from agent"
-    )
-    ttl_seconds: Optional[int] = Field(
-        None, ge=0, description="Soft time-to-live for cleanup"
-    )
+    importance: Optional[float] = Field(None, ge=0.0, description="Relative importance weight")
+    novelty: Optional[float] = Field(None, ge=0.0, description="Novelty score from agent")
+    ttl_seconds: Optional[int] = Field(None, ge=0, description="Soft time-to-live for cleanup")
     reinforcement: Optional[str] = Field(
         None, description="Working-memory reinforcement hint (e.g. boost, suppress)"
     )
@@ -88,12 +76,8 @@ class MemoryWriteRequest(BaseModel):
     """Request model for single memory write operations."""
 
     tenant: str = Field(..., min_length=1, description="Tenant identifier")
-    namespace: str = Field(
-        ..., min_length=1, description="Logical namespace (e.g. wm, ltm)"
-    )
-    key: str = Field(
-        ..., min_length=1, description="Stable key used to derive coordinates"
-    )
+    namespace: str = Field(..., min_length=1, description="Logical namespace (e.g. wm, ltm)")
+    key: str = Field(..., min_length=1, description="Stable key used to derive coordinates")
     value: Dict[str, Any] = Field(..., description="Payload stored in memory")
     meta: Optional[Dict[str, Any]] = Field(
         None, description="Optional metadata blended into the stored payload"
@@ -104,9 +88,7 @@ class MemoryWriteRequest(BaseModel):
     ttl_seconds: Optional[int] = Field(
         None, ge=0, description="Desired time-to-live hint for automatic cleanup"
     )
-    tags: List[str] = Field(
-        default_factory=list, description="Arbitrary agent-supplied tags"
-    )
+    tags: List[str] = Field(default_factory=list, description="Arbitrary agent-supplied tags")
     policy_tags: List[str] = Field(
         default_factory=list, description="Policy or governance tags for this memory"
     )
@@ -119,12 +101,8 @@ class MemoryWriteRequest(BaseModel):
     signals: Optional[MemorySignalPayload] = Field(
         None, description="Agent-provided signals guiding storage priorities"
     )
-    importance: Optional[float] = Field(
-        None, ge=0.0, description="Shortcut for signals.importance"
-    )
-    novelty: Optional[float] = Field(
-        None, ge=0.0, description="Shortcut for signals.novelty"
-    )
+    importance: Optional[float] = Field(None, ge=0.0, description="Shortcut for signals.importance")
+    novelty: Optional[float] = Field(None, ge=0.0, description="Shortcut for signals.novelty")
     trace_id: Optional[str] = Field(
         None, description="Agent correlation identifier for downstream observability"
     )
@@ -156,13 +134,9 @@ class MemoryRecallRequest(BaseModel):
     namespace: str = Field(..., min_length=1)
     query: str = Field(..., min_length=1)
     top_k: int = Field(3, ge=1, le=50)
-    layer: Optional[str] = Field(
-        None, description="Set to 'wm', 'ltm', or omit for both"
-    )
+    layer: Optional[str] = Field(None, description="Set to 'wm', 'ltm', or omit for both")
     universe: Optional[str] = None
-    tags: List[str] = Field(
-        default_factory=list, description="Filter hits containing these tags"
-    )
+    tags: List[str] = Field(default_factory=list, description="Filter hits containing these tags")
     min_score: Optional[float] = Field(
         None, ge=0.0, description="Drop hits with score below this threshold"
     )
@@ -251,9 +225,7 @@ class MemoryBatchWriteItem(BaseModel):
     key: str = Field(..., min_length=1)
     value: Dict[str, Any] = Field(..., description="Payload stored in memory")
     meta: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
-    ttl_seconds: Optional[int] = Field(
-        None, ge=0, description="TTL override for this item"
-    )
+    ttl_seconds: Optional[int] = Field(None, ge=0, description="TTL override for this item")
     tags: List[str] = Field(default_factory=list, description="Optional tags")
     policy_tags: List[str] = Field(default_factory=list, description="Policy tags")
     attachments: List[MemoryAttachment] = Field(default_factory=list)

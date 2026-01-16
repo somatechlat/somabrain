@@ -43,9 +43,7 @@ def _get_tiered_registry():
 
 
 @router.post("/rebuild-ann", auth=admin_auth)
-def rebuild_ann_indexes(
-    request: HttpRequest, payload: AnnRebuildRequest
-) -> Dict[str, Any]:
+def rebuild_ann_indexes(request: HttpRequest, payload: AnnRebuildRequest) -> Dict[str, Any]:
     """Admin: Rebuild ANN indexes."""
     require_admin_auth(request, getattr(request, "cfg", None))
 
@@ -97,9 +95,7 @@ def list_outbox_events(
 
 
 @router.post("/outbox/replay", auth=admin_auth)
-def replay_outbox_events(
-    request: HttpRequest, payload: OutboxReplayRequest
-) -> Dict[str, Any]:
+def replay_outbox_events(request: HttpRequest, payload: OutboxReplayRequest) -> Dict[str, Any]:
     """Admin: Replay outbox events."""
     require_admin_auth(request, getattr(request, "cfg", None))
 

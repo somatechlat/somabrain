@@ -3,15 +3,17 @@ Type stubs for Django model managers and fields to resolve Pyright errors.
 Django model managers like 'objects' are added dynamically at runtime.
 Django model fields like CharField, IntegerField are dynamically typed.
 """
+
 from typing import TypeVar, Generic, TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
     from django.db import models
 
-    _T = TypeVar('_T')
+    _T = TypeVar("_T")
 
     class Manager(Generic[_T]):
         """Base manager type stub."""
+
         def all(self) -> models.QuerySet[_T]: ...
         def filter(self, **kwargs: object) -> models.QuerySet[_T]: ...
         def get(self, **kwargs: object) -> _T: ...
@@ -23,6 +25,7 @@ if TYPE_CHECKING:
 
     class QuerySet(Generic[_T]):
         """QuerySet type stub."""
+
         def all(self) -> models.QuerySet[_T]: ...
         def filter(self, **kwargs: object) -> models.QuerySet[_T]: ...
         def get(self, **kwargs: object) -> _T: ...
@@ -34,10 +37,12 @@ if TYPE_CHECKING:
 
     class Field:
         """Base field type stub with proper value access."""
+
         pass
 
     class CharField(Field, str):
         """CharField stub that acts like str."""
+
         def __add__(self, other: str) -> str: ...
         def split(self, sep: str = None) -> list[str]: ...
         def startswith(self, prefix: str) -> bool: ...
@@ -48,10 +53,12 @@ if TYPE_CHECKING:
 
     class TextField(Field, str):
         """TextField stub that acts like str."""
+
         pass
 
     class IntegerField(Field, int):
         """IntegerField stub that acts like int."""
+
         @overload
         def __add__(self, other: int) -> int: ...
         @overload
@@ -61,9 +68,11 @@ if TYPE_CHECKING:
 
     class DateTimeField(Field):
         """DateTimeField stub with isoformat method."""
+
         def isoformat(self) -> str: ...
 
     class JSONField(Field, dict):
         """JSONField stub that acts like dict."""
-        def get(self, key: str, default = None) -> object: ...
+
+        def get(self, key: str, default=None) -> object: ...
         def __getitem__(self, key: str) -> object: ...

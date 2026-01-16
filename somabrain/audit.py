@@ -73,9 +73,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
         return True
     except Exception:
-        LOGGER.exception(
-            "Failed to enqueue audit event to outbox (no alternative path)"
-        )
+        LOGGER.exception("Failed to enqueue audit event to outbox (no alternative path)")
         return False
 
 
@@ -95,9 +93,7 @@ def log_admin_action(
             ev["details"] = details
 
         # Use the outbox-backed publish_event. No direct disk write.
-        publish_event(
-            ev, topic=getattr(settings, "SOMABRAIN_AUDIT_TOPIC", "soma.audit")
-        )
+        publish_event(ev, topic=getattr(settings, "SOMABRAIN_AUDIT_TOPIC", "soma.audit"))
     except Exception:
         LOGGER.debug("log_admin_action failed", exc_info=True)
 
@@ -210,9 +206,6 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     except Exception:
         # If sanitization fails for any reason, fail-safe by returning a shallow masked copy
         try:
-            return {
-                k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v)
-                for k, v in ev.items()
-            }
+            return {k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v) for k, v in ev.items()}
         except Exception:
             return ev

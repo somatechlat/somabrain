@@ -27,9 +27,7 @@ def _service_available() -> bool:
     A ``HEAD`` request is sufficient and inexpensive. If the request raises an
     exception we treat the service as unavailable and skip the test.
     """
-    endpoint = getattr(
-        settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:10101"
-    )
+    endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:10101")
     try:
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.get("/health")

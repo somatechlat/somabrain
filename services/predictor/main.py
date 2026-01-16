@@ -60,18 +60,14 @@ DOMAIN_CONFIG = {
         "period_key": "state_update_period",
         "default_period": 0.5,
         "posterior_fn": lambda _: {},
-        "next_state_fn": lambda delta_error: (
-            "stable" if delta_error < 0.3 else "shifting"
-        ),
+        "next_state_fn": lambda delta_error: ("stable" if delta_error < 0.3 else "shifting"),
     },
     "agent": {
         "topic": TOPICS["agent"],
         "model_ver_key": "agent_model_ver",
         "period_key": "agent_update_period",
         "default_period": 0.7,
-        "posterior_fn": lambda _: {
-            "intent": random.choice(["browse", "purchase", "support"])
-        },
+        "posterior_fn": lambda _: {"intent": random.choice(["browse", "purchase", "support"])},
         "next_state_fn": lambda posterior: f"intent:{posterior['intent']}",
     },
     "action": {
@@ -233,9 +229,7 @@ def run_forever() -> None:  # pragma: no cover
                         "model_ver": model_versions[domain],
                         "latency_ms": latency_ms,
                     }
-                    prod.send(
-                        DOMAIN_CONFIG[domain]["topic"], value=encode(rec, belief_schema)
-                    )
+                    prod.send(DOMAIN_CONFIG[domain]["topic"], value=encode(rec, belief_schema))
                     if counters.get(domain):
                         try:
                             counters[domain].inc()
@@ -261,9 +255,7 @@ def run_forever() -> None:  # pragma: no cover
                             )
                         except Exception:
                             pass
-                    next_ev = build_next_event(
-                        domain, tenant, float(confidence), next_state
-                    )
+                    next_ev = build_next_event(domain, tenant, float(confidence), next_state)
                     prod.send(TOPICS["next"], value=encode(next_ev, next_schema))
                     if next_counter is not None:
                         try:

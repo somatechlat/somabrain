@@ -156,9 +156,7 @@ def list_platform_providers(request: AuthenticatedRequest):
 
 @router.post("/platform", response=IdentityProviderOut)
 @require_auth(roles=["super-admin"])
-def create_platform_provider(
-    request: AuthenticatedRequest, data: IdentityProviderCreate
-):
+def create_platform_provider(request: AuthenticatedRequest, data: IdentityProviderCreate):
     """
     Create a new platform-level identity provider.
 
@@ -292,9 +290,7 @@ def list_tenant_providers(request: AuthenticatedRequest, tenant_id: UUID):
     """
     # Tenant-specific providers
     tenant_providers = list(
-        IdentityProvider.objects.filter(tenant_id=tenant_id).order_by(
-            "display_order", "name"
-        )
+        IdentityProvider.objects.filter(tenant_id=tenant_id).order_by("display_order", "name")
     )
 
     # Platform providers (inherited)
@@ -368,9 +364,7 @@ def create_tenant_provider(
 
 @router.post("/test-connection", response=TestConnectionResult)
 @require_auth(roles=["super-admin", "tenant-admin"])
-def test_provider_connection(
-    request: AuthenticatedRequest, data: TestConnectionRequest
-):
+def test_provider_connection(request: AuthenticatedRequest, data: TestConnectionRequest):
     """
     Test connection to an identity provider.
 
@@ -429,18 +423,12 @@ def test_provider_connection(
 
         return TestConnectionResult(
             success=all_reachable,
-            message=(
-                "All endpoints reachable"
-                if all_reachable
-                else "Some endpoints unreachable"
-            ),
+            message=("All endpoints reachable" if all_reachable else "Some endpoints unreachable"),
             details=results,
         )
 
     except Exception as e:
-        return TestConnectionResult(
-            success=False, message=f"Connection test failed: {str(e)}"
-        )
+        return TestConnectionResult(success=False, message=f"Connection test failed: {str(e)}")
 
 
 # =============================================================================

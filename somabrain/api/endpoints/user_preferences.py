@@ -272,11 +272,7 @@ def update_my_preferences(
     # Update provided fields
     for field, value in data.dict(exclude_unset=True).items():
         if value is not None:
-            if (
-                isinstance(value, dict)
-                and field in prefs
-                and isinstance(prefs[field], dict)
-            ):
+            if isinstance(value, dict) and field in prefs and isinstance(prefs[field], dict):
                 prefs[field].update(value)
             else:
                 prefs[field] = value

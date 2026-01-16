@@ -24,9 +24,7 @@ from typing import Optional
 from django.conf import settings
 
 
-def init_tracing(
-    service_name: Optional[str] = None, *, console_export: bool = False
-) -> None:
+def init_tracing(service_name: Optional[str] = None, *, console_export: bool = False) -> None:
     """Initialize OpenTelemetry tracer provider.
 
     The original implementation required a mandatory ``service_name`` argument,
@@ -46,9 +44,7 @@ def init_tracing(
     """
     try:
         # Resolve a sane default when the caller does not provide a name.
-        effective_name = service_name or getattr(
-            settings, "SOMABRAIN_SERVICE_NAME", "somabrain"
-        )
+        effective_name = service_name or getattr(settings, "SOMABRAIN_SERVICE_NAME", "somabrain")
         resource = Resource.create({"service.name": effective_name})
         provider = TracerProvider(resource=resource)
         if console_export:

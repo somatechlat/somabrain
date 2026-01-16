@@ -130,9 +130,7 @@ class IdentityProvider(models.Model):
     javascript_origins = models.JSONField(default=list, blank=True)
 
     # Scopes and claims
-    default_scopes = models.JSONField(
-        default=list, help_text="e.g. ['openid', 'email', 'profile']"
-    )
+    default_scopes = models.JSONField(default=list, help_text="e.g. ['openid', 'email', 'profile']")
     claim_mappings = models.JSONField(
         default=dict,
         blank=True,
@@ -185,9 +183,7 @@ class TenantAuthConfig(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    tenant = models.OneToOneField(
-        "Tenant", on_delete=models.CASCADE, related_name="auth_config"
-    )
+    tenant = models.OneToOneField("Tenant", on_delete=models.CASCADE, related_name="auth_config")
 
     # Preferred login provider (references IdentityProvider)
     preferred_provider = models.ForeignKey(
@@ -246,9 +242,7 @@ class Role(models.Model):
     description = models.TextField(null=True, blank=True)
 
     # Type
-    is_system = models.BooleanField(
-        default=False, help_text="System roles cannot be deleted"
-    )
+    is_system = models.BooleanField(default=False, help_text="System roles cannot be deleted")
     platform_role = models.CharField(
         max_length=20,
         choices=PlatformRole.choices,
@@ -292,9 +286,7 @@ class FieldPermission(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    role = models.ForeignKey(
-        Role, on_delete=models.CASCADE, related_name="field_permissions"
-    )
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="field_permissions")
 
     # Target
     model_name = models.CharField(max_length=100, db_index=True)  # e.g., "Tenant"
@@ -327,9 +319,7 @@ class FieldPermission(models.Model):
             perms.append("view")
         if self.can_edit:
             perms.append("edit")
-        return (
-            f"{self.role.name}: {self.model_name}.{self.field_name} [{','.join(perms)}]"
-        )
+        return f"{self.role.name}: {self.model_name}.{self.field_name} [{','.join(perms)}]"
 
 
 class TenantUserRole(models.Model):
@@ -343,9 +333,7 @@ class TenantUserRole(models.Model):
     tenant_user = models.ForeignKey(
         "TenantUser", on_delete=models.CASCADE, related_name="role_assignments"
     )
-    role = models.ForeignKey(
-        Role, on_delete=models.CASCADE, related_name="user_assignments"
-    )
+    role = models.ForeignKey(Role, on_delete=models.CASCADE, related_name="user_assignments")
 
     # Assigned by
     assigned_by = models.CharField(max_length=255, null=True, blank=True)
@@ -358,9 +346,7 @@ class TenantUserRole(models.Model):
         verbose_name = "Tenant User Role"
         verbose_name_plural = "Tenant User Roles"
         constraints = [
-            models.UniqueConstraint(
-                fields=["tenant_user", "role"], name="uq_tenant_user_role"
-            )
+            models.UniqueConstraint(fields=["tenant_user", "role"], name="uq_tenant_user_role")
         ]
 
     def __str__(self):
@@ -389,9 +375,7 @@ class SubscriptionTier(models.Model):
 
     # Quotas
     api_calls_limit = models.IntegerField(default=1000, help_text="API calls per month")
-    memory_ops_limit = models.IntegerField(
-        default=500, help_text="Memory operations per month"
-    )
+    memory_ops_limit = models.IntegerField(default=500, help_text="Memory operations per month")
     storage_limit_mb = models.IntegerField(default=100, help_text="Storage in MB")
 
     # Rate limiting
@@ -455,9 +439,7 @@ class Tenant(models.Model):
     # External integrations
     keycloak_realm = models.CharField(max_length=255, null=True, blank=True)
     keycloak_client_id = models.CharField(max_length=255, null=True, blank=True)
-    lago_customer_id = models.CharField(
-        max_length=255, null=True, blank=True, db_index=True
-    )
+    lago_customer_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
     lago_subscription_id = models.CharField(max_length=255, null=True, blank=True)
 
     # Configuration
@@ -538,23 +520,17 @@ class TenantUser(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="users")
 
     email = models.EmailField(db_index=True)
-    keycloak_user_id = models.CharField(
-        max_length=255, null=True, blank=True, db_index=True
-    )
+    keycloak_user_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
 
     # Role within tenant
-    role = models.CharField(
-        max_length=20, choices=UserRole.choices, default=UserRole.VIEWER
-    )
+    role = models.CharField(max_length=20, choices=UserRole.choices, default=UserRole.VIEWER)
 
     # Profile
     display_name = models.CharField(max_length=255, null=True, blank=True)
 
     # Status
     is_active = models.BooleanField(default=True)
-    is_primary = models.BooleanField(
-        default=False, help_text="Primary admin for tenant"
-    )
+    is_primary = models.BooleanField(default=False, help_text="Primary admin for tenant")
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -569,9 +545,7 @@ class TenantUser(models.Model):
         verbose_name = "Tenant User"
         verbose_name_plural = "Tenant Users"
         constraints = [
-            models.UniqueConstraint(
-                fields=["tenant", "email"], name="uq_tenant_user_email"
-            )
+            models.UniqueConstraint(fields=["tenant", "email"], name="uq_tenant_user_email")
         ]
         indexes = [
             models.Index(fields=["tenant", "role"]),
@@ -598,9 +572,7 @@ class Subscription(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    tenant = models.OneToOneField(
-        Tenant, on_delete=models.CASCADE, related_name="subscription"
-    )
+    tenant = models.OneToOneField(Tenant, on_delete=models.CASCADE, related_name="subscription")
     tier = models.ForeignKey(
         SubscriptionTier, on_delete=models.PROTECT, related_name="subscriptions"
     )
@@ -613,9 +585,7 @@ class Subscription(models.Model):
     )
 
     # Lago integration
-    lago_subscription_id = models.CharField(
-        max_length=255, null=True, blank=True, db_index=True
-    )
+    lago_subscription_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
 
     # Billing period
     current_period_start = models.DateTimeField(null=True, blank=True)
@@ -658,21 +628,15 @@ class APIKey(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    tenant = models.ForeignKey(
-        Tenant, on_delete=models.CASCADE, related_name="api_keys"
-    )
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name="api_keys")
 
     # Key identification
     name = models.CharField(max_length=255)
-    key_prefix = models.CharField(
-        max_length=12, db_index=True
-    )  # sbk_live_ or sbk_test_
+    key_prefix = models.CharField(max_length=12, db_index=True)  # sbk_live_ or sbk_test_
     key_hash = models.CharField(max_length=64)  # SHA-256 hash
 
     # Permissions
-    scopes = models.JSONField(
-        default=list, blank=True
-    )  # ['read:memory', 'write:memory']
+    scopes = models.JSONField(default=list, blank=True)  # ['read:memory', 'write:memory']
 
     # Rate limiting (overrides)
     rate_limit_override = models.IntegerField(null=True, blank=True)
@@ -798,15 +762,11 @@ class AuditLog(models.Model):
 
     # Actor
     actor_id = models.CharField(max_length=255)
-    actor_type = models.CharField(
-        max_length=20, choices=ActorType.choices, default=ActorType.USER
-    )
+    actor_type = models.CharField(max_length=20, choices=ActorType.choices, default=ActorType.USER)
     actor_email = models.EmailField(null=True, blank=True)
 
     # Action
-    action = models.CharField(
-        max_length=100, db_index=True
-    )  # tenant.created, key.revoked
+    action = models.CharField(max_length=100, db_index=True)  # tenant.created, key.revoked
     resource_type = models.CharField(max_length=100)  # tenant, api_key, subscription
     resource_id = models.CharField(max_length=255)
 
@@ -975,13 +935,9 @@ class UsageRecord(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    tenant = models.ForeignKey(
-        "Tenant", on_delete=models.CASCADE, related_name="usage_records"
-    )
+    tenant = models.ForeignKey("Tenant", on_delete=models.CASCADE, related_name="usage_records")
 
-    metric_name = models.CharField(
-        max_length=100
-    )  # e.g., "api_call", "memory_operation"
+    metric_name = models.CharField(max_length=100)  # e.g., "api_call", "memory_operation"
     quantity = models.PositiveIntegerField(default=1)
 
     # Optional metadata
@@ -1025,9 +981,7 @@ class Webhook(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    tenant = models.ForeignKey(
-        "Tenant", on_delete=models.CASCADE, related_name="webhooks"
-    )
+    tenant = models.ForeignKey("Tenant", on_delete=models.CASCADE, related_name="webhooks")
 
     # Configuration
     url = models.URLField(max_length=500)
@@ -1070,9 +1024,7 @@ class WebhookDelivery(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    webhook = models.ForeignKey(
-        Webhook, on_delete=models.CASCADE, related_name="deliveries"
-    )
+    webhook = models.ForeignKey(Webhook, on_delete=models.CASCADE, related_name="deliveries")
 
     # Event info
     event_type = models.CharField(max_length=100)
@@ -1104,9 +1056,7 @@ class WebhookDelivery(models.Model):
     def __str__(self):
         """Return string representation."""
 
-        return (
-            f"{self.webhook.id}:{self.event_type} - {'OK' if self.success else 'FAIL'}"
-        )
+        return f"{self.webhook.id}:{self.event_type} - {'OK' if self.success else 'FAIL'}"
 
 
 # =============================================================================
@@ -1143,9 +1093,7 @@ class Notification(models.Model):
         URGENT = "urgent", "Urgent"
 
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
-    tenant = models.ForeignKey(
-        "Tenant", on_delete=models.CASCADE, related_name="notifications"
-    )
+    tenant = models.ForeignKey("Tenant", on_delete=models.CASCADE, related_name="notifications")
     user_id = models.UUIDField(null=True, blank=True)  # None = all users
 
     # Content

@@ -47,9 +47,7 @@ class OutboxEvent(models.Model):
     def __str__(self):
         """Return string representation."""
 
-        return (
-            f"OutboxEvent(id={self.id}, topic='{self.topic}', status='{self.status}')"
-        )
+        return f"OutboxEvent(id={self.id}, topic='{self.topic}', status='{self.status}')"
 
     def __repr__(self):
         """Return object representation."""
@@ -219,7 +217,9 @@ class FeedbackRecord(models.Model):
     def __str__(self):
         """Return string representation."""
 
-        return f"FeedbackRecord(id={self.feedback_id}, tenant={self.tenant_id}, rating={self.rating})"
+        return (
+            f"FeedbackRecord(id={self.feedback_id}, tenant={self.tenant_id}, rating={self.rating})"
+        )
 
 
 class ConstitutionVersion(models.Model):

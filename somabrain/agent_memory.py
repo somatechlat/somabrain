@@ -110,9 +110,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
         )
         MEMORY_STORE.append(consolidated)
         return consolidated
-    weights = np.asarray(
-        [max(1e-6, float(m.strength)) for m in memories], dtype=np.float32
-    )
+    weights = np.asarray([max(1e-6, float(m.strength)) for m in memories], dtype=np.float32)
     # mypy's numpy type hints are strict about array shape typing here; the runtime
     # behavior is correct and we normalize shapes via _to_unit — silence the
     # complaint for now and consider a more precise typing later.
@@ -120,9 +118,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
     # numpy type hints are strict about tuple shapes; the runtime behavior is
     # correct and validated by _to_unit. Silence the precise shape typing
     # complaint for now with a narrow ignore.
-    vecs = np.stack(
-        [_to_unit(np.asarray(m.vector, dtype=np.float32)) for m in memories], axis=0
-    )
+    vecs = np.stack([_to_unit(np.asarray(m.vector, dtype=np.float32)) for m in memories], axis=0)
     w = weights / float(weights.sum())
     avg = (w[:, None] * vecs).sum(axis=0)
     avg = _to_unit(avg)

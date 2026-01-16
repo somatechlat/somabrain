@@ -90,9 +90,7 @@ def _check_redis_health() -> BackendHealth:
         latency = (time.time() - start) * 1000
         if result == 0:
             return BackendHealth("redis", True, latency)
-        return BackendHealth(
-            "redis", False, latency, f"Connection refused on port {REDIS_PORT}"
-        )
+        return BackendHealth("redis", False, latency, f"Connection refused on port {REDIS_PORT}")
     except Exception as e:
         return BackendHealth("redis", False, (time.time() - start) * 1000, str(e))
 
@@ -110,9 +108,7 @@ def _check_kafka_health() -> BackendHealth:
         latency = (time.time() - start) * 1000
         if result == 0:
             return BackendHealth("kafka", True, latency)
-        return BackendHealth(
-            "kafka", False, latency, f"Connection refused on port {KAFKA_PORT}"
-        )
+        return BackendHealth("kafka", False, latency, f"Connection refused on port {KAFKA_PORT}")
     except Exception as e:
         return BackendHealth("kafka", False, (time.time() - start) * 1000, str(e))
 
@@ -175,9 +171,7 @@ def _check_app_health() -> BackendHealth:
             return BackendHealth("somabrain_app", True, latency)
         return BackendHealth("somabrain_app", False, latency, f"HTTP {r.status_code}")
     except Exception as e:
-        return BackendHealth(
-            "somabrain_app", False, (time.time() - start) * 1000, str(e)
-        )
+        return BackendHealth("somabrain_app", False, (time.time() - start) * 1000, str(e))
 
 
 # ---------------------------------------------------------------------------
@@ -297,26 +291,14 @@ def get_tenant_headers(tenant_id: str, namespace: str = "test") -> Dict[str, str
 
 def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers for test categorization."""
-    config.addinivalue_line(
-        "markers", "math_proof: Category A - Mathematical Core Proofs"
-    )
-    config.addinivalue_line(
-        "markers", "memory_proof: Category B - Memory System Proofs"
-    )
-    config.addinivalue_line(
-        "markers", "cognitive_proof: Category C - Cognitive Function Proofs"
-    )
+    config.addinivalue_line("markers", "math_proof: Category A - Mathematical Core Proofs")
+    config.addinivalue_line("markers", "memory_proof: Category B - Memory System Proofs")
+    config.addinivalue_line("markers", "cognitive_proof: Category C - Cognitive Function Proofs")
     config.addinivalue_line(
         "markers", "isolation_proof: Category D - Multi-Tenant Isolation Proofs"
     )
-    config.addinivalue_line(
-        "markers", "infrastructure: Category E - Infrastructure Requirements"
-    )
-    config.addinivalue_line(
-        "markers", "circuit_breaker: Category F - Circuit Breaker Proofs"
-    )
+    config.addinivalue_line("markers", "infrastructure: Category E - Infrastructure Requirements")
+    config.addinivalue_line("markers", "circuit_breaker: Category F - Circuit Breaker Proofs")
     config.addinivalue_line("markers", "performance: Category G - Performance Proofs")
-    config.addinivalue_line(
-        "markers", "requires_docker: Requires Docker infrastructure"
-    )
+    config.addinivalue_line("markers", "requires_docker: Requires Docker infrastructure")
     config.addinivalue_line("markers", "slow: Long-running tests")

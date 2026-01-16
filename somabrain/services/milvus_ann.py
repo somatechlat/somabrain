@@ -179,9 +179,7 @@ class MilvusAnnIndex(CleanupIndex):
                 try:
                     self._collection.delete(f"id == {old_id}")
                 except Exception as exc:
-                    logger.warning(
-                        "Failed to delete old vector for %s: %s", anchor_id, exc
-                    )
+                    logger.warning("Failed to delete old vector for %s: %s", anchor_id, exc)
 
             # Assign new ID
             new_id = self._id_counter
@@ -249,11 +247,7 @@ class MilvusAnnIndex(CleanupIndex):
                 anchor = hit.entity.get("anchor_id")
                 # Milvus returns distance; for COSINE metric, similarity = 1 - distance
                 # But with COSINE metric_type, it actually returns similarity directly
-                score = (
-                    float(hit.score)
-                    if hasattr(hit, "score")
-                    else float(1.0 - hit.distance)
-                )
+                score = float(hit.score) if hasattr(hit, "score") else float(1.0 - hit.distance)
                 if anchor:
                     output.append((anchor, score))
 
@@ -277,9 +271,7 @@ class MilvusAnnIndex(CleanupIndex):
 
         arr = np.asarray(vec, dtype=np.float32).reshape(-1)
         if arr.shape[0] != self._dim:
-            raise ValueError(
-                f"Vector dimension mismatch: expected {self._dim}, got {arr.shape[0]}"
-            )
+            raise ValueError(f"Vector dimension mismatch: expected {self._dim}, got {arr.shape[0]}")
         return normalize_vector(arr, dtype=np.float32)
 
     def stats(self) -> Dict[str, object]:

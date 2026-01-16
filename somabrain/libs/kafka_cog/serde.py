@@ -19,9 +19,7 @@ class AvroSerde:
         """Initialize the instance."""
 
         if parse_schema is None:
-            raise RuntimeError(
-                "fastavro not installed; Avro serde required in strict mode"
-            )
+            raise RuntimeError("fastavro not installed; Avro serde required in strict mode")
         self._schema = parse_schema(schema)
 
     def serialize(self, record: Dict[str, Any]) -> bytes:

@@ -16,9 +16,7 @@ if TYPE_CHECKING:
     import httpx
 
 
-def get_tenant_namespace(
-    cfg: Any, override_namespace: str | None = None
-) -> tuple[str, str]:
+def get_tenant_namespace(cfg: Any, override_namespace: str | None = None) -> tuple[str, str]:
     """Resolve tenant and namespace from cfg/settings with hard requirements.
 
     The namespace string may be in format 'base:tenant:namespace' or just 'namespace'.
@@ -148,9 +146,7 @@ def store_from_payload(
             body = {
                 "coord": f"{c[0]},{c[1]},{c[2]}",
                 "payload": dict(payload),
-                "memory_type": str(
-                    payload.get("memory_type") or payload.get("type") or "episodic"
-                ),
+                "memory_type": str(payload.get("memory_type") or payload.get("type") or "episodic"),
             }
             success, _ = store_http_sync_fn(body, headers)
             return success

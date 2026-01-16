@@ -42,9 +42,7 @@ def _hit_endpoint(base_url: str, path: str) -> None:
 def main() -> None:
     """Execute main."""
 
-    parser = argparse.ArgumentParser(
-        description="Run a simple profiling load against the API."
-    )
+    parser = argparse.ArgumentParser(description="Run a simple profiling load against the API.")
     parser.add_argument(
         "--duration",
         type=int,

@@ -181,9 +181,7 @@ def _default_target() -> TargetConfig:
     """Execute default target."""
 
     api_base = require(
-        get_api_base_url(DEFAULT_API_URL)
-        or settings.SOMABRAIN_API_URL
-        or DEFAULT_API_URL,
+        get_api_base_url(DEFAULT_API_URL) or settings.SOMABRAIN_API_URL or DEFAULT_API_URL,
         message="Set SOMABRAIN_API_URL (see .env) before running tests.",
     )
     memory_base = require(

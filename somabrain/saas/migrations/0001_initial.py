@@ -43,9 +43,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "memory_ops_limit",
-                    models.IntegerField(
-                        default=500, help_text="Memory operations per month"
-                    ),
+                    models.IntegerField(default=500, help_text="Memory operations per month"),
                 ),
                 (
                     "storage_limit_mb",
@@ -112,9 +110,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "lago_customer_id",
-                    models.CharField(
-                        blank=True, db_index=True, max_length=255, null=True
-                    ),
+                    models.CharField(blank=True, db_index=True, max_length=255, null=True),
                 ),
                 (
                     "lago_subscription_id",
@@ -181,9 +177,7 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "lago_subscription_id",
-                    models.CharField(
-                        blank=True, db_index=True, max_length=255, null=True
-                    ),
+                    models.CharField(blank=True, db_index=True, max_length=255, null=True),
                 ),
                 ("current_period_start", models.DateTimeField(blank=True, null=True)),
                 ("current_period_end", models.DateTimeField(blank=True, null=True)),
@@ -287,9 +281,7 @@ class Migration(migrations.Migration):
                 ("email", models.EmailField(db_index=True, max_length=254)),
                 (
                     "keycloak_user_id",
-                    models.CharField(
-                        blank=True, db_index=True, max_length=255, null=True
-                    ),
+                    models.CharField(blank=True, db_index=True, max_length=255, null=True),
                 ),
                 (
                     "role",
@@ -310,9 +302,7 @@ class Migration(migrations.Migration):
                 ("is_active", models.BooleanField(default=True)),
                 (
                     "is_primary",
-                    models.BooleanField(
-                        default=False, help_text="Primary admin for tenant"
-                    ),
+                    models.BooleanField(default=False, help_text="Primary admin for tenant"),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
                 ("updated_at", models.DateTimeField(auto_now=True)),
@@ -434,9 +424,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="tenantuser",
-            index=models.Index(
-                fields=["tenant", "role"], name="saas_tenant_tenant__de6d33_idx"
-            ),
+            index=models.Index(fields=["tenant", "role"], name="saas_tenant_tenant__de6d33_idx"),
         ),
         migrations.AddIndex(
             model_name="tenantuser",

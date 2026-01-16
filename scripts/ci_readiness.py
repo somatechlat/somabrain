@@ -154,13 +154,9 @@ def check_kafka() -> List[CheckResult]:
         for env_var in REQUIRED_TOPIC_ENV_VARS:
             t = _env(env_var)
             if not t:
-                results.append(
-                    CheckResult(f"kafka_topic:{env_var}", False, "env not set")
-                )
+                results.append(CheckResult(f"kafka_topic:{env_var}", False, "env not set"))
             elif t not in existing_topics:
-                results.append(
-                    CheckResult(f"kafka_topic:{t}", False, "missing in cluster")
-                )
+                results.append(CheckResult(f"kafka_topic:{t}", False, "missing in cluster"))
             else:
                 results.append(CheckResult(f"kafka_topic:{t}", True, "OK"))
         if not results:
@@ -171,19 +167,13 @@ def check_kafka() -> List[CheckResult]:
         for env_var in REQUIRED_TOPIC_ENV_VARS:
             t = _env(env_var)
             if not t:
-                results.append(
-                    CheckResult(f"kafka_topic:{env_var}", False, "env not set")
-                )
+                results.append(CheckResult(f"kafka_topic:{env_var}", False, "env not set"))
             else:
                 results.append(
-                    CheckResult(
-                        f"kafka_topic:{t}", True, "env set (metadata unchecked)"
-                    )
+                    CheckResult(f"kafka_topic:{t}", True, "env set (metadata unchecked)")
                 )
         results.append(
-            CheckResult(
-                "kafka", True, f"Socket OK; metadata skipped: {type(e).__name__}"
-            )
+            CheckResult("kafka", True, f"Socket OK; metadata skipped: {type(e).__name__}")
         )
         return results
 
@@ -248,9 +238,7 @@ def check_outbox_pending() -> CheckResult:
             timeout=60,
         )
     except Exception as exc:  # noqa: BLE001
-        return CheckResult(
-            "outbox", False, f"check failed: {type(exc).__name__}: {exc}"
-        )
+        return CheckResult("outbox", False, f"check failed: {type(exc).__name__}: {exc}")
     ok = proc.returncode == 0
     detail = (proc.stdout or proc.stderr).strip() or f"exit {proc.returncode}"
     return CheckResult("outbox", ok, detail)
@@ -271,9 +259,7 @@ def main() -> int:
         status = "READY" if c.ok else "FAIL"
         print(f"{status}: {c.name} - {c.detail}")
     if failed:
-        print(
-            f"\nSummary: {len(failed)} component(s) failed readiness.", file=sys.stderr
-        )
+        print(f"\nSummary: {len(failed)} component(s) failed readiness.", file=sys.stderr)
         return 1
     return 0
 

@@ -59,9 +59,7 @@ class AdaptiveParameter:
     def _clamp(self) -> None:
         """Execute clamp."""
 
-        self.current_value = min(
-            max(self.current_value, self.min_value), self.max_value
-        )
+        self.current_value = min(max(self.current_value, self.min_value), self.max_value)
 
     def update(self, perf: PerformanceMetrics, delta: float) -> float:
         """Apply an update scaled by learning_rate; returns new value."""

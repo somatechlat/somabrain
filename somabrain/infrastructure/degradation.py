@@ -111,9 +111,7 @@ class DegradationManager:
             # Log state transition
             import logging
 
-            logging.getLogger(__name__).warning(
-                "Tenant %s entered degraded mode", tenant
-            )
+            logging.getLogger(__name__).warning("Tenant %s entered degraded mode", tenant)
 
     def mark_degraded(self, tenant: str) -> None:
         """Explicitly mark tenant as degraded.

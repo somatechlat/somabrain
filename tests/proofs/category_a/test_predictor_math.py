@@ -29,9 +29,7 @@ def positive_definite_matrix_strategy(draw: st.DrawFn, dim: int = 10) -> np.ndar
     # Generate random matrix and make it positive definite via A @ A.T
     elements = draw(
         st.lists(
-            st.floats(
-                min_value=-1.0, max_value=1.0, allow_nan=False, allow_infinity=False
-            ),
+            st.floats(min_value=-1.0, max_value=1.0, allow_nan=False, allow_infinity=False),
             min_size=dim * dim,
             max_size=dim * dim,
         )
@@ -47,9 +45,7 @@ def vector_strategy(draw: st.DrawFn, dim: int = 10) -> np.ndarray:
     """Generate random vectors for testing."""
     vec = draw(
         st.lists(
-            st.floats(
-                min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False
-            ),
+            st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
             min_size=dim,
             max_size=dim,
         )
@@ -191,9 +187,7 @@ class TestUncertaintyMonotonicity:
         st.floats(min_value=0.01, max_value=1.0, allow_nan=False),
     )
     @settings(max_examples=50, deadline=None)
-    def test_uncertainty_monotonicity_property(
-        self, sigma_0: float, alpha: float
-    ) -> None:
+    def test_uncertainty_monotonicity_property(self, sigma_0: float, alpha: float) -> None:
         """Property test for uncertainty monotonicity.
 
         **Feature: full-capacity-testing, Property 10: Uncertainty Monotonicity**
