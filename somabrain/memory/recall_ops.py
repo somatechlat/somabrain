@@ -10,15 +10,15 @@ cross-tenant data leakage. See Requirements D1.1, D1.2.
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List, Optional
 
-from somabrain.memory.types import RecallHit
-from somabrain.memory.hit_processing import normalize_recall_hits, deduplicate_hits
 from somabrain.memory.filtering import _filter_payloads_by_keyword
+from somabrain.memory.hit_processing import deduplicate_hits, normalize_recall_hits
+from somabrain.memory.types import RecallHit
 
 if TYPE_CHECKING:
-    from somabrain.memory.transport import MemoryHTTPTransport
     from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.transport import MemoryHTTPTransport
 
 logger = logging.getLogger(__name__)
 
@@ -447,6 +447,7 @@ async def arecall_with_degradation(
         List of RecallHit objects.
     """
     import asyncio
+
     from somabrain.infrastructure.degradation import get_degradation_manager
 
     degradation_mgr = get_degradation_manager()

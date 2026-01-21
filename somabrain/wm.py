@@ -23,25 +23,25 @@ import asyncio
 import math
 import time
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 import numpy as np
 from django.conf import settings
 
 from somabrain.math import cosine_similarity, normalize_vector
-from somabrain.wm_salience import (
-    compute_salience,
-    compute_novelty,
-    compute_item_salience,
-)
-from somabrain.wm_eviction import find_lowest_salience_idx, evict_item, find_duplicate
+from somabrain.wm_eviction import evict_item, find_duplicate, find_lowest_salience_idx
 from somabrain.wm_promotion import check_promotion
-
+from somabrain.wm_salience import (
+    compute_item_salience,
+    compute_novelty,
+    compute_salience,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
-    from .scoring import UnifiedScorer
-    from somabrain.memory.wm_persistence import WMPersister
     from somabrain.memory.promotion import WMLTMPromoter
+    from somabrain.memory.wm_persistence import WMPersister
+
+    from .scoring import UnifiedScorer
 
 
 @dataclass

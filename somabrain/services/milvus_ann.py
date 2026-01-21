@@ -17,8 +17,8 @@ import threading
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
-
 from django.conf import settings
+
 from somabrain.memory.superposed_trace import CleanupIndex
 
 logger = logging.getLogger(__name__)

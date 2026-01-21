@@ -20,24 +20,23 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 from typing import List, Optional
 from uuid import UUID
 
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
-    Tenant,
-    TenantUser,
-    SubscriptionTier,
+    ActorType,
     APIKey,
     AuditLog,
-    ActorType,
+    SubscriptionTier,
+    Tenant,
     TenantStatus,
+    TenantUser,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Admin Override"])
 

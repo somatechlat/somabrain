@@ -11,8 +11,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
-from somabrain.schemas.memory import normalize_vector, _get_settings
-
+from somabrain.schemas.memory import _get_settings, normalize_vector
 
 # === Canonical Agent Brain Contracts (Nano Profile) ===
 
@@ -161,7 +160,8 @@ class Feedback(BaseModel):
                 thought: The thought.
             """
 
-            from somabrain.math import cosine_similarity, normalize_vector as _norm
+            from somabrain.math import cosine_similarity
+            from somabrain.math import normalize_vector as _norm
 
             if hasattr(thought, "vector"):
                 query_vec = np.array(getattr(thought, "vector", []), dtype=np.float32)

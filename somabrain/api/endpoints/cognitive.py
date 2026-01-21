@@ -10,21 +10,21 @@ import logging
 from typing import Dict, List, Optional
 
 import numpy as np
-from ninja import Router
+from django.conf import settings
 from django.http import HttpRequest
+from ninja import Router
 from ninja.errors import HttpError
 
-from django.conf import settings
-from somabrain.schemas import (
-    PlanSuggestResponse,
-    PlanSuggestRequest,
-    ActResponse,
-    ActRequest,
-    PersonalityState,
-)
-from somabrain.auth import require_auth
 from somabrain.api.auth import bearer_auth
+from somabrain.auth import require_auth
 from somabrain.focus_state import FocusState
+from somabrain.schemas import (
+    ActRequest,
+    ActResponse,
+    PersonalityState,
+    PlanSuggestRequest,
+    PlanSuggestResponse,
+)
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.plan_engine import PlanEngine, PlanRequestContext

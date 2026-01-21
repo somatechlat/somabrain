@@ -16,8 +16,8 @@ from typing import Dict, List, Optional
 from django.db import transaction
 from django.db.models import Count
 
-from somabrain.models import OutboxEvent
 from somabrain.metrics import report_outbox_replayed
+from somabrain.models import OutboxEvent
 
 logger = logging.getLogger(__name__)
 

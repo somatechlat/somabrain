@@ -20,11 +20,19 @@ try:
         CONTENT_TYPE_LATEST,
         REGISTRY,
         CollectorRegistry,
-        Counter as _PromCounter,
-        Gauge as _PromGauge,
-        Histogram as _PromHistogram,
-        Summary as _PromSummary,
         generate_latest,
+    )
+    from prometheus_client import (
+        Counter as _PromCounter,
+    )
+    from prometheus_client import (
+        Gauge as _PromGauge,
+    )
+    from prometheus_client import (
+        Histogram as _PromHistogram,
+    )
+    from prometheus_client import (
+        Summary as _PromSummary,
     )
 except Exception as e:  # pragma: no cover
     raise ImportError(

@@ -28,15 +28,13 @@ Functions:
 
 from __future__ import annotations
 
-from __future__ import annotations
-
 from collections import OrderedDict
 from typing import Tuple
 
 import numpy as np
+from django.conf import settings
 
 from .context_hrr import CleanupResult, HRRContext, HRRContextConfig
-from django.conf import settings
 from .quantum import QuantumLayer
 
 

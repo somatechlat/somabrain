@@ -43,7 +43,8 @@ def compute_tiny_floor(
     """
     # Canonicalize input into (D:int, dt:np.dtype)
     try:
-        from typing import Any as _Any, cast as _cast
+        from typing import Any as _Any
+        from typing import cast as _cast
 
         dt_try = np.dtype(_cast(_Any, dim_or_array))
         is_dtype_like = True

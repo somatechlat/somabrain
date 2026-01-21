@@ -13,9 +13,8 @@ from typing import Dict, Iterable, Tuple, Union
 
 import numpy as np
 
-from somabrain.seed import seed_to_uint64
 from somabrain.core.rust_bridge import get_rust_module, is_rust_available
-
+from somabrain.seed import seed_to_uint64
 
 _SeedLike = Union[int, str, None]
 

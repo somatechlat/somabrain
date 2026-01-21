@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Dict, Optional
 
-
 # Simple feasibility table mapping agent intent -> allowed next actions
 _ALLOWED: Dict[str, set[str]] = {
     "browse": {"search", "quote"},

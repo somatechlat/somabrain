@@ -5,10 +5,12 @@ sparse adjacency apply function.
 """
 
 from typing import Callable
+
 import numpy as np
+
 from somabrain.math.lanczos_chebyshev import (
-    estimate_spectral_interval,
     chebyshev_heat_apply,
+    estimate_spectral_interval,
     lanczos_expv,
 )
 

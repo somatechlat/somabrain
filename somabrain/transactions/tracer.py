@@ -123,8 +123,8 @@ class TransactionTracer:
         """Try to initialize OpenTelemetry tracer."""
         try:
             from opentelemetry import trace
-            from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.resources import Resource
+            from opentelemetry.sdk.trace import TracerProvider
 
             # Check if already configured
             if trace.get_tracer_provider().__class__.__name__ != "ProxyTracerProvider":

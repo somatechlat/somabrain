@@ -10,12 +10,14 @@ from __future__ import annotations
 import uuid
 from typing import Any, Iterable, List
 
+from django.conf import settings
+
 # Local imports – placed after the standard library imports to avoid circular
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
 from somabrain.infrastructure.cb_registry import get_cb
-from ..infrastructure.tenant import tenant_label, resolve_namespace
-from django.conf import settings
-from somabrain.journal import get_journal, JournalEvent
+from somabrain.journal import JournalEvent, get_journal
+
+from ..infrastructure.tenant import resolve_namespace, tenant_label
 
 
 class MemoryService:

@@ -2,11 +2,12 @@
 
 import logging
 import time
+from typing import Any, Dict
 from uuid import uuid4
-from ninja import Router, Schema
+
 from django.http import HttpRequest
+from ninja import Router, Schema
 from ninja.errors import HttpError
-from typing import Dict, Any
 
 from somabrain import audit
 from somabrain.constitution import ConstitutionError

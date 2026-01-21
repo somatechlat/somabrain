@@ -11,17 +11,17 @@ import json
 import math
 import os
 import socket
+import threading
 import time
 from datetime import datetime, timezone
-from typing import Dict, Optional, Callable
-import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Callable, Dict, Optional
 
 # Use the canonical settings import as per Vibe coding rules.
 from django.conf import settings
 
 try:
-    from confluent_kafka import Consumer, Producer, KafkaError
+    from confluent_kafka import Consumer, KafkaError, Producer
 except Exception as exc:  # pragma: no cover
     raise RuntimeError(
         "confluent_kafka is required for integrator_hub_triplet; install the dependency."
@@ -34,9 +34,10 @@ except Exception as exc:  # pragma: no cover
         "fastavro is required for integrator_hub_triplet; install the dependency."
     ) from exc
 
+import requests
+
 import somabrain.metrics as metrics
 from somabrain.infrastructure import get_redis_url
-import requests
 
 
 def _load_schema(path: str):

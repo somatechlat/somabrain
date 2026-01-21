@@ -17,7 +17,7 @@ from typing import Any, Dict, List, Optional
 
 from django.db import transaction
 
-from somabrain.journal import get_journal, JournalEvent
+from somabrain.journal import JournalEvent, get_journal
 
 logger = logging.getLogger(__name__)
 

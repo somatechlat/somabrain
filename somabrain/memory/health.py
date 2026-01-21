@@ -14,7 +14,7 @@ Per Requirements E3.1-E3.5:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:
     from somabrain.memory.transport import MemoryHTTPTransport

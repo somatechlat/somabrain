@@ -33,11 +33,11 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
-from django.conf import settings
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import httpx
+from django.conf import settings
 
 # Import the internal feature‑flag helper – this provides the source of truth
 # for which flags are currently enabled.

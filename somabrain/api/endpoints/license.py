@@ -17,25 +17,24 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: License lifecycle
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import timedelta
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
+    ActorType,
+    AuditLog,
+    SubscriptionTier,
     Tenant,
     TenantUser,
-    SubscriptionTier,
-    AuditLog,
-    ActorType,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Licensing"])
 

@@ -3,9 +3,10 @@ Advanced mathematical metrics for quantum operations monitoring.
 Provides detailed mathematical verification and monitoring.
 """
 
-from prometheus_client import Gauge, Histogram, Counter
-import numpy as np
 from typing import List
+
+import numpy as np
+from prometheus_client import Counter, Gauge, Histogram
 
 # Quantum State Metrics
 # The Prometheus client constructors are dynamically typed; Pyright cannot infer their signatures.

@@ -16,8 +16,8 @@ import logging
 import os  # noqa: F401
 import time
 from typing import Any, Dict, List, Optional
-from django.conf import settings
 
+from django.conf import settings
 
 from somabrain.constitution.storage import ConstitutionRecord, ConstitutionStorage
 

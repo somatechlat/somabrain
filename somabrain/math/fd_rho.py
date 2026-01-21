@@ -5,8 +5,9 @@ matrix S such that S^T S approximates the covariance of streamed vectors.
 It supports inserting vectors and extracting a low-rank approximation.
 """
 
-import numpy as np
 from typing import Optional
+
+import numpy as np
 
 
 class FrequentDirections:

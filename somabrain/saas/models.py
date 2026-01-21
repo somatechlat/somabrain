@@ -5,13 +5,12 @@ Django ORM models for multi-tenancy, subscriptions, API keys, and audit logging.
 Per VIBE Coding Rules v5.2 - Pure Django Stack.
 """
 
-import secrets
 import hashlib
+import secrets
 from uuid import uuid4
 
 from django.db import models
 from django.utils import timezone
-
 
 # =============================================================================
 # ENUMS (Choices)

@@ -533,7 +533,7 @@ class FieldPermissionChecker:
         if self._permissions is not None:
             return
 
-        from .models import Role, FieldPermission
+        from .models import FieldPermission, Role
 
         # Get role IDs for user's roles
         roles = Role.objects.filter(slug__in=self.user_roles)

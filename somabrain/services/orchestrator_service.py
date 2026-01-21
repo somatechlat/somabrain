@@ -31,6 +31,7 @@ from typing import Any, Dict, Optional
 
 # Strict mode: use confluent-kafka Consumer
 from confluent_kafka import Consumer as CKConsumer
+
 from somabrain.modes import feature_enabled
 
 logger = logging.getLogger(__name__)
@@ -47,9 +48,8 @@ except Exception:  # pragma: no cover
     AvroSerde = None
 
 # Outbox API (DB-backed) required
-from somabrain.db.outbox import enqueue_event
 from somabrain.common.infra import assert_ready
-
+from somabrain.db.outbox import enqueue_event
 
 # Topic configuration constants (centralised settings only)
 GLOBAL_FRAME_TOPIC = getattr(settings, "topic_global_frame", "cog.global.frame")
@@ -181,8 +181,8 @@ class OrchestratorService:
         """Execute start health server."""
 
         try:
-            from http.server import BaseHTTPRequestHandler, HTTPServer
             import threading
+            from http.server import BaseHTTPRequestHandler, HTTPServer
 
             class _Handler(BaseHTTPRequestHandler):
                 """Handler class implementation."""
@@ -332,6 +332,7 @@ def main() -> None:  # pragma: no cover - entrypoint
 
     if not feature_enabled("orchestrator"):
         import logging
+
         from somabrain.metrics import get_counter
 
         logging.info("orchestrator_service: feature flag disabled; exiting")

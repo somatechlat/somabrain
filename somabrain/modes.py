@@ -14,10 +14,10 @@ in ``prod`` they are ignored (fail‑closed semantics).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List
 import json
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Dict, List
 
 # Import central settings to respect runtime feature flag overrides
 from django.conf import settings

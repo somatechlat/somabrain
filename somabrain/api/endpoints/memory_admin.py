@@ -7,18 +7,19 @@ Administrative endpoints for memory system management.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Any, Dict
-from ninja import Router, Query
+from typing import Any, Dict, List, Optional
+
 from django.http import HttpRequest
+from ninja import Query, Router
 from ninja.errors import HttpError
 
 from somabrain.api.auth import admin_auth
-from somabrain.auth import require_admin_auth
 from somabrain.api.memory.models import (
     AnnRebuildRequest,
     OutboxEventSummary,
     OutboxReplayRequest,
 )
+from somabrain.auth import require_admin_auth
 from somabrain.db import outbox as outbox_db
 
 logger = logging.getLogger("somabrain.api.endpoints.memory_admin")

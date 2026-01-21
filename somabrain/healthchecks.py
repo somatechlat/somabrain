@@ -106,9 +106,9 @@ def check_from_env() -> dict[str, bool]:
 # SFM Integration Health Check (E3)
 # Requirements: E3.1, E3.2, E3.3, E3.4, E3.5
 # ---------------------------------------------------------------------
+import asyncio
 from dataclasses import dataclass, field
 from typing import List
-import asyncio
 
 
 @dataclass

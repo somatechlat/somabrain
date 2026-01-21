@@ -29,15 +29,14 @@ Classes:
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from datetime import datetime
-
 import numpy as np
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
 from somabrain.datetime_utils import coerce_to_epoch_seconds
+from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
 
 
 def normalize_vector(vec_like, dim: int = HRR_DIM):

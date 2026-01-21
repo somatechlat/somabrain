@@ -16,24 +16,23 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Usage tracking
 """
 
-from typing import List, Optional
 from datetime import timedelta
+from typing import List, Optional
 from uuid import UUID
 
-from django.db.models import Count, Sum, Max, Min, Q
+from django.db.models import Count, Max, Min, Q, Sum
 from django.db.models.functions import TruncDate, TruncHour
-from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
+    APIKey,
     Tenant,
     UsageRecord,
-    APIKey,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Tenant Analytics"])
 

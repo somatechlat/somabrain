@@ -8,7 +8,7 @@ behavior.
 
 from __future__ import annotations
 
-from typing import Protocol, Optional, Tuple, Any, List
+from typing import Any, List, Optional, Protocol, Tuple
 
 Coordinate = Tuple[float, float, float]
 

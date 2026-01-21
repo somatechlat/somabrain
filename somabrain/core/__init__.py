@@ -25,12 +25,12 @@ from .exceptions import (
     ValidationError,
 )
 from .types import (
+    NULL_METRICS,
     ArrayLike,
     Float64Array,
     FloatArray,
     MetricsInterface,
     NullMetrics,
-    NULL_METRICS,
     Vector,
 )
 

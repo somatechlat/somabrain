@@ -339,7 +339,9 @@ SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(
     "SOMABRAIN_MEMORY_HTTP_ENDPOINT",
     default=env.str("MEMORY_SERVICE_URL", default="http://localhost:9595"),
 )
-SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default=None)
+SOMABRAIN_MEMORY_HTTP_TOKEN = env.str(
+    "SOMABRAIN_MEMORY_HTTP_TOKEN", default=env.str("SOMA_API_TOKEN", default=None)
+)
 SOMABRAIN_MEMORY_MAX = env.str("SOMABRAIN_MEMORY_MAX", default="10GB")
 MEMORY_DB_PATH = env.str("MEMORY_DB_PATH", default="./data/memory.db")
 

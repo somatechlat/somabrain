@@ -131,6 +131,7 @@ async def enforce_kafka_required() -> None:
         RuntimeError: If Kafka broker is unavailable or health check fails
     """
     from django.conf import settings
+
     from somabrain.healthchecks import check_kafka
 
     try:
@@ -216,6 +217,7 @@ async def start_outbox_sync(logger: Optional[logging.Logger] = None) -> None:
     log = logger or _logger
     try:
         from django.conf import settings
+
         from somabrain.services.outbox_sync import outbox_sync_loop
 
         interval = float(getattr(settings, "SOMABRAIN_OUTBOX_SYNC_INTERVAL", 10.0))
@@ -233,6 +235,7 @@ async def start_milvus_reconciliation_task() -> None:
     Milvus vector store to ensure consistency.
     """
     from django.conf import settings
+
     from somabrain.jobs.milvus_reconciliation import reconcile as milvus_reconcile
 
     interval = float(getattr(settings, "SOMABRAIN_MILVUS_RECONCILE_INTERVAL", 3600.0))

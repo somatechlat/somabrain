@@ -8,7 +8,6 @@ raises an explicit error so missing instrumentation is addressed during deploy.
 
 from __future__ import annotations
 
-
 try:
     from opentelemetry import trace
     from opentelemetry.sdk.resources import Resource
@@ -21,6 +20,7 @@ except Exception as exc:  # pragma: no cover - intentionally strict
 
 
 from typing import Optional
+
 from django.conf import settings
 
 

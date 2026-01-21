@@ -16,7 +16,7 @@ Functions:
 
 from __future__ import annotations
 
-from somabrain.metrics.core import registry, Counter, Gauge, Histogram
+from somabrain.metrics.core import Counter, Gauge, Histogram, registry
 
 # ---------------------------------------------------------------------------
 # Predictor Metrics

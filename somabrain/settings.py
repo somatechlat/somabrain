@@ -6,6 +6,7 @@ All configuration loaded from environment variables.
 """
 
 from pathlib import Path
+
 import environ
 
 # Build paths

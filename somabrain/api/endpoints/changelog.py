@@ -16,16 +16,15 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Release management
 """
 
-from typing import List, Optional, Dict, Any
-from uuid import uuid4
 from enum import Enum
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
-from django.utils import timezone
 from django.core.cache import cache
+from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
 
 router = Router(tags=["Changelog"])
 

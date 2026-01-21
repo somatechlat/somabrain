@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
+from django.conf import settings
 from django.http import HttpRequest
 from ninja.errors import HttpError
-from django.conf import settings
 
 from somabrain import metrics as M
 from somabrain.constitution import ConstitutionEngine

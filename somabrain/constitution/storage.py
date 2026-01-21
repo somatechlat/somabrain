@@ -13,10 +13,10 @@ import logging
 import pathlib
 from typing import Any, Dict, List, Optional
 
-from django.db import transaction
 from django.conf import settings
+from django.db import transaction
 
-from somabrain.models import ConstitutionVersion, ConstitutionSignature
+from somabrain.models import ConstitutionSignature, ConstitutionVersion
 
 try:  # pragma: no cover - redis is optional during unit tests
     import redis

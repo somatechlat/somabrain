@@ -16,30 +16,29 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Scheduled report support
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import timedelta
-from uuid import UUID
 import csv
 import io
+from datetime import timedelta
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
-from django.db.models import Count, Sum, Q
+from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncDate
-from django.utils import timezone
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
-    Tenant,
-    TenantUser,
     APIKey,
     AuditLog,
-    UsageRecord,
     Subscription,
+    Tenant,
+    TenantUser,
+    UsageRecord,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Reports"])
 

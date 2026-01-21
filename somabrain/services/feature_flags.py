@@ -5,7 +5,9 @@ Replaces the legacy Pydantic base-settings and compatibility shims.
 """
 
 from __future__ import annotations
-from typing import Dict, List, Any
+
+from typing import Any, Dict, List
+
 from django.conf import settings
 
 

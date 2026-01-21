@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from django.conf import settings
 import socket
 from typing import Dict
+
+from django.conf import settings
 
 
 def _env_port(name: str, default_val: int) -> int:

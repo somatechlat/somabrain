@@ -16,17 +16,16 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Version lifecycle management
 """
 
-from typing import List, Optional
 from datetime import datetime, timedelta
 from enum import Enum
+from typing import List, Optional
 
 from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.models import AuditLog, ActorType
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
+from somabrain.saas.models import ActorType, AuditLog
 
 router = Router(tags=["API Versioning"])
 

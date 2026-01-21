@@ -8,27 +8,28 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from xmlrpc.client import Error as XMLRPCError, ServerProxy
-
-from ninja import Router
-from django.http import HttpRequest
-from ninja.errors import HttpError
+from xmlrpc.client import Error as XMLRPCError
+from xmlrpc.client import ServerProxy
 
 from django.conf import settings
+from django.http import HttpRequest
+from ninja import Router
+from ninja.errors import HttpError
+
 from somabrain import metrics as M
+from somabrain.api.auth import admin_auth
+from somabrain.db import outbox as outbox_db
 from somabrain.schemas import (
-    OutboxListResponse,
-    OutboxEventModel,
-    OutboxReplayRequest,
-    OutboxReplayResponse,
-    QuotaStatus,
-    QuotaListResponse,
     FeatureFlagsResponse,
     FeatureFlagsUpdateRequest,
     FeatureFlagsUpdateResponse,
+    OutboxEventModel,
+    OutboxListResponse,
+    OutboxReplayRequest,
+    OutboxReplayResponse,
+    QuotaListResponse,
+    QuotaStatus,
 )
-from somabrain.api.auth import admin_auth
-from somabrain.db import outbox as outbox_db
 from somabrain.services.feature_flags import FeatureFlags
 
 logger = logging.getLogger(__name__)
@@ -204,7 +205,7 @@ def admin_list_quotas(
     tenant_filter: Optional[str] = None,
 ):
     """List quota status for all tenants."""
-    from somabrain.quotas import QuotaManager, QuotaConfig
+    from somabrain.quotas import QuotaConfig, QuotaManager
 
     try:
         quota_manager = QuotaManager(QuotaConfig())

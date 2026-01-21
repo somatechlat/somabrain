@@ -5,8 +5,9 @@ via a short Lanczos run and then apply a Chebyshev polynomial approximation
 of exp(-t L) to a vector using that interval.
 """
 
+from typing import Callable, Optional, Tuple
+
 import numpy as np
-from typing import Callable, Tuple, Optional
 
 # lazy config import to read truth-budget defaults when needed
 # Unified configuration – use central Settings instance

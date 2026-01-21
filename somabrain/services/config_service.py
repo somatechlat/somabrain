@@ -12,10 +12,8 @@ from __future__ import annotations
 import asyncio
 import copy
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
-
-from dataclasses import asdict
 
 # The original Config model was removed; use the unified Settings for type hints.
 from django.conf import settings as Config

@@ -6,8 +6,9 @@ failure state (memory service, sleep manager, health, etc.).
 
 from __future__ import annotations
 
-from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 from django.conf import settings
+
+from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
 _CB = CircuitBreaker(
     global_failure_threshold=settings.SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD,

@@ -16,21 +16,20 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Event type management
 """
 
-import hmac
 import hashlib
+import hmac
 import secrets
 from typing import List, Optional
 from uuid import UUID
 
 from django.db import models
-from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, AuditLog, ActorType
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
+from somabrain.saas.models import ActorType, AuditLog, Tenant
 
 router = Router(tags=["Webhooks"])
 

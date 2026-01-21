@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from opentelemetry import trace
 
@@ -18,12 +18,12 @@ if TYPE_CHECKING:
     from somabrain.memory.transport import MemoryHTTPTransport
 
 from somabrain.memory.graph_metrics import (
-    SB_GRAPH_LINK_TOTAL,
     SB_GRAPH_LINK_LATENCY,
-    SB_GRAPH_NEIGHBORS_TOTAL,
+    SB_GRAPH_LINK_TOTAL,
     SB_GRAPH_NEIGHBORS_LATENCY,
-    SB_GRAPH_PATH_TOTAL,
+    SB_GRAPH_NEIGHBORS_TOTAL,
     SB_GRAPH_PATH_LATENCY,
+    SB_GRAPH_PATH_TOTAL,
 )
 
 logger = logging.getLogger(__name__)
@@ -474,8 +474,8 @@ class GraphClient:
         """
         try:
             from somabrain.db.outbox import (
-                enqueue_memory_event,
                 OutboxBackpressureError,
+                enqueue_memory_event,
             )
 
             # Extract coordinates for idempotency key

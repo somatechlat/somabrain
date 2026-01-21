@@ -7,21 +7,22 @@ Oak options management backed by Milvus and OptionManager.
 from __future__ import annotations
 
 import base64
-import time
 import logging
+import time
 from typing import List, Optional
-from ninja import Router, Schema
-from django.http import HttpRequest
-from ninja.errors import HttpError
-from django.conf import settings
 
+from django.conf import settings
+from django.http import HttpRequest
+from ninja import Router, Schema
+from ninja.errors import HttpError
+
+from somabrain import metrics as M
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
-from somabrain.tenant import get_tenant
+from somabrain.milvus_client import MilvusClient
 from somabrain.oak.option_manager import option_manager
 from somabrain.oak.planner import plan_for_tenant
-from somabrain.milvus_client import MilvusClient
-from somabrain import metrics as M
+from somabrain.tenant import get_tenant
 
 logger = logging.getLogger("somabrain.api.endpoints.oak")
 

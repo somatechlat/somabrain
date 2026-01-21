@@ -10,12 +10,12 @@ import logging
 import time
 from typing import Any, Dict
 
-from ninja import Router
-from django.http import HttpRequest
-
 from django.conf import settings
-from somabrain.schemas import HealthResponse
+from django.http import HttpRequest
+from ninja import Router
+
 from somabrain.healthchecks import check_kafka, check_postgres
+from somabrain.schemas import HealthResponse
 from somabrain.tenant import get_tenant
 from somabrain.version import API_VERSION
 

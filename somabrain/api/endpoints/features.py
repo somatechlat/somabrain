@@ -1,9 +1,11 @@
 """Module features."""
 
-from ninja import Router
 from typing import Dict, List
-from somabrain.services.feature_flags import FeatureFlags
+
 from django.http import HttpRequest
+from ninja import Router
+
+from somabrain.services.feature_flags import FeatureFlags
 
 router = Router(tags=["features"])
 

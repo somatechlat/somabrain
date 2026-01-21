@@ -13,7 +13,6 @@ import asyncio
 import logging
 from typing import Any, Optional
 
-
 # Module-level logger
 _logger = logging.getLogger("somabrain.lifecycle.watchdog")
 

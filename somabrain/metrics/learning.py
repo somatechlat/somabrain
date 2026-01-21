@@ -20,7 +20,6 @@ from somabrain.metrics.core import (
     get_histogram,
 )
 
-
 # ---------------------------------------------------------------------------
 # Retrieval Weights (per-tenant adaptation state)
 # ---------------------------------------------------------------------------

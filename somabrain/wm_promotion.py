@@ -20,8 +20,8 @@ import logging
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from somabrain.wm import WMItem
     from somabrain.memory.promotion import WMLTMPromoter
+    from somabrain.wm import WMItem
 
 logger = logging.getLogger(__name__)
 

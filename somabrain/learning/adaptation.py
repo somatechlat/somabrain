@@ -14,7 +14,7 @@ Decomposition:
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, replace
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from somabrain.feedback import Feedback
@@ -24,25 +24,25 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     settings = None
 
-from somabrain.learning.config import (
-    UtilityWeights,
-    AdaptationGains,
-    AdaptationConstraints,
-)
-from somabrain.learning.tenant_cache import get_tenant_override as _get_tenant_override
 from somabrain.learning.annealing import (
     apply_tau_annealing,
     apply_tau_decay,
     check_entropy_cap,
-    linear_decay,
     exponential_decay,
+    linear_decay,
+)
+from somabrain.learning.config import (
+    AdaptationConstraints,
+    AdaptationGains,
+    UtilityWeights,
 )
 from somabrain.learning.persistence import (
     get_redis,
     is_persistence_enabled,
-    persist_state,
     load_state,
+    persist_state,
 )
+from somabrain.learning.tenant_cache import get_tenant_override as _get_tenant_override
 
 
 @dataclass

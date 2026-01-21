@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable, Iterable, List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Tuple
 
 from somabrain.memory.normalization import _extract_memory_coord
 
@@ -38,6 +38,7 @@ def remember_bulk_optimized(
 ) -> "BulkStoreResult":
     """Optimized bulk store with chunking and partial failure handling."""
     import time
+
     from somabrain.memory.types import BulkStoreResult
 
     chunk_size = 100

@@ -9,30 +9,31 @@ from __future__ import annotations
 import copy
 import logging
 import uuid
-import numpy as np
 from typing import List
-from ninja import Router
+
+import numpy as np
+from django.conf import settings
 from django.http import HttpRequest
+from ninja import Router
 from ninja.errors import HttpError
 
-from django.conf import settings
 from somabrain.api.auth import bearer_auth
-from somabrain.auth import require_auth
+from somabrain.api.memory.helpers import (
+    _compose_memory_payload,
+    _get_embedder,
+    _get_memory_pool,
+    _get_wm,
+    _resolve_namespace,
+    _serialize_coord,
+)
 from somabrain.api.memory.models import (
+    MemoryBatchWriteRequest,
+    MemoryBatchWriteResponse,
     MemorySignalFeedback,
     MemoryWriteRequest,
     MemoryWriteResponse,
-    MemoryBatchWriteRequest,
-    MemoryBatchWriteResponse,
 )
-from somabrain.api.memory.helpers import (
-    _get_embedder,
-    _get_wm,
-    _get_memory_pool,
-    _resolve_namespace,
-    _serialize_coord,
-    _compose_memory_payload,
-)
+from somabrain.auth import require_auth
 from somabrain.metrics import record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.tiered_memory_registry import TieredMemoryRegistry

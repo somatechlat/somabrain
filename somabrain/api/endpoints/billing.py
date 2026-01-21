@@ -16,26 +16,25 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Environment-based Lago config
 """
 
-from typing import List, Optional
-from uuid import UUID
 from datetime import datetime
 from decimal import Decimal
+from typing import List, Optional
+from uuid import UUID
 
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
-from somabrain.saas.models import (
-    Tenant,
-    SubscriptionTier,
-    Subscription,  # Use existing Subscription model
-    UsageRecord,
-    AuditLog,
-    ActorType,
-)
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
 from somabrain.saas.billing import get_lago_client
-
+from somabrain.saas.granular import Permission, require_permission
+from somabrain.saas.models import (
+    ActorType,
+    AuditLog,
+    Subscription,  # Use existing Subscription model
+    SubscriptionTier,
+    Tenant,
+    UsageRecord,
+)
 
 router = Router(tags=["Billing"])
 

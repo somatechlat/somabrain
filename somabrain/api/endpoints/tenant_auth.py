@@ -23,16 +23,15 @@ from uuid import UUID
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
+    ActorType,
+    AuditLog,
+    IdentityProvider,
     Tenant,
     TenantAuthConfig,
-    IdentityProvider,
-    AuditLog,
-    ActorType,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Tenant Auth"])
 

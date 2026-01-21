@@ -16,6 +16,7 @@ from cachetools import TTLCache
 
 # Unified configuration – use the central Settings instance
 from django.conf import settings
+
 from somabrain.math import cosine_similarity
 from somabrain.memory_client import RecallHit
 from somabrain.memory_pool import MultiTenantMemory
@@ -449,7 +450,7 @@ class ContextBuilder:
             tau=self._weights.tau,
         )
         try:
-            from somabrain.metrics import LEARNING_TAU, LEARNING_ENTROPY_CAP_HITS
+            from somabrain.metrics import LEARNING_ENTROPY_CAP_HITS, LEARNING_TAU
 
             if hasattr(LEARNING_TAU, "labels"):
                 LEARNING_TAU.labels(tenant_id=self._tenant_id).set(self._weights.tau)

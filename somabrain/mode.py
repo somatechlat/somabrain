@@ -5,8 +5,9 @@ Single source of truth for deployment modes and derived policies.
 
 from __future__ import annotations
 
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+
 from django.conf import settings
 
 

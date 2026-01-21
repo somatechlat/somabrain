@@ -13,14 +13,13 @@ from uuid import UUID
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
 from somabrain.saas.models import (
+    ActorType,
+    AuditLog,
     IdentityProvider,
     IdentityProviderType,
-    AuditLog,
-    ActorType,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-
 
 router = Router(tags=["Identity Providers"])
 

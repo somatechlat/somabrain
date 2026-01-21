@@ -13,8 +13,8 @@ import re
 from datetime import datetime, timezone
 from typing import Any, List
 
-from somabrain.memory.types import RecallHit
 from somabrain.memory.normalization import _extract_memory_coord
+from somabrain.memory.types import RecallHit
 
 
 def normalize_recall_hits(data: Any) -> List[RecallHit]:

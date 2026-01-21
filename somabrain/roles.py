@@ -11,7 +11,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from . import numerics as _num, seed as _seed
+from . import numerics as _num
+from . import seed as _seed
 
 
 def make_unitary_role(

@@ -4,16 +4,15 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from somabrain.context.builder import ContextBuilder, RetrievalWeights
-from somabrain.context.planner import ContextPlanner
-from somabrain.learning import UtilityWeights
-from somabrain.cognitive.working_memory_buffer import WorkingMemoryBuffer
-
 # Unified configuration – use the central Settings instance
 from django.conf import settings
-from somabrain.embeddings import make_embedder
-from somabrain.memory_pool import MultiTenantMemory
 
+from somabrain.cognitive.working_memory_buffer import WorkingMemoryBuffer
+from somabrain.context.builder import ContextBuilder, RetrievalWeights
+from somabrain.context.planner import ContextPlanner
+from somabrain.embeddings import make_embedder
+from somabrain.learning import UtilityWeights
+from somabrain.memory_pool import MultiTenantMemory
 
 _embedder = None
 try:

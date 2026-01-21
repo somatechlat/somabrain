@@ -9,28 +9,31 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import List
 from datetime import datetime, timezone
+from typing import List
 
 import numpy as np
 
 try:
-    from confluent_kafka import Consumer as CKConsumer, KafkaException
+    from confluent_kafka import Consumer as CKConsumer
+    from confluent_kafka import KafkaException
 except Exception as exc:  # pragma: no cover
     raise RuntimeError("confluent_kafka required for segmentation_service") from exc
 
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
 from django.conf import settings
+
+import somabrain.metrics as metrics
+from somabrain.common.kafka import encode, make_producer
+from somabrain.modes import feature_enabled
+from somabrain.segmentation.evaluator import evaluate_boundaries, update_metrics
 from somabrain.segmentation.hmm import (
     HMMParams,
-    online_viterbi_probs,
     detect_boundaries,
+    online_viterbi_probs,
 )
-from somabrain.segmentation.evaluator import evaluate_boundaries, update_metrics
-import somabrain.metrics as metrics
-from somabrain.common.kafka import make_producer, encode
-from somabrain.modes import feature_enabled
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
 
 logger = logging.getLogger("somabrain.services.segmentation")
 

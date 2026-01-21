@@ -3,9 +3,10 @@
 This module provides sleep state management and consolidation cycles.
 """
 
-from enum import Enum
-from typing import Dict, Any  # noqa: F401
 import dataclasses
+from enum import Enum
+from typing import Any, Dict  # noqa: F401
+
 from django.conf import settings as settings
 
 

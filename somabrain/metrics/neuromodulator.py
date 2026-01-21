@@ -13,7 +13,9 @@ Metrics:
 
 from __future__ import annotations
 
-from prometheus_client import REGISTRY, Counter as _PromCounter, Gauge as _PromGauge
+from prometheus_client import REGISTRY
+from prometheus_client import Counter as _PromCounter
+from prometheus_client import Gauge as _PromGauge
 
 # ---------------------------------------------------------------------------
 # Neuromodulator Value Gauges (ensure single registration)

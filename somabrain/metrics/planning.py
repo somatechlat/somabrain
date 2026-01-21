@@ -16,7 +16,7 @@ Requirements: 11.1, 11.2, 11.3, 11.4, 11.5
 
 from __future__ import annotations
 
-from somabrain.metrics.core import registry, Counter, Histogram
+from somabrain.metrics.core import Counter, Histogram, registry
 
 # ---------------------------------------------------------------------------
 # Planning Metrics

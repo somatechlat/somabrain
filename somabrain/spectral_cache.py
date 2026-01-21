@@ -17,11 +17,11 @@ from __future__ import annotations
 
 import hashlib
 import os
-from django.conf import settings
 from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
+from django.conf import settings
 
 
 def _default_cache_dir() -> Path:

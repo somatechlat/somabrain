@@ -15,12 +15,13 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any
+from typing import Any, Optional
 
-import jwt
 from django.conf import settings
 from django.http import HttpRequest
 from ninja.errors import HttpError
+
+import jwt
 from jwt.exceptions import PyJWTError
 
 logger = logging.getLogger(__name__)

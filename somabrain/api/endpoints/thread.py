@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import logging
 from typing import List
-from ninja import Router, Schema
-from django.http import HttpRequest
-from ninja.errors import HttpError
-from django.conf import settings
 
+from django.conf import settings
+from django.http import HttpRequest
+from ninja import Router, Schema
+from ninja.errors import HttpError
+
+from somabrain import metrics as M
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
 from somabrain.models import CognitiveThread
-from somabrain import metrics as M
 
 logger = logging.getLogger("somabrain.api.endpoints.thread")
 

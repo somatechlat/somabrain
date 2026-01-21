@@ -5,7 +5,7 @@ graph diffusion and seed-set expansion. This is a small deterministic push-based
 algorithm suitable for unit tests and small graphs.
 """
 
-from typing import Dict, Iterable, Tuple, Optional
+from typing import Dict, Iterable, Optional, Tuple
 
 # lazy import of runtime config to avoid circular imports
 # Unified configuration – use central Settings instance

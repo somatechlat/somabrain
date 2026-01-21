@@ -10,8 +10,9 @@ across all request handlers.
 from __future__ import annotations
 
 import logging
-from django.conf import settings
 from typing import TYPE_CHECKING, Any, Optional
+
+from django.conf import settings
 
 if TYPE_CHECKING:
     from somabrain.quantum import QuantumLayer
@@ -365,9 +366,10 @@ def create_fnom_memory(cfg, embedder):
     Returns:
         PersistentFNOM: The persistent FNOM instance.
     """
-    from somabrain.brain.fnom import PersistentFNOM
-    from somafractalmemory.implementations.postgres_kv import PostgresKeyValueStore
     from somafractalmemory.implementations.milvus_vector import MilvusVectorStore
+    from somafractalmemory.implementations.postgres_kv import PostgresKeyValueStore
+
+    from somabrain.brain.fnom import PersistentFNOM
 
     # Reuse valid connection parameters for shared persistence layer
     # Segregate data via explicit namespacing

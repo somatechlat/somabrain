@@ -24,14 +24,14 @@ Functions:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
-from dataclasses import dataclass, asdict
-import logging
 
 # NOTE: The journal configuration pulls values from the global ``settings``
 # object defined in ``common.config.settings``. The original implementation

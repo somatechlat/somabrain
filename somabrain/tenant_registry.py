@@ -17,13 +17,13 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Any, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 import redis.asyncio as redis
 from redis.exceptions import RedisError
 
+from somabrain.tenant_types import TenantMetadata, TenantStatus, TenantTier
 from somabrain.tenant_validation import normalize_tenant_id, validate_tenant_id
-from somabrain.tenant_types import TenantTier, TenantStatus, TenantMetadata
 
 logger = logging.getLogger(__name__)
 

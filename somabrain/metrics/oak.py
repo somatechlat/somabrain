@@ -17,7 +17,7 @@ Metrics:
 
 from __future__ import annotations
 
-from somabrain.metrics.core import get_gauge, get_counter
+from somabrain.metrics.core import get_counter, get_gauge
 
 # ---------------------------------------------------------------------------
 # Oak-specific Observability (ROAMDP)
