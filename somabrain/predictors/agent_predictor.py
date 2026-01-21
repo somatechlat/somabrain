@@ -16,8 +16,8 @@ from __future__ import annotations
 from typing import Tuple
 
 import numpy as np
-
 from django.conf import settings as settings
+
 from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
 
 

@@ -16,13 +16,13 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:
-    from somabrain.memory_client import MemoryClient
     from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory_client import MemoryClient
 
 logger = logging.getLogger(__name__)
 

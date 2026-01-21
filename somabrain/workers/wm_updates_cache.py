@@ -18,13 +18,15 @@ import json
 import logging
 from typing import Any, Dict, Optional
 
-from somabrain.modes import feature_enabled
 from django.conf import settings
+
+from somabrain.modes import feature_enabled
 
 logger = logging.getLogger(__name__)
 
 # Strict: use confluent-kafka Consumer only
 from confluent_kafka import Consumer as CKConsumer
+
 from somabrain.common.infra import assert_ready
 
 try:  # Redis optional

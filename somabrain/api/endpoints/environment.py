@@ -17,18 +17,17 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Environment setup
 """
 
-from typing import List, Any
 import os
+from typing import Any, List
 
 from django.conf import settings
 from django.core.cache import cache
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
-from somabrain.saas.models import AuditLog, ActorType
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
+from somabrain.saas.models import ActorType, AuditLog
 
 router = Router(tags=["Environment"])
 
@@ -99,8 +98,9 @@ def get_environment_info():
 
     REAL Django settings.
     """
-    import django
     import sys
+
+    import django
 
     db_settings = get_safe_setting("DATABASES", {}).get("default", {})
     cache_settings = get_safe_setting("CACHES", {}).get("default", {})

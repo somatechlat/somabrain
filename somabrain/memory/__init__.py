@@ -8,64 +8,64 @@ This module provides:
 - MemoryClient: Main client for memory operations (lazy import from memory_client)
 """
 
-from .hierarchical import LayerPolicy, RecallContext, TieredMemory
-from .superposed_trace import SuperposedTrace, TraceConfig
-from .types import RecallHit
-from .transport import MemoryHTTPTransport, _http_setting, _response_json
-from .normalization import _stable_coord, _parse_coord_string, _extract_memory_coord
 from .filtering import _filter_payloads_by_keyword
+from .hierarchical import LayerPolicy, RecallContext, TieredMemory
 from .hit_processing import (
-    normalize_recall_hits,
+    coerce_timestamp_value,
+    deduplicate_hits,
     hit_identity,
     hit_score,
     hit_timestamp,
-    coerce_timestamp_value,
-    prefer_candidate_hit,
-    deduplicate_hits,
     lexical_bonus,
+    normalize_recall_hits,
+    prefer_candidate_hit,
 )
-from .scoring import (
-    coerce_float,
-    parse_payload_timestamp,
-    get_recency_normalisation,
-    get_recency_profile,
-    compute_recency_features,
-    compute_density_factor,
-    extract_cleanup_margin,
-    rank_hits,
-    apply_weighting_to_hits,
-    rescore_and_rank_hits,
+from .http_helpers import (
+    http_post_with_retries_async,
+    http_post_with_retries_sync,
+    record_http_metrics,
+    store_bulk_http_async,
+    store_bulk_http_sync,
+    store_http_async,
+    store_http_sync,
 )
+from .normalization import _extract_memory_coord, _parse_coord_string, _stable_coord
 from .payload import (
     enrich_payload,
     normalize_metadata,
     prepare_memory_payload,
 )
-from .http_helpers import (
-    record_http_metrics,
-    http_post_with_retries_sync,
-    http_post_with_retries_async,
-    store_http_sync,
-    store_http_async,
-    store_bulk_http_sync,
-    store_bulk_http_async,
+from .recall_ops import (
+    filter_hits_by_keyword,
+    memories_search_async,
+    memories_search_sync,
+    process_search_response,
 )
 from .remember import (
-    remember_sync_persist,
     aremember_background,
     prepare_bulk_items,
     process_bulk_response,
+    remember_sync_persist,
 )
-from .recall_ops import (
-    memories_search_sync,
-    memories_search_async,
-    filter_hits_by_keyword,
-    process_search_response,
+from .scoring import (
+    apply_weighting_to_hits,
+    coerce_float,
+    compute_density_factor,
+    compute_recency_features,
+    extract_cleanup_margin,
+    get_recency_normalisation,
+    get_recency_profile,
+    parse_payload_timestamp,
+    rank_hits,
+    rescore_and_rank_hits,
 )
+from .superposed_trace import SuperposedTrace, TraceConfig
+from .transport import MemoryHTTPTransport, _http_setting, _response_json
+from .types import RecallHit
 from .utils import (
-    get_tenant_namespace,
     coord_for_key,
     fetch_by_coord,
+    get_tenant_namespace,
     store_from_payload,
 )
 

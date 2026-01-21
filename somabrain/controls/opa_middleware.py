@@ -9,14 +9,14 @@ from __future__ import annotations
 
 import json
 import logging
-import httpx
 from typing import Any, Callable
 
-from django.http import HttpRequest, HttpResponse, JsonResponse
+import httpx
 from django.conf import settings
+from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from somabrain import metrics as app_metrics
-from somabrain.opa.client import opa_client, _policy_path_for_mode
+from somabrain.opa.client import _policy_path_for_mode, opa_client
 
 LOGGER = logging.getLogger("somabrain.controls.opa")
 

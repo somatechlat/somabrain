@@ -9,8 +9,8 @@ saas.auth module. All auth logic is centralized there.
 # Re-export all auth classes from the real implementation
 from somabrain.saas.auth import (
     APIKeyAuth,
-    JWTAuth,
     GoogleOAuth,
+    JWTAuth,
 )
 
 # Singleton instances for backward compatibility

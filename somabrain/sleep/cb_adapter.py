@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from somabrain.sleep import SleepState
 from typing import Dict
+
+from somabrain.sleep import SleepState
 
 # Simple hysteresis cache to avoid flapping between states
 _LAST_STATE: Dict[str, SleepState] = {}

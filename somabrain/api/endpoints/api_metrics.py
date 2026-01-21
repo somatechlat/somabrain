@@ -16,17 +16,16 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Prometheus-compatible export
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import timedelta
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from django.utils import timezone
 from django.core.cache import cache
+from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 
 router = Router(tags=["Metrics"])
 

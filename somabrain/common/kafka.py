@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
-from django.conf import settings
 from functools import lru_cache
 from typing import Any, Dict, Optional
+
+from django.conf import settings
 
 try:  # Strict mode: use confluent-kafka only
     from confluent_kafka import Producer as CKProducer

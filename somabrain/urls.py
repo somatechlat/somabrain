@@ -5,8 +5,8 @@ All API routers are registered in somabrain/api/v1.py
 """
 
 from django.contrib import admin
-from django.urls import path
 from django.http import JsonResponse
+from django.urls import path
 from django.utils import timezone
 
 # Import consolidated API from v1
@@ -14,7 +14,6 @@ from somabrain.api.v1 import api
 
 # Webhook handler
 from somabrain.saas.webhooks import lago_webhook
-
 
 # =============================================================================
 # HEALTH VIEWS - VIBE Coding Rules
@@ -33,8 +32,8 @@ def healthz_view(request):
 
 def readyz_view(request):
     """Kubernetes readiness probe - checks dependencies."""
-    from django.db import connection
     from django.core.cache import cache
+    from django.db import connection
 
     checks = {
         "database": "unknown",
@@ -78,12 +77,13 @@ def health_view(request):
     Checks: PostgreSQL, Redis, Kafka, Milvus, OPA, MinIO,
     Schema Registry, Keycloak, Lago, SFM, Cognitive, Embedder
     """
-    import time
     import socket
+    import time
+
     import httpx
-    from django.db import connection
-    from django.core.cache import cache
     from django.conf import settings
+    from django.core.cache import cache
+    from django.db import connection
 
     def timed_check(name, check_func):
         """Execute timed check.

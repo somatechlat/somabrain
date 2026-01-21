@@ -30,59 +30,63 @@ def _redis_available() -> bool:
     """Check if Redis is reachable on SomaBrain cluster."""
     try:
         import redis
+        import os
 
-        # SomaBrain cluster port is 30100
-        for port in [30100, 20379]:
-            try:
-                r = redis.Redis(host="localhost", port=port, socket_timeout=2)
-                r.ping()
-                return True
-            except Exception:
-                continue
-        return False
-    except ImportError:
-        return False
-    except Exception as exc:
-        logger.warning("Redis not reachable: %s", exc)
+        # Default to SaaS port 63979, allow override
+        host = os.environ.get("SOMA_REDIS_HOST", "localhost")
+        port = int(os.environ.get("SOMA_REDIS_PORT", "63979"))
+
+        r = redis.Redis(host=host, port=port, socket_timeout=2)
+        r.ping()
+        return True
+    except Exception:
         return False
 
 
 def _kafka_available() -> bool:
-    """Check if Kafka is reachable on SomaBrain cluster.
+    """Check if Kafka is reachable on SomaBrain cluster."""
+    try:
+        from kafka import KafkaAdminClient
+        import os
 
-    Note: Kafka connectivity check is disabled due to kafka-python library
-    hanging issues. Tests will be skipped until this is resolved.
-    """
-    # Temporarily disabled - kafka-python hangs on connection
-    return False
+        host = os.environ.get("SOMA_KAFKA_HOST", "localhost")
+        port = int(os.environ.get("SOMA_KAFKA_PORT", "63992")) # Standard Kafka Port
+
+        admin = KafkaAdminClient(
+            bootstrap_servers=f"{host}:{port}",
+            request_timeout_ms=2000,
+        )
+        admin.close()
+        return True
+    except Exception:
+        return False
 
 
 def _postgres_available() -> bool:
     """Check if PostgreSQL is reachable on SomaBrain cluster."""
     try:
         import psycopg2
+        import os
 
-        # SomaBrain cluster port is 30106
-        for port in [30106, 20432]:
-            try:
-                conn = psycopg2.connect(
-                    host="localhost",
-                    port=port,
-                    user="soma",
-                    password="soma_pass",
-                    dbname="somabrain",
-                    connect_timeout=3,
-                )
-                cur = conn.cursor()
-                cur.execute("SELECT 1")
-                cur.close()
-                conn.close()
-                return True
-            except Exception:
-                continue
-        return False
-    except ImportError:
-        return False
+        host = os.environ.get("SOMA_DB_HOST", "localhost")
+        port = int(os.environ.get("SOMA_DB_PORT", "63932"))
+        user = os.environ.get("SOMA_DB_USER", "soma")
+        password = os.environ.get("SOMA_DB_PASSWORD", "soma")
+        dbname = os.environ.get("SOMA_DB_NAME", "somabrain")
+
+        conn = psycopg2.connect(
+            host=host,
+            port=port,
+            user=user,
+            password=password,
+            dbname=dbname,
+            connect_timeout=3,
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT 1")
+        cur.close()
+        conn.close()
+        return True
     except Exception as exc:
         logger.warning("PostgreSQL not reachable: %s", exc)
         return False
@@ -91,15 +95,21 @@ def _postgres_available() -> bool:
 def _opa_available() -> bool:
     """Check if OPA is reachable on SomaBrain cluster."""
     try:
-        # SomaBrain cluster port is 30104
-        for port in [30104, 20181]:
-            try:
-                with httpx.Client(timeout=2.0) as client:
-                    resp = client.get(f"http://localhost:{port}/health")
-                    if resp.status_code == 200:
-                        return True
-            except Exception:
-                continue
+        import os
+        host = os.environ.get("SOMA_OPA_HOST", "localhost")
+        port = int(os.environ.get("SOMA_OPA_PORT", "63999")) # Assumption for OPA? No, Agent used one.
+        # Agent used SA01_OPA_URL. Let's use env var or skip if not sure.
+        # But for valid verification, we need OPA.
+        # Checking Agent env config (Step 1234): SAAS_ENV didn't list OPA explicitly?
+        # Step 1210: "Missing required environment variable: SA01_OPA_URL".
+        # I'll default to localhost:8181 (OPA default) or read URL.
+
+        opa_url = os.environ.get("SOMA_OPA_URL", "http://localhost:8181")
+
+        with httpx.Client(timeout=2.0) as client:
+            resp = client.get(f"{opa_url}/health")
+            if resp.status_code == 200:
+                return True
         return False
     except Exception as exc:
         logger.warning("OPA not reachable: %s", exc)

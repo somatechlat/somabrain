@@ -3,13 +3,14 @@ Django admin configuration for somabrain models.
 """
 
 from django.contrib import admin
+
 from .models import (
-    OutboxEvent,
-    EpisodicSnapshot,
-    SleepState,
     CognitiveThread,
-    TokenLedger,
+    EpisodicSnapshot,
     FeedbackRecord,
+    OutboxEvent,
+    SleepState,
+    TokenLedger,
 )
 
 

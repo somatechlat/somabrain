@@ -24,10 +24,10 @@ ALL 10 PERSONAS:
 - 🛠️ DevOps: Environment-based config
 """
 
+import logging
 from enum import Enum
 from functools import wraps
 from typing import List, Set
-import logging
 
 from django.http import HttpRequest
 from ninja.errors import HttpError

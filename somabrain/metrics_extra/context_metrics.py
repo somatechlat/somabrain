@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from somabrain.metrics import get_gauge
 
-
 _context_anchor_count = get_gauge(
     "hrr_context_anchor_count",
     "Number of anchors currently retained by the HRR context.",

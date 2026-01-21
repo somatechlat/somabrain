@@ -6,8 +6,8 @@ recall, remember, retrieval, and delete operations.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from pydantic import BaseModel, Field, model_validator

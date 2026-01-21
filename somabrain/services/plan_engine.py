@@ -13,14 +13,14 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import numpy as np
 
 if TYPE_CHECKING:
     from somabrain.memory.graph_client import GraphClient
 
-from somabrain.metrics.planning import PLAN_LATENCY, PLAN_EMPTY
+from somabrain.metrics.planning import PLAN_EMPTY, PLAN_LATENCY
 from somabrain.planner import plan_from_graph
 from somabrain.planner_rwr import rwr_plan
 

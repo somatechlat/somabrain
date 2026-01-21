@@ -10,7 +10,7 @@ NO STUBS. NO MOCKS. NO HARDCODED RETURNS.
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     from somabrain.memory.graph_client import GraphClient

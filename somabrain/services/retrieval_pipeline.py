@@ -19,10 +19,10 @@ import os
 import sys
 from typing import Any, List, Optional
 
-from somabrain.schemas import RetrievalRequest, RetrievalResponse, RetrievalCandidate
-from somabrain.services.memory_service import MemoryService
-from somabrain.scoring import UnifiedScorer
 from somabrain.embeddings import make_embedder
+from somabrain.schemas import RetrievalCandidate, RetrievalRequest, RetrievalResponse
+from somabrain.scoring import UnifiedScorer
+from somabrain.services.memory_service import MemoryService
 
 # The repository contains both a ``runtime`` package (exposing WorkingMemoryBuffer)
 # and a ``runtime.py`` module that defines the core singleton utilities

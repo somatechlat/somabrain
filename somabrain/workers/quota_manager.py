@@ -12,7 +12,6 @@ from typing import Any, Optional
 
 from django.conf import settings
 
-
 # Per-tenant quota configuration
 PER_TENANT_QUOTA_LIMIT = max(
     1,

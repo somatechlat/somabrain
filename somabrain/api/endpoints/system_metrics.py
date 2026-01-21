@@ -17,24 +17,23 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Platform observability
 """
 
-from typing import List
 from datetime import timedelta
+from typing import List
 
-from django.utils import timezone
 from django.db.models import Count
 from django.db.models.functions import TruncDate, TruncHour
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
-    Tenant,
-    TenantUser,
     APIKey,
     AuditLog,
+    Tenant,
+    TenantUser,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["System Metrics"])
 

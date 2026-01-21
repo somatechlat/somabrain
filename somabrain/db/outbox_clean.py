@@ -12,9 +12,9 @@ from typing import Any, Dict, List, Optional
 from django.db import transaction
 from django.db.models import Count
 
-from somabrain.models import OutboxEvent
+from somabrain.journal import JournalEvent, get_journal
 from somabrain.metrics import report_outbox_replayed
-from somabrain.journal import get_journal, JournalEvent
+from somabrain.models import OutboxEvent
 
 VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
 

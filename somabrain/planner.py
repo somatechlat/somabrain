@@ -11,7 +11,7 @@ Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
     from somabrain.memory.graph_client import GraphClient, GraphNeighbor

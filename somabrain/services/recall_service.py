@@ -33,9 +33,9 @@ Classes:
 from __future__ import annotations
 
 import asyncio
+import re
 import time as _t
 from typing import Callable, List, Optional, Tuple
-import re
 
 from .. import metrics as M
 from ..math import cosine_similarity

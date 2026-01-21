@@ -16,23 +16,22 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Search configuration
 """
 
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from django.db.models import Q, Count
+from django.db.models import Count, Q
 from ninja import Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
+    APIKey,
+    AuditLog,
     Tenant,
     TenantUser,
-    APIKey,
     Webhook,
-    AuditLog,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Search"])
 

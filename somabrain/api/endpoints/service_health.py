@@ -17,20 +17,19 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Service lifecycle
 """
 
-from typing import List, Optional
-from datetime import datetime, timedelta
 import time
+from datetime import datetime, timedelta
+from typing import List, Optional
 
-from django.utils import timezone
-from django.db import connection
 from django.core.cache import cache
+from django.db import connection
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
-from somabrain.saas.models import Tenant, AuditLog
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
+from somabrain.saas.models import AuditLog, Tenant
 
 router = Router(tags=["Service Health"])
 

@@ -17,12 +17,11 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
-from django.utils import timezone
 from django.conf import settings
+from django.utils import timezone
 from ninja import Router, Schema
-
 
 router = Router(tags=["Health"])
 

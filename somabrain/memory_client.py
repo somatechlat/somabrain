@@ -10,8 +10,6 @@ with the memory service directly.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
-
 import hashlib
 import json
 import logging
@@ -22,14 +20,14 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from .config import Config
-
 from common.config.settings import settings
-
 from somabrain.infrastructure import get_memory_http_endpoint
 from somabrain.interfaces.memory import MemoryBackend
+
+from .config import Config
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)

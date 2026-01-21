@@ -17,8 +17,8 @@ VIBE Coding Rules - ALL 10 PERSONAS:
 - 🛠️ DevOps: Environment-based OAuth config
 """
 
-import logging
 import hashlib
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -162,6 +162,7 @@ def login(request, data: LoginRequest):
     # Increment attempt counter (expires in 60 seconds)
     cache.set(rate_limit_key, attempts + 1, timeout=60)
     from django.contrib.auth import get_user_model
+
     from somabrain.saas.models import TenantUser
 
     User = get_user_model()

@@ -8,19 +8,19 @@ ready() or signal handlers in the main application module.
 """
 
 from somabrain.lifecycle.startup import (
-    startup_mode_banner,
-    init_constitution,
     enforce_kafka_required,
     enforce_opa_postgres_required,
+    init_constitution,
     init_health_watchdog,
     init_tenant_manager,
-    start_outbox_sync,
     start_milvus_reconciliation_task,
+    start_outbox_sync,
+    startup_mode_banner,
 )
 from somabrain.lifecycle.watchdog import (
+    shutdown_tenant_manager,
     start_memory_watchdog,
     stop_memory_watchdog,
-    shutdown_tenant_manager,
 )
 
 __all__ = [

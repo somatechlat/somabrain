@@ -12,10 +12,10 @@ import os
 import time
 from typing import Any, Dict
 
+from django.conf import settings
+
 from common.logging import logger
 from somabrain.metrics import LEARNER_DLQ_TOTAL
-
-from django.conf import settings
 
 # Use centralized Settings for DLQ configuration.
 DLQ_DEFAULT_PATH = settings.SOMABRAIN_LEARNER_DLQ_PATH or "./data/learner_dlq.jsonl"

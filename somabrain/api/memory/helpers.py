@@ -22,9 +22,9 @@ import os
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
+from django.conf import settings
 from ninja.errors import HttpError
 
-from django.conf import settings
 from somabrain.api.memory.models import (
     MemoryAttachment,
     MemoryLink,

@@ -100,8 +100,9 @@ def main() -> None:  # pragma: no cover
     # The orchestrator now starts services solely based on `feature_enabled`.
     """Execute main."""
 
-    from somabrain.modes import feature_enabled
     from django.conf import settings
+
+    from somabrain.modes import feature_enabled
 
     threads: list[threading.Thread] = []
 

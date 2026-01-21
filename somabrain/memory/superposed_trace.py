@@ -11,10 +11,10 @@ it can slot into the upcoming memory service refactor.
 
 from __future__ import annotations
 
-import math
 import logging
+import math
 from dataclasses import dataclass, replace
-from typing import Callable, Dict, Optional, Tuple, Protocol, Iterable, List
+from typing import Callable, Dict, Iterable, List, Optional, Protocol, Tuple
 
 import numpy as np
 

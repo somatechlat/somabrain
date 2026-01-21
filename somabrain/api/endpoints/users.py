@@ -19,19 +19,18 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 from typing import List, Optional
 from uuid import UUID
 
-from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from ninja import Router, Schema, Query
+from django.shortcuts import get_object_or_404
+from ninja import Query, Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
-    TenantUser,
-    Tenant,
-    AuditLog,
     ActorType,
+    AuditLog,
+    Tenant,
+    TenantUser,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Users"])
 
@@ -280,6 +279,7 @@ def create_tenant_user(
     - SRE: Audit logging
     """
     from django.db import transaction
+
     from somabrain.saas.models import Role, TenantUserRole
 
     # Tenant isolation check

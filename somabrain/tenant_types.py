@@ -6,7 +6,7 @@ Provides TenantTier, TenantStatus enums and TenantMetadata dataclass.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, Optional

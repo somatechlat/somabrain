@@ -18,6 +18,7 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 
 import logging
 from typing import Optional
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 

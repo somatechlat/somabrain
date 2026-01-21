@@ -29,7 +29,6 @@ from somabrain.metrics.predictor import PREDICTOR_ALTERNATIVE
 from somabrain.modes import feature_enabled
 from somabrain.sleep import SleepState, SleepStateManager
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -1,8 +1,8 @@
 """Service endpoint registry for SomaBrain."""
 
+import os
 from dataclasses import dataclass
 from typing import Optional
-import os
 
 
 @dataclass(frozen=True)

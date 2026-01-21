@@ -17,25 +17,24 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Quota configuration
 """
 
-from typing import List
 from datetime import timedelta
+from typing import List
 from uuid import UUID
 
-from django.utils import timezone
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
-    Tenant,
-    TenantUser,
-    SubscriptionTier,
     APIKey,
     AuditLog,
+    SubscriptionTier,
+    Tenant,
+    TenantUser,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Quotas"])
 

@@ -9,15 +9,15 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import Optional, List, Dict, Any, Union
 from datetime import datetime, timedelta
-from django.http import HttpRequest
-from ninja.errors import HttpError
-
-from .tenant_registry import TenantRegistry, TenantMetadata, TenantTier, TenantStatus
+from typing import Any, Dict, List, Optional, Union
 
 # Unified Settings instance
 from django.conf import settings
+from django.http import HttpRequest
+from ninja.errors import HttpError
+
+from .tenant_registry import TenantMetadata, TenantRegistry, TenantStatus, TenantTier
 
 logger = logging.getLogger(__name__)
 

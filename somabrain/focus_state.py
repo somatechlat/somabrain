@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from somabrain.context_hrr import HRRContext
     from somabrain.memory.graph_client import GraphClient
 
-from somabrain.metrics.planning import FOCUS_UPDATE_LATENCY, FOCUS_PERSIST
+from somabrain.metrics.planning import FOCUS_PERSIST, FOCUS_UPDATE_LATENCY
 
 logger = logging.getLogger(__name__)
 

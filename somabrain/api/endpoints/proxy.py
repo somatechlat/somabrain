@@ -7,14 +7,14 @@ Proxy endpoints for external service integration.
 from __future__ import annotations
 
 import logging
-from ninja import Router
-from django.http import HttpRequest
 
 from django.conf import settings
-from somabrain.schemas import ProxyRequest
+from django.http import HttpRequest
+from ninja import Router
 
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
+from somabrain.schemas import ProxyRequest
 from somabrain.tenant import get_tenant
 
 logger = logging.getLogger("somabrain.api.endpoints.proxy")

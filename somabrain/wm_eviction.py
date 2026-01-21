@@ -24,8 +24,8 @@ from somabrain.math import cosine_similarity
 from somabrain.wm_salience import compute_eviction_salience
 
 if TYPE_CHECKING:
-    from somabrain.wm import WMItem
     from somabrain.memory.wm_persistence import WMPersister
+    from somabrain.wm import WMItem
 
 logger = logging.getLogger(__name__)
 

@@ -22,17 +22,18 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import numpy as np
+from django.conf import settings
 
+from somabrain.common.kafka import encode, make_producer
 from somabrain.prediction import (
     BudgetedPredictor,
     MahalanobisPredictor,
     PredictionResult,
 )
-from somabrain.common.kafka import encode, make_producer
-from django.conf import settings
 
 try:
-    from confluent_kafka import Consumer as CKConsumer, KafkaException
+    from confluent_kafka import Consumer as CKConsumer
+    from confluent_kafka import KafkaException
 except ImportError as e:
     raise RuntimeError(f"Agent predictor requires confluent-kafka: {e}")
 

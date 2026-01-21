@@ -12,7 +12,7 @@ Metrics:
 
 from __future__ import annotations
 
-from somabrain.metrics.core import registry, Gauge, Histogram, Counter
+from somabrain.metrics.core import Counter, Gauge, Histogram, registry
 
 # ---------------------------------------------------------------------------
 # Constitution Metrics (baseline)

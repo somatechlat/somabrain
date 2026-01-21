@@ -1,17 +1,17 @@
 """Module persona."""
 
-from typing import Dict, Any
-import time
 import hashlib
 import json
+import time
 from types import SimpleNamespace
+from typing import Any, Dict
 
-from ninja import Router
+from django.conf import settings
 from django.http import HttpRequest, HttpResponse
+from ninja import Router
 from ninja.errors import HttpError
 
 from somabrain.auth import require_auth
-from django.conf import settings
 from somabrain.schemas import Persona
 from somabrain.tenant_manager import get_tenant_manager
 

@@ -13,7 +13,6 @@ import time
 from typing import Any, Optional, Tuple
 
 import httpx
-
 from django.conf import settings
 
 # Module-level logger

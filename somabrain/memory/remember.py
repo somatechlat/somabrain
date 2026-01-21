@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable, Iterable, List, Optional, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Optional, Tuple
 
-from somabrain.memory.normalization import _stable_coord, _extract_memory_coord
+from somabrain.memory.normalization import _extract_memory_coord, _stable_coord
 from somabrain.memory.payload import enrich_payload
 
 if TYPE_CHECKING:
@@ -47,8 +47,8 @@ def _record_to_outbox(
     """
     try:
         from somabrain.db.outbox import (
-            enqueue_memory_event,
             OutboxBackpressureError,
+            enqueue_memory_event,
         )
 
         dedupe_key = enqueue_memory_event(

@@ -37,13 +37,15 @@ from __future__ import annotations
 
 import argparse
 import random
-from typing import List, Tuple, Any
 import time as _time
+from typing import Any, List, Tuple
 
 from django.conf import settings
+
+from somabrain.services.memory_service import MemoryService
+
 from .memory_client import MemoryClient
 from .memory_pool import MultiTenantMemory
-from somabrain.services.memory_service import MemoryService
 from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED
 from .mt_wm import MultiTenantWM
 from .reflect import top_keywords

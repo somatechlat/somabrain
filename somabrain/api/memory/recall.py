@@ -20,26 +20,26 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from somabrain.api.memory.models import (
-    MemoryRecallRequest,
-    MemoryRecallItem,
-    MemoryRecallResponse,
-)
 from somabrain.api.memory.helpers import (
     _get_embedder,
-    _get_wm,
     _get_memory_pool,
+    _get_wm,
     _resolve_namespace,
     _serialize_coord,
 )
+from somabrain.api.memory.models import (
+    MemoryRecallItem,
+    MemoryRecallRequest,
+    MemoryRecallResponse,
+)
 from somabrain.metrics import observe_recall_latency, record_memory_snapshot
-from somabrain.services.memory_service import MemoryService
-from somabrain.services.parameter_supervisor import MetricsSnapshot
 from somabrain.runtime.config_runtime import (
     ensure_config_dispatcher,
     ensure_supervisor_worker,
     submit_metrics_snapshot,
 )
+from somabrain.services.memory_service import MemoryService
+from somabrain.services.parameter_supervisor import MetricsSnapshot
 
 logger = logging.getLogger(__name__)
 

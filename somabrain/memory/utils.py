@@ -7,7 +7,7 @@ to reduce file size while maintaining the same functionality.
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict, List, Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from somabrain.memory.normalization import _stable_coord
 from somabrain.memory.transport import _response_json

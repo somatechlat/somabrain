@@ -4,14 +4,14 @@ Calibration metrics tracking for SomaBrain predictors.
 Tracks calibration performance over time for each predictor domain.
 """
 
-import time
-from typing import Dict
-from dataclasses import dataclass
-from collections import defaultdict, deque
-import threading
 import json
+import threading
+import time
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from typing import Dict
 
-from .temperature_scaling import TemperatureScaler, compute_ece, compute_brier_score
+from .temperature_scaling import TemperatureScaler, compute_brier_score, compute_ece
 
 
 @dataclass

@@ -1,8 +1,9 @@
 """Module calibration."""
 
-from ninja import Router
 from django.http import HttpRequest
+from ninja import Router
 from ninja.errors import HttpError
+
 from somabrain.services.calibration_service import calibration_service
 
 router = Router(tags=["calibration"])

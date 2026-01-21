@@ -20,6 +20,7 @@ from collections import defaultdict, deque
 from typing import Any, Deque, Dict, List, Tuple
 
 from django.conf import settings
+
 from somabrain.metrics import (
     MILVUS_INGEST_LAT_P95,
     MILVUS_SEARCH_LAT_P95,
@@ -45,7 +46,9 @@ try:
     except Exception:  # pragma: no cover - compatibility shim
         try:
             # Type ignore: pymilvus API varies across versions; this fallback handles older APIs
-            from pymilvus.exceptions import MilvusException  # type: ignore[import-not-found]
+            from pymilvus.exceptions import (
+                MilvusException,  # type: ignore[import-not-found]
+            )
         except Exception:  # Final guard: keep import successful even on API drift
             # Type ignore: Exception assignment is intentional fallback for missing pymilvus
             MilvusException = Exception  # type: ignore[misc]

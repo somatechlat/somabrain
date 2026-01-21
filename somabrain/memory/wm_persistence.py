@@ -13,11 +13,11 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from somabrain.memory_client import MemoryClient
-    from somabrain.wm import WorkingMemory, WMItem
+    from somabrain.wm import WMItem, WorkingMemory
 
 logger = logging.getLogger(__name__)
 

@@ -16,28 +16,27 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Scheduled backup support
 """
 
-from typing import Optional, List
-from datetime import timedelta
-from uuid import UUID, uuid4
-import json
 import hashlib
+import json
+from datetime import timedelta
+from typing import List, Optional
+from uuid import UUID, uuid4
 
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
+    ActorType,
+    AuditLog,
     Tenant,
     TenantUser,
     Webhook,
-    AuditLog,
-    ActorType,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Backup"])
 

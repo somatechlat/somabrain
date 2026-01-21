@@ -5,10 +5,11 @@ vectors (or pairwise distances) and compute an OT plan using sinkhorn.
 """
 
 import numpy as np
-from somabrain.math.sinkhorn import sinkhorn_log_stabilized
 
 # Use unified settings for configuration defaults
 from django.conf import settings
+
+from somabrain.math.sinkhorn import sinkhorn_log_stabilized
 
 
 def sinkhorn_bridge_from_embeddings(

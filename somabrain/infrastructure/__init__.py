@@ -17,10 +17,11 @@ future updates to the helper functions are automatically reflected here.
 
 from __future__ import annotations
 
-from django.conf import settings
 from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urlparse
+
+from django.conf import settings
 
 # ---------------------------------------------------------------------------
 # Helper implementations – duplicated from ``somabrain/infrastructure.py``

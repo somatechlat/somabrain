@@ -151,6 +151,7 @@ def make_embedder_with_dim(cfg, quantum=None):
         RuntimeError: If embedder fails to produce a vector dimension.
     """
     import numpy as np
+
     from somabrain.embeddings import make_embedder
 
     embedder = make_embedder(cfg, quantum=quantum)

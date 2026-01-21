@@ -15,6 +15,7 @@ resolved ``tenant_id`` and the configured ``namespace``.  It uses the singleton
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from django.http import HttpRequest
 
 from .tenant_manager import get_tenant_manager

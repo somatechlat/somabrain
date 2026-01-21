@@ -8,10 +8,10 @@ Implements security controls, policy enforcement, and audit logging.
 from __future__ import annotations
 
 import logging
-from typing import Callable, Any
+from typing import Any, Callable
 
-from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.conf import settings
+from django.http import HttpRequest, HttpResponse, JsonResponse
 
 from somabrain.controls.audit import AuditLogger
 from somabrain.controls.metrics import POLICY_DECISIONS

@@ -16,21 +16,20 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Configurable expiry times
 """
 
-from typing import List, Optional
-from datetime import timedelta
-from uuid import UUID, uuid4
-import secrets
 import hashlib
+import secrets
+from datetime import timedelta
+from typing import List, Optional
+from uuid import UUID, uuid4
 
-from django.utils import timezone
-from django.shortcuts import get_object_or_404
 from django.core.cache import cache
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, TenantUser, AuditLog, ActorType, UserRole
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
+from somabrain.saas.models import ActorType, AuditLog, Tenant, TenantUser, UserRole
 
 router = Router(tags=["Invitations"])
 

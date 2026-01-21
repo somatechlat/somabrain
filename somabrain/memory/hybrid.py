@@ -14,11 +14,11 @@ Per Requirements C1.1-C1.5:
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from somabrain.memory.types import RecallHit
     from somabrain.memory.transport import MemoryHTTPTransport
+    from somabrain.memory.types import RecallHit
 
 logger = logging.getLogger(__name__)
 

@@ -38,10 +38,10 @@ from typing import Dict, List, Tuple
 logger = logging.getLogger(__name__)
 
 import numpy as np
+from django.conf import settings
 
 from .metrics import MICRO_COLUMN_ADMIT, MICRO_COLUMN_BEST, MICRO_VOTE_ENTROPY
 from .wm import WorkingMemory
-from django.conf import settings
 
 
 @dataclass

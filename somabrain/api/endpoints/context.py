@@ -9,11 +9,12 @@ from __future__ import annotations
 import logging
 import time
 from typing import Optional
-from ninja import Router
-from django.http import HttpRequest
-from ninja.errors import HttpError
 
 from django.conf import settings
+from django.http import HttpRequest
+from ninja import Router
+from ninja.errors import HttpError
+
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
 from somabrain.tenant import get_tenant
@@ -79,8 +80,8 @@ def feedback_endpoint(request: HttpRequest, payload: dict):
     tenant_id = payload.get("tenant_id") or ctx.tenant_id
 
     try:
-        from somabrain.context.factory import get_context_builder, get_context_planner
         from somabrain.api.context_state import get_context_route_state
+        from somabrain.context.factory import get_context_builder, get_context_planner
 
         builder = get_context_builder()
         planner = get_context_planner()
@@ -141,8 +142,8 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: Optional[str] = N
     target_tenant = tenant_id or ctx.tenant_id
 
     try:
-        from somabrain.context.factory import get_context_builder, get_context_planner
         from somabrain.api.context_state import get_context_route_state
+        from somabrain.context.factory import get_context_builder, get_context_planner
 
         builder = get_context_builder()
         planner = get_context_planner()
@@ -196,8 +197,8 @@ def adaptation_reset_endpoint(request: HttpRequest, payload: dict):
     tenant_id = payload.get("tenant_id") or ctx.tenant_id
 
     try:
-        from somabrain.context.factory import get_context_builder, get_context_planner
         from somabrain.api.context_state import get_context_route_state
+        from somabrain.context.factory import get_context_builder, get_context_planner
 
         builder = get_context_builder()
         planner = get_context_planner()

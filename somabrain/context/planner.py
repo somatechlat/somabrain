@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
-from somabrain.learning import UtilityWeights
-
 from django.conf import settings
+
+from somabrain.learning import UtilityWeights
 
 
 @dataclass

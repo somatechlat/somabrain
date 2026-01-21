@@ -4,10 +4,11 @@ Temperature scaling for predictor calibration.
 Implements Platt scaling and temperature scaling for confidence calibration.
 """
 
-import numpy as np
-from typing import List, Tuple
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
+from typing import List, Tuple
+
+import numpy as np
 
 
 @dataclass

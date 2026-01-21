@@ -12,6 +12,11 @@ Per SRS Requirements:
 - Every operation is replayable (Kafka event log)
 """
 
+from somabrain.transactions.compensator import (
+    CompensatingAction,
+    TransactionCompensator,
+    get_compensator,
+)
 from somabrain.transactions.event_store import (
     TransactionEvent,
     TransactionEventStore,
@@ -21,11 +26,6 @@ from somabrain.transactions.tracer import (
     TransactionTracer,
     get_tracer,
     trace_transaction,
-)
-from somabrain.transactions.compensator import (
-    CompensatingAction,
-    TransactionCompensator,
-    get_compensator,
 )
 
 __all__ = [

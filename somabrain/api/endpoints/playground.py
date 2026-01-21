@@ -16,17 +16,16 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Test environment config
 """
 
-from typing import List, Optional, Dict, Any
-from uuid import UUID, uuid4
 import time
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
-from django.utils import timezone
 from django.core.cache import cache
+from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.models import Tenant, TenantUser, APIKey
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.models import APIKey, Tenant, TenantUser
 
 router = Router(tags=["API Playground"])
 

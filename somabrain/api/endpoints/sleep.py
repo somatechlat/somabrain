@@ -10,24 +10,25 @@ Combines functionality from:
 
 from __future__ import annotations
 
-import logging
 import datetime
+import logging
 from typing import Optional
-from ninja import Router
-from django.http import HttpRequest
-from ninja.errors import HttpError
-from django.utils import timezone
 
 from django.conf import settings
+from django.http import HttpRequest
+from django.utils import timezone
+from ninja import Router
+from ninja.errors import HttpError
+
+from somabrain import metrics as M
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
-from somabrain.sleep import SleepState, SleepStateManager
-from somabrain.tenant import get_tenant
-from somabrain.sleep.models import TenantSleepState
-from somabrain.opa.client import opa_client
 from somabrain.infrastructure.cb_registry import get_cb
+from somabrain.opa.client import opa_client
+from somabrain.sleep import SleepState, SleepStateManager
 from somabrain.sleep.cb_adapter import map_cb_to_sleep
-from somabrain import metrics as M
+from somabrain.sleep.models import TenantSleepState
+from somabrain.tenant import get_tenant
 
 logger = logging.getLogger("somabrain.api.endpoints.sleep")
 

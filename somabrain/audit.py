@@ -12,13 +12,12 @@ import logging
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional, Iterable
-
-from somabrain.db.outbox import enqueue_event
-
-from django.http import HttpRequest
+from typing import Any, Dict, Iterable, Optional
 
 from django.conf import settings
+from django.http import HttpRequest
+
+from somabrain.db.outbox import enqueue_event
 
 LOGGER = logging.getLogger("somabrain.audit")
 

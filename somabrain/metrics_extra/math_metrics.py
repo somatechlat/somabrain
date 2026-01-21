@@ -3,8 +3,8 @@ Mathematical metrics for monitoring quantum operations and invariants.
 Pure mathematical verification, no approximations.
 """
 
-from prometheus_client import Gauge, Histogram
 import numpy as np
+from prometheus_client import Gauge, Histogram
 
 # Quantum Operation Metrics
 quantum_spectral_property = Gauge(

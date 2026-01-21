@@ -17,10 +17,10 @@ Migrated from SQLAlchemy to Django ORM.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from typing import Any, Dict, Optional
-import logging
 
 # Django setup MUST be called before importing any Django models
 # This is required for standalone workers outside of manage.py
@@ -29,22 +29,22 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
 django.setup()
 
+from django.conf import settings
 from django.db import transaction
 
+from somabrain.common.infra import assert_ready
 from somabrain.db.outbox import (
     get_pending_counts_by_tenant,
     get_pending_events_by_tenant_batch,
 )
+from somabrain.db.outbox_journal import replay_journal_events
+from somabrain.journal import get_journal
 from somabrain.metrics import (
     DEFAULT_TENANT_LABEL,
     report_outbox_pending,
     report_outbox_processed,
 )
-from somabrain.journal import get_journal
-from somabrain.db.outbox_journal import replay_journal_events
-from somabrain.common.infra import assert_ready
 from somabrain.workers.quota_manager import get_quota_manager
-from django.conf import settings
 
 # Per-tenant batch processing configuration
 _PER_TENANT_BATCH_LIMIT = max(

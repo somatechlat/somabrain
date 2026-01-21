@@ -21,8 +21,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from django.db import transaction
 from django.db.models import Count
 
+from somabrain.journal import JournalEvent, get_journal
 from somabrain.models import OutboxEvent
-from somabrain.journal import get_journal, JournalEvent
 
 logger = logging.getLogger(__name__)
 

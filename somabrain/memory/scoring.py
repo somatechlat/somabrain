@@ -12,8 +12,8 @@ from typing import Any, List, Tuple
 
 from django.conf import settings
 
-from somabrain.memory.types import RecallHit
 from somabrain.memory.hit_processing import lexical_bonus
+from somabrain.memory.types import RecallHit
 
 
 def coerce_float(value: Any) -> float | None:

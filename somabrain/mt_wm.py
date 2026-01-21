@@ -28,20 +28,19 @@ Functions:
 
 from __future__ import annotations
 
+import logging
+import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
 import numpy as np
-import threading
-import logging
-
-from .wm import WorkingMemory
 from django.conf import settings
 
 # Import metrics for working‑memory instrumentation. The metrics module defines
 # counters such as ``WM_ADMIT``, ``WM_HITS``, ``WM_MISSES`` and ``WM_EVICTIONS``.
 from . import metrics as M
+from .wm import WorkingMemory
 
 
 @dataclass

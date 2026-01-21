@@ -13,17 +13,16 @@ Mathematical Properties:
 
 from __future__ import annotations
 
-from somabrain.metrics_extra.math_metrics import MathematicalMetrics
-
 from dataclasses import dataclass
 from typing import Dict, Optional
 
 import numpy as np
 
+from somabrain import roles as _roles
 from somabrain.math import cosine_similarity
 from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
+from somabrain.metrics_extra.math_metrics import MathematicalMetrics
 from somabrain.numerics import normalize_array
-from somabrain import roles as _roles
 from somabrain.seed import seed_to_uint64
 
 try:

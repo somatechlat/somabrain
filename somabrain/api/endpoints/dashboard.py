@@ -16,29 +16,28 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Infrastructure health
 """
 
-from typing import List, Optional
 from datetime import timedelta
+from typing import List, Optional
 from uuid import UUID
 
-from django.db.models import Count, Sum, Q
+from django.core.cache import cache
+from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
-from django.core.cache import cache
 from ninja import Router, Schema
 
+from somabrain.saas.auth import AuthenticatedRequest, require_auth
+from somabrain.saas.granular import Permission, require_permission
 from somabrain.saas.models import (
+    APIKey,
+    AuditLog,
+    Subscription,
+    SubscriptionStatus,
     Tenant,
     TenantStatus,
     TenantUser,
-    Subscription,
-    SubscriptionStatus,
     UsageRecord,
-    APIKey,
-    AuditLog,
 )
-from somabrain.saas.auth import require_auth, AuthenticatedRequest
-from somabrain.saas.granular import require_permission, Permission
-
 
 router = Router(tags=["Admin Dashboard"])
 
@@ -509,8 +508,8 @@ def get_system_health(request: AuthenticatedRequest):
 
     # Keycloak
     try:
-        from django.conf import settings
         import httpx
+        from django.conf import settings
 
         keycloak_url = getattr(settings, "KEYCLOAK_URL", None)
         if keycloak_url:

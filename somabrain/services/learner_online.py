@@ -12,14 +12,14 @@ import time
 from typing import Any, Dict, Optional
 
 import yaml
-
 from django.conf import settings
+
 from common.logging import logger
 from somabrain.metrics import (
+    LEARNER_EVENT_LATENCY,
     LEARNER_EVENTS_CONSUMED,
     LEARNER_EVENTS_FAILED,
     LEARNER_EVENTS_PRODUCED,
-    LEARNER_EVENT_LATENCY,
 )
 from somabrain.services.learner_dlq import LearnerDLQ
 

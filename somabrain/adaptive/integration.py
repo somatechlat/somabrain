@@ -8,7 +8,7 @@ stats; callers can extend it with richer logic.
 
 from __future__ import annotations
 
-from typing import List, Dict
+from typing import Dict, List
 
 from .core import AdaptiveParameter, PerformanceMetrics
 
