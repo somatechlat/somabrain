@@ -189,7 +189,7 @@ ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595 \
     SOMABRAIN_MODE=enterprise
 
 # Entrypoint script for flexible startup
-COPY --chown=appuser:appuser --chmod=0755 infra/docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --chown=appuser:appuser --chmod=0755 infra/standalone/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 # Healthcheck against unified /health endpoint (matches compose and docs)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

@@ -893,3 +893,12 @@ SERVER_EMAIL = env("SERVER_EMAIL", default="server@somabrain.ai")
 
 # Email subject prefix (for admin emails)
 EMAIL_SUBJECT_PREFIX = "[SomaBrain] "
+
+# =============================================================================
+# PREDICTOR SETTINGS
+# =============================================================================
+PREDICTOR_TIMEOUT_MS = env.int("SOMABRAIN_PREDICTOR_TIMEOUT_MS", default=1000)
+
+# Lowercase alias for test compatibility
+predictor_timeout_ms = PREDICTOR_TIMEOUT_MS
+planner_rwr_edges_per_node = SOMABRAIN_PLANNER_RWR_EDGES_PER_NODE
