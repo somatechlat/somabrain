@@ -140,7 +140,78 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
     return consolidated
 
 
+# --- Store Memory Item (for BrainBridge integration) ---
+async def store_memory_item(content: str, **kwargs) -> dict:
+    """Store a memory item asynchronously.
+
+    This is the entry point for BrainBridge.remember() in SaaS Direct mode.
+
+    Args:
+        content: Text content to store
+        **kwargs: Metadata including:
+            - tenant: Tenant ID
+            - namespace: Memory namespace (default: "episodic")
+            - metadata: Additional metadata dict
+
+    Returns:
+        Dict containing:
+            - memory_id: UUID of the stored memory
+            - coordinate: Retrieval coordinate for the memory
+    """
+    import hashlib
+    from uuid import uuid4
+
+    from somabrain.schemas import Observation
+
+    # Extract metadata
+    namespace = kwargs.get("namespace", "episodic")
+    metadata = kwargs.get("metadata", {})
+    tenant = kwargs.get("tenant", "default")
+
+    # Generate coordinate (deterministic for dedup, includes content hash)
+    content_hash = hashlib.sha256(content.encode()).hexdigest()[:16]
+    memory_id = str(uuid4())
+    coordinate = f"{namespace}:{tenant}:{content_hash}"
+
+    # Create observation with embedding placeholder
+    # In production, this would call the embedder
+    s = _get_settings()
+    dim = getattr(s, "SOMABRAIN_HRR_DIM", 256)
+
+    # Generate embedding via quantum layer if available
+    try:
+        from somabrain.quantum import HRRConfig, QuantumLayer
+
+        quantum = QuantumLayer(HRRConfig(dim=dim))
+        embedding = quantum.encode_text(content).tolist()
+    except Exception:
+        # Fallback: zero vector (will be re-encoded on recall)
+        embedding = [0.0] * dim
+
+    obs = Observation(
+        type="text",
+        content=content,
+        embeddings=embedding,
+        metadata={
+            "coordinate": coordinate,
+            "tenant": tenant,
+            "namespace": namespace,
+            **metadata,
+        },
+    )
+
+    # Store via encode_memory
+    mem = encode_memory(obs)
+
+    return {
+        "memory_id": memory_id,
+        "coordinate": coordinate,
+        "vector_id": mem.id,
+    }
+
+
 # --- Test/maintenance helpers ---
 def clear_memory_store() -> None:
     """Clear the in-memory store (for tests)."""
     MEMORY_STORE.clear()
+
