@@ -201,6 +201,72 @@ pub fn softmax(v: Vec<f64>) -> Vec<f64> {
     v.iter().map(|x| ((x - max_val).exp()) / exp_sum).collect()
 }
 
+/// Karpathy temperature-scaled softmax for leader selection
+/// Returns (probabilities, entropy, exceeded_cap)
+///
+/// Temperature τ controls distribution sharpness:
+///   - τ → 0: deterministic (argmax)
+///   - τ = 1: standard softmax
+///   - τ → ∞: uniform distribution
+#[pyfunction]
+pub fn softmax_temperature(scores: Vec<f64>, tau: f64) -> Vec<f64> {
+    if scores.is_empty() {
+        return vec![];
+    }
+    let tau_safe = tau.max(0.01);  // Prevent division by zero
+    let scaled: Vec<f64> = scores.iter().map(|s| s / tau_safe).collect();
+    let max_s = scaled.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+    let exp_sum: f64 = scaled.iter().map(|s| (s - max_s).exp()).sum();
+    scaled.iter().map(|s| (s - max_s).exp() / exp_sum).collect()
+}
+
+/// Calculate Shannon entropy of probability distribution
+/// H = -Σ p_i * log(p_i)
+#[pyfunction]
+pub fn compute_entropy(probs: Vec<f64>) -> f64 {
+    probs.iter()
+        .filter(|&&p| p > 1e-10)
+        .map(|&p| -p * p.ln())
+        .sum()
+}
+
+/// Karpathy leader selection with temperature and entropy cap
+/// Returns (probabilities, entropy, exceeded_cap)
+///
+/// Used by ContextBuilder._compute_weights() hot path
+#[pyfunction]
+pub fn softmax_leader_selection(
+    scores: Vec<f64>,
+    tau: f64,
+    entropy_cap: f64,
+) -> (Vec<f64>, f64, bool) {
+    if scores.is_empty() {
+        return (vec![], 0.0, false);
+    }
+
+    let probs = softmax_temperature(scores, tau);
+    let entropy = compute_entropy(probs.clone());
+    let exceeded = entropy_cap > 0.0 && entropy > entropy_cap;
+
+    (probs, entropy, exceeded)
+}
+
+/// Cosine similarity between two vectors
+#[pyfunction]
+pub fn cosine_similarity(a: Vec<f64>, b: Vec<f64>) -> f64 {
+    if a.len() != b.len() || a.is_empty() {
+        return 0.0;
+    }
+    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let norm_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if norm_a < 1e-10 || norm_b < 1e-10 {
+        0.0
+    } else {
+        dot / (norm_a * norm_b)
+    }
+}
+
 #[pyfunction]
 pub fn batch_norm_inference(x: Vec<f64>, gamma: Vec<f64>, beta: Vec<f64>, running_mean: Vec<f64>, running_var: Vec<f64>, epsilon: f64) -> Vec<f64> {
     x.iter()
@@ -211,6 +277,7 @@ pub fn batch_norm_inference(x: Vec<f64>, gamma: Vec<f64>, beta: Vec<f64>, runnin
         .map(|((((x, mean), var), g), b)| g * ((x - mean) / (var + epsilon).sqrt()) + b)
         .collect()
 }
+
 
 // ==================== GMD MathCore Theorems ====================
 

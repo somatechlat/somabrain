@@ -4,15 +4,20 @@ This module handles:
 - Tau decay (exponential decay of tau parameter)
 - Tau annealing (linear, exponential, step-based annealing)
 - Entropy cap enforcement
+
+PERFORMANCE: Uses Rust native functions when available for hot path optimization.
 """
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 try:
     from django.conf import settings
@@ -20,6 +25,44 @@ except Exception:  # pragma: no cover - optional dependency
     settings = None
 
 from somabrain.learning.tenant_cache import get_tenant_override
+
+# ==================== Rust Bridge ====================
+# Use Rust native functions for hot path optimization
+
+try:
+    import somabrain_rs as _rs
+    RUST_ANNEALING_AVAILABLE = True
+    logger.debug("✅ Rust annealing functions loaded")
+except ImportError:
+    _rs = None
+    RUST_ANNEALING_AVAILABLE = False
+    logger.debug("⚠️ Rust annealing not available - using Python fallback")
+
+
+def _rust_apply_tau_annealing(
+    tau: float, mode: str, rate: float, step: int, interval: int, tau_min: float
+) -> float:
+    """Apply tau annealing using Rust native function."""
+    if RUST_ANNEALING_AVAILABLE and _rs is not None:
+        return _rs.apply_tau_annealing(tau, mode, rate, step, interval, tau_min)
+    # Python fallback
+    if mode == "linear":
+        return max(tau_min, tau - rate)
+    elif mode in {"exp", "exponential"}:
+        return max(tau_min, tau * math.exp(-rate))
+    elif mode == "step":
+        if interval > 0 and step % interval == 0 and step > 0:
+            return max(tau_min, tau * (1.0 - rate))
+    return tau
+
+
+def _rust_compute_entropy(probs: list[float]) -> float:
+    """Compute Shannon entropy using Rust native function."""
+    if RUST_ANNEALING_AVAILABLE and _rs is not None:
+        return _rs.compute_entropy(probs)
+    # Python fallback
+    return -sum(p * math.log(p) for p in probs if p > 0)
+
 
 
 def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) -> dict:
@@ -278,7 +321,9 @@ def check_entropy_cap(
     ]
     s = sum(vec)
     probs = [v / s for v in vec]
-    entropy = -sum(p * math.log(p) for p in probs if p > 0)
+
+    # Use Rust native entropy computation for hot path
+    entropy = _rust_compute_entropy(probs)
 
     if entropy > entropy_cap:
         try:
@@ -293,11 +338,12 @@ def check_entropy_cap(
         )
 
 
+
 # Utility functions for manual tau annealing calculations
 
 
 def linear_decay(tau_0: float, tau_min: float, alpha: float, t: int) -> float:
-    """Linear tau annealing.
+    """Linear tau annealing using Rust native function.
 
     Args:
         tau_0: Initial tau value
@@ -308,11 +354,13 @@ def linear_decay(tau_0: float, tau_min: float, alpha: float, t: int) -> float:
     Returns:
         Annealed tau value
     """
+    if RUST_ANNEALING_AVAILABLE and _rs is not None:
+        return _rs.linear_tau_decay(tau_0, tau_min, alpha, t)
     return max(float(tau_min), float(tau_0) - float(alpha) * (int(t) + 1))
 
 
 def exponential_decay(tau_0: float, gamma: float, t: int) -> float:
-    """Exponential tau annealing.
+    """Exponential tau annealing using Rust native function.
 
     Args:
         tau_0: Initial tau value
@@ -322,4 +370,7 @@ def exponential_decay(tau_0: float, gamma: float, t: int) -> float:
     Returns:
         Annealed tau value
     """
+    if RUST_ANNEALING_AVAILABLE and _rs is not None:
+        return _rs.exponential_tau_decay(tau_0, gamma, t)
     return float(tau_0) * (float(gamma) ** (int(t) + 1))
+

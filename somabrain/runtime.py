@@ -27,7 +27,11 @@ cfg: Optional[Any] = None
 
 
 def _initialize_embedder() -> Any:
-    """Initialize the embedder singleton."""
+    """Initialize the embedder singleton.
+
+    VIBE COMPLIANT: Fails loudly if embedder cannot be initialized.
+    Per Vibe Coding Rules: NO STUBS, NO FAKE RETURNS, NO HARDCODED VALUES.
+    """
     global embedder
     if embedder is not None:
         return embedder
@@ -39,21 +43,16 @@ def _initialize_embedder() -> Any:
         logger.info("Embedder initialized successfully")
         return embedder
     except Exception as e:
-        logger.warning(f"Failed to initialize Embedder: {e}")
+        # VIBE: Fail loudly - do not silently return fake embeddings
+        logger.error(f"CRITICAL: Failed to initialize Embedder: {e}")
+        logger.error("Embedder is REQUIRED for SomaBrain operation.")
+        logger.error("Please check your ML backend configuration.")
 
-        # Return a stub embedder that returns zero vectors
-        class StubEmbedder:
-            def embed(self, text: str) -> list:
-                import numpy as np
-
-                return np.zeros(384).tolist()
-
-            def embed_batch(self, texts: list) -> list:
-                return [self.embed(t) for t in texts]
-
-        embedder = StubEmbedder()
-        logger.info("Using stub embedder (no ML backend)")
-        return embedder
+        # Instead of stub, raise the error so the system doesn't silently fail
+        raise RuntimeError(
+            f"Embedder initialization failed: {e}. "
+            "SomaBrain requires a working embedder. Check SOMABRAIN_EMBEDDER_PROVIDER setting."
+        ) from e
 
 
 def _initialize_working_memory() -> Any:

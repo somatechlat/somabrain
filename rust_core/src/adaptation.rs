@@ -232,3 +232,75 @@ impl AdaptationEngine {
         self.learning_rate = self.base_lr * lr_scale;
     }
 }
+
+// ==================== Karpathy Tau Annealing ====================
+
+/// Karpathy curriculum-style temperature annealing
+/// Supports linear, exponential, and step-based schedules
+#[pyfunction]
+pub fn apply_tau_annealing(
+    tau: f64,
+    mode: &str,
+    rate: f64,
+    step: u64,
+    interval: u64,
+    tau_min: f64,
+) -> f64 {
+    let result = match mode {
+        "linear" => tau - rate,
+        "exponential" => tau * (-rate).exp(),
+        "step" => {
+            if interval > 0 && step % interval == 0 && step > 0 {
+                tau * (1.0 - rate)
+            } else {
+                tau
+            }
+        }
+        _ => tau,  // "none" or unknown
+    };
+    result.max(tau_min)
+}
+
+/// Linear tau decay: τ(t) = max(τ₀ - α·t, τ_min)
+#[pyfunction]
+pub fn linear_tau_decay(tau_0: f64, tau_min: f64, alpha: f64, t: u64) -> f64 {
+    (tau_0 - alpha * (t as f64)).max(tau_min)
+}
+
+/// Exponential tau decay: τ(t) = τ₀ · exp(-γ·t)
+#[pyfunction]
+pub fn exponential_tau_decay(tau_0: f64, gamma: f64, t: u64) -> f64 {
+    tau_0 * (-gamma * (t as f64)).exp()
+}
+
+// ==================== Sutton TD Learning ====================
+
+/// Sutton TD return: R + γ·V(s')
+/// discount_gamma is Sutton's γ (0-1) for temporal discounting
+#[pyfunction]
+pub fn compute_td_return(reward: f64, next_value: f64, discount_gamma: f64) -> f64 {
+    reward + discount_gamma * next_value
+}
+
+/// TD error: δ = R + γ·V(s') - V(s)
+#[pyfunction]
+pub fn compute_td_error(reward: f64, next_value: f64, current_value: f64, discount_gamma: f64) -> f64 {
+    reward + discount_gamma * next_value - current_value
+}
+
+/// N-step TD return: R_t + γR_{t+1} + γ²R_{t+2} + ... + γⁿV(s_{t+n})
+#[pyfunction]
+pub fn compute_n_step_return(rewards: Vec<f64>, final_value: f64, discount_gamma: f64) -> f64 {
+    let mut ret = final_value;
+    for r in rewards.iter().rev() {
+        ret = r + discount_gamma * ret;
+    }
+    ret
+}
+
+/// Eligibility trace decay: e(t) = γλ·e(t-1)
+#[pyfunction]
+pub fn decay_eligibility(trace: Vec<f64>, gamma: f64, lambda: f64) -> Vec<f64> {
+    let decay = gamma * lambda;
+    trace.iter().map(|e| e * decay).collect()
+}
