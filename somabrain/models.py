@@ -11,8 +11,6 @@ from django.utils import timezone
 class OutboxEvent(models.Model):
     """
     Transactional outbox pattern for reliable event publishing.
-
-    Migrated from: somabrain/db/models/outbox.py (SQLAlchemy)
     """
 
     id = models.BigAutoField(primary_key=True)
@@ -60,8 +58,6 @@ class OutboxEvent(models.Model):
 class EpisodicSnapshot(models.Model):
     """
     Episodic memory snapshots for long-term storage.
-
-    Migrated from: somabrain/db/models/episodic.py (SQLAlchemy)
     """
 
     id = models.BigAutoField(primary_key=True)
@@ -98,8 +94,6 @@ class EpisodicSnapshot(models.Model):
 class SleepState(models.Model):
     """
     Sleep/consolidation system state tracking.
-
-    Migrated from: somabrain/sleep/models.py (partial SQLAlchemy)
     """
 
     id = models.BigAutoField(primary_key=True)
@@ -128,8 +122,6 @@ class SleepState(models.Model):
 class CognitiveThread(models.Model):
     """
     Cognitive thread tracking for multi-threaded processing.
-
-    Migrated from: somabrain/cognitive/thread_model.py (SQLAlchemy)
     """
 
     id = models.BigAutoField(primary_key=True)
@@ -161,8 +153,6 @@ class CognitiveThread(models.Model):
 class TokenLedger(models.Model):
     """
     Token usage tracking and quotas.
-
-    Migrated from: somabrain/storage/token_ledger.py (SQLAlchemy)
     """
 
     id = models.BigAutoField(primary_key=True)
@@ -192,8 +182,6 @@ class TokenLedger(models.Model):
 class FeedbackRecord(models.Model):
     """
     User feedback and ratings storage.
-
-    Migrated from: somabrain/storage/feedback.py (SQLAlchemy)
     """
 
     id = models.BigAutoField(primary_key=True)
@@ -225,8 +213,6 @@ class FeedbackRecord(models.Model):
 class ConstitutionVersion(models.Model):
     """
     Constitution document versions.
-
-    Migrated from: somabrain/constitution/storage.py (SQLAlchemy)
     """
 
     checksum = models.CharField(max_length=128, primary_key=True)
@@ -253,8 +239,6 @@ class ConstitutionVersion(models.Model):
 class ConstitutionSignature(models.Model):
     """
     Constitution signature records.
-
-    Migrated from: somabrain/constitution/storage.py (SQLAlchemy)
     """
 
     id = models.CharField(max_length=256, primary_key=True)
