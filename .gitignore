@@ -173,3 +173,14 @@ docs/sphinx/_build/
 # Sphinx broad ignores
 docs/_build/
 _build/
+
+# --- Rust Build Artifacts ---
+rust_core/target/
+target/
+Cargo.lock
+*.so
+*.dylib
+*.dll
+
+# --- Gemini/Agent Artifacts ---
+.gemini/
