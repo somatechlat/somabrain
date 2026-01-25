@@ -1,70 +1,26 @@
-"""Schemas Module for SomaBrain API.
+"""
+Schemas Package.
 
-Submodules:
-- memory: Memory operation schemas (RecallRequest, MemoryPayload, etc.)
-- cognitive: Cognitive/planning schemas (ActRequest, Observation, etc.)
-- health: Health, admin, and operational schemas (HealthResponse, etc.)
+Pydantic models for API requests and responses used throughout SomaBrain.
 """
 
-# Memory schemas
-# Cognitive schemas
-from somabrain.schemas.cognitive import (
+# Common
+from .common import normalize_vector
+
+# Cognitive (Nano Profile)
+from .cognitive import (
     Action,
-    ActRequest,
-    ActResponse,
-    ActStepResult,
     Feedback,
     Memory,
     Metric,
-    NeuromodStateModel,
-    OakOptionCreateRequest,
-    OakPlanSuggestResponse,
     Observation,
-    Persona,
-    PersonalityState,
     PlanStep,
-    PlanSuggestRequest,
-    PlanSuggestResponse,
     Thought,
     ToolCall,
 )
 
-# Health/Admin schemas
-from somabrain.schemas.health import (
-    ConfigResponse,
-    FeatureFlagsResponse,
-    FeatureFlagsUpdateRequest,
-    FeatureFlagsUpdateResponse,
-    HealthResponse,
-    JournalReplayRequest,
-    MigrateExportRequest,
-    MigrateExportResponse,
-    MigrateImportRequest,
-    MigrateImportResponse,
-    NeuromodAdjustRequest,
-    OutboxEventModel,
-    OutboxListResponse,
-    OutboxReplayRequest,
-    OutboxReplayResponse,
-    OutboxSummaryResponse,
-    OutboxTenantListResponse,
-    OutboxTenantReplayRequest,
-    OutboxTenantReplayResponse,
-    OutboxTenantSummary,
-    ProxyRequest,
-    QuotaAdjustRequest,
-    QuotaAdjustResponse,
-    QuotaListResponse,
-    QuotaResetRequest,
-    QuotaResetResponse,
-    QuotaStatus,
-    ReflectResponse,
-    SleepRunRequest,
-    SleepRunResponse,
-    SleepStatusAllResponse,
-    SleepStatusResponse,
-)
-from somabrain.schemas.memory import (
+# Memory operations
+from .memory import (
     DeleteRequest,
     DeleteResponse,
     GraphLinksRequest,
@@ -81,80 +37,123 @@ from somabrain.schemas.memory import (
     RetrievalResponse,
     TimestampInput,
     WMHit,
-    _get_settings,
-    normalize_vector,
 )
 
+# API operations
+from .api import (
+    ActRequest,
+    ActResponse,
+    ActStepResult,
+    HealthResponse,
+    MigrateExportRequest,
+    MigrateExportResponse,
+    MigrateImportRequest,
+    MigrateImportResponse,
+    NeuromodStateModel,
+    Persona,
+    PersonalityState,
+    PlanSuggestRequest,
+    PlanSuggestResponse,
+    ReflectResponse,
+    SleepRunRequest,
+    SleepRunResponse,
+    SleepStatusAllResponse,
+    SleepStatusResponse,
+)
+
+# Admin operations
+from .admin import (
+    FeatureFlagsResponse,
+    FeatureFlagsUpdateRequest,
+    FeatureFlagsUpdateResponse,
+    OutboxEventModel,
+    OutboxListResponse,
+    OutboxReplayRequest,
+    OutboxReplayResponse,
+    OutboxSummaryResponse,
+    OutboxTenantListResponse,
+    OutboxTenantReplayRequest,
+    OutboxTenantReplayResponse,
+    OutboxTenantSummary,
+    QuotaAdjustRequest,
+    QuotaAdjustResponse,
+    QuotaListResponse,
+    QuotaResetRequest,
+    QuotaResetResponse,
+    QuotaStatus,
+)
+
+# Oak
+from .oak import OakOptionCreateRequest, OakPlanSuggestResponse
+
 __all__ = [
-    # Memory
-    "RecallRequest",
-    "MemoryPayload",
-    "RememberRequest",
-    "WMHit",
-    "RecallResponse",
-    "RememberResponse",
-    "RetrievalRequest",
-    "RetrievalCandidate",
-    "RetrievalResponse",
-    "DeleteRequest",
-    "DeleteResponse",
-    "LinkRequest",
-    "GraphLinksRequest",
-    "GraphLinksResponse",
-    "LinkResponse",
-    "TimestampInput",
+    # Common
     "normalize_vector",
-    "_get_settings",
     # Cognitive
-    "Observation",
-    "Thought",
-    "Memory",
-    "ToolCall",
-    "PlanStep",
     "Action",
     "Feedback",
+    "Memory",
     "Metric",
+    "Observation",
+    "PlanStep",
+    "Thought",
+    "ToolCall",
+    # Memory
+    "DeleteRequest",
+    "DeleteResponse",
+    "GraphLinksRequest",
+    "GraphLinksResponse",
+    "LinkRequest",
+    "LinkResponse",
+    "MemoryPayload",
+    "RecallRequest",
+    "RecallResponse",
+    "RememberRequest",
+    "RememberResponse",
+    "RetrievalCandidate",
+    "RetrievalRequest",
+    "RetrievalResponse",
+    "TimestampInput",
+    "WMHit",
+    # API
     "ActRequest",
-    "ActStepResult",
     "ActResponse",
-    "PlanSuggestRequest",
-    "PlanSuggestResponse",
-    "OakOptionCreateRequest",
-    "OakPlanSuggestResponse",
-    "NeuromodStateModel",
-    "PersonalityState",
-    "Persona",
-    # Health/Admin
+    "ActStepResult",
     "HealthResponse",
-    "SleepRunRequest",
-    "SleepRunResponse",
-    "SleepStatusResponse",
-    "SleepStatusAllResponse",
-    "FeatureFlagsResponse",
-    "FeatureFlagsUpdateRequest",
-    "FeatureFlagsUpdateResponse",
     "MigrateExportRequest",
     "MigrateExportResponse",
     "MigrateImportRequest",
     "MigrateImportResponse",
+    "NeuromodStateModel",
+    "Persona",
+    "PersonalityState",
+    "PlanSuggestRequest",
+    "PlanSuggestResponse",
     "ReflectResponse",
+    "SleepRunRequest",
+    "SleepRunResponse",
+    "SleepStatusAllResponse",
+    "SleepStatusResponse",
+    # Admin
+    "FeatureFlagsResponse",
+    "FeatureFlagsUpdateRequest",
+    "FeatureFlagsUpdateResponse",
     "OutboxEventModel",
     "OutboxListResponse",
     "OutboxReplayRequest",
     "OutboxReplayResponse",
+    "OutboxSummaryResponse",
+    "OutboxTenantListResponse",
     "OutboxTenantReplayRequest",
     "OutboxTenantReplayResponse",
-    "OutboxTenantListResponse",
     "OutboxTenantSummary",
-    "OutboxSummaryResponse",
-    "QuotaStatus",
+    "QuotaAdjustRequest",
+    "QuotaAdjustResponse",
     "QuotaListResponse",
     "QuotaResetRequest",
     "QuotaResetResponse",
-    "QuotaAdjustRequest",
-    "QuotaAdjustResponse",
-    "NeuromodAdjustRequest",
-    "ProxyRequest",
-    "ConfigResponse",
-    "JournalReplayRequest",
+    "QuotaStatus",
+    # Oak
+    "OakOptionCreateRequest",
+    "OakPlanSuggestResponse",
 ]
