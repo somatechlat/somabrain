@@ -33,7 +33,7 @@ User journey documentation for **SomaBrain management interfaces**. SomaBrain pr
 ## Related Documents
 
 - [SRS Modules](../) - Detailed subsystem specifications
-- [Master SRS](../../SOMABRAIN_SAAS_SRS.md) - High-level requirements
+- [Master SRS](../../SOMABRAIN_AAAS_SRS.md) - High-level requirements
 
 ---
 

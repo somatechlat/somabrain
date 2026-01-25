@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The Observability module provides health checks, metrics collection, logging, and alerting for the SomaBrain SaaS platform.
+The Observability module provides health checks, metrics collection, logging, and alerting for the SomaBrain AAAS platform.
 
 ### 1.1 Scope
 

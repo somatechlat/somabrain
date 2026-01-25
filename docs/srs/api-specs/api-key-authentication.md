@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-Every component in the SomaBrain SaaS platform uses API key authentication for service-to-service and client-to-service communication.
+Every component in the SomaBrain AAAS platform uses API key authentication for service-to-service and client-to-service communication.
 
 ---
 
@@ -18,7 +18,7 @@ Every component in the SomaBrain SaaS platform uses API key authentication for s
 flowchart TB
     subgraph Clients["Clients"]
         Agent[AI Agent]
-        UI[SaaS UI]
+        UI[AAAS UI]
         Service[External Service]
     end
     
@@ -272,4 +272,4 @@ sequenceDiagram
 
 ---
 
-*API Key Authentication Layer - SomaBrain SaaS Platform*
+*API Key Authentication Layer - SomaBrain AAAS Platform*

@@ -1,5 +1,5 @@
 """
-Lago Webhook Receiver for SomaBrain SaaS.
+Lago Webhook Receiver for SomaBrain AAAS.
 
 Handles billing events from Lago:
 - invoice.created
@@ -31,7 +31,7 @@ from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from somabrain.saas.models import (
+from somabrain.aaas.models import (
     AuditLog,
     SubscriptionStatus,
     Tenant,

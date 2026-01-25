@@ -11,7 +11,7 @@ ALL 10 PERSONAS per VIBE Coding Rules v5.2
 
 from django.core.management.base import BaseCommand
 
-from somabrain.saas.models import FieldPermission, PlatformRole, Role
+from somabrain.aaas.models import FieldPermission, PlatformRole, Role
 
 
 class Command(BaseCommand):

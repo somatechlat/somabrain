@@ -1,9 +1,9 @@
-SaaS & Multi-Tenancy
+AAAS & Multi-Tenancy
 ====================
 
 .. toctree::
    :maxdepth: 2
-   :caption: SaaS Modules
+   :caption: AAAS Modules
 
    auth
    granular

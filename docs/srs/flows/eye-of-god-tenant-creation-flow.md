@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** SaaS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Complete step-by-step tenant creation flow in Eye of God interface
 
 ---
@@ -33,7 +33,7 @@ flowchart TB
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔱 Eye of God - SomaBrain SaaS Administration                [Admin ▼] [?] │
+│ 🔱 Eye of God - SomaBrain AAAS Administration                [Admin ▼] [?] │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────┐│
@@ -536,4 +536,4 @@ Every tenant creation generates audit events:
 
 ---
 
-*Eye of God: Complete Tenant Creation Journey - SomaBrain SaaS*
+*Eye of God: Complete Tenant Creation Journey - SomaBrain AAAS*

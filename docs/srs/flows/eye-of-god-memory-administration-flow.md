@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** SaaS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Administer memories across all tenants from Eye of God
 
 ---
@@ -270,4 +270,4 @@ flowchart TB
 
 ---
 
-*Eye of God: Memory Administration Journey - SomaBrain SaaS*
+*Eye of God: Memory Administration Journey - SomaBrain AAAS*

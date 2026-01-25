@@ -1,5 +1,5 @@
 """
-Seed Data Management for SomaBrain SaaS.
+Seed Data Management for SomaBrain AAAS.
 
 Creates default subscription tiers, admin users, and test tenants.
 Run via Django management command.
@@ -19,7 +19,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from somabrain.saas.models import (
+from somabrain.aaas.models import (
     APIKey,
     Subscription,
     SubscriptionStatus,
@@ -30,7 +30,7 @@ from somabrain.saas.models import (
 
 
 class Command(BaseCommand):
-    """Create seed data for SaaS platform."""
+    """Create seed data for AAAS platform."""
 
     help = "Create default subscription tiers and test data"
 
@@ -50,7 +50,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         """Execute handle."""
 
-        self.stdout.write("Creating SaaS seed data...")
+        self.stdout.write("Creating AAAS seed data...")
 
         # Create tiers
         tiers = self._create_tiers()

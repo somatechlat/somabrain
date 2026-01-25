@@ -23,9 +23,9 @@ from uuid import UUID
 from django.db.models import Count, Q
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     APIKey,
     AuditLog,
     Tenant,

@@ -140,8 +140,8 @@ class Command(BaseCommand):
             "roles": {
                 "realm": [
                     {
-                        "name": "saas_admin",
-                        "description": "SaaS platform administrator - full control",
+                        "name": "aaas_admin",
+                        "description": "AAAS platform administrator - full control",
                     },
                     {
                         "name": "tenant_admin",
@@ -188,7 +188,7 @@ class Command(BaseCommand):
             {
                 "clientId": "eye-of-god-admin",
                 "name": "Eye of God Admin UI",
-                "description": "SomaBrain SaaS Admin SPA",
+                "description": "SomaBrain AAAS Admin SPA",
                 "protocol": "openid-connect",
                 "publicClient": True,
                 "standardFlowEnabled": True,

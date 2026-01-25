@@ -1,7 +1,7 @@
 Rate Limiting
 =============
 
-.. automodule:: somabrain.saas.rate_limit
+.. automodule:: somabrain.aaas.rate_limit
    :members:
    :undoc-members:
    :show-inheritance:

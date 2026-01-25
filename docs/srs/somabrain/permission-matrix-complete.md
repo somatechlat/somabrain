@@ -240,4 +240,4 @@ definition memory {
 
 ---
 
-*SomaBrain SaaS - Complete Permission Matrix*
+*SomaBrain AAAS - Complete Permission Matrix*

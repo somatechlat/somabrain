@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** SaaS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Monitor unified SomaBrain + SomaFractalMemory platform health
 
 ---
@@ -31,7 +31,7 @@ Based on SomaFractalMemory docs:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     SomaBrain SaaS Platform                                  │
+│                     SomaBrain AAAS Platform                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -303,4 +303,4 @@ The Eye of God monitoring screens consume these SomaFractalMemory endpoints:
 
 ---
 
-*Eye of God: System Monitoring Journey - SomaBrain SaaS*
+*Eye of God: System Monitoring Journey - SomaBrain AAAS*

@@ -1,5 +1,5 @@
 """
-Granular RBAC Permissions for SomaBrain SaaS.
+Granular RBAC Permissions for SomaBrain AAAS.
 
 ABSTRACTED adapted from SomaAgent01 pattern architecture (admin/permissions/granular.py).
 NOT a copy - adapted for SomaBrain's Django-native stack.
@@ -41,9 +41,9 @@ logger = logging.getLogger(__name__)
 
 
 class PlatformRole(str, Enum):
-    """Platform-level roles for SaaS authorization (9 roles adapted from SomaAgent01 pattern)."""
+    """Platform-level roles for AAAS authorization (9 roles adapted from SomaAgent01 pattern)."""
 
-    SAAS_ADMIN = "saas_admin"  # Full platform control
+    AAAS_ADMIN = "aaas_admin"  # Full platform control
     TENANT_ADMIN = "tenant_admin"  # Full tenant control
     SERVICE_ADMIN = "service_admin"  # Manage cognitive services
     SUPERVISOR = "supervisor"  # Monitor and review
@@ -218,9 +218,9 @@ class Permission(str, Enum):
 
 PERMISSION_MATRIX: dict[str, Set[str]] = {
     # ─────────────────────────────────────────────────────────────────────────
-    # SAAS_ADMIN: Full platform control
+    # AAAS_ADMIN: Full platform control
     # ─────────────────────────────────────────────────────────────────────────
-    PlatformRole.SAAS_ADMIN.value: {
+    PlatformRole.AAAS_ADMIN.value: {
         # All permissions - wildcard emulation
         p.value
         for p in Permission
@@ -480,8 +480,8 @@ def require_permission(*permissions: str, require_all: bool = True):
             # Extract roles
             user_roles = auth.get("roles", [])
 
-            # SAAS_ADMIN bypasses all checks
-            if PlatformRole.SAAS_ADMIN.value in user_roles:
+            # AAAS_ADMIN bypasses all checks
+            if PlatformRole.AAAS_ADMIN.value in user_roles:
                 return func(request, *args, **kwargs)
 
             # Check permissions
@@ -535,8 +535,8 @@ def filter_by_permissions(
     user_roles = auth.get("roles", [])
     user_tenant = auth.get("tenant_id")
 
-    # SAAS_ADMIN sees all
-    if PlatformRole.SAAS_ADMIN.value in user_roles:
+    # AAAS_ADMIN sees all
+    if PlatformRole.AAAS_ADMIN.value in user_roles:
         return items
 
     # Check if user has read permission

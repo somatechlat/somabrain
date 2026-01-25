@@ -34,10 +34,10 @@ def _safe_add_router(api_instance, prefix, router, **kwargs):
 # ROUTER REGISTRATION - ALL ROUTERS CONSOLIDATED HERE
 # =============================================================================
 
-# SaaS Admin Router - Tenant management, API keys, subscriptions
-from somabrain.api.endpoints.saas_admin import router as saas_admin_router
+# AAAS Admin Router - Tenant management, API keys, subscriptions
+from somabrain.api.endpoints.aaas_admin import router as aaas_admin_router
 
-_safe_add_router(api, "/saas/", saas_admin_router, tags=["SaaS Admin"])
+_safe_add_router(api, "/aaas/", aaas_admin_router, tags=["AAAS Admin"])
 
 # Auth Router - Login, OAuth callback, session management
 from somabrain.api.endpoints.auth import router as auth_router
@@ -49,7 +49,7 @@ from somabrain.api.endpoints.health import router as health_router
 
 _safe_add_router(api, "/health/", health_router, tags=["Health"])
 
-# Admin Router (system admin, not SaaS)
+# Admin Router (system admin, not AAAS)
 from somabrain.api.endpoints.admin import router as admin_router
 
 _safe_add_router(api, "/admin/", admin_router, tags=["Admin"])

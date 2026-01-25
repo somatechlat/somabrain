@@ -1,7 +1,7 @@
 Auth
 ====
 
-.. automodule:: somabrain.saas.auth
+.. automodule:: somabrain.aaas.auth
    :members:
    :undoc-members:
    :show-inheritance:

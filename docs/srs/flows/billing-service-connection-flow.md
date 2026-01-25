@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** SaaS Sys Admin (Super Admin / Platform Admin)  
+**Actor:** AAAS Sys Admin (Super Admin / Platform Admin)  
 **Purpose:** Complete journey for connecting SomaBrain to a billing service
 
 ---
@@ -123,7 +123,7 @@ flowchart TB
 
 ### 2.1 Lago Deployment
 
-Before the SaaS Admin can connect, Lago must be running:
+Before the AAAS Admin can connect, Lago must be running:
 
 **Option A: Self-Hosted (Docker)**
 ```yaml
@@ -158,7 +158,7 @@ API Key: Obtained from Lago Cloud dashboard
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                 │
 │                              🧠 SomaBrain                                       │
-│                           SaaS Administration                                   │
+│                           AAAS Administration                                   │
 │                                                                                 │
 │                        ┌────────────────────────────┐                           │
 │                        │                            │                           │
@@ -354,7 +354,7 @@ API Key: Obtained from Lago Cloud dashboard
 │ │                                                                             ││
 │ │  ✅ CONNECTION SUCCESSFUL                                                   ││
 │ │                                                                             ││
-│ │  Organization:    SomaBrain SaaS                                           ││
+│ │  Organization:    SomaBrain AAAS                                           ││
 │ │  Lago ID:         3e970518-e37d-4d6d-8cff-d989a3a413b7                     ││
 │ │  Currency:        USD                                                       ││
 │ │  Timezone:        UTC                                                       ││
@@ -459,7 +459,7 @@ API Key: Obtained from Lago Cloud dashboard
 │ ═════════════════════════════════════════════════════════════════════════════  │
 │                                                                                 │
 │ Status: ✅ Connected                                                            │
-│ Organization: SomaBrain SaaS                                                   │
+│ Organization: SomaBrain AAAS                                                   │
 │ Last Sync: Just now                                                             │
 │                                                                                 │
 │ ┌─────────────────────────────────────────────────────────────────────────────┐│
@@ -626,7 +626,7 @@ class BillingConfiguration(models.Model):
 
 ## 17. Success Criteria
 
-- [ ] SaaS Admin can configure Lago connection from UI
+- [ ] AAAS Admin can configure Lago connection from UI
 - [ ] Connection test validates URL and API key
 - [ ] Configuration persists across sessions
 - [ ] Plans can be imported from Lago
@@ -636,5 +636,5 @@ class BillingConfiguration(models.Model):
 
 ---
 
-*Billing Service Connection Flow - SomaBrain SaaS*
+*Billing Service Connection Flow - SomaBrain AAAS*
 *ALL 7 PERSONAS Applied*

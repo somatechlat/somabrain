@@ -69,13 +69,13 @@ export const tenantsApi = {
  * Subscription Tiers API
  */
 export const tiersApi = {
-    list: () => request('/saas/tiers'),
-    get: (id) => request(`/saas/tiers/${id}`),
-    create: (data) => request('/saas/tiers', {
+    list: () => request('/aaas/tiers'),
+    get: (id) => request(`/aaas/tiers/${id}`),
+    create: (data) => request('/aaas/tiers', {
         method: 'POST',
         body: JSON.stringify(data)
     }),
-    update: (id, data) => request(`/saas/tiers/${id}`, {
+    update: (id, data) => request(`/aaas/tiers/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data)
     }),

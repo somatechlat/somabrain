@@ -59,7 +59,7 @@ somabrain/
 │   ├── services/           # Background services (27 files)
 │   ├── memory/             # Memory subsystem (22 files)
 │   ├── metrics/            # Prometheus metrics (22 files)
-│   ├── saas/               # Multi-tenant (21 files)
+│   ├── aaas/               # Multi-tenant (21 files)
 │   ├── brain/              # Cognitive core (5 files)
 │   ├── math/               # Mathematical modules (10 files)
 │   └── [74 standalone modules]

@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-This document describes the **complete flow** for creating tenants in the SomaBrain SaaS platform, covering:
+This document describes the **complete flow** for creating tenants in the SomaBrain AAAS platform, covering:
 - God Mode Admin creating tenants
 - Self-signup tenant registration
 - Backend processing and integrations
@@ -81,7 +81,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant Admin as God Mode Admin
-    participant UI as SaaS UI (5173)
+    participant UI as AAAS UI (5173)
     participant API as SomaBrain API (9696)
     participant TM as TenantManager
     participant TR as TenantRegistry

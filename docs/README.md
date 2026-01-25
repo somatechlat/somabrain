@@ -1,4 +1,4 @@
-# SomaBrain SaaS - Documentation Index
+# SomaBrain AAAS - Documentation Index
 
 **Version:** 3.0.0  
 **Date:** 2025-12-24
@@ -10,7 +10,7 @@
 | Document | Description |
 |----------|-------------|
 | [Overview](./overview.md) | High-level product and runtime overview |
-| [Master SRS](./srs/SOMABRAIN_SAAS_SRS.md) | High-level requirements |
+| [Master SRS](./srs/SOMABRAIN_AAAS_SRS.md) | High-level requirements |
 | [User Journeys](./srs/user-journey-screens.md) | 12 use cases, 41 screens |
 | [API Key Auth](./srs/api-key-authentication.md) | Authentication layer |
 
@@ -83,4 +83,4 @@ docs/
 
 ---
 
-*SomaBrain SaaS Platform - ISO/IEC/IEEE 29148:2018*
+*SomaBrain AAAS Platform - ISO/IEC/IEEE 29148:2018*

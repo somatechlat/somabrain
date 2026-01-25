@@ -24,8 +24,8 @@ from django.core.cache import cache
 from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.models import APIKey, Tenant, TenantUser
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.models import APIKey, Tenant, TenantUser
 
 router = Router(tags=["API Playground"])
 

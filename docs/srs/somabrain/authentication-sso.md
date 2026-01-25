@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The Authentication & SSO module provides secure authentication via Keycloak, Google OAuth, and JWT token validation for the SomaBrain SaaS platform.
+The Authentication & SSO module provides secure authentication via Keycloak, Google OAuth, and JWT token validation for the SomaBrain AAAS platform.
 
 ### 1.1 Scope
 

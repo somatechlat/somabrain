@@ -8,7 +8,7 @@
 
 ## Journey Overview
 
-Steps for setting up a new SomaBrain SaaS platform from scratch.
+Steps for setting up a new SomaBrain AAAS platform from scratch.
 
 ---
 
@@ -66,7 +66,7 @@ flowchart TB
 │ 🧠 SomaBrain - Platform Setup                                      │
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
-│ Welcome to SomaBrain SaaS Platform                                 │
+│ Welcome to SomaBrain AAAS Platform                                 │
 │                                                                    │
 │ Let's configure your platform in a few simple steps:              │
 │                                                                    │
@@ -248,4 +248,4 @@ flowchart TB
 
 ---
 
-*Platform Onboarding Journey - SomaBrain SaaS*
+*Platform Onboarding Journey - SomaBrain AAAS*

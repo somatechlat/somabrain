@@ -1,7 +1,7 @@
 /**
  * Eye of God - Login Page
  * 
- * SaaS Platform Authentication with Keycloak SSO + Social Providers
+ * AAAS Platform Authentication with Keycloak SSO + Social Providers
  * 
  * VIBE COMPLIANT - ALL 10 PERSONAS:
  * 🔒 Security: PKCE flow, secure token storage

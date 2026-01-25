@@ -24,9 +24,9 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import ActorType, AuditLog, Tenant, TenantUser
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import ActorType, AuditLog, Tenant, TenantUser
 
 router = Router(tags=["Teams"])
 

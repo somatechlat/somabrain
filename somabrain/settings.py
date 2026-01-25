@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "somabrain",  # Main app
-    "somabrain.saas",  # SaaS: tenants, subscriptions, API keys
+    "somabrain.aaas",  # AAAS: tenants, subscriptions, API keys
     "ninja",  # Django Ninja
 ]
 

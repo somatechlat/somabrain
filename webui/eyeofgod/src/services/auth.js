@@ -110,10 +110,10 @@ class AuthService {
     }
 
     /**
-     * Check if user is admin (saas_admin or tenant_admin)
+     * Check if user is admin (aaas_admin or tenant_admin)
      */
     get isAdmin() {
-        return this.hasRole('saas_admin') || this.hasRole('tenant_admin');
+        return this.hasRole('aaas_admin') || this.hasRole('tenant_admin');
     }
 
     /**

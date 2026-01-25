@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
             options={
                 "verbose_name": "Subscription Tier",
                 "verbose_name_plural": "Subscription Tiers",
-                "db_table": "saas_subscription_tiers",
+                "db_table": "aaas_subscription_tiers",
                 "ordering": ["display_order", "price_monthly"],
             },
         ),
@@ -143,14 +143,14 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="tenants",
-                        to="saas.subscriptiontier",
+                        to="aaas.subscriptiontier",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Tenant",
                 "verbose_name_plural": "Tenants",
-                "db_table": "saas_tenants",
+                "db_table": "aaas_tenants",
                 "ordering": ["-created_at"],
             },
         ),
@@ -198,7 +198,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="subscriptions",
-                        to="saas.subscriptiontier",
+                        to="aaas.subscriptiontier",
                     ),
                 ),
                 (
@@ -206,14 +206,14 @@ class Migration(migrations.Migration):
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="subscription",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Subscription",
                 "verbose_name_plural": "Subscriptions",
-                "db_table": "saas_subscriptions",
+                "db_table": "aaas_subscriptions",
                 "ordering": ["-created_at"],
             },
         ),
@@ -262,14 +262,14 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="audit_logs",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Audit Log",
                 "verbose_name_plural": "Audit Logs",
-                "db_table": "saas_audit_log",
+                "db_table": "aaas_audit_log",
                 "ordering": ["-timestamp"],
             },
         ),
@@ -323,14 +323,14 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="users",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Tenant User",
                 "verbose_name_plural": "Tenant Users",
-                "db_table": "saas_tenant_users",
+                "db_table": "aaas_tenant_users",
                 "ordering": ["-created_at"],
             },
         ),
@@ -367,7 +367,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="api_keys",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
                 (
@@ -377,7 +377,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="created_api_keys",
-                        to="saas.tenantuser",
+                        to="aaas.tenantuser",
                     ),
                 ),
                 (
@@ -387,61 +387,61 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="revoked_api_keys",
-                        to="saas.tenantuser",
+                        to="aaas.tenantuser",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "API Key",
                 "verbose_name_plural": "API Keys",
-                "db_table": "saas_api_keys",
+                "db_table": "aaas_api_keys",
                 "ordering": ["-created_at"],
             },
         ),
         migrations.AddIndex(
             model_name="tenant",
             index=models.Index(
-                fields=["status", "created_at"], name="saas_tenant_status_c22362_idx"
+                fields=["status", "created_at"], name="aaas_tenant_status_c22362_idx"
             ),
         ),
         migrations.AddIndex(
             model_name="tenant",
-            index=models.Index(fields=["slug"], name="saas_tenant_slug_e7778b_idx"),
+            index=models.Index(fields=["slug"], name="aaas_tenant_slug_e7778b_idx"),
         ),
         migrations.AddIndex(
             model_name="auditlog",
             index=models.Index(
-                fields=["tenant", "timestamp"], name="saas_audit__tenant__55daf3_idx"
+                fields=["tenant", "timestamp"], name="aaas_audit__tenant__55daf3_idx"
             ),
         ),
         migrations.AddIndex(
             model_name="auditlog",
             index=models.Index(
-                fields=["action", "timestamp"], name="saas_audit__action_a64077_idx"
+                fields=["action", "timestamp"], name="aaas_audit__action_a64077_idx"
             ),
         ),
         migrations.AddIndex(
             model_name="auditlog",
             index=models.Index(
-                fields=["actor_id", "timestamp"], name="saas_audit__actor_i_35e555_idx"
+                fields=["actor_id", "timestamp"], name="aaas_audit__actor_i_35e555_idx"
             ),
         ),
         migrations.AddIndex(
             model_name="auditlog",
             index=models.Index(
                 fields=["resource_type", "resource_id"],
-                name="saas_audit__resourc_90b1d6_idx",
+                name="aaas_audit__resourc_90b1d6_idx",
             ),
         ),
         migrations.AddIndex(
             model_name="tenantuser",
             index=models.Index(
-                fields=["tenant", "role"], name="saas_tenant_tenant__de6d33_idx"
+                fields=["tenant", "role"], name="aaas_tenant_tenant__de6d33_idx"
             ),
         ),
         migrations.AddIndex(
             model_name="tenantuser",
-            index=models.Index(fields=["email"], name="saas_tenant_email_7d02c8_idx"),
+            index=models.Index(fields=["email"], name="aaas_tenant_email_7d02c8_idx"),
         ),
         migrations.AddConstraint(
             model_name="tenantuser",
@@ -452,13 +452,13 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="apikey",
             index=models.Index(
-                fields=["tenant", "is_active"], name="saas_api_ke_tenant__7210e6_idx"
+                fields=["tenant", "is_active"], name="aaas_api_ke_tenant__7210e6_idx"
             ),
         ),
         migrations.AddIndex(
             model_name="apikey",
             index=models.Index(
-                fields=["key_prefix", "key_hash"], name="saas_api_ke_key_pre_f02ef3_idx"
+                fields=["key_prefix", "key_hash"], name="aaas_api_ke_key_pre_f02ef3_idx"
             ),
         ),
     ]

@@ -59,7 +59,7 @@ This elegant update rule enables:
 |---------|-------------|------|
 | 🤖 **SomaAgent01** | Agent orchestration gateway | [GitHub](https://github.com/somatechlat/somaAgent01) |
 | 💾 **SomaFractalMemory** | Distributed long-term storage | [GitHub](https://github.com/somatechlat/somafractalmemory) |
-| 🌐 **SomaStack SaaS** | Admin dashboard UI | [Docs](../webui/somastack-saas) |
+| 🌐 **SomaStack AAAS** | Admin dashboard UI | [Docs](../webui/somastack-aaas) |
 
 ---
 

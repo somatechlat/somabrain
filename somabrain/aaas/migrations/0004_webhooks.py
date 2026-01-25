@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     """Migration class implementation."""
 
     dependencies = [
-        ("saas", "0003_alter_tenant_tier_tenantsubscription_usagerecord"),
+        ("aaas", "0003_alter_tenant_tier_tenantsubscription_usagerecord"),
     ]
 
     operations = [
@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="webhooks",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
@@ -83,7 +83,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="deliveries",
-                        to="saas.webhook",
+                        to="aaas.webhook",
                     ),
                 ),
             ],
@@ -94,11 +94,11 @@ class Migration(migrations.Migration):
                 "indexes": [
                     models.Index(
                         fields=["webhook", "delivered_at"],
-                        name="saas_webhoo_webhook_6e7b1d_idx",
+                        name="aaas_webhoo_webhook_6e7b1d_idx",
                     ),
                     models.Index(
                         fields=["success", "delivered_at"],
-                        name="saas_webhoo_success_979576_idx",
+                        name="aaas_webhoo_success_979576_idx",
                     ),
                 ],
             },

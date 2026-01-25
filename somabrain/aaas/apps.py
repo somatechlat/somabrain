@@ -1,16 +1,16 @@
 """
-Django App Configuration for SaaS module.
+Django App Configuration for AAAS module.
 """
 
 from django.apps import AppConfig
 
 
-class SaasConfig(AppConfig):
-    """Configuration for the SaaS application."""
+class AaasConfig(AppConfig):
+    """Configuration for the AAAS application."""
 
     default_auto_field = "django.db.models.BigAutoField"
-    name = "somabrain.saas"
-    verbose_name = "SomaBrain SaaS"
+    name = "somabrain.aaas"
+    verbose_name = "SomaBrain AAAS"
 
     def ready(self):
         """Run on app ready - import signals if needed."""

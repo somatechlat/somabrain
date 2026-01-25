@@ -10,7 +10,7 @@
 ```
 docs/srs/
 ├── README.md                  # This file - index
-├── SOMABRAIN_SAAS_SRS.md     # Master SRS document
+├── SOMABRAIN_AAAS_SRS.md     # Master SRS document
 │
 ├── somabrain/                 # SomaBrain-specific specs
 │   ├── multi-tenancy.md
@@ -73,7 +73,7 @@ docs/srs/
 
 | Document | Purpose |
 |----------|---------|
-| [Master SRS](./SOMABRAIN_SAAS_SRS.md) | Complete requirements overview |
+| [Master SRS](./SOMABRAIN_AAAS_SRS.md) | Complete requirements overview |
 | [Master Catalog](./MASTER_SRS_CATALOG.md) | Full document catalog with 58 journeys |
 | [User Journey Screens](./admin-ui/user-journey-screens.md) | 38 UI screens with wireframes |
 | [Permission Matrix](./somabrain/permission-matrix-complete.md) | 55 permissions, 6 roles |
@@ -133,7 +133,7 @@ docs/srs/
 
 ```mermaid
 flowchart TB
-    subgraph UI["SomaBrain SaaS UI"]
+    subgraph UI["SomaBrain AAAS UI"]
         Admin[Eye of God Admin]
         Tenant[Tenant Portal]
     end
@@ -176,4 +176,4 @@ flowchart TB
 
 ---
 
-*SomaBrain SaaS Platform - ISO/IEC/IEEE 29148:2018*
+*SomaBrain AAAS Platform - ISO/IEC/IEEE 29148:2018*

@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The SomaBrain SaaS Platform consists of **two microservices** that work together to provide complete memory management for AI agents:
+The SomaBrain AAAS Platform consists of **two microservices** that work together to provide complete memory management for AI agents:
 
 | Service | Port | Purpose |
 |---------|------|---------|
@@ -22,7 +22,7 @@ The SomaBrain SaaS Platform consists of **two microservices** that work together
 
 ```mermaid
 flowchart TB
-    subgraph UI["SomaBrain SaaS UI (Lit Components)"]
+    subgraph UI["SomaBrain AAAS UI (Lit Components)"]
         D[Dashboard]
         T[Tenants]
         M[Memory Admin]
@@ -355,4 +355,4 @@ flowchart TB
 
 ---
 
-*Unified Memory Platform - SomaBrain SaaS*
+*Unified Memory Platform - SomaBrain AAAS*

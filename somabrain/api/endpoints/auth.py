@@ -2,7 +2,7 @@
 Authentication API for SomaBrain.
 
 Provides login, OAuth callback, and session management endpoints
-for the Eye of God SaaS Admin UI.
+for the Eye of God AAAS Admin UI.
 
 VIBE Coding Rules - ALL 10 PERSONAS:
 - 🔒 Security: JWT tokens, PKCE support, secure token storage
@@ -163,7 +163,7 @@ def login(request, data: LoginRequest):
     cache.set(rate_limit_key, attempts + 1, timeout=60)
     from django.contrib.auth import get_user_model
 
-    from somabrain.saas.models import TenantUser
+    from somabrain.aaas.models import TenantUser
 
     User = get_user_model()
 

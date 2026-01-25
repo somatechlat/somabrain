@@ -27,9 +27,9 @@ from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import AuditLog
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import AuditLog
 
 router = Router(tags=["Audit Logs"])
 

@@ -25,9 +25,9 @@ from django.core.cache import cache
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import ActorType, AuditLog
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import ActorType, AuditLog
 
 router = Router(tags=["Environment"])
 

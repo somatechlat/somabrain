@@ -69,7 +69,7 @@ somabrain/
 Models split by **bounded context**:
 
 ```
-saas/
+aaas/
 ├── models.py      → Split to:
 │   ├── tenant.py          # Tenant domain
 │   ├── subscription.py    # Billing domain
@@ -96,4 +96,4 @@ Enums and constants in dedicated modules to avoid circular imports.
 
 ## 4. Applies To
 
-All `api/`, `saas/`, and `common/` modules in SomaBrain.
+All `api/`, `aaas/`, and `common/` modules in SomaBrain.

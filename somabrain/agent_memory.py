@@ -144,7 +144,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
 async def store_memory_item(content: str, **kwargs) -> dict:
     """Store a memory item asynchronously.
 
-    This is the entry point for BrainBridge.remember() in SaaS Direct mode.
+    This is the entry point for BrainBridge.remember() in AAAS Direct mode.
 
     Args:
         content: Text content to store

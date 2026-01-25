@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The God Mode Administration module provides platform-level oversight, multi-tenant management, revenue dashboards, and audit capabilities for SomaBrain SaaS administrators.
+The God Mode Administration module provides platform-level oversight, multi-tenant management, revenue dashboards, and audit capabilities for SomaBrain AAAS administrators.
 
 ### 1.1 Scope
 

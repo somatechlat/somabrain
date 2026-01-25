@@ -23,9 +23,9 @@ from django.core.cache import cache
 from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import ActorType, AuditLog, Tenant
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import ActorType, AuditLog, Tenant
 
 router = Router(tags=["System"])
 
@@ -296,7 +296,7 @@ def get_system_stats(request: AuthenticatedRequest):
     """
     from django.db.models import Count
 
-    from somabrain.saas.models import APIKey, Notification, TenantUser, Webhook
+    from somabrain.aaas.models import APIKey, Notification, TenantUser, Webhook
 
     # Tenant stats
     tenant_stats = Tenant.objects.aggregate(

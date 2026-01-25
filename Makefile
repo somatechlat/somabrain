@@ -80,13 +80,13 @@ IMAGE?=somabrain
 TAG?=local
 
 docker-build:
-	docker build -t $(IMAGE):$(TAG) .
+	docker build -f infra/standalone/Dockerfile -t $(IMAGE):$(TAG) .
 
 docker-run:
 	docker run --rm -p 9696:9696 -e SOMABRAIN_PORT=9696 $(IMAGE):$(TAG)
 
 docker-build-prod:
-	docker build -t $(IMAGE):prod .
+	docker build -f infra/standalone/Dockerfile -t $(IMAGE):prod .
 
 docker-run-prod:
 	docker run --rm -p 9696:9696 -e SOMABRAIN_PORT=9696 $(IMAGE):prod
@@ -139,7 +139,7 @@ clean:
 # Docker Compose (single API service on 9696; external memory on 9595)
 # ---------------------------------------------------------------------------
 PROJECT?=somabrain
-COMPOSE?=docker compose -p $(PROJECT)
+COMPOSE?=docker compose -f infra/standalone/docker-compose.yml -p $(PROJECT)
 
 .PHONY: compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean
 .PHONY: compose-preflight
@@ -235,7 +235,7 @@ full-setup: ## Build, migrate, start services and run memory e2e test
 PORT_OVERRIDES=REDIS_HOST_PORT=30100 KAFKA_EXPORTER_HOST_PORT=30103 PROMETHEUS_HOST_PORT=30105 POSTGRES_EXPORTER_HOST_PORT=30107 SOMABRAIN_HOST_PORT=9696
 
 # Use a stable compose project name without port suffix
-COMPOSE_CMD=docker compose --env-file ./.env -p somabrain
+COMPOSE_CMD=docker compose -f infra/standalone/docker-compose.yml --env-file ./.env -p somabrain
 
 up-prod-like:
 	@echo "Starting full prod-like stack (all services, real infra)..."

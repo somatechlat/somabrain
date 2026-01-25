@@ -29,9 +29,9 @@ from django.utils import timezone
 from ninja import File, Router, Schema
 from ninja.files import UploadedFile
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     ActorType,
     AuditLog,
     Tenant,

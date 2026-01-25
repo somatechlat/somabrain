@@ -1,5 +1,5 @@
 """
-Django Admin configuration for SaaS models.
+Django Admin configuration for AAAS models.
 
 FULL Django Admin Capabilities - ALL 10 PERSONAS:
 - 🔒 Security: Permission-based access, sensitive data masking
@@ -446,7 +446,7 @@ class TenantUserAdmin(admin.ModelAdmin):
         """Link to tenant."""
         from django.urls import reverse
 
-        url = reverse("admin:saas_tenant_change", args=[obj.tenant_id])
+        url = reverse("admin:aaas_tenant_change", args=[obj.tenant_id])
         return format_html('<a href="{}">{}</a>', url, obj.tenant.name)
 
     tenant_link.short_description = "Tenant"
@@ -574,7 +574,7 @@ class APIKeyAdmin(admin.ModelAdmin):
 
         from django.urls import reverse
 
-        url = reverse("admin:saas_tenant_change", args=[obj.tenant_id])
+        url = reverse("admin:aaas_tenant_change", args=[obj.tenant_id])
         return format_html('<a href="{}">{}</a>', url, obj.tenant.name)
 
     tenant_link.short_description = "Tenant"

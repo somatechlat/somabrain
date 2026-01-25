@@ -23,9 +23,9 @@ from uuid import UUID
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     ActorType,
     AuditLog,
     IdentityProvider,
@@ -306,7 +306,7 @@ def create_tenant_provider_override(
 
     ALL 10 PERSONAS - Security: Vault secrets required.
     """
-    from somabrain.saas.models import IdentityProviderType
+    from somabrain.aaas.models import IdentityProviderType
 
     # Tenant isolation
     if not request.is_super_admin:

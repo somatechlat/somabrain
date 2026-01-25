@@ -1,8 +1,8 @@
-# SaaS User Journey Screens - Master Index
+# AAAS User Journey Screens - Master Index
 
 **Document Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Purpose:** Define UI screens for every major SaaS use case
+**Purpose:** Define UI screens for every major AAAS use case
 
 ---
 
@@ -363,7 +363,7 @@
 │                        ┌────────────────────┐                      │
 │                        │                    │                      │
 │                        │   🧠 SomaBrain    │                      │
-│                        │      SaaS         │                      │
+│                        │      AAAS         │                      │
 │                        │                    │                      │
 │                        └────────────────────┘                      │
 │                                                                    │
@@ -405,4 +405,4 @@
 
 ---
 
-*SomaBrain SaaS - User Journey Screens - VIBE Compliant*
+*SomaBrain AAAS - User Journey Screens - VIBE Compliant*

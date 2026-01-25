@@ -1,5 +1,5 @@
 """
-Billing API Endpoints for SomaBrain SaaS.
+Billing API Endpoints for SomaBrain AAAS.
 
 Django Ninja API exposing Lago billing operations.
 
@@ -24,10 +24,10 @@ from uuid import UUID
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.billing import get_lago_client
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.billing import get_lago_client
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     ActorType,
     AuditLog,
     Subscription,  # Use existing Subscription model

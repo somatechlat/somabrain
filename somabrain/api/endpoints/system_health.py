@@ -366,7 +366,7 @@ def check_lago() -> Dict[str, Any]:
     def _check():
         """Execute check."""
 
-        from somabrain.saas.billing import get_lago_client
+        from somabrain.aaas.billing import get_lago_client
 
         lago = get_lago_client()
         if not lago:

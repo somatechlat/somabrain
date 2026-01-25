@@ -1,8 +1,8 @@
 /**
  * Eye of God - Subscription Tier Builder
  * 
- * Visual tier/plan builder for SaaS subscriptions
- * Connects to Django Ninja /saas/tiers/ endpoint
+ * Visual tier/plan builder for AAAS subscriptions
+ * Connects to Django Ninja /aaas/tiers/ endpoint
  * 
  * VIBE COMPLIANT - ALL 10 PERSONAS
  */
@@ -394,7 +394,7 @@ export class EogTierBuilderEnhanced extends LitElement {
     async _loadTiers() {
         this.loading = true;
         try {
-            const response = await fetch('/api/saas/tiers');
+            const response = await fetch('/api/aaas/tiers');
             if (!response.ok) throw new Error('Failed to load tiers');
             this.tiers = await response.json();
 
@@ -640,8 +640,8 @@ export class EogTierBuilderEnhanced extends LitElement {
 
         try {
             const url = this.editing?.id
-                ? `/api/saas/tiers/${this.editing.id}`
-                : '/api/saas/tiers';
+                ? `/api/aaas/tiers/${this.editing.id}`
+                : '/api/aaas/tiers';
             const method = this.editing?.id ? 'PATCH' : 'POST';
 
             const response = await fetch(url, {
