@@ -184,9 +184,15 @@ async def store_memory_item(content: str, **kwargs) -> dict:
 
         quantum = QuantumLayer(HRRConfig(dim=dim))
         embedding = quantum.encode_text(content).tolist()
-    except Exception:
-        # Fallback: zero vector (will be re-encoded on recall)
-        embedding = [0.0] * dim
+    except Exception as e:
+        # VIBE FIX: No zero vector fallback - fail loudly
+        # Per Vibe Coding Rules: NO STUBS, NO FAKE RETURNS, NO HARDCODED VALUES
+        raise RuntimeError(
+            f"Failed to generate embedding for content: {e}. "
+            "Embedding is REQUIRED for memory storage. "
+            "Check quantum layer or embedder configuration."
+        ) from e
+
 
     obs = Observation(
         type="text",
