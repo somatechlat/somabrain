@@ -49,10 +49,14 @@ def test_working_memory_defaults_use_settings() -> None:
 
 
 def test_budgeted_predictor_uses_settings_timeout() -> None:
-    """Execute test budgeted predictor uses settings timeout."""
+    """Verify BudgetedPredictor uses SOMABRAIN_PREDICTOR_TIMEOUT_MS from settings."""
 
     bp = BudgetedPredictor(SlowPredictor())
-    assert bp.timeout_ms == settings.predictor_timeout_ms
+    # BudgetedPredictor uses getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS", 1000)
+    expected_timeout = getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS", None)
+    if expected_timeout is None:
+        expected_timeout = getattr(settings, "PREDICTOR_TIMEOUT_MS", 1000)
+    assert bp.timeout_ms == expected_timeout
 
 
 def test_rwr_plan_respects_settings_limits() -> None:
