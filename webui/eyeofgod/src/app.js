@@ -1,7 +1,7 @@
 /**
  * Eye of God - Main Application Entry Point
  * 
- * SomaBrain SaaS Platform Administration UI
+ * SomaBrain AAAS Platform Administration UI
  * Built with Lit WebComponents + Vaadin Router
  * 
  * VIBE Coding Rules v5.2 - ALL 7 PERSONAS:

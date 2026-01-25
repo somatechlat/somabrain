@@ -78,7 +78,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant Admin
-    participant UI as SaaS UI
+    participant UI as AAAS UI
     participant SB as SomaBrain
     participant SFM as SomaFractalMemory
     participant PG as PostgreSQL
@@ -110,7 +110,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Admin
-    participant UI as SaaS UI
+    participant UI as AAAS UI
     participant SFM as SomaFractalMemory
     participant PG as PostgreSQL
     
@@ -267,4 +267,4 @@ flowchart LR
 
 ---
 
-*Memory Integration Flows - SomaBrain SaaS*
+*Memory Integration Flows - SomaBrain AAAS*

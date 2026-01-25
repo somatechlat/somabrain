@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** SaaS Sys Admin (Super Admin)  
+**Actor:** AAAS Sys Admin (Super Admin)  
 **Purpose:** Manage platform administrators and impersonate tenants
 
 ---
@@ -302,4 +302,4 @@ All user management actions generate audit events:
 
 ---
 
-*Eye of God: User & Access Management Journey - SomaBrain SaaS*
+*Eye of God: User & Access Management Journey - SomaBrain AAAS*

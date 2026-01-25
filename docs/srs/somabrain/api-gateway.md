@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The API Gateway module manages request processing, per-tenant rate limiting, quota enforcement, and request routing for the SomaBrain SaaS platform.
+The API Gateway module manages request processing, per-tenant rate limiting, quota enforcement, and request routing for the SomaBrain AAAS platform.
 
 ### 1.1 Scope
 

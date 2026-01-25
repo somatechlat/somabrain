@@ -82,7 +82,7 @@ autodoc_mock_imports = [
     "somabrain.runtime",
     "somabrain.storage",
     "somabrain.api.v1",
-    "somabrain.saas.webhooks",
+    "somabrain.aaas.webhooks",
     "somabrain.api.endpoints.oak",
 ]
 

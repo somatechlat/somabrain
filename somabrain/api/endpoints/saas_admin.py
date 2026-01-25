@@ -1,5 +1,5 @@
 """
-SaaS Admin API Endpoints for SomaBrain.
+AAAS Admin API Endpoints for SomaBrain.
 
 Django Ninja endpoints for tenant management, API keys, billing.
 Eye of God administrative interface backend.
@@ -24,9 +24,9 @@ from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
-from somabrain.saas.auth import APIKeyAuth, log_api_action, require_scope
-from somabrain.saas.billing import get_lago_client
-from somabrain.saas.models import (
+from somabrain.aaas.auth import APIKeyAuth, log_api_action, require_scope
+from somabrain.aaas.billing import get_lago_client
+from somabrain.aaas.models import (
     APIKey,
     Subscription,
     SubscriptionStatus,
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 # ROUTER
 # =============================================================================
 
-router = Router(tags=["SaaS Admin"])
+router = Router(tags=["AAAS Admin"])
 
 
 # =============================================================================

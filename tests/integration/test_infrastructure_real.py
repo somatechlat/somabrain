@@ -32,7 +32,7 @@ def _redis_available() -> bool:
         import redis
         import os
 
-        # Default to SaaS port 63979, allow override
+        # Default to AAAS port 63979, allow override
         host = os.environ.get("SOMA_REDIS_HOST", "localhost")
         port = int(os.environ.get("SOMA_REDIS_PORT", "63979"))
 
@@ -100,7 +100,7 @@ def _opa_available() -> bool:
         port = int(os.environ.get("SOMA_OPA_PORT", "63999")) # Assumption for OPA? No, Agent used one.
         # Agent used SA01_OPA_URL. Let's use env var or skip if not sure.
         # But for valid verification, we need OPA.
-        # Checking Agent env config (Step 1234): SAAS_ENV didn't list OPA explicitly?
+        # Checking Agent env config (Step 1234): AAAS_ENV didn't list OPA explicitly?
         # Step 1210: "Missing required environment variable: SA01_OPA_URL".
         # I'll default to localhost:8181 (OPA default) or read URL.
 

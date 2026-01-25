@@ -26,9 +26,9 @@ from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     ActorType,
     AuditLog,
     SubscriptionTier,
@@ -191,7 +191,7 @@ def get_tenant_license(
 
     # Count REAL agents (if model exists, else 0)
     try:
-        from somabrain.saas.models import Agent
+        from somabrain.aaas.models import Agent
 
         agents_count = Agent.objects.filter(tenant_id=tenant_id).count()
     except ImportError:

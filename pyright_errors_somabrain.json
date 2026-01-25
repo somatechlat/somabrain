@@ -1156,7 +1156,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/saas_admin.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/aaas_admin.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __enter__",
             "range": {
@@ -1172,7 +1172,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/saas_admin.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/aaas_admin.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __exit__",
             "range": {
@@ -1188,7 +1188,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/saas_admin.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/aaas_admin.py",
             "severity": "error",
             "message": "No parameter named \"tenant\"",
             "range": {
@@ -1204,7 +1204,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/saas_admin.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/aaas_admin.py",
             "severity": "error",
             "message": "No parameter named \"tenant\"",
             "range": {
@@ -1220,7 +1220,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/saas_admin.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/aaas_admin.py",
             "severity": "error",
             "message": "No parameter named \"tenant\"",
             "range": {
@@ -1236,7 +1236,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/saas_admin.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/api/endpoints/aaas_admin.py",
             "severity": "error",
             "message": "No parameter named \"tenant\"",
             "range": {
@@ -4772,7 +4772,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportCallIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/apps.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/apps.py",
             "severity": "error",
             "message": "Type \"Literal['django.db.models.BigAutoField']\" is not assignable to declared type \"cached_property\"\n  \"Literal['django.db.models.BigAutoField']\" is not assignable to \"cached_property\"",
             "range": {
@@ -4788,7 +4788,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/auth.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/auth.py",
             "severity": "error",
             "message": "Type \"None\" is not assignable to declared type \"dict[Unknown, Unknown]\"\n  \"None\" is not assignable to \"dict[Unknown, Unknown]\"",
             "range": {
@@ -4804,7 +4804,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/management/commands/create_saas_seed.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/management/commands/create_aaas_seed.py",
             "severity": "error",
             "message": "\"object\" is not iterable\n  \"__iter__\" method not defined",
             "range": {
@@ -4820,7 +4820,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['active'], Literal['Active']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['active'], Literal['Active']]\" is not assignable to \"str\"",
             "range": {
@@ -4836,7 +4836,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['suspended'], Literal['Suspended']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['suspended'], Literal['Suspended']]\" is not assignable to \"str\"",
             "range": {
@@ -4852,7 +4852,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['disabled'], Literal['Disabled']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['disabled'], Literal['Disabled']]\" is not assignable to \"str\"",
             "range": {
@@ -4868,7 +4868,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['pending'], Literal['Pending']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['pending'], Literal['Pending']]\" is not assignable to \"str\"",
             "range": {
@@ -4884,7 +4884,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['trial'], Literal['Trial']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['trial'], Literal['Trial']]\" is not assignable to \"str\"",
             "range": {
@@ -4900,7 +4900,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['free'], Literal['Free']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['free'], Literal['Free']]\" is not assignable to \"str\"",
             "range": {
@@ -4916,7 +4916,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['starter'], Literal['Starter']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['starter'], Literal['Starter']]\" is not assignable to \"str\"",
             "range": {
@@ -4932,7 +4932,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['pro'], Literal['Pro']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['pro'], Literal['Pro']]\" is not assignable to \"str\"",
             "range": {
@@ -4948,7 +4948,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['enterprise'], Literal['Enterprise']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['enterprise'], Literal['Enterprise']]\" is not assignable to \"str\"",
             "range": {
@@ -4964,7 +4964,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['system'], Literal['System']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['system'], Literal['System']]\" is not assignable to \"str\"",
             "range": {
@@ -4980,7 +4980,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['admin'], Literal['Admin']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['admin'], Literal['Admin']]\" is not assignable to \"str\"",
             "range": {
@@ -4996,7 +4996,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['editor'], Literal['Editor']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['editor'], Literal['Editor']]\" is not assignable to \"str\"",
             "range": {
@@ -5012,7 +5012,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['viewer'], Literal['Viewer']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['viewer'], Literal['Viewer']]\" is not assignable to \"str\"",
             "range": {
@@ -5028,7 +5028,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['active'], Literal['Active']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['active'], Literal['Active']]\" is not assignable to \"str\"",
             "range": {
@@ -5044,7 +5044,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['trial'], Literal['Trial']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['trial'], Literal['Trial']]\" is not assignable to \"str\"",
             "range": {
@@ -5060,7 +5060,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['past_due'], Literal['Past Due']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['past_due'], Literal['Past Due']]\" is not assignable to \"str\"",
             "range": {
@@ -5076,7 +5076,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['cancelled'], Literal['Cancelled']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['cancelled'], Literal['Cancelled']]\" is not assignable to \"str\"",
             "range": {
@@ -5092,7 +5092,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['pending'], Literal['Pending']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['pending'], Literal['Pending']]\" is not assignable to \"str\"",
             "range": {
@@ -5108,7 +5108,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['user'], Literal['User']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['user'], Literal['User']]\" is not assignable to \"str\"",
             "range": {
@@ -5124,7 +5124,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['api_key'], Literal['API Key']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['api_key'], Literal['API Key']]\" is not assignable to \"str\"",
             "range": {
@@ -5140,7 +5140,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['system'], Literal['System']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['system'], Literal['System']]\" is not assignable to \"str\"",
             "range": {
@@ -5156,7 +5156,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['admin'], Literal['Admin']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['admin'], Literal['Admin']]\" is not assignable to \"str\"",
             "range": {
@@ -5172,7 +5172,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['keycloak'], Literal['Keycloak']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['keycloak'], Literal['Keycloak']]\" is not assignable to \"str\"",
             "range": {
@@ -5188,7 +5188,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['google'], Literal['Google OAuth']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['google'], Literal['Google OAuth']]\" is not assignable to \"str\"",
             "range": {
@@ -5204,7 +5204,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['facebook'], Literal['Facebook OAuth']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['facebook'], Literal['Facebook OAuth']]\" is not assignable to \"str\"",
             "range": {
@@ -5220,7 +5220,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['github'], Literal['GitHub OAuth']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['github'], Literal['GitHub OAuth']]\" is not assignable to \"str\"",
             "range": {
@@ -5236,7 +5236,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['oidc'], Literal['Generic OIDC']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['oidc'], Literal['Generic OIDC']]\" is not assignable to \"str\"",
             "range": {
@@ -5252,7 +5252,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['super-admin'], Literal['Super Admin']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['super-admin'], Literal['Super Admin']]\" is not assignable to \"str\"",
             "range": {
@@ -5268,7 +5268,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['tenant-admin'], Literal['Tenant Admin']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['tenant-admin'], Literal['Tenant Admin']]\" is not assignable to \"str\"",
             "range": {
@@ -5284,7 +5284,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['tenant-user'], Literal['Tenant User']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['tenant-user'], Literal['Tenant User']]\" is not assignable to \"str\"",
             "range": {
@@ -5300,7 +5300,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['api-access'], Literal['API Access']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['api-access'], Literal['API Access']]\" is not assignable to \"str\"",
             "range": {
@@ -5316,7 +5316,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "\"__setitem__\" method not defined on type \"JSONField\"",
             "range": {
@@ -5332,7 +5332,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportIndexIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "\"__getitem__\" method not defined on type \"URLField\"",
             "range": {
@@ -5348,7 +5348,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportIndexIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['info'], Literal['Information']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['info'], Literal['Information']]\" is not assignable to \"str\"",
             "range": {
@@ -5364,7 +5364,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['warning'], Literal['Warning']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['warning'], Literal['Warning']]\" is not assignable to \"str\"",
             "range": {
@@ -5380,7 +5380,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['error'], Literal['Error']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['error'], Literal['Error']]\" is not assignable to \"str\"",
             "range": {
@@ -5396,7 +5396,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['success'], Literal['Success']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['success'], Literal['Success']]\" is not assignable to \"str\"",
             "range": {
@@ -5412,7 +5412,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['billing'], Literal['Billing']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['billing'], Literal['Billing']]\" is not assignable to \"str\"",
             "range": {
@@ -5428,7 +5428,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['security'], Literal['Security']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['security'], Literal['Security']]\" is not assignable to \"str\"",
             "range": {
@@ -5444,7 +5444,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['system'], Literal['System']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['system'], Literal['System']]\" is not assignable to \"str\"",
             "range": {
@@ -5460,7 +5460,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['low'], Literal['Low']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['low'], Literal['Low']]\" is not assignable to \"str\"",
             "range": {
@@ -5476,7 +5476,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['normal'], Literal['Normal']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['normal'], Literal['Normal']]\" is not assignable to \"str\"",
             "range": {
@@ -5492,7 +5492,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['high'], Literal['High']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['high'], Literal['High']]\" is not assignable to \"str\"",
             "range": {
@@ -5508,7 +5508,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "Type \"tuple[Literal['urgent'], Literal['Urgent']]\" is not assignable to declared type \"str\"\n  \"tuple[Literal['urgent'], Literal['Urgent']]\" is not assignable to \"str\"",
             "range": {
@@ -5524,7 +5524,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportAssignmentType"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/models.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/models.py",
             "severity": "error",
             "message": "\"__getitem__\" method not defined on type \"CharField\"",
             "range": {
@@ -5540,7 +5540,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportIndexIssue"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/webhooks.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/webhooks.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __enter__",
             "range": {
@@ -5556,7 +5556,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/webhooks.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/webhooks.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __exit__",
             "range": {
@@ -5572,7 +5572,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/webhooks.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/webhooks.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __enter__",
             "range": {
@@ -5588,7 +5588,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/webhooks.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/webhooks.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __exit__",
             "range": {
@@ -5604,7 +5604,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/webhooks.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/webhooks.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __enter__",
             "range": {
@@ -5620,7 +5620,7 @@ Config contains unrecognized setting "reportIndexError".
             "rule": "reportGeneralTypeIssues"
         },
         {
-            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/saas/webhooks.py",
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/aaas/webhooks.py",
             "severity": "error",
             "message": "Object of type \"(...) -> object\" cannot be used with \"with\" because it does not correctly implement __exit__",
             "range": {

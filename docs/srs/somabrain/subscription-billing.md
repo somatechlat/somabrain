@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The Subscription & Billing module manages subscription tiers, usage metering, and billing integration with Lago for the SomaBrain SaaS platform.
+The Subscription & Billing module manages subscription tiers, usage metering, and billing integration with Lago for the SomaBrain AAAS platform.
 
 ### 1.1 Scope
 

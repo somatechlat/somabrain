@@ -21,7 +21,7 @@ and an external memory HTTP service (SomaFractalMemory or compatible).
   backends, and minimum replicas.
 - **System software mode (platform requirement):** `StandAlone` vs
   `SomaStackClusterMode` is defined at the platform level (see
-  `somaAgent01/docs/srs/SRS-UNIFIED-SAAS.md`). SomaBrain must pair with
+  `somaAgent01/docs/srs/SRS-UNIFIED-AAAS.md`). SomaBrain must pair with
   SomaFractalMemory in integrated mode via `SOMABRAIN_MEMORY_HTTP_ENDPOINT`.
 
 ---

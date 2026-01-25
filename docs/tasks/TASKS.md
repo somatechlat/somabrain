@@ -12,9 +12,9 @@
 - [x] `services/predictor/main.py` - Removed _maybe_health_server() (28 lines FastAPI/uvicorn)
 
 ### 1.2 Fixed Auth TODOs/Placeholders ✅
-- [x] `somabrain/api/auth.py` - Replaced with imports from saas/auth.py (real implementations)
-- [x] `somabrain/saas/auth.py` - Implemented real JWKS fetch from Keycloak
-- [x] `somabrain/saas/auth.py` - Enabled JWT signature verification
+- [x] `somabrain/api/auth.py` - Replaced with imports from aaas/auth.py (real implementations)
+- [x] `somabrain/aaas/auth.py` - Implemented real JWKS fetch from Keycloak
+- [x] `somabrain/aaas/auth.py` - Enabled JWT signature verification
 
 ---
 
@@ -107,7 +107,7 @@
 - [x] Add realm roles mapper
 
 ### 5.5 Django JWT Integration ✅ COMPLETE (Phase 6)
-- [x] Implement JWTAuth class in saas/auth.py
+- [x] Implement JWTAuth class in aaas/auth.py
 - [x] Validate JWT issuer and audience via JWKS
 - [x] Extract tenant_id and roles from claims
 

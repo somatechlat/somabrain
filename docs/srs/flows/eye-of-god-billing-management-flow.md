@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** SaaS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Manage billing, subscriptions, and revenue from Eye of God
 
 ---
@@ -269,4 +269,4 @@ Eye of God integrates with Lago (open-source billing) at `http://lago:3000`.
 
 ---
 
-*Eye of God: Billing Management Journey - SomaBrain SaaS*
+*Eye of God: Billing Management Journey - SomaBrain AAAS*

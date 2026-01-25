@@ -1,7 +1,7 @@
 Granular Permissions
 ====================
 
-.. automodule:: somabrain.saas.granular
+.. automodule:: somabrain.aaas.granular
    :members:
    :undoc-members:
    :show-inheritance:

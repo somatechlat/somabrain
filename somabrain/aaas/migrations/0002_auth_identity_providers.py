@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     """Migration class implementation."""
 
     dependencies = [
-        ("saas", "0001_initial"),
+        ("aaas", "0001_initial"),
     ]
 
     operations = [
@@ -94,14 +94,14 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="identity_providers",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Identity Provider",
                 "verbose_name_plural": "Identity Providers",
-                "db_table": "saas_identity_providers",
+                "db_table": "aaas_identity_providers",
                 "ordering": ["display_order", "name"],
             },
         ),
@@ -150,14 +150,14 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="children",
-                        to="saas.role",
+                        to="aaas.role",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Role",
                 "verbose_name_plural": "Roles",
-                "db_table": "saas_roles",
+                "db_table": "aaas_roles",
                 "ordering": ["name"],
             },
         ),
@@ -182,14 +182,14 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="field_permissions",
-                        to="saas.role",
+                        to="aaas.role",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Field Permission",
                 "verbose_name_plural": "Field Permissions",
-                "db_table": "saas_field_permissions",
+                "db_table": "aaas_field_permissions",
             },
         ),
         migrations.CreateModel(
@@ -217,7 +217,7 @@ class Migration(migrations.Migration):
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         related_name="preferred_by_tenants",
-                        to="saas.identityprovider",
+                        to="aaas.identityprovider",
                     ),
                 ),
                 (
@@ -225,14 +225,14 @@ class Migration(migrations.Migration):
                     models.OneToOneField(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="auth_config",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Tenant Auth Config",
                 "verbose_name_plural": "Tenant Auth Configs",
-                "db_table": "saas_tenant_auth_config",
+                "db_table": "aaas_tenant_auth_config",
             },
         ),
         migrations.CreateModel(
@@ -257,7 +257,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="user_assignments",
-                        to="saas.role",
+                        to="aaas.role",
                     ),
                 ),
                 (
@@ -265,14 +265,14 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="role_assignments",
-                        to="saas.tenantuser",
+                        to="aaas.tenantuser",
                     ),
                 ),
             ],
             options={
                 "verbose_name": "Tenant User Role",
                 "verbose_name_plural": "Tenant User Roles",
-                "db_table": "saas_tenant_user_roles",
+                "db_table": "aaas_tenant_user_roles",
             },
         ),
         migrations.AddConstraint(
@@ -284,7 +284,7 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="fieldpermission",
             index=models.Index(
-                fields=["role", "model_name"], name="saas_field__role_id_9326b1_idx"
+                fields=["role", "model_name"], name="aaas_field__role_id_9326b1_idx"
             ),
         ),
         migrations.AddConstraint(

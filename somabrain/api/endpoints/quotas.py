@@ -26,9 +26,9 @@ from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     APIKey,
     AuditLog,
     SubscriptionTier,
@@ -127,7 +127,7 @@ def get_tenant_quotas_real(tenant: Tenant) -> List[QuotaStatus]:
 
     # Agents quota - REAL count if model exists
     try:
-        from somabrain.saas.models import Agent
+        from somabrain.aaas.models import Agent
 
         agents_used = Agent.objects.filter(tenant_id=tenant.id).count()
     except (ImportError, Exception):

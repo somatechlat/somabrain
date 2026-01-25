@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     """Migration class implementation."""
 
     dependencies = [
-        ("saas", "0002_auth_identity_providers"),
+        ("aaas", "0002_auth_identity_providers"),
     ]
 
     operations = [
@@ -75,7 +75,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="tenant_subscriptions",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
                 (
@@ -83,7 +83,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.PROTECT,
                         related_name="tier_subscriptions",
-                        to="saas.subscriptiontier",
+                        to="aaas.subscriptiontier",
                     ),
                 ),
             ],
@@ -119,7 +119,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="usage_records",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
@@ -130,11 +130,11 @@ class Migration(migrations.Migration):
                 "indexes": [
                     models.Index(
                         fields=["tenant", "recorded_at"],
-                        name="saas_usager_tenant__1de76c_idx",
+                        name="aaas_usager_tenant__1de76c_idx",
                     ),
                     models.Index(
                         fields=["metric_name", "recorded_at"],
-                        name="saas_usager_metric__0fb935_idx",
+                        name="aaas_usager_metric__0fb935_idx",
                     ),
                 ],
             },

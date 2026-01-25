@@ -23,9 +23,9 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from ninja import Query, Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     ActorType,
     AuditLog,
     Tenant,
@@ -101,7 +101,7 @@ class UserOut(Schema):
             obj: The obj.
         """
 
-        from somabrain.saas.models import TenantUserRole
+        from somabrain.aaas.models import TenantUserRole
 
         assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
             "role"
@@ -141,7 +141,7 @@ class UserListOut(Schema):
             obj: The obj.
         """
 
-        from somabrain.saas.models import TenantUserRole
+        from somabrain.aaas.models import TenantUserRole
 
         assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
             "role"
@@ -208,7 +208,7 @@ def list_all_users(
         queryset = queryset.filter(is_active=False)
 
     if filters.role:
-        from somabrain.saas.models import TenantUserRole
+        from somabrain.aaas.models import TenantUserRole
 
         user_ids = TenantUserRole.objects.filter(role__slug=filters.role).values_list(
             "tenant_user_id", flat=True
@@ -280,7 +280,7 @@ def create_tenant_user(
     """
     from django.db import transaction
 
-    from somabrain.saas.models import Role, TenantUserRole
+    from somabrain.aaas.models import Role, TenantUserRole
 
     # Tenant isolation check
     if not request.is_super_admin:
@@ -447,7 +447,7 @@ def assign_role(
     data: RoleAssignment,
 ):
     """Assign a role to a user."""
-    from somabrain.saas.models import Role, TenantUserRole
+    from somabrain.aaas.models import Role, TenantUserRole
 
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
@@ -494,7 +494,7 @@ def remove_role(
     role_id: UUID,
 ):
     """Remove a role from a user."""
-    from somabrain.saas.models import Role, TenantUserRole
+    from somabrain.aaas.models import Role, TenantUserRole
 
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
@@ -547,7 +547,7 @@ def invite_user(
 
     ALL 10 PERSONAS - Future email integration.
     """
-    from somabrain.saas.models import Role
+    from somabrain.aaas.models import Role
 
     if not request.is_super_admin:
         if str(request.tenant_id) != str(tenant_id):
@@ -572,7 +572,7 @@ def invite_user(
 
     # Assign roles
     if data.roles:
-        from somabrain.saas.models import TenantUserRole
+        from somabrain.aaas.models import TenantUserRole
 
         roles = Role.objects.filter(slug__in=data.roles)
         for role in roles:
@@ -583,7 +583,7 @@ def invite_user(
             )
 
     # Send invitation email using Django's native email service
-    from somabrain.saas.email_service import send_invitation_email
+    from somabrain.aaas.email_service import send_invitation_email
 
     email_sent = send_invitation_email(
         to_email=data.email,

@@ -308,4 +308,4 @@ except QuotaExceededError as e:
 
 ---
 
-*Developer API Integration Journey - SomaBrain SaaS*
+*Developer API Integration Journey - SomaBrain AAAS*

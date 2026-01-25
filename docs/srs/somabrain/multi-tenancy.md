@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The Multi-Tenancy module provides complete tenant isolation, lifecycle management, and quota enforcement for the SomaBrain SaaS platform.
+The Multi-Tenancy module provides complete tenant isolation, lifecycle management, and quota enforcement for the SomaBrain AAAS platform.
 
 ### 1.1 Scope
 

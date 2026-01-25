@@ -1,5 +1,5 @@
 """
-Lago Billing Client for SomaBrain SaaS.
+Lago Billing Client for SomaBrain AAAS.
 
 Integrates with Lago billing system for:
 - Customer management

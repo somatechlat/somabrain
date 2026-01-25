@@ -1,7 +1,7 @@
 {
     "name": "eyeofgod-admin",
     "version": "1.0.0",
-    "description": "SomaBrain SaaS Platform Administration UI",
+    "description": "SomaBrain AAAS Platform Administration UI",
     "type": "module",
     "scripts": {
         "dev": "vite",

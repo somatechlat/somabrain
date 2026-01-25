@@ -1,5 +1,5 @@
 """
-Email Service for SomaBrain SaaS.
+Email Service for SomaBrain AAAS.
 
 Django-native email service for user invitations and notifications.
 

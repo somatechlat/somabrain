@@ -1,5 +1,5 @@
 """
-SaaS Models for SomaBrain.
+AAAS Models for SomaBrain.
 
 Django ORM models for multi-tenancy, subscriptions, API keys, and audit logging.
 Per VIBE Coding Rules v5.2 - Pure Django Stack.
@@ -159,7 +159,7 @@ class IdentityProvider(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_identity_providers"
+        db_table = "aaas_identity_providers"
         ordering = ["display_order", "name"]
         verbose_name = "Identity Provider"
         verbose_name_plural = "Identity Providers"
@@ -216,7 +216,7 @@ class TenantAuthConfig(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_tenant_auth_config"
+        db_table = "aaas_tenant_auth_config"
         verbose_name = "Tenant Auth Config"
         verbose_name_plural = "Tenant Auth Configs"
 
@@ -272,7 +272,7 @@ class Role(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_roles"
+        db_table = "aaas_roles"
         ordering = ["name"]
         verbose_name = "Role"
         verbose_name_plural = "Roles"
@@ -306,7 +306,7 @@ class FieldPermission(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_field_permissions"
+        db_table = "aaas_field_permissions"
         verbose_name = "Field Permission"
         verbose_name_plural = "Field Permissions"
         constraints = [
@@ -353,7 +353,7 @@ class TenantUserRole(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_tenant_user_roles"
+        db_table = "aaas_tenant_user_roles"
         verbose_name = "Tenant User Role"
         verbose_name_plural = "Tenant User Roles"
         constraints = [
@@ -375,7 +375,7 @@ class TenantUserRole(models.Model):
 
 class SubscriptionTier(models.Model):
     """
-    SaaS subscription tier definition (Free, Starter, Pro, Enterprise).
+    AAAS subscription tier definition (Free, Starter, Pro, Enterprise).
 
     Defines quotas, rate limits, and features for each tier.
     """
@@ -410,7 +410,7 @@ class SubscriptionTier(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_subscription_tiers"
+        db_table = "aaas_subscription_tiers"
         ordering = ["display_order", "price_monthly"]
         verbose_name = "Subscription Tier"
         verbose_name_plural = "Subscription Tiers"
@@ -479,7 +479,7 @@ class Tenant(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_tenants"
+        db_table = "aaas_tenants"
         ordering = ["-created_at"]
         verbose_name = "Tenant"
         verbose_name_plural = "Tenants"
@@ -563,7 +563,7 @@ class TenantUser(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_tenant_users"
+        db_table = "aaas_tenant_users"
         ordering = ["-created_at"]
         verbose_name = "Tenant User"
         verbose_name_plural = "Tenant Users"
@@ -632,7 +632,7 @@ class Subscription(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_subscriptions"
+        db_table = "aaas_subscriptions"
         ordering = ["-created_at"]
         verbose_name = "Subscription"
         verbose_name_plural = "Subscriptions"
@@ -709,7 +709,7 @@ class APIKey(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_api_keys"
+        db_table = "aaas_api_keys"
         ordering = ["-created_at"]
         verbose_name = "API Key"
         verbose_name_plural = "API Keys"
@@ -823,7 +823,7 @@ class AuditLog(models.Model):
     class Meta:
         """Meta class implementation."""
 
-        db_table = "saas_audit_log"
+        db_table = "aaas_audit_log"
         ordering = ["-timestamp"]
         verbose_name = "Audit Log"
         verbose_name_plural = "Audit Logs"
@@ -883,7 +883,7 @@ class AuditLog(models.Model):
 
             publish_event(
                 {
-                    "type": "saas.audit",
+                    "type": "aaas.audit",
                     "action": action,
                     "resource_type": resource_type,
                     "resource_id": str(resource_id),
@@ -893,13 +893,13 @@ class AuditLog(models.Model):
                     "details": details or {},
                     "timestamp": entry.timestamp.isoformat(),
                 },
-                topic="soma.saas.audit",
+                topic="soma.aaas.audit",
             )
         except Exception:
             # Kafka publish is best-effort; ORM entry is primary
             import logging
 
-            logging.getLogger("somabrain.saas.models").debug(
+            logging.getLogger("somabrain.aaas.models").debug(
                 "Kafka audit publish failed (ORM entry persisted)", exc_info=True
             )
 

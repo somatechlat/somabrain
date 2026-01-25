@@ -2,7 +2,7 @@
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Purpose:** Complete screen navigation for unified SomaBrain + SomaFractalMemory SaaS UI
+**Purpose:** Complete screen navigation for unified SomaBrain + SomaFractalMemory AAAS UI
 
 ---
 
@@ -95,7 +95,7 @@ flowchart TB
 
 ```
 ┌─────────────────────────────────────┐
-│  🧠 SomaBrain SaaS                  │
+│  🧠 SomaBrain AAAS                  │
 │  Platform Administration            │
 ├─────────────────────────────────────┤
 │                                     │
@@ -276,4 +276,4 @@ flowchart TB
 
 ---
 
-*Unified Platform Screen Map - SomaBrain SaaS*
+*Unified Platform Screen Map - SomaBrain AAAS*

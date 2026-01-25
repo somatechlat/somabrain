@@ -1,5 +1,5 @@
 """
-Rate Limiting and Quota Enforcement for SomaBrain SaaS.
+Rate Limiting and Quota Enforcement for SomaBrain AAAS.
 
 Middleware and utilities for enforcing tier-based rate limits.
 

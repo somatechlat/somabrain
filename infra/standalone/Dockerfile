@@ -119,7 +119,7 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install fastavro
 
 COPY observability /app/observability
 COPY services /app/services
-# Django migrations are created in somabrain/migrations/ and saas/migrations/
+# Django migrations are created in somabrain/migrations/ and aaas/migrations/
 # Alembic/SQLAlchemy removed per VIBE rules - pure Django ORM
 # Avro/IDL schemas are required for the cognition services
 COPY proto /app/proto

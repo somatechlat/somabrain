@@ -1,6 +1,6 @@
 /**
  * Permission Browser View (Screen 29)
- * Route: /saas/permissions
+ * Route: /aaas/permissions
  * 
  * Master-detail view for inspecting and editing role-based permission matrices.
  * Integrates with SpiceDB/Django RBAC backend.
@@ -14,7 +14,7 @@ import { LitElement, html, css } from 'lit';
 import { rolesApi } from '../services/api.js';
 import '../components/auth/eog-role-editor.js';
 
-export class SaasPermissionBrowser extends LitElement {
+export class AaasPermissionBrowser extends LitElement {
     static properties = {
         roles: { type: Array },
         selectedRole: { type: Object },
@@ -231,4 +231,4 @@ export class SaasPermissionBrowser extends LitElement {
     }
 }
 
-customElements.define('saas-permission-browser', SaasPermissionBrowser);
+customElements.define('aaas-permission-browser', AaasPermissionBrowser);

@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     """Migration class implementation."""
 
     dependencies = [
-        ("saas", "0004_webhooks"),
+        ("aaas", "0004_webhooks"),
     ]
 
     operations = [
@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name="notifications",
-                        to="saas.tenant",
+                        to="aaas.tenant",
                     ),
                 ),
             ],
@@ -81,11 +81,11 @@ class Migration(migrations.Migration):
                 "indexes": [
                     models.Index(
                         fields=["tenant", "user_id", "is_read"],
-                        name="saas_notifi_tenant__5f61b9_idx",
+                        name="aaas_notifi_tenant__5f61b9_idx",
                     ),
                     models.Index(
                         fields=["tenant", "created_at"],
-                        name="saas_notifi_tenant__12093d_idx",
+                        name="aaas_notifi_tenant__12093d_idx",
                     ),
                 ],
             },

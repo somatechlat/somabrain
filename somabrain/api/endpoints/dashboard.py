@@ -26,9 +26,9 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import (
     APIKey,
     AuditLog,
     Subscription,
@@ -262,7 +262,7 @@ def get_revenue_stats(request: AuthenticatedRequest):
 
     Data Source: Lago API /api/v1/analytics/mrr (REAL, NOT MOCKED)
     """
-    from somabrain.saas.billing import get_lago_client
+    from somabrain.aaas.billing import get_lago_client
 
     cache_key = "dashboard:revenue_stats"
     cached = cache.get(cache_key)
@@ -524,7 +524,7 @@ def get_system_health(request: AuthenticatedRequest):
 
     # Lago
     try:
-        from somabrain.saas.billing import get_lago_client
+        from somabrain.aaas.billing import get_lago_client
 
         lago = get_lago_client()
         if lago and lago.health_check():

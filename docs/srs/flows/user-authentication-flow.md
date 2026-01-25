@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-Complete authentication flows for SomaBrain SaaS platform: login, logout, SSO, password reset.
+Complete authentication flows for SomaBrain AAAS platform: login, logout, SSO, password reset.
 
 ---
 

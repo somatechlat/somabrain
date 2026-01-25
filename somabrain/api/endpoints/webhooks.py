@@ -27,9 +27,9 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.granular import Permission, require_permission
-from somabrain.saas.models import ActorType, AuditLog, Tenant
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.granular import Permission, require_permission
+from somabrain.aaas.models import ActorType, AuditLog, Tenant
 
 router = Router(tags=["Webhooks"])
 
@@ -151,7 +151,7 @@ def get_webhook_model():
     from django.apps import apps
 
     try:
-        return apps.get_model("saas", "Webhook")
+        return apps.get_model("aaas", "Webhook")
     except LookupError:
         # Model not yet migrated - return a stub for API registration
         return None

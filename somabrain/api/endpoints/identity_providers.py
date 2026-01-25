@@ -13,8 +13,8 @@ from uuid import UUID
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema
 
-from somabrain.saas.auth import AuthenticatedRequest, require_auth
-from somabrain.saas.models import (
+from somabrain.aaas.auth import AuthenticatedRequest, require_auth
+from somabrain.aaas.models import (
     ActorType,
     AuditLog,
     IdentityProvider,
@@ -317,7 +317,7 @@ def create_tenant_provider(
 
     This overrides platform defaults for this tenant.
     """
-    from somabrain.saas.models import Tenant
+    from somabrain.aaas.models import Tenant
 
     tenant = get_object_or_404(Tenant, id=tenant_id)
 

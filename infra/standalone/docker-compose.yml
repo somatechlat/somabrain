@@ -1,7 +1,7 @@
 name: somabrain
 
 services:
-  somabrain_redis:
+  somabrain_standalone_redis:
     image: redis:7.2-alpine
     restart: unless-stopped
     deploy:
@@ -11,7 +11,7 @@ services:
         reservations:
           memory: 512M
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     ports:
       - "${REDIS_HOST_PORT:-30100}:${REDIS_CONTAINER_PORT:-6379}"
     healthcheck:
@@ -49,7 +49,7 @@ services:
       - --loglevel
       - "notice"
 
-  somabrain_kafka:
+  somabrain_standalone_kafka:
     image: apache/kafka:3.7.0
     restart: unless-stopped
     deploy:
@@ -62,9 +62,9 @@ services:
       # Production-like Kafka configuration for constrained environment
       KAFKA_CFG_NODE_ID: ${KAFKA_CFG_NODE_ID:-1}
       KAFKA_CFG_PROCESS_ROLES: ${KAFKA_CFG_PROCESS_ROLES:-broker,controller}
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:-1@somabrain_kafka:9093}
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:-1@somabrain_standalone_kafka:9093}
       KAFKA_CFG_LISTENERS: ${KAFKA_CFG_LISTENERS:-INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093}
-      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:30102
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://somabrain_standalone_kafka:9092,EXTERNAL://localhost:30102
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: ${KAFKA_CFG_CONTROLLER_LISTENER_NAMES:-CONTROLLER}
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: ${KAFKA_CFG_INTER_BROKER_LISTENER_NAME:-INTERNAL}
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:-CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT}
@@ -149,13 +149,13 @@ services:
       start_period: 90s
       retries: 10
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
 
-  somabrain_kafka_exporter:
+  somabrain_standalone_kafka_exporter:
     image: danielqsj/kafka-exporter:v1.7.0
     restart: unless-stopped
     command:
-      - --kafka.server=somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}
+      - --kafka.server=somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}
     deploy:
       resources:
         limits:
@@ -163,19 +163,19 @@ services:
         reservations:
           memory: 32M
     depends_on:
-      somabrain_kafka:
+      somabrain_standalone_kafka:
         condition: service_healthy
     ports:
       - "${KAFKA_EXPORTER_HOST_PORT:-30103}:${KAFKA_EXPORTER_CONTAINER_PORT:-9308}"
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     healthcheck:
       test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:9308/" ]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  somabrain_schema_registry:
+  somabrain_standalone_schema_registry:
     image: confluentinc/cp-schema-registry:7.6.0
     restart: unless-stopped
     deploy:
@@ -187,13 +187,13 @@ services:
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       SCHEMA_REGISTRY_HEAP_OPTS: "-Xms128m -Xmx192m"
     depends_on:
-      somabrain_kafka:
+      somabrain_standalone_kafka:
         condition: service_healthy
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     ports:
       - "${SCHEMA_REGISTRY_HOST_PORT:-30108}:8081"
     healthcheck:
@@ -202,7 +202,7 @@ services:
       timeout: 5s
       retries: 3
 
-  somabrain_opa:
+  somabrain_standalone_opa:
     image: openpolicyagent/opa:0.54.0
     restart: unless-stopped
     deploy:
@@ -224,7 +224,7 @@ services:
       - --set=default_decision=somabrain/authz/allow
       - /policies
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     ports:
       - "${OPA_HOST_PORT:-30104}:${OPA_CONTAINER_PORT:-8181}"
     volumes:
@@ -239,7 +239,7 @@ services:
       retries: 3
       start_period: 10s
 
-  somabrain_prometheus:
+  somabrain_standalone_prometheus:
     image: prom/prometheus:v2.49.0
     restart: unless-stopped
     deploy:
@@ -249,7 +249,7 @@ services:
         reservations:
           memory: 256M
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     ports:
       - "${PROMETHEUS_HOST_PORT:-30105}:${PROMETHEUS_CONTAINER_PORT:-9090}"
     volumes:
@@ -275,7 +275,7 @@ services:
       timeout: 5s
       retries: 3
 
-  somabrain_jaeger:
+  somabrain_standalone_jaeger:
     image: jaegertracing/all-in-one:1.53
     restart: unless-stopped
     deploy:
@@ -285,7 +285,7 @@ services:
         reservations:
           memory: 128M
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     ports:
       - "${JAEGER_HOST_PORT:-30111}:16686"
       - "30112:14250"
@@ -307,7 +307,7 @@ services:
       timeout: 5s
       retries: 3
 
-  somabrain_postgres:
+  somabrain_standalone_postgres:
     image: postgres:15-alpine
     restart: unless-stopped
     deploy:
@@ -327,7 +327,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 30s
@@ -371,26 +371,26 @@ services:
       - -c
       - autovacuum_max_workers=2
 
-  somabrain_db_migrate:
+  somabrain_standalone_db_migrate:
     image: somabrain:latest
     depends_on:
-      somabrain_postgres:
+      somabrain_standalone_postgres:
         condition: service_healthy
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     environment:
       # Use the internal service hostname to reach Postgres from within the network
       # Compose will substitute these from your .env
       POSTGRES_USER: "${POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB}"
-      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@somabrain_postgres:5432/${POSTGRES_DB}"
+      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB}"
     # Dev convenience: run Django migrations.
     command: [ "sh", "-lc", "cd /app && python manage.py migrate --noinput" ]
     restart: "no"
     profiles: [ "dev" ]
 
-  somabrain_postgres_exporter:
+  somabrain_standalone_postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     restart: unless-stopped
     deploy:
@@ -400,24 +400,24 @@ services:
         reservations:
           memory: 32M
     environment:
-      - DATA_SOURCE_NAME=${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain}?sslmode=disable
+      - DATA_SOURCE_NAME=${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain}?sslmode=disable
     depends_on:
-      somabrain_postgres:
+      somabrain_standalone_postgres:
         condition: service_healthy
     ports:
       - "${POSTGRES_EXPORTER_HOST_PORT:-30107}:${POSTGRES_EXPORTER_CONTAINER_PORT:-9187}"
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     healthcheck:
       test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:9187/" ]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  somabrain_app:
+  somabrain_standalone_app:
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: infra/standalone/Dockerfile
     image: somabrain:latest
     restart: unless-stopped
     deploy:
@@ -427,18 +427,18 @@ services:
         reservations:
           memory: 1G
     depends_on:
-      somabrain_redis:
+      somabrain_standalone_redis:
         condition: service_healthy
-      somabrain_kafka:
+      somabrain_standalone_kafka:
         condition: service_healthy
-      somabrain_opa:
+      somabrain_standalone_opa:
         condition: service_healthy
-      somabrain_postgres:
+      somabrain_standalone_postgres:
         condition: service_healthy
-      somabrain_milvus:
+      somabrain_standalone_milvus:
         condition: service_healthy
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     # Ensure containers can reach host services (e.g., external memory on 9595)
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -449,11 +449,11 @@ services:
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
       SOMABRAIN_PORT: "${SOMABRAIN_PORT:-30101}"
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_redis:6379/0}"
-      SOMABRAIN_KAFKA_URL: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL:-http://somabrain_opa:8181}"
-      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain}"
+      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
+      SOMABRAIN_KAFKA_URL: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL:-http://somabrain_standalone_opa:8181}"
+      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain}"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
@@ -463,7 +463,7 @@ services:
       # Mode: default to dev for local development parity
       SOMABRAIN_MODE: "${SOMABRAIN_MODE:-dev}"
       # Milvus configuration for vector operations
-      MILVUS_HOST: "somabrain_milvus"
+      MILVUS_HOST: "somabrain_standalone_milvus"
       MILVUS_PORT: "19530"
       SOMABRAIN_ANN_BACKEND: "${SOMABRAIN_ANN_BACKEND:-milvus}"
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
@@ -489,20 +489,20 @@ services:
     tmpfs:
       - /app/logs
 
-  somabrain_cog:
+  somabrain_standalone_cog:
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: infra/standalone/Dockerfile
     image: somabrain:latest
     restart: unless-stopped
     depends_on:
-      somabrain_postgres:
+      somabrain_standalone_postgres:
         condition: service_healthy
-      somabrain_redis:
+      somabrain_standalone_redis:
         condition: service_healthy
-      somabrain_kafka:
+      somabrain_standalone_kafka:
         condition: service_healthy
-      somabrain_opa:
+      somabrain_standalone_opa:
         condition: service_healthy
     deploy:
       resources:
@@ -512,7 +512,7 @@ services:
         reservations:
           memory: 2G
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     environment:
       # Explicitly require a real external memory service; no dev fallback
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
@@ -523,13 +523,13 @@ services:
       SOMABRAIN_MODE: "full-local"
       SOMA_HEAT_METHOD: "lanczos"
       # Centralized feature gating; composite toggles are handled via runtime config
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_redis:6379/0}"
+      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
-      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain}"
+      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain}"
       # Enable OTEL tracing to Jaeger collector
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://somabrain_jaeger:4318"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://somabrain_standalone_jaeger:4318"
       OTEL_SERVICE_NAME: "somabrain-cog"
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
       # Supervisor HTTP auth used by API for control; only on internal network
@@ -548,7 +548,7 @@ services:
       SOMABRAIN_TOPIC_SEGMENTS: "${SOMABRAIN_TOPIC_SEGMENTS:-cog.segments}"
       SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"
       # Milvus configuration for Oak option manager
-      MILVUS_HOST: "somabrain_milvus"
+      MILVUS_HOST: "somabrain_standalone_milvus"
       MILVUS_PORT: "19530"
     ports:
       # Reward producer HTTP (host default 30083)
@@ -577,10 +577,10 @@ services:
         tmpfs:
           mode: 1777
 
-  somabrain_outbox_publisher:
+  somabrain_standalone_outbox_publisher:
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: infra/standalone/Dockerfile
     image: somabrain:latest
     restart: unless-stopped
     deploy:
@@ -590,12 +590,12 @@ services:
         reservations:
           memory: 128M
     depends_on:
-      somabrain_kafka:
+      somabrain_standalone_kafka:
         condition: service_healthy
-      somabrain_postgres:
+      somabrain_standalone_postgres:
         condition: service_healthy
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     command: [ "python", "-m", "somabrain.workers.outbox_publisher" ]
     environment:
       # Django settings MUST be first - required for all Django workers
@@ -603,12 +603,12 @@ services:
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_redis:6379/0}"
+      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
-      KAFKA_BOOTSTRAP_SERVERS: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      KAFKA_BOOTSTRAP_SERVERS: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
-      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain}"
+      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain}"
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:-100}
       SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY:-5.0}
       # Propagate the global memory cap to the outbox publisher.
@@ -628,7 +628,7 @@ services:
       retries: 1
 
   # --- Milvus dependencies: etcd and minio -----------------------------------
-  somabrain_etcd:
+  somabrain_standalone_etcd:
     image: quay.io/coreos/etcd:v3.5.5
     restart: unless-stopped
     deploy:
@@ -652,10 +652,10 @@ services:
       ETCD_LOGGER: "zap"
       ETCD_DATA_DIR: "/etcd"
       ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
-      ETCD_ADVERTISE_CLIENT_URLS: "http://somabrain_etcd:2379"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://somabrain_standalone_etcd:2379"
       ETCD_LISTEN_PEER_URLS: "http://0.0.0.0:2380"
-      ETCD_INITIAL_ADVERTISE_PEER_URLS: "http://somabrain_etcd:2380"
-      ETCD_INITIAL_CLUSTER: "default=http://somabrain_etcd:2380"
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: "http://somabrain_standalone_etcd:2380"
+      ETCD_INITIAL_CLUSTER: "default=http://somabrain_standalone_etcd:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
     volumes:
       - etcd_data:/etcd
@@ -665,9 +665,9 @@ services:
       timeout: 20s
       retries: 3
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
 
-  somabrain_minio:
+  somabrain_standalone_minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     restart: unless-stopped
     hostname: minio
@@ -692,20 +692,20 @@ services:
       timeout: 20s
       retries: 3
     networks:
-      somabrain_net:
+      somabrain_standalone_net:
         aliases:
           - minio
 
   # --- Milvus vector store for Oak option manager -----------------------------------
-  somabrain_milvus:
+  somabrain_standalone_milvus:
     # Production-grade Milvus standalone for vector similarity search
     # Milvus standalone requires minimum 4GB RAM for all internal components
     image: milvusdb/milvus:v2.3.3
     restart: unless-stopped
     depends_on:
-      somabrain_etcd:
+      somabrain_standalone_etcd:
         condition: service_healthy
-      somabrain_minio:
+      somabrain_standalone_minio:
         condition: service_healthy
     deploy:
       resources:
@@ -716,7 +716,7 @@ services:
           memory: 2G
     environment:
       # Production-like Milvus configuration
-      ETCD_ENDPOINTS: "somabrain_etcd:2379"
+      ETCD_ENDPOINTS: "somabrain_standalone_etcd:2379"
       MINIO_ADDRESS: "minio:9000"
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin"
@@ -737,31 +737,31 @@ services:
       retries: 10
       start_period: 180s
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
 
   # --- Cognitive Thread: Predictors ----------------------------------------
 
   # --- Cognitive Thread: Integrator + Segmentation + Orchestrator ----------
 
-  somabrain_integrator_triplet:
+  somabrain_standalone_integrator_triplet:
     build:
       context: ../..
-      dockerfile: infra/docker/Dockerfile
+      dockerfile: infra/standalone/Dockerfile
     image: somabrain:latest
     restart: unless-stopped
     depends_on:
-      somabrain_kafka:
+      somabrain_standalone_kafka:
         condition: service_healthy
     networks:
-      - somabrain_net
+      - somabrain_standalone_net
     environment:
       # Django settings MUST be first - required for all Django workers
       DJANGO_SETTINGS_MODULE: "somabrain.settings"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
-      KAFKA_BOOTSTRAP_SERVERS: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      KAFKA_BOOTSTRAP_SERVERS: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       # Propagate the global memory cap to the integrator service.
       SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:-cog.state.updates}"
       SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:-cog.agent.updates}"
       SOMABRAIN_TOPIC_ACTION_UPDATES: "${SOMABRAIN_TOPIC_ACTION_UPDATES:-cog.action.updates}"
@@ -807,5 +807,5 @@ volumes:
     driver: local
 
 networks:
-  somabrain_net:
+  somabrain_standalone_net:
     driver: bridge

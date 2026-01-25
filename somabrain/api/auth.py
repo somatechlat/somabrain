@@ -3,11 +3,11 @@
 VIBE COMPLIANT: Real implementations only - no placeholders.
 
 This module provides auth handlers by re-exporting from the production
-saas.auth module. All auth logic is centralized there.
+aaas.auth module. All auth logic is centralized there.
 """
 
 # Re-export all auth classes from the real implementation
-from somabrain.saas.auth import (
+from somabrain.aaas.auth import (
     APIKeyAuth,
     GoogleOAuth,
     JWTAuth,

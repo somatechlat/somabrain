@@ -13,7 +13,7 @@ from django.utils import timezone
 from somabrain.api.v1 import api
 
 # Webhook handler
-from somabrain.saas.webhooks import lago_webhook
+from somabrain.aaas.webhooks import lago_webhook
 
 # =============================================================================
 # HEALTH VIEWS - VIBE Coding Rules
@@ -242,7 +242,7 @@ def health_view(request):
     def check_lago():
         """Execute check lago."""
 
-        from somabrain.saas.billing import get_lago_client
+        from somabrain.aaas.billing import get_lago_client
 
         lago = get_lago_client()
         if not lago:

@@ -1,5 +1,5 @@
 # Software Requirements Specification (SRS)
-# SomaBrain SaaS Platform
+# SomaBrain AAAS Platform
 
 **Document Version:** 1.0.0  
 **Date:** 2025-12-24  
@@ -11,12 +11,12 @@
 ## 1. Introduction
 
 ### 1.1 Purpose
-This SRS defines the functional and non-functional requirements for transforming SomaBrain into a fully SaaS-oriented cognitive platform with Lago billing integration.
+This SRS defines the functional and non-functional requirements for transforming SomaBrain into a fully AAAS-oriented cognitive platform with Lago billing integration.
 
 ### 1.2 Scope
 | Item | Description |
 |------|-------------|
-| Product Name | SomaBrain SaaS Platform |
+| Product Name | SomaBrain AAAS Platform |
 | Product Version | 2.0.0 |
 | Target Framework | Django 5.x / Django Ninja |
 | Billing Engine | Lago (self-hosted) |
@@ -26,7 +26,7 @@ This SRS defines the functional and non-functional requirements for transforming
 ### 1.3 Definitions and Acronyms
 | Term | Definition |
 |------|------------|
-| SaaS | Software as a Service |
+| AAAS | Software as a Service |
 | Lago | Open-source billing/metering platform |
 | ReBAC | Relationship-Based Access Control |
 | Tenant | A billable customer organization |
@@ -35,7 +35,7 @@ This SRS defines the functional and non-functional requirements for transforming
 
 ### 1.4 7 Personas Perspective
 
-| Persona | SaaS Feature Focus |
+| Persona | AAAS Feature Focus |
 |---------|-------------------|
 | 🎓 PhD Developer | Clean architecture, production-grade billing code |
 | 🔍 PhD Analyst | Usage analytics, revenue metrics, data flow |
@@ -44,13 +44,13 @@ This SRS defines the functional and non-functional requirements for transforming
 | 🔒 Security Auditor | Payment PCI compliance, credential isolation |
 | ⚡ Performance Engineer | Meter efficiency, DB query optimization |
 | 🎨 UX Consultant | Billing UX, upgrade flows, usage dashboards |
-| 🏗️ Django Architect | Django patterns for SaaS, middleware design |
+| 🏗️ Django Architect | Django patterns for AAAS, middleware design |
 | ⚙️ Django Expert | ORM for billing models, migrations |
 | ⛪ Django Evangelist | NO non-Django billing libraries |
 
 ---
 
-## 2. Complete SaaS Feature Requirements
+## 2. Complete AAAS Feature Requirements
 
 ### 2.1 Multi-Tenancy (CORE)
 
@@ -207,7 +207,7 @@ This SRS defines the functional and non-functional requirements for transforming
 
 ---
 
-### 2.9 API Design (SaaS Patterns)
+### 2.9 API Design (AAAS Patterns)
 
 | REQ-ID | Requirement | Priority | Status |
 |--------|-------------|----------|--------|
@@ -297,7 +297,7 @@ This SRS defines the functional and non-functional requirements for transforming
 ## 5. Next Steps
 
 1. **User Review**: Approve this SRS document
-2. **Merge with task.md**: Add SaaS phases (22-27) to existing task list
+2. **Merge with task.md**: Add AAAS phases (22-27) to existing task list
 3. **Lago Setup**: Confirm Lago Docker container is running
 4. **Implementation**: Begin Phase 22 (Lago Client)
 
