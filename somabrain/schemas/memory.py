@@ -1,7 +1,7 @@
-"""Memory-related schemas for SomaBrain API.
+"""
+Memory schemas - Recall, Remember, Retrieval operations.
 
-This module contains Pydantic models for memory operations including
-recall, remember, retrieval, and delete operations.
+Request/response schemas for memory operations API.
 """
 
 from __future__ import annotations
@@ -9,44 +9,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
 from somabrain.datetime_utils import coerce_to_epoch_seconds
-
-
-def _get_settings():
-    """Lazy settings access to avoid circular imports."""
-    from django.conf import settings
-
-    return settings
-
-
-def normalize_vector(vec_like, dim: int = None):
-    """
-    Convert an input sequence/array to a unit-norm float32 list of length `dim`.
-    Raises ValueError on invalid inputs.
-    """
-    from somabrain.math import normalize_vector as _canonical_normalize
-
-    s = _get_settings()
-    if dim is None:
-        dim = s.SOMABRAIN_HRR_DIM
-    hrr_dtype = s.SOMABRAIN_HRR_DTYPE
-
-    arr = np.asarray(vec_like, dtype=hrr_dtype)
-    if arr.ndim != 1:
-        arr = arr.reshape(-1)
-    if arr.size < dim:
-        padded = np.zeros((dim,), dtype=hrr_dtype)
-        padded[: arr.size] = arr
-        arr = padded
-    elif arr.size > dim:
-        arr = arr[:dim]
-
-    normed = _canonical_normalize(arr, dtype=np.dtype(hrr_dtype))
-    return normed.tolist()
-
 
 TimestampInput = Union[float, int, str, datetime]
 
@@ -81,8 +46,6 @@ class MemoryPayload(BaseModel):
 
     @model_validator(mode="after")
     def _normalize_timestamp(self):
-        """Execute normalize timestamp."""
-
         if self.timestamp is not None:
             try:
                 self.timestamp = coerce_to_epoch_seconds(self.timestamp)
@@ -99,14 +62,14 @@ class RememberRequest(BaseModel):
 
 
 class WMHit(BaseModel):
-    """Working memory hit result."""
+    """Working memory hit schema."""
 
     score: float
     payload: Dict[str, Any]
 
 
 class RecallResponse(BaseModel):
-    """Canonical response model for the /recall endpoint."""
+    """Response model for the /recall endpoint."""
 
     wm: List[WMHit]
     memory: List[Dict[str, Any]]
@@ -118,22 +81,10 @@ class RecallResponse(BaseModel):
     drift: Optional[Dict[str, Any]] = None
     hrr_cleanup: Optional[Dict[str, Any]] = None
     results: List[Dict[str, Any]] = []
-    degraded: Optional[bool] = None
-
-
-class RememberResponse(BaseModel):
-    """Canonical response model for the /remember endpoint."""
-
-    ok: bool
-    success: bool
-    namespace: str
-    trace_id: str
-    deadline_ms: Optional[str] = None
-    idempotency_key: Optional[str] = None
 
 
 class RetrievalRequest(BaseModel):
-    """Request model for retrieval operations."""
+    """Advanced retrieval request schema."""
 
     query: str
     top_k: int = 10
@@ -145,7 +96,6 @@ class RetrievalRequest(BaseModel):
     id: Optional[str] = None
     key: Optional[str] = None
     coord: Optional[str] = None
-    layer: Optional[str] = None
 
 
 class RetrievalCandidate(BaseModel):
@@ -159,7 +109,7 @@ class RetrievalCandidate(BaseModel):
 
 
 class RetrievalResponse(BaseModel):
-    """Response model for retrieval operations."""
+    """Response from retrieval operation."""
 
     candidates: List[RetrievalCandidate]
     session_coord: Optional[str] = None
@@ -168,20 +118,19 @@ class RetrievalResponse(BaseModel):
     metrics: Optional[Dict[str, Any]] = None
 
 
-class DeleteRequest(BaseModel):
-    """Schema for delete memory requests."""
+class RememberResponse(BaseModel):
+    """Response model for the /remember endpoint."""
 
-    coordinate: List[float]
-
-
-class DeleteResponse(BaseModel):
-    """Simple response indicating delete success."""
-
-    ok: bool = True
+    ok: bool
+    success: bool
+    namespace: str
+    trace_id: str
+    deadline_ms: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class LinkRequest(BaseModel):
-    """Request for creating memory links."""
+    """Graph link creation request."""
 
     from_key: Optional[str] = None
     to_key: Optional[str] = None
@@ -192,8 +141,14 @@ class LinkRequest(BaseModel):
     universe: Optional[str] = None
 
 
+class LinkResponse(BaseModel):
+    """Graph link response."""
+
+    ok: bool
+
+
 class GraphLinksRequest(BaseModel):
-    """Request for querying graph links."""
+    """Query graph links request."""
 
     from_key: Optional[str] = None
     from_coord: Optional[str] = None
@@ -203,35 +158,19 @@ class GraphLinksRequest(BaseModel):
 
 
 class GraphLinksResponse(BaseModel):
-    """Response for graph links query."""
+    """Graph links query response."""
 
     edges: List[Dict[str, Any]]
     universe: Optional[str] = None
 
 
-class LinkResponse(BaseModel):
-    """Response for link operations."""
+class DeleteRequest(BaseModel):
+    """Delete memory request."""
 
-    ok: bool
+    coordinate: List[float]
 
 
-__all__ = [
-    "RecallRequest",
-    "MemoryPayload",
-    "RememberRequest",
-    "WMHit",
-    "RecallResponse",
-    "RememberResponse",
-    "RetrievalRequest",
-    "RetrievalCandidate",
-    "RetrievalResponse",
-    "DeleteRequest",
-    "DeleteResponse",
-    "LinkRequest",
-    "GraphLinksRequest",
-    "GraphLinksResponse",
-    "LinkResponse",
-    "TimestampInput",
-    "normalize_vector",
-    "_get_settings",
-]
+class DeleteResponse(BaseModel):
+    """Delete memory response."""
+
+    ok: bool = True
