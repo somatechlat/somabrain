@@ -15,7 +15,7 @@ from ninja.errors import HttpError
 
 from somabrain.api.auth import admin_auth
 from somabrain.db import outbox_journal
-from somabrain.schemas import JournalReplayRequest
+from somabrain.schemas import OutboxReplayRequest as JournalReplayRequest
 
 logger = logging.getLogger("somabrain.api.endpoints.admin_journal")
 

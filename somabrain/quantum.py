@@ -237,16 +237,27 @@ class QuantumLayer:
         return result
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
-        """Execute bind.
+        """Execute bind using FFT circular convolution (classic HRR).
+
+        Mathematical operation: c = IFFT(FFT(a) * FFT(b))
+        This is the mathematically correct circular convolution that IS invertible.
 
         Args:
-            a: The a.
-            b: The b.
-        """
+            a: First vector to bind.
+            b: Second vector to bind.
 
+        Returns:
+            Bound vector (unit normalized if renorm=True).
+        """
         a_vec = self._ensure_vector(a, name="bind.a")
         b_vec = self._ensure_vector(b, name="bind.b")
-        result = self._renorm(self._binder.bind(a_vec, b_vec))
+
+        # FFT circular convolution (classic HRR - GMD White Paper)
+        fa = np.fft.rfft(a_vec)
+        fb = np.fft.rfft(b_vec)
+        prod = (fa * fb).astype(np.complex128)
+        conv = np.fft.irfft(prod, n=self.cfg.dim)
+        result = self._renorm(conv)
 
         # Verify spectral properties
         fft_result = np.fft.fft(result)
@@ -271,16 +282,39 @@ class QuantumLayer:
         return result
 
     def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
-        """Execute unbind.
+        """Execute unbind using FFT spectral division (classic HRR inverse).
+
+        Mathematical operation: a_est = IFFT(FFT(c) / FFT(b))
+        This inverts bind: unbind(bind(a, b), b) ≈ a with similarity > 0.95
+
+        Uses GMD Theorem 3 Wiener regularization for numerical stability:
+        a_est = IFFT(FFT(c) * conj(FFT(b)) / (|FFT(b)|² + λ))
 
         Args:
-            a: The a.
-            b: The b.
-        """
+            a: Bound result (c = bind(x, b)).
+            b: The binding key.
 
-        a_vec = self._ensure_vector(a, name="unbind.a")
+        Returns:
+            Estimated original vector (unit normalized if renorm=True).
+        """
+        c_vec = self._ensure_vector(a, name="unbind.c")
         b_vec = self._ensure_vector(b, name="unbind.b")
-        return self._renorm(self._binder.unbind(a_vec, b_vec))
+
+        # FFT spectral division with Wiener regularization (GMD Theorem 3)
+        fc = np.fft.rfft(c_vec).astype(np.complex128)
+        fb = np.fft.rfft(b_vec).astype(np.complex128)
+
+        # Wiener filter λ from Settings (GMD Theorem 3: λ* = (2/255)²/3)
+        s = _get_settings()
+        lambda_reg = getattr(s, "SOMABRAIN_GMD_LAMBDA_REG", 2.05e-5)
+        fb_conj = np.conj(fb)
+        fb_power = np.abs(fb) ** 2 + lambda_reg
+
+        # Wiener-optimal unbind: fa = fc * conj(fb) / (|fb|² + λ)
+        fa_est = (fc * fb_conj) / fb_power
+
+        a_est = np.fft.irfft(fa_est, n=self.cfg.dim)
+        return self._renorm(a_est)
 
     # ------------------------------------------------------------------
     # Unitary roles

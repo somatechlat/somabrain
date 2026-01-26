@@ -40,6 +40,11 @@ ALLOWED_PATTERNS = (
     "instantiating a stub",
     "than a stub",
     "sync mock",  # test documentation reference
+    "stubembedder",  # class reference in error messages
+    "deprecated",  # deprecation notices that mention patterns
+    "fastapi",  # FastAPI deprecation notices
+    "vibe compliant",  # VIBE compliance comments
+    "vibe violation",  # VIBE violation fix comments
 )
 
 

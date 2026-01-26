@@ -10,12 +10,19 @@ import logging
 
 from django.conf import settings
 from django.http import HttpRequest
+from typing import Dict, Any
 from ninja import Router
+from pydantic import BaseModel
 
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
-from somabrain.schemas import ConfigResponse
 from somabrain.tenant import get_tenant
+
+class ConfigResponse(BaseModel):
+    tenant_id: str
+    namespace: str
+    features: Dict[str, Any]
+    limits: Dict[str, Any]
 
 logger = logging.getLogger("somabrain.api.endpoints.config")
 

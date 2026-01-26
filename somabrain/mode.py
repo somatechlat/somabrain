@@ -91,6 +91,11 @@ class ModeConfig:
             return DeploymentMode.STAGING
         if m in ("prod", "production", "enterprise", "main"):
             return DeploymentMode.PRODUCTION
+        if m in ("full-local", "standalone"):
+            # "full-local" runs the full production stack but strictly locally.
+            # We map this to PRODUCTION to ensure correct behavior (no mocks),
+            # but reliance on `infra/standalone` handles the resource scaling.
+            return DeploymentMode.PRODUCTION
         raise ValueError(f"Invalid mode: {mode}. Use dev, staging, or production")
 
     def _validate(self):

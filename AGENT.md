@@ -148,3 +148,22 @@ open http://localhost:10351
 - Deployment: `docs/deployment/`
 - Technical manual: `docs/technical/`
 - Runbooks: `docs/operations/`
+
+---
+
+## Configuration Tuning (Meta-Controller)
+
+SomaBrain exposes **Cognitive Presets** to manage its 300+ parameters without manual tuning.
+
+*   **Stable** (Default): Reliable, factual. Low plasticity.
+*   **Plastic**: High learning rate, high dopamine. Best for rapid adaptation.
+*   **Lateral**: High temperature, high entropy. Best for creative tasks.
+
+**Usage:**
+
+```python
+from somabrain.services.parameter_supervisor import ParameterSupervisor
+await ParameterSupervisor(config_svc).apply_preset(tenant="t1", preset_name="plastic")
+```
+
+See `docs/technical/configuration_optimization.md` for the full strategy.

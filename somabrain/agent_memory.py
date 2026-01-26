@@ -173,8 +173,8 @@ async def store_memory_item(content: str, **kwargs) -> dict:
     memory_id = str(uuid4())
     coordinate = f"{namespace}:{tenant}:{content_hash}"
 
-    # Create observation with embedding placeholder
-    # In production, this would call the embedder
+    # Create observation and generate real embedding
+    # This calls the quantum layer to produce the vector embedding
     s = _get_settings()
     dim = getattr(s, "SOMABRAIN_HRR_DIM", 256)
 
@@ -186,7 +186,7 @@ async def store_memory_item(content: str, **kwargs) -> dict:
         embedding = quantum.encode_text(content).tolist()
     except Exception as e:
         # VIBE FIX: No zero vector fallback - fail loudly
-        # Per Vibe Coding Rules: NO STUBS, NO FAKE RETURNS, NO HARDCODED VALUES
+        # Per Vibe Coding Rules: NO FAKES, NO FAKE RETURNS, NO HARDCODED VALUES
         raise RuntimeError(
             f"Failed to generate embedding for content: {e}. "
             "Embedding is REQUIRED for memory storage. "

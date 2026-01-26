@@ -28,6 +28,8 @@ from somabrain.tenant_validation import normalize_tenant_id, validate_tenant_id
 logger = logging.getLogger(__name__)
 
 
+import asyncio
+
 class TenantRegistry:
     """Centralized tenant management service with perfect architecture."""
 
@@ -36,36 +38,48 @@ class TenantRegistry:
 
         self.redis_url = redis_url or "redis://localhost:6379/0"
         self._redis: Optional[redis.Redis] = None
+        self._redis_loop: Optional[asyncio.AbstractEventLoop] = None
         self._tenant_cache: Dict[str, TenantMetadata] = {}
         self._exempt_cache: Set[str] = set()
         self._system_tenant_ids: Dict[str, str] = {}
         self._initialized = False
         self._cache_ttl = 300  # 5 minutes
 
+    async def _ensure_redis_connection(self) -> redis.Redis:
+        """Ensure active Redis connection on current loop."""
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            if not self._redis:
+                raise RuntimeError("No running event loop")
+            return self._redis
+
+        if self._redis and self._redis_loop is current_loop:
+            return self._redis
+
+        # Reconnect if loop changed or not connected
+        if self._redis:
+            try:
+                await self._redis.close()
+            except Exception:
+                pass
+
+        self._redis = redis.from_url(self.redis_url, decode_responses=True)
+        self._redis_loop = current_loop
+        # Simple ping to verify
+        # await self._redis.ping()
+        return self._redis
+
     async def initialize(self) -> None:
-        """Initialize tenant registry with system tenants.
-
-        The original implementation set ``self._initialized`` *after* creating
-        system tenants.  ``_create_system_tenants`` invokes ``register_tenant``
-        which itself called ``initialize`` when ``self._initialized`` was
-        ``False``.  This resulted in infinite recursion and the observed
-        ``maximum recursion depth exceeded`` errors.
-
-        The fix marks the registry as initialized **before** creating system
-        tenants.  Subsequent calls to ``register_tenant`` will see the flag set
-        and will not re‑enter ``initialize``.  All other logic remains
-        unchanged.
-        """
+        """Initialize tenant registry with system tenants."""
         if self._initialized:
             return
 
         try:
             # Initialise Redis connection first.
-            self._redis = redis.from_url(self.redis_url, decode_responses=True)
-            await self._redis.ping()
+            await self._ensure_redis_connection()
 
-            # Mark as initialised early to avoid recursive calls from
-            # ``register_tenant`` during system‑tenant creation.
+            # Mark as initialised early
             self._initialized = True
 
             # Create system tenants with proper UUIDs.
@@ -78,6 +92,53 @@ class TenantRegistry:
         except RedisError as e:
             logger.error("Failed to initialize tenant registry: %s", e)
             raise
+
+    # ... (skipping unchanged methods) ...
+
+    async def _store_tenant_metadata(self, metadata: TenantMetadata) -> None:
+        """Store tenant metadata in Redis."""
+        redis_conn = await self._ensure_redis_connection()
+
+        try:
+            key = f"tenant:{metadata.tenant_id}"
+            data = metadata.to_dict()
+
+            # Convert datetime objects to ISO strings
+            data["created_at"] = metadata.created_at.isoformat()
+            data["last_activity"] = metadata.last_activity.isoformat()
+            if metadata.expires_at:
+                data["expires_at"] = metadata.expires_at.isoformat()
+
+            # Store with TTL for temporary tenants
+            if metadata.expires_at:
+                ttl = int((metadata.expires_at - datetime.utcnow()).total_seconds())
+                if ttl > 0:
+                    await redis_conn.setex(key, ttl, json.dumps(data))
+                else:
+                    await redis_conn.set(key, json.dumps(data))
+            else:
+                await redis_conn.set(key, json.dumps(data))
+
+        except RedisError as e:
+            logger.error("Failed to store tenant metadata: %s", e)
+            raise
+
+    async def _load_tenant_metadata(self, tenant_id: str) -> Optional[TenantMetadata]:
+        """Load tenant metadata from Redis."""
+        redis_conn = await self._ensure_redis_connection()
+
+        try:
+            key = f"tenant:{tenant_id}"
+            data = await redis_conn.get(key)
+
+            if data:
+                return TenantMetadata.from_dict(json.loads(data))
+
+            return None
+
+        except RedisError as e:
+            logger.error("Failed to load tenant metadata: %s", e)
+            return None
 
     async def _create_system_tenants(self) -> None:
         """Create essential system tenants."""
@@ -368,33 +429,14 @@ class TenantRegistry:
             logger.error("Failed to store tenant metadata: %s", e)
             raise
 
-    async def _load_tenant_metadata(self, tenant_id: str) -> Optional[TenantMetadata]:
-        """Load tenant metadata from Redis."""
-        if not self._redis:
-            raise RuntimeError("Tenant registry not initialized")
-
-        try:
-            key = f"tenant:{tenant_id}"
-            data = await self._redis.get(key)
-
-            if data:
-                return TenantMetadata.from_dict(json.loads(data))
-
-            return None
-
-        except RedisError as e:
-            logger.error("Failed to load tenant metadata: %s", e)
-            return None
-
     async def _load_all_tenants(self) -> None:
         """Load all tenants from Redis into cache."""
-        if not self._redis:
-            return
+        redis_conn = await self._ensure_redis_connection()
 
         try:
             # Get all tenant keys
             pattern = "tenant:*"
-            keys = await self._redis.keys(pattern)
+            keys = await redis_conn.keys(pattern)
 
             # Load each tenant
             for key in keys:
@@ -418,8 +460,7 @@ class TenantRegistry:
         self, action: str, tenant_id: str, details: Dict[str, Any]
     ) -> None:
         """Audit log tenant operations."""
-        if not self._redis:
-            return
+        redis_conn = await self._ensure_redis_connection()
 
         try:
             audit_key = f"audit:tenant:{datetime.utcnow().strftime('%Y-%m-%d')}"
@@ -431,10 +472,10 @@ class TenantRegistry:
             }
 
             # Store audit entry
-            await self._redis.lpush(audit_key, json.dumps(audit_entry))
+            await redis_conn.lpush(audit_key, json.dumps(audit_entry))
 
             # Trim audit log to last 1000 entries
-            await self._redis.ltrim(audit_key, 0, 999)
+            await redis_conn.ltrim(audit_key, 0, 999)
 
         except RedisError as e:
             logger.error("Failed to write audit log: %s", e)
@@ -489,7 +530,10 @@ class TenantRegistry:
     async def close(self) -> None:
         """Close the tenant registry."""
         if self._redis:
-            await self._redis.close()
+            try:
+                await self._redis.close()
+            except Exception:
+                pass
             self._redis = None
 
         self._tenant_cache.clear()
@@ -498,3 +542,4 @@ class TenantRegistry:
         self._initialized = False
 
         logger.info("Tenant registry closed")
+

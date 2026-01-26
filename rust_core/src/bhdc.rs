@@ -206,13 +206,16 @@ pub struct PermutationBinder {
     perm_inv: Vec<usize>,
     #[pyo3(get)]
     pub mix: String,
+    /// Wiener regularization λ from GMD Theorem 3: λ* = (2/255)²/3
+    #[pyo3(get)]
+    pub lambda_reg: f64,
 }
 
 #[pymethods]
 impl PermutationBinder {
     #[new]
-    #[pyo3(signature = (dim, seed, _dtype="float32", mix="none"))]
-    pub fn new(dim: usize, seed: u64, _dtype: &str, mix: &str) -> Self {
+    #[pyo3(signature = (dim, seed, _dtype="float32", mix="none", lambda_reg=2.05e-5))]
+    pub fn new(dim: usize, seed: u64, _dtype: &str, mix: &str, lambda_reg: f64) -> Self {
         let mut rng = Pcg64::seed_from_u64(seed);
 
         // Generate random permutation
@@ -233,10 +236,19 @@ impl PermutationBinder {
             perm,
             perm_inv,
             mix: mix.to_string(),
+            lambda_reg,
         }
     }
 
     /// Bind: permute b, then elementwise multiply
+    /// For BHDC sparse hypervectors: c = a ⊙ π(b)
+    /// Invertible because: a = c ⊙ π(b) when values are {-1, 0, +1}
+    ///
+    /// Mathematical property: For binary vectors {-1, +1}:
+    ///   bind(a, b) = a * permute(b)
+    ///   unbind(bind(a, b), b) = a * permute(b) * permute(b) = a * 1 = a
+    ///
+    /// For sparse vectors with zeros, we preserve the structure.
     pub fn bind(&self, a: Vec<f64>, b: Vec<f64>) -> Vec<f64> {
         let b_perm = self.apply_perm(&b, &self.perm);
         let mut result: Vec<f64> = a.iter().zip(b_perm.iter()).map(|(x, y)| x * y).collect();
@@ -245,7 +257,7 @@ impl PermutationBinder {
             crate::mathcore::fwht_inplace(&mut result);
         }
 
-        // Normalize
+        // Normalize to unit length
         let norm: f64 = result.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
             for r in result.iter_mut() {
@@ -255,26 +267,45 @@ impl PermutationBinder {
         result
     }
 
-    /// Unbind: inverse of bind
+    /// Unbind: inverse of bind (GMD White Paper Theorem 3)
+    ///
+    /// For sparse BHDC vectors with zeros, use Wiener-optimal unbinding:
+    ///   v̂ = (c ⊙ π(b)) / (π(b)² + λ), where λ = 2.05e-5
+    ///
+    /// This handles the division-by-zero problem in sparse vectors by regularizing.
+    /// Mathematical basis: MMSE estimator for quantized/noisy memory recall.
     pub fn unbind(&self, c: Vec<f64>, b: Vec<f64>) -> Vec<f64> {
         let mut work = c.clone();
 
+        // If Hadamard was applied in bind, apply it in unbind (self-inverse: H*H = I)
         if self.mix == "hadamard" {
             crate::mathcore::fwht_inplace(&mut work);
         }
 
+        // Apply same permutation to b as in bind
         let b_perm = self.apply_perm(&b, &self.perm);
-        let result: Vec<f64> = work.iter().zip(b_perm.iter())
-            .map(|(x, y)| x / (y.abs() + 1e-8) * y.signum())
+
+        // GMD Theorem 3: Wiener-optimal unbinding
+        // v̂ = (c ⊙ π(b)) / (π(b)² + λ)
+        // λ from config (default: GMD Theorem 3 optimal λ* = (2/255)²/3)
+        let lambda = self.lambda_reg;
+
+        let mut result: Vec<f64> = work.iter().zip(b_perm.iter())
+            .map(|(x, y)| {
+                let numer = x * y;
+                let denom = y * y + lambda;
+                numer / denom
+            })
             .collect();
 
-        // Normalize
+        // Normalize to unit length
         let norm: f64 = result.iter().map(|x| x * x).sum::<f64>().sqrt();
         if norm > 1e-10 {
-            result.iter().map(|x| x / norm).collect()
-        } else {
-            result
+            for r in result.iter_mut() {
+                *r /= norm;
+            }
         }
+        result
     }
 
     /// Permute vector n times

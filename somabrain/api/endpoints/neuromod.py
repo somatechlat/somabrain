@@ -10,12 +10,19 @@ import logging
 
 from django.conf import settings
 from django.http import HttpRequest
+from typing import Optional
 from ninja import Router
+from pydantic import BaseModel
 
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
-from somabrain.schemas import NeuromodAdjustRequest
 from somabrain.tenant import get_tenant
+
+class NeuromodAdjustRequest(BaseModel):
+    dopamine: Optional[float] = None
+    serotonin: Optional[float] = None
+    noradrenaline: Optional[float] = None
+    acetylcholine: Optional[float] = None
 
 logger = logging.getLogger("somabrain.api.endpoints.neuromod")
 

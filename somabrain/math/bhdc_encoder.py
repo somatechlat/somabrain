@@ -89,10 +89,14 @@ class PermutationBinder:
         seed: int,
         dtype: Union[str, np.dtype] = "float32",
         mix: str = "none",
+        lambda_reg: float = 2.05e-5,  # GMD Theorem 3: λ* = (2/255)²/3
     ) -> None:
         self._dim = dim
         self._dtype = np.dtype(dtype)
-        self._rs = _rs.PermutationBinder(dim=dim, seed=seed, mix=mix)
+        self._lambda_reg = lambda_reg
+        self._rs = _rs.PermutationBinder(
+            dim=dim, seed=seed, mix=mix, lambda_reg=lambda_reg
+        )
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Bind two vectors: permute b, then elementwise multiply."""

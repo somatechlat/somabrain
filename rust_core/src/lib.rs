@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn test_bayesian_memory_snr() {
-        let mut mem = BayesianMemory::new(1024, 0.08, 2.05e-5);
+        let mut mem = BayesianMemory::new(1024, 0.08, 2.05e-5, 640.0);
         for _ in 0..10 {
             let binding: Vec<f64> = (0..1024).map(|i| (i as f64).sin()).collect();
             mem.update(binding);
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_bayesian_memory_gamma() {
-        let mut mem = BayesianMemory::new(2048, 0.08, 2.05e-5);
+        let mut mem = BayesianMemory::new(2048, 0.08, 2.05e-5, 640.0);
         for _ in 0..20 {
             let binding: Vec<f64> = (0..2048).map(|i| (i as f64).cos()).collect();
             mem.update(binding);
@@ -185,7 +185,7 @@ mod tests {
 
     #[test]
     fn test_capacity_estimation() {
-        let mem = BayesianMemory::new(2048, 0.08, 2.05e-5);
+        let mem = BayesianMemory::new(2048, 0.08, 2.05e-5, 640.0);
         let expected = (2048.0 / (640.0 * 0.08)) as usize;
         assert_eq!(mem.estimate_capacity(), expected);
     }

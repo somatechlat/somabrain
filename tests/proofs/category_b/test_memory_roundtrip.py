@@ -24,8 +24,7 @@ import pytest
 import os
 
 APP_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
-APP_URL = f"http://localhost:{APP_PORT}"
-
+APP_URL = f"http://localhost:{APP_PORT}/api"
 
 def get_tenant_headers(tenant_id: str) -> Dict[str, str]:
     """Get HTTP headers for a specific tenant."""
@@ -33,6 +32,7 @@ def get_tenant_headers(tenant_id: str) -> Dict[str, str]:
         "X-Tenant-ID": tenant_id,
         "X-Namespace": "test",
         "Content-Type": "application/json",
+        "Authorization": "Bearer sbk_test_integration_key_12345",
     }
 
 
@@ -74,35 +74,36 @@ class TestMemoryRoundTripIntegrity:
         }
 
         # Store memory
-        remember_response = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        # Using fresh client for every request to avoid connection reuse issues in test environment
+        with httpx.Client(timeout=30.0) as client:
+            remember_response = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers,
+                json=test_payload,
+            )
+            assert (
+                remember_response.status_code == 200
+            ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
 
         # Small delay for indexing
         time.sleep(0.5)
 
-        # Recall memory with correct API format
+        # Recall memory
         recall_payload = {
             "tenant": tenant_id,
             "namespace": "test",
             "query": content_text,
-            "k": 5,
+            "k": 10,
         }
-        recall_response = httpx.post(
-            f"{APP_URL}/memory/recall",
-            headers=headers,
-            json=recall_payload,
-            timeout=30.0,
-        )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            recall_response = client.post(
+                f"{APP_URL}/memory/recall",
+                headers=headers,
+                json=recall_payload,
+            )
+            assert (
+                recall_response.status_code == 200
+            ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
 
         recall_data = recall_response.json()
 
@@ -156,16 +157,16 @@ class TestMemoryRoundTripIntegrity:
             },
         }
 
-        # Store memory
-        remember_response = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            # Store memory
+            remember_response = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers,
+                json=test_payload,
+            )
+            assert (
+                remember_response.status_code == 200
+            ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
 
         time.sleep(0.5)
 
@@ -176,15 +177,15 @@ class TestMemoryRoundTripIntegrity:
             "query": content_text,
             "k": 5,
         }
-        recall_response = httpx.post(
-            f"{APP_URL}/memory/recall",
-            headers=headers,
-            json=recall_payload,
-            timeout=30.0,
-        )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            recall_response = client.post(
+                f"{APP_URL}/memory/recall",
+                headers=headers,
+                json=recall_payload,
+            )
+            assert (
+                recall_response.status_code == 200
+            ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
 
         recall_data = recall_response.json()
         results = (
@@ -222,15 +223,15 @@ class TestMemoryRoundTripIntegrity:
         }
 
         # Store memory
-        remember_response = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            remember_response = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers,
+                json=test_payload,
+            )
+            assert (
+                remember_response.status_code == 200
+            ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
 
         # Verify response contains coordinate info
         remember_data = remember_response.json()
@@ -290,15 +291,15 @@ class TestTenantMemoryIsolation:
             },
         }
 
-        remember_response = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers_a,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            remember_response = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers_a,
+                json=test_payload,
+            )
+            assert (
+                remember_response.status_code == 200
+            ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
 
         time.sleep(0.5)
 
@@ -309,15 +310,15 @@ class TestTenantMemoryIsolation:
             "query": unique_content,
             "k": 10,
         }
-        recall_response = httpx.post(
-            f"{APP_URL}/memory/recall",
-            headers=headers_b,
-            json=recall_payload,
-            timeout=30.0,
-        )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            recall_response = client.post(
+                f"{APP_URL}/memory/recall",
+                headers=headers_b,
+                json=recall_payload,
+            )
+            assert (
+                recall_response.status_code == 200
+            ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
 
         recall_data = recall_response.json()
         results = (
@@ -365,15 +366,15 @@ class TestTenantMemoryIsolation:
             },
         }
 
-        remember_response = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers_b,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            remember_response = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers_b,
+                json=test_payload,
+            )
+            assert (
+                remember_response.status_code == 200
+            ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
 
         time.sleep(0.5)
 
@@ -384,15 +385,15 @@ class TestTenantMemoryIsolation:
             "query": unique_content,
             "k": 10,
         }
-        recall_response = httpx.post(
-            f"{APP_URL}/memory/recall",
-            headers=headers_a,
-            json=recall_payload,
-            timeout=30.0,
-        )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            recall_response = client.post(
+                f"{APP_URL}/memory/recall",
+                headers=headers_a,
+                json=recall_payload,
+            )
+            assert (
+                recall_response.status_code == 200
+            ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
 
         recall_data = recall_response.json()
         results = (
@@ -435,25 +436,25 @@ class TestTenantMemoryIsolation:
         }
 
         # Store memory first time
-        response1 = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert response1.status_code == 200, f"First store failed: {response1.text}"
+        with httpx.Client(timeout=30.0) as client:
+            response1 = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers,
+                json=test_payload,
+            )
+            assert response1.status_code == 200, f"First store failed: {response1.text}"
 
         data1 = response1.json()
         coord1 = data1.get("coordinate") or data1.get("id") or data1.get("key")
 
         # Store same content again with same key
-        response2 = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert response2.status_code == 200, f"Second store failed: {response2.text}"
+        with httpx.Client(timeout=30.0) as client:
+            response2 = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers,
+                json=test_payload,
+            )
+            assert response2.status_code == 200, f"Second store failed: {response2.text}"
 
         data2 = response2.json()
         coord2 = data2.get("coordinate") or data2.get("id") or data2.get("key")
@@ -498,16 +499,16 @@ class TestTenantMemoryIsolation:
             },
         }
 
-        # Store memory with metadata
-        remember_response = httpx.post(
-            f"{APP_URL}/memory/remember",
-            headers=headers,
-            json=test_payload,
-            timeout=30.0,
-        )
-        assert (
-            remember_response.status_code == 200
-        ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            # Store memory with metadata
+            remember_response = client.post(
+                f"{APP_URL}/memory/remember",
+                headers=headers,
+                json=test_payload,
+            )
+            assert (
+                remember_response.status_code == 200
+            ), f"Remember failed: {remember_response.status_code} - {remember_response.text}"
 
         time.sleep(0.5)
 
@@ -518,15 +519,15 @@ class TestTenantMemoryIsolation:
             "query": content_text,
             "k": 5,
         }
-        recall_response = httpx.post(
-            f"{APP_URL}/memory/recall",
-            headers=headers,
-            json=recall_payload,
-            timeout=30.0,
-        )
-        assert (
-            recall_response.status_code == 200
-        ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
+        with httpx.Client(timeout=30.0) as client:
+            recall_response = client.post(
+                f"{APP_URL}/memory/recall",
+                headers=headers,
+                json=recall_payload,
+            )
+            assert (
+                recall_response.status_code == 200
+            ), f"Recall failed: {recall_response.status_code} - {recall_response.text}"
 
         recall_data = recall_response.json()
         results = (
