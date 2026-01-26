@@ -248,14 +248,16 @@ class WorkingMemory:
             vector = item_id_or_vector
             payload = vector_or_payload if isinstance(vector_or_payload, dict) else {}  # type: ignore[assignment] - Union narrowing
 
-            # Handle both dict and numpy arrays for shape access
-            shape_val = (
-                (vector.shape[-1] if hasattr(vector, "shape") else len(vector))
-                if hasattr(vector, "shape") and hasattr(vector, "__getitem__")
-                else 0
-            )
-            dim_val = self.dim
-            vector_np: Any = vector if hasattr(vector, "shape") else np.array(vector)
+        # Handle both dict and numpy arrays for shape access - MUST be outside if/else
+        # to ensure shape_val, dim_val, vector_np are always defined
+        from typing import Any
+        vector_np: Any = vector if hasattr(vector, "shape") else np.array(vector)
+        shape_val = (
+            (vector_np.shape[-1] if hasattr(vector_np, "shape") else len(vector_np))
+            if hasattr(vector_np, "shape") and hasattr(vector_np, "__getitem__")
+            else 0
+        )
+        dim_val = self.dim
 
         if shape_val != dim_val:
             if shape_val < dim_val:

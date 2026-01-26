@@ -69,7 +69,7 @@ except ImportError:
 
 
 def _deprecated_function(*args, **kwargs):
-    """Placeholder for deprecated FastAPI endpoints."""
+    """Deprecated FastAPI function - use Django Ninja instead."""
     raise NotImplementedError(
         "This function was part of FastAPI app.py and has been removed. "
         "Use Django Ninja API endpoints instead."

@@ -48,7 +48,7 @@ def _initialize_embedder() -> Any:
         logger.error("Embedder is REQUIRED for SomaBrain operation.")
         logger.error("Please check your ML backend configuration.")
 
-        # Instead of stub, raise the error so the system doesn't silently fail
+        # VIBE: Raise error to ensure system fails loudly (no silent fallbacks)
         raise RuntimeError(
             f"Embedder initialization failed: {e}. "
             "SomaBrain requires a working embedder. Check SOMABRAIN_EMBEDDER_PROVIDER setting."

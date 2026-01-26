@@ -376,15 +376,15 @@ pub struct BayesianMemory {
 #[pymethods]
 impl BayesianMemory {
     #[new]
-    #[pyo3(signature = (dimension, eta=0.08, lambda_reg=2.05e-5))]
-    pub fn new(dimension: usize, eta: f64, lambda_reg: f64) -> Self {
+    #[pyo3(signature = (dimension, eta, lambda_reg, alpha))]
+    pub fn new(dimension: usize, eta: f64, lambda_reg: f64, alpha: f64) -> Self {
         BayesianMemory {
             dimension,
             m: vec![0.0; dimension],
             cov_diag: vec![0.01; dimension],
             eta: eta.clamp(0.01, 0.5),
             lambda: lambda_reg,
-            alpha: 640.0,
+            alpha,
             items_stored: 0,
         }
     }

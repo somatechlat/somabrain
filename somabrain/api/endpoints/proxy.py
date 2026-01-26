@@ -10,12 +10,19 @@ import logging
 
 from django.conf import settings
 from django.http import HttpRequest
+from typing import Optional, Dict, Any
 from ninja import Router
+from pydantic import BaseModel
 
 from somabrain.api.auth import bearer_auth
 from somabrain.auth import require_auth
-from somabrain.schemas import ProxyRequest
 from somabrain.tenant import get_tenant
+
+class ProxyRequest(BaseModel):
+    service: str
+    endpoint: str
+    target_url: Optional[str] = None
+    payload: Optional[Dict[str, Any]] = None
 
 logger = logging.getLogger("somabrain.api.endpoints.proxy")
 

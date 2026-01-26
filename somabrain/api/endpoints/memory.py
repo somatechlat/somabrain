@@ -65,10 +65,19 @@ def _get_wm():
     return None
 
 
+from pydantic import BaseModel, Field
+
+class RecallRequest(BaseModel):
+    query: str = Field(..., description="Query text")
+    top_k: int = Field(10, description="Max results")
+    layer: str = Field("both", description="wm, ltm, or both")
+    tenant: Optional[str] = None
+    namespace: Optional[str] = None
+
 @router.post("/recall", auth=bearer_auth)
-def recall_memory(request: HttpRequest, payload: dict):
+async def recall_memory(request: HttpRequest, payload: RecallRequest):
     """Unified recall endpoint backed by retrieval pipeline."""
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = await get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
 
     pool = _get_memory_pool()
@@ -80,9 +89,9 @@ def recall_memory(request: HttpRequest, payload: dict):
     MemoryService(pool, namespace)
 
     # Extract query parameters
-    payload.get("query", "")
-    top_k = int(payload.get("top_k", 10))
-    layer = payload.get("layer", "both")
+    query = payload.query
+    top_k = payload.top_k
+    layer = payload.layer
 
     t0 = time.perf_counter()
 

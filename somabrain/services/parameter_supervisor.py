@@ -19,6 +19,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, Tuple
 
+from somabrain.presets import get_preset
 from somabrain.services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,30 @@ class ParameterSupervisor:
             snapshot.metrics,
         )
         # No automatic config mutation yet; keep behaviour deterministic for local runs.
+
+    async def apply_preset(self, tenant: str, preset_name: str, actor: str = "system") -> None:
+        """Apply a cognitive preset to a specific tenant.
+
+        Args:
+            tenant: The tenant ID (e.g., 'default').
+            preset_name: The name of the preset ('stable', 'plastic', 'lateral').
+            actor: The entity requesting the change.
+        """
+        preset = get_preset(preset_name)
+        logger.info(
+            "Applying preset '%s' to tenant '%s' (actor=%s)",
+            preset.name,
+            tenant,
+            actor,
+        )
+
+        # Patch the tenant configuration with the preset's parameters
+        await self._config_service.patch_tenant(
+            tenant=tenant,
+            patch=preset.params,
+            actor=actor,
+        )
+
 
 
 __all__ = ["MetricsSnapshot", "ParameterSupervisor"]

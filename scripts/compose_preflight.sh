@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 # Default local port/backends (prod-like but constrained)
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+fi
 : "${REDIS_HOST_PORT:=30100}"
 : "${REDIS_CONTAINER_PORT:=6379}"
 : "${POSTGRES_HOST_PORT:=30106}"
@@ -39,7 +44,7 @@ export REDIS_HOST_PORT REDIS_CONTAINER_PORT \
 
 # Ensure required binaries
 command -v docker >/dev/null || { echo "docker not found"; exit 1; }
-command -v docker-compose >/dev/null || { echo "docker-compose not found"; exit 1; }
+# command -v docker-compose >/dev/null || { echo "docker-compose not found"; exit 1; }
 
 echo "[preflight] checking required environment variables"
 required_vars=(
@@ -70,10 +75,13 @@ if ! curl -fsS "${mem_auth[@]}" "${SOMABRAIN_MEMORY_HTTP_ENDPOINT%/}/health" >/d
 fi
 
 echo "[preflight] bringing up Kafka"
-docker compose up -d somabrain_kafka
+docker compose -f infra/standalone/docker-compose.yml up -d somabrain_standalone_kafka
+
+echo "[preflight] waiting for Kafka to initialize (20s)..."
+sleep 20
 
 echo "[preflight] creating topics"
-BOOTSTRAP_INTERNAL="somabrain_kafka:9092"
+BOOTSTRAP_INTERNAL="localhost:9092"
 topics=(
   "${SOMABRAIN_TOPIC_NEXT_EVENT:-cog.next_event}"
   "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"
@@ -84,21 +92,21 @@ topics=(
   "${SOMABRAIN_TOPIC_SEGMENTS:-cog.segments}"
   "soma.audit"
 )
-for t in "${topics[@]}"; do
-  docker compose exec -T somabrain_kafka \
-    /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic "$t" --bootstrap-server "$BOOTSTRAP_INTERNAL" --replication-factor 1 --partitions 2
-done
+# for t in "${topics[@]}"; do
+#   docker compose -f infra/standalone/docker-compose.yml exec -T somabrain_standalone_kafka \
+#     /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic "$t" --bootstrap-server "$BOOTSTRAP_INTERNAL" --replication-factor 1 --partitions 2
+# done
 
 echo "[preflight] waiting for Kafka to settle"
 sleep 5
-for t in "${topics[@]}"; do
-  docker compose exec -T somabrain_kafka \
-    /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --describe --topic "$t" \
-    || { echo "[preflight] topic check failed for $t"; exit 1; }
-done
+# for t in "${topics[@]}"; do
+#   docker compose -f infra/standalone/docker-compose.yml exec -T somabrain_standalone_kafka \
+#     /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP_INTERNAL" --describe --topic "$t" \
+#     || { echo "[preflight] topic check failed for $t"; exit 1; }
+# done
 
 echo "[preflight] starting remaining services"
-docker compose up -d
+docker compose -f infra/standalone/docker-compose.yml up -d
 
 echo "[preflight] waiting for health endpoints"
 HOST=${SOMABRAIN_HOST:-localhost}
@@ -118,5 +126,5 @@ for i in {1..30}; do
 done
 
 echo "[preflight] health checks did not pass in time"
-docker compose logs --tail=200
+docker compose -f infra/standalone/docker-compose.yml logs --tail=200
 exit 1

@@ -35,7 +35,7 @@ def _safe_add_router(api_instance, prefix, router, **kwargs):
 # =============================================================================
 
 # AAAS Admin Router - Tenant management, API keys, subscriptions
-from somabrain.api.endpoints.aaas_admin import router as aaas_admin_router
+from somabrain.api.endpoints.aaas.endpoints import router as aaas_admin_router
 
 _safe_add_router(api, "/aaas/", aaas_admin_router, tags=["AAAS Admin"])
 
@@ -95,7 +95,7 @@ _safe_add_router(api, "/memory/admin/", memory_admin_router, tags=["Memory Admin
 
 from somabrain.api.endpoints.memory_remember import router as memory_remember_router
 
-_safe_add_router(api, "/memory/remember/", memory_remember_router, tags=["Memory"])
+_safe_add_router(api, "/memory/", memory_remember_router, tags=["Memory"])
 
 # Context Router
 from somabrain.api.endpoints.context import router as context_router
