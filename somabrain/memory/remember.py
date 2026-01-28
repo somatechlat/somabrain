@@ -326,7 +326,6 @@ async def aremember_single(
     request_id: str | None,
     require_healthy_fn: Callable,
     store_http_async_fn: Callable,
-    sync_fallback_fn: Callable,
     enrich_payload_fn: Callable,
     has_async_transport: bool,
 ) -> Tuple[float, float, float]:
@@ -339,42 +338,35 @@ async def aremember_single(
         request_id: Optional request ID for tracing.
         require_healthy_fn: Function to check SFM health.
         store_http_async_fn: Async function to store memory.
-        sync_fallback_fn: Sync fallback function.
         enrich_payload_fn: Function to enrich payload.
         has_async_transport: Whether async HTTP transport is available.
 
     Returns:
         Coordinate tuple for stored memory.
     """
-    import asyncio
-
     require_healthy_fn()
 
-    if has_async_transport:
-        try:
-            enriched, universe, compat_hdr = enrich_payload_fn(payload, coord_key)
-            coord = _stable_coord(f"{universe}::{coord_key}")
-            enriched = dict(enriched)
-            enriched.setdefault("coordinate", coord)
-            memory_type = str(
-                enriched.get("memory_type") or enriched.get("type") or "episodic"
-            )
-            body = {
-                "coord": f"{coord[0]},{coord[1]},{coord[2]}",
-                "payload": enriched,
-                "memory_type": memory_type,
-            }
-            rid = request_id or str(uuid.uuid4())
-            rid_hdr = {"X-Request-ID": rid}
-            rid_hdr.update(compat_hdr)
-            ok, response_data = await store_http_async_fn(body, rid_hdr)
-            if ok and response_data is not None:
-                server_coord = _extract_memory_coord(response_data, idempotency_key=rid)
-                if server_coord:
-                    return server_coord
-            return coord
-        except Exception:
-            pass
+    if not has_async_transport:
+        raise RuntimeError("Async memory transport unavailable")
 
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, sync_fallback_fn, coord_key, payload)
+    enriched, universe, compat_hdr = enrich_payload_fn(payload, coord_key)
+    coord = _stable_coord(f"{universe}::{coord_key}")
+    enriched = dict(enriched)
+    enriched.setdefault("coordinate", coord)
+    memory_type = str(
+        enriched.get("memory_type") or enriched.get("type") or "episodic"
+    )
+    body = {
+        "coord": f"{coord[0]},{coord[1]},{coord[2]}",
+        "payload": enriched,
+        "memory_type": memory_type,
+    }
+    rid = request_id or str(uuid.uuid4())
+    rid_hdr = {"X-Request-ID": rid}
+    rid_hdr.update(compat_hdr)
+    ok, response_data = await store_http_async_fn(body, rid_hdr)
+    if ok and response_data is not None:
+        server_coord = _extract_memory_coord(response_data, idempotency_key=rid)
+        if server_coord:
+            return server_coord
+    raise RuntimeError("Memory store failed: no server coordinate returned")
