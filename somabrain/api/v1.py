@@ -59,6 +59,11 @@ from somabrain.api.endpoints.admin_journal import router as admin_journal_router
 
 _safe_add_router(api, "/admin/journal/", admin_journal_router, tags=["Admin"])
 
+# Brain Settings Router
+from somabrain.api.endpoints.brain_settings import router as brain_settings_router
+
+_safe_add_router(api, "/brain/", brain_settings_router, tags=["Brain Settings"])
+
 # Cognitive Router
 from somabrain.api.endpoints.cognitive import router as cognitive_router
 

@@ -27,13 +27,23 @@ def _service_available() -> bool:
     A ``HEAD`` request is sufficient and inexpensive. If the request raises an
     exception we treat the service as unavailable and skip the test.
     """
+    if not settings.configured:
+        settings.configure(
+            SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:10101",
+            SOMABRAIN_LOG_LEVEL="INFO",
+            SECRET_KEY="test-secret",
+            INSTALLED_APPS=["somabrain"],
+        )
     endpoint = getattr(
-        settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:10101"
+        settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101"
     )
     try:
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.get("/health")
-            return resp.status_code < 500
+            # If we get a response, the service is reachable.
+            # 503 Service Unavailable is reachable but unhealthy, so we return True
+            # to let the main test check 'healthy' status properly.
+            return resp.status_code < 500 or resp.status_code == 503
     except Exception as exc:
         logger.warning("Memory service not reachable at %s: %s", endpoint, exc)
         return False
@@ -50,8 +60,17 @@ def test_memory_remember_and_recall() -> None:
     4. Calls :meth:`MemoryClient.recall` with a query that should match the
        stored content and asserts that the payload appears in the results.
     """
+
+    if not settings.configured:
+        settings.configure(
+            SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:10101",
+            SOMABRAIN_LOG_LEVEL="INFO",
+            SECRET_KEY="test-secret",
+            INSTALLED_APPS=["somabrain"],
+        )
+
     if not _service_available():
-        pytest.skip("Memory service not reachable; skipping e2e test")
+        pytest.fail("Memory service not reachable at http://localhost:10101 - test failed")
 
     from tests.integration.infra_config import AUTH
 

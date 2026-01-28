@@ -433,10 +433,6 @@ class Settings(BaseSettings):
     entropy_cap: Optional[float] = Field(
         default=_float_env("SOMABRAIN_ENTROPY_CAP", 0.0)
     )
-    # Global learning toggle for advanced features
-    enable_advanced_learning: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_ENABLE_ADVANCED_LEARNING", True)
-    )
 
     # OPA behaviour knobs
     opa_allow_on_error: bool = Field(

@@ -49,36 +49,58 @@ class AdaptationEngineBridge:
 
     def __init__(
         self,
-        learning_rate: float = 0.05,
+        learning_rate: Optional[float] = None,
         use_rust: bool = True,
+        tenant_id: str = "default",
     ) -> None:
         """Initialize bridge with optional Rust backend."""
+        from somabrain.brain_settings.models import BrainSetting
+
+        if learning_rate is None:
+            learning_rate = BrainSetting.get("adapt_lr", tenant_id)
+
         self._use_rust = use_rust and RUST_ADAPTATION_AVAILABLE
+        self._tenant_id = tenant_id
 
         if self._use_rust:
             self._rust_engine = RustAdaptationEngine(learning_rate)
             logger.debug("Using Rust AdaptationEngine")
         else:
             self._rust_engine = None
-            # State for Python fallback
-            self._retrieval = {"alpha": 1.0, "beta": 0.2, "gamma": 0.1, "tau": 0.7}
-            self._utility = {"lambda_": 1.0, "mu": 0.1, "nu": 0.05}
+            # State for Python fallback - NO MAGIC NUMBERS
+            self._retrieval = {
+                "alpha": BrainSetting.get("retrieval_alpha", tenant_id),
+                "beta": BrainSetting.get("retrieval_beta", tenant_id),
+                "gamma": BrainSetting.get("retrieval_gamma", tenant_id),
+                "tau": BrainSetting.get("retrieval_tau", tenant_id),
+            }
+            self._utility = {
+                "lambda_": BrainSetting.get("utility_lambda", tenant_id),
+                "mu": BrainSetting.get("utility_mu", tenant_id),
+                "nu": BrainSetting.get("utility_nu", tenant_id),
+            }
             self._learning_rate = learning_rate
             self._base_lr = learning_rate
             self._feedback_count = 0
+            # Constraints and gains from settings (adapt category)
             self._constraints = {
-                "alpha": (0.1, 2.0),
-                "gamma": (0.0, 1.0),
-                "lambda_": (0.1, 2.0),
-                "mu": (0.0, 0.5),
-                "nu": (0.0, 0.2),
+                "alpha": (BrainSetting.get("adapt_alpha_min", tenant_id),
+                          BrainSetting.get("adapt_alpha_max", tenant_id)),
+                "gamma": (BrainSetting.get("adapt_gamma_min", tenant_id),
+                          BrainSetting.get("adapt_gamma_max", tenant_id)),
+                "lambda_": (BrainSetting.get("adapt_lambda_min", tenant_id),
+                            BrainSetting.get("adapt_lambda_max", tenant_id)),
+                "mu": (BrainSetting.get("adapt_mu_min", tenant_id),
+                       BrainSetting.get("adapt_mu_max", tenant_id)),
+                "nu": (BrainSetting.get("adapt_nu_min", tenant_id),
+                       BrainSetting.get("adapt_nu_max", tenant_id)),
             }
             self._gains = {
-                "alpha": 0.1,
-                "gamma": 0.05,
-                "lambda_": 0.1,
-                "mu": 0.05,
-                "nu": 0.02,
+                "alpha": BrainSetting.get("adapt_gain_alpha", tenant_id),
+                "gamma": BrainSetting.get("adapt_gain_gamma", tenant_id),
+                "lambda_": BrainSetting.get("adapt_gain_lambda", tenant_id),
+                "mu": BrainSetting.get("adapt_gain_mu", tenant_id),
+                "nu": BrainSetting.get("adapt_gain_nu", tenant_id),
             }
 
     @property

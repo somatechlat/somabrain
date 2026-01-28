@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "somabrain",  # Main app
     "somabrain.aaas",  # AAAS: tenants, subscriptions, API keys
+    "somabrain.brain_settings",  # GMD MathCore settings
     "ninja",  # Django Ninja
 ]
 
@@ -345,7 +346,15 @@ SOMABRAIN_MEMORY_HTTP_TOKEN = env.str(
 SOMABRAIN_MEMORY_MAX = env.str("SOMABRAIN_MEMORY_MAX", default="10GB")
 MEMORY_DB_PATH = env.str("MEMORY_DB_PATH", default="./data/memory.db")
 
-# Memory weighting
+# Memory Backend Mode Selection (AAAS Feature)
+# "http"   = Use HTTP client to external SomaFractalMemory service (default)
+# "direct" = Import SomaFractalMemory directly (AAAS mode, requires 'aaas' extras)
+SOMABRAIN_MEMORY_MODE = env.str("SOMABRAIN_MEMORY_MODE", default="http")
+if SOMABRAIN_MEMORY_MODE not in ("http", "direct"):
+    raise ValueError(
+        f"Invalid SOMABRAIN_MEMORY_MODE: {SOMABRAIN_MEMORY_MODE}. "
+        "Must be 'http' or 'direct'."
+    )
 SOMABRAIN_MEMORY_ENABLE_WEIGHTING = env.bool(
     "SOMABRAIN_FF_MEMORY_WEIGHTING",
     default=env.bool("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", default=False),
@@ -518,9 +527,6 @@ SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL = env.int(
 )
 SOMABRAIN_ENTROPY_CAP_ENABLED = env.bool("SOMABRAIN_ENTROPY_CAP_ENABLED", default=False)
 SOMABRAIN_ENTROPY_CAP = env.float("SOMABRAIN_ENTROPY_CAP", default=0.0)
-SOMABRAIN_ENABLE_ADVANCED_LEARNING = env.bool(
-    "SOMABRAIN_ENABLE_ADVANCED_LEARNING", default=True
-)
 SOMABRAIN_LEARNING_RATE_DYNAMIC = env.bool(
     "SOMABRAIN_LEARNING_RATE_DYNAMIC", default=False
 )

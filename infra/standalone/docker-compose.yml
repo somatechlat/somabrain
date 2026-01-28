@@ -435,8 +435,8 @@ services:
         condition: service_healthy
       somabrain_standalone_postgres:
         condition: service_healthy
-      somabrain_standalone_milvus:
-        condition: service_healthy
+    #      somabrain_standalone_milvus:
+    #        condition: service_healthy
     networks:
       - somabrain_standalone_net
     # Ensure containers can reach host services (e.g., external memory on 9595)
@@ -444,7 +444,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       # Use external memory service configured via environment variables (no mock)
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somafractalmemory_standalone_api:10101"
       SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
       SOMABRAIN_PORT: "${SOMABRAIN_PORT:-30101}"
@@ -515,7 +515,7 @@ services:
       - somabrain_standalone_net
     environment:
       # Explicitly require a real external memory service; no dev fallback
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somafractalmemory_standalone_api:10101"
       SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
