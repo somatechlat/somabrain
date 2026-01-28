@@ -48,12 +48,24 @@ class TraceConfig:
         Numerical guard to avoid division by zero during renormalisation.
     """
 
-    dim: int = 1024
-    eta: float = 0.08
+    dim: Optional[int] = None
+    eta: Optional[float] = None
     rotation_enabled: bool = True
     rotation_seed: int = 0
-    cleanup_topk: int = 64
+    cleanup_topk: Optional[int] = None
     epsilon: float = 1e-12
+
+    def __post_init__(self) -> None:
+        """Initialize defaults from brain_settings if not provided."""
+        from somabrain.brain_settings.models import BrainSetting
+
+        # Use 'default' tenant as fallback for global defaults
+        if self.dim is None:
+            self.dim = BrainSetting.get("quantum_dim", "default")
+        if self.eta is None:
+            self.eta = BrainSetting.get("gmd_eta", "default")
+        if self.cleanup_topk is None:
+            self.cleanup_topk = BrainSetting.get("cleanup_topk", "default")
 
     def validate(self) -> "TraceConfig":
         """Execute validate."""

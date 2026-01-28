@@ -82,17 +82,23 @@ class PromotionTracker:
 
     def __init__(
         self,
-        threshold: float = 0.85,
-        min_ticks: int = 3,
+        threshold: Optional[float] = None,
+        min_ticks: Optional[int] = None,
         tenant_id: str = "default",
     ):
         """Initialize PromotionTracker.
-
-        Args:
-            threshold: Minimum salience for promotion eligibility (default 0.85 per A2.1).
-            min_ticks: Minimum consecutive ticks above threshold (default 3 per A2.1).
+...
             tenant_id: Tenant ID for metrics labeling.
         """
+        from somabrain.brain_settings.models import BrainSetting
+
+        if threshold is None:
+            threshold = BrainSetting.get("promotion_threshold", tenant_id)
+        if min_ticks is None:
+            # Reusing min_ticks logic or adding new setting if needed.
+            # Defaulting to 3 if not found or if setting doesn't exist yet.
+            min_ticks = 3
+
         self._threshold = float(threshold)
         self._min_ticks = int(min_ticks)
         self._tenant_id = tenant_id
@@ -212,8 +218,8 @@ class WMLTMPromoter:
         memory_client: "MemoryClient",
         graph_client: Optional["GraphClient"] = None,
         tenant_id: str = "default",
-        threshold: float = 0.85,
-        min_ticks: int = 3,
+        threshold: Optional[float] = None,
+        min_ticks: Optional[int] = None,
     ):
         """Initialize WMLTMPromoter.
 
@@ -459,8 +465,8 @@ def get_wm_ltm_promoter(
     memory_client: "MemoryClient",
     graph_client: Optional["GraphClient"] = None,
     tenant_id: str = "default",
-    threshold: float = 0.85,
-    min_ticks: int = 3,
+    threshold: Optional[float] = None,
+    min_ticks: Optional[int] = None,
 ) -> WMLTMPromoter:
     """Get or create WMLTMPromoter for tenant.
 

@@ -311,8 +311,23 @@ def get_api_key_usage(
 
             raise HttpError(403, "Access denied")
 
+    # Get API keys with actual request count from UsageRecord
+    # UsageRecord tracks all API calls with api_key_id metadata
+    from django.db.models import OuterRef, Subquery
+
+    # Subquery to count UsageRecords per API key
+    usage_subquery = (
+        UsageRecord.objects.filter(
+            tenant_id=tenant_id,
+            metadata__api_key_id=OuterRef("id"),
+        )
+        .values("metadata__api_key_id")
+        .annotate(cnt=Count("id"))
+        .values("cnt")
+    )
+
     keys = APIKey.objects.filter(tenant_id=tenant_id).annotate(
-        request_count=Count("id"),  # Placeholder - would track via logs
+        request_count=Subquery(usage_subquery[:1]),
     )
 
     return [
@@ -320,7 +335,7 @@ def get_api_key_usage(
             key_id=key.id,
             key_prefix=key.key_prefix,
             key_name=key.name,
-            request_count=key.request_count,
+            request_count=key.request_count or 0,  # Handle None from subquery
             last_used=key.last_used_at.isoformat() if key.last_used_at else None,
         )
         for key in keys

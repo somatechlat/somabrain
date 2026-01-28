@@ -21,8 +21,20 @@ from .superposed_trace import CleanupIndex, SuperposedTrace, TraceConfig
 class LayerPolicy:
     """Policy parameters for a memory layer."""
 
-    threshold: float = 0.65  # minimum cleanup score required to accept the hit
-    promote_margin: float = 0.1  # margin requirement to promote into the next tier
+    threshold: Optional[float] = None  # minimum cleanup score required to accept the hit
+    promote_margin: Optional[float] = None  # margin requirement to promote into the next tier
+
+    def __post_init__(self) -> None:
+        """Initialize defaults from brain_settings if not provided."""
+        from somabrain.brain_settings.models import BrainSetting
+
+        # Explicitly bypass frozen for __post_init__ or use object.__setattr__
+        if self.threshold is None:
+            object.__setattr__(self, "threshold", BrainSetting.get("cleanup_threshold", "default"))
+        if self.promote_margin is None:
+            object.__setattr__(
+                self, "promote_margin", BrainSetting.get("cleanup_promote_margin", "default")
+            )
 
     def validate(self) -> "LayerPolicy":
         """Execute validate."""
@@ -72,9 +84,7 @@ class TieredMemory:
         self.wm = SuperposedTrace(wm_cfg, cleanup_index=wm_cleanup_index)
         self.ltm = SuperposedTrace(ltm_cfg, cleanup_index=ltm_cleanup_index)
         self._wm_policy = (wm_policy or LayerPolicy()).validate()
-        self._ltm_policy = (
-            ltm_policy or LayerPolicy(threshold=0.55, promote_margin=0.05)
-        ).validate()
+        self._ltm_policy = (ltm_policy or LayerPolicy()).validate()
         self._promotion_callback = promotion_callback
 
     # ------------------------------------------------------------------

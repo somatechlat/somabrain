@@ -11,6 +11,8 @@ import time
 
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from ninja.errors import HttpError
+from .memory_client import memory_client
+from .degradation import degradation_manager
 
 logger = logging.getLogger("somabrain.cognitive")
 

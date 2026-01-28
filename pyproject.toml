@@ -62,6 +62,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# AAAS Mode: Agent As A Service - direct SomaFractalMemory import for sub-ms latency
+# Install with: pip install somabrain[aaas]
+aaas = [
+  "somafractalmemory",
+]
 dev = [
   "pytest",
   "pytest-django",

@@ -304,9 +304,11 @@ class QuantumLayer:
         fc = np.fft.rfft(c_vec).astype(np.complex128)
         fb = np.fft.rfft(b_vec).astype(np.complex128)
 
-        # Wiener filter λ from Settings (GMD Theorem 3: λ* = (2/255)²/3)
-        s = _get_settings()
-        lambda_reg = getattr(s, "SOMABRAIN_GMD_LAMBDA_REG", 2.05e-5)
+        # Wiener filter λ from GMD Theorem 3 (λ* = (2/255)²/3)
+        # NO MAGIC NUMBERS: use brain_settings
+        from somabrain.brain_settings.models import BrainSetting
+
+        lambda_reg = BrainSetting.get("gmd_lambda_reg", "default")
         fb_conj = np.conj(fb)
         fb_power = np.abs(fb) ** 2 + lambda_reg
 
@@ -474,7 +476,7 @@ class QuantumLayer:
         *,
         use_wiener: bool = True,
         density_matrix: "DensityMatrix" = None,
-        alpha: float = 0.5,
+        alpha: float | None = None,
     ) -> tuple[str, float]:
         """Execute cleanup.
 
@@ -485,6 +487,11 @@ class QuantumLayer:
 
         _ = use_wiener  # retained for signature compatibility
         query = self._ensure_vector(q, name="cleanup.query")
+
+        from somabrain.brain_settings.models import BrainSetting
+
+        if alpha is None:
+            alpha = BrainSetting.get("cleanup_alpha", "default")
         best_score = -1.0
         best_id = ""
         for key, vec in anchors.items():
@@ -550,14 +557,11 @@ def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
 
 
 def bind_unitary(a: np.ndarray, role: object) -> np.ndarray:
-    """Execute bind unitary.
+    """Execute bind unitary."""
+    from somabrain.brain_settings.models import BrainSetting
 
-    Args:
-        a: The a.
-        role: The role.
-    """
-
-    q = QuantumLayer(HRRConfig(dim=len(a), seed=42))
+    seed = BrainSetting.get("global_seed", "default")
+    q = QuantumLayer(HRRConfig(dim=len(a), seed=seed))
     if isinstance(role, str):
         return q.bind_unitary(a, role)
     return q.bind(a, np.asarray(role))
@@ -566,15 +570,11 @@ def bind_unitary(a: np.ndarray, role: object) -> np.ndarray:
 def unbind_exact_or_tikhonov_or_wiener(
     c: np.ndarray, role: object, snr_db: float | None = None
 ) -> np.ndarray:
-    """Execute unbind exact or tikhonov or wiener.
+    """Execute unbind exact or tikhonov or wiener."""
+    from somabrain.brain_settings.models import BrainSetting
 
-    Args:
-        c: The c.
-        role: The role.
-        snr_db: The snr_db.
-    """
-
-    q = QuantumLayer(HRRConfig(dim=len(c), seed=42))
+    seed = BrainSetting.get("global_seed", "default")
+    q = QuantumLayer(HRRConfig(dim=len(c), seed=seed))
     if isinstance(role, str):
         return q.unbind_exact_unitary(c, role)
     if snr_db is None:

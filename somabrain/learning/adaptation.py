@@ -83,29 +83,27 @@ class AdaptationEngine:
     ) -> None:
         """Initialize the instance."""
 
-        if settings and not getattr(settings, "enable_advanced_learning", True):
-            raise RuntimeError(
-                "Advanced learning is disabled; set SOMABRAIN_ENABLE_ADVANCED_LEARNING=1 to enable adaptation."
-            )
         if retrieval is None:
+            from somabrain.brain_settings.models import BrainSetting
             from somabrain.context.builder import RetrievalWeights as RW
 
+            # NO MAGIC NUMBERS: use brain_settings DB
+            tid = tenant_id or "default"
             retrieval = RW(
-                getattr(settings, "retrieval_alpha", 1.0) if settings else 1.0,
-                getattr(settings, "retrieval_beta", 0.2) if settings else 0.2,
-                getattr(settings, "retrieval_gamma", 0.1) if settings else 0.1,
-                getattr(settings, "retrieval_tau", 0.7) if settings else 0.7,
+                BrainSetting.get("retrieval_alpha", tid),
+                BrainSetting.get("retrieval_beta", tid),
+                BrainSetting.get("retrieval_gamma", tid),
+                BrainSetting.get("retrieval_tau", tid),
             )
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
+        from somabrain.brain_settings.models import BrainSetting
+
+        tid = tenant_id or "default"
         lr = (
             learning_rate
             if learning_rate is not None
-            else (
-                getattr(settings, "adaptation_learning_rate", 0.05)
-                if settings
-                else 0.05
-            )
+            else BrainSetting.get("adapt_lr", tid)
         )
         self._lr = lr
         self._base_lr = lr
@@ -113,9 +111,7 @@ class AdaptationEngine:
         self._max_history = int(
             max_history
             if max_history is not None
-            else (
-                getattr(settings, "adaptation_max_history", 1000) if settings else 1000
-            )
+            else BrainSetting.get("adapt_max_history", tid)
         )
         self._constraint_bounds = self._init_constraints(constraints)
         self._constraints = self._build_constraints_dict(self._constraint_bounds)
@@ -491,7 +487,14 @@ class AdaptationEngine:
             skip_if_annealed=True,
             was_annealed=was_annealed,
         )
-        check_entropy_cap(
+        # INTEGRAL: check_entropy_cap now returns sharpened weights, never crashes
+        (
+            self._retrieval.alpha,
+            self._retrieval.beta,
+            self._retrieval.gamma,
+            self._retrieval.tau,
+            _was_sharpened,
+        ) = check_entropy_cap(
             self._retrieval.alpha,
             self._retrieval.beta,
             self._retrieval.gamma,

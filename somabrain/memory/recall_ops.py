@@ -260,27 +260,25 @@ async def memories_search_async(
 def recall_with_graph_boost(
     hits: List[RecallHit],
     graph_client: "GraphClient",
-    graph_boost_factor: float = 0.3,
-    max_neighbors: int = 5,
+    graph_boost_factor: Optional[float] = None,
+    max_neighbors: Optional[int] = None,
 ) -> List[RecallHit]:
     """Boost recall results using graph neighbor relationships.
-
-    Per Requirements B2.1-B2.5:
-    - B2.1: Gets 1-hop neighbors for each result
-    - B2.2: Boosts neighbor scores by link_strength × graph_boost_factor
-    - B2.3: Returns vector-only results on timeout (degraded mode)
-
-    Args:
-        hits: Initial recall hits from vector search.
-        graph_client: GraphClient instance for neighbor queries.
-        graph_boost_factor: Multiplier for graph-based score boost (default 0.3).
-        max_neighbors: Maximum neighbors to fetch per hit.
-
+...
     Returns:
         List of RecallHit with boosted scores, sorted by final score.
     """
     if not hits or graph_client is None:
         return hits
+
+    from somabrain.brain_settings.models import BrainSetting
+
+    # NO MAGIC NUMBERS: use brain_settings with tenant isolation
+    tenant = getattr(graph_client, "tenant_id", "default")
+    if graph_boost_factor is None:
+        graph_boost_factor = BrainSetting.get("graph_boost_factor", tenant)
+    if max_neighbors is None:
+        max_neighbors = BrainSetting.get("planner_rwr_max_items", tenant)
 
     # Build a map of coordinate -> hit for quick lookup
     coord_to_hit: dict = {}

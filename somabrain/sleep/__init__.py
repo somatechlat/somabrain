@@ -47,40 +47,61 @@ class SleepStateManager:
 
         self.parameters = SleepParameters()
 
-    def compute_parameters(self, state: SleepState) -> Dict[str, float]:
-        """Compute parameters for a given sleep state (hot-configurable)."""
-        p = self.parameters  # already sourced from settings
+    def compute_parameters(self, state: SleepState, tenant_id: str = "default") -> Dict[str, float]:
+        """Compute parameters for a given sleep state (hot-configurable via brain_settings)."""
+        from somabrain import brain_settings
+
+        # Load dynamic knobs from DB
+        k0 = brain_settings.get("sleep_k0", tenant_id)
+        t0 = brain_settings.get("sleep_t0", tenant_id)
+        tau0 = brain_settings.get("sleep_tau0", tenant_id)
+        eta0 = brain_settings.get("sleep_eta0", tenant_id)
+        lambda_0 = brain_settings.get("sleep_lambda0", tenant_id)
+        b0 = brain_settings.get("sleep_b0", tenant_id)
+
+        # Bounds and scalars
+        k_min = brain_settings.get("sleep_k_min", tenant_id)
+        t_min = brain_settings.get("sleep_t_min", tenant_id)
+        alpha_k = brain_settings.get("sleep_alpha_k", tenant_id)
+        alpha_t = brain_settings.get("sleep_alpha_t", tenant_id)
+        alpha_tau = brain_settings.get("sleep_alpha_tau", tenant_id)
+        alpha_eta = brain_settings.get("sleep_alpha_eta", tenant_id)
+        beta_b = brain_settings.get("sleep_beta_b", tenant_id)
+
         state_scalar = {
             SleepState.ACTIVE: 0.0,
             SleepState.LIGHT: 0.5,
             SleepState.DEEP: 1.0,
-            SleepState.FREEZE: 10.0,  # treat freeze as effectively infinite
+            SleepState.FREEZE: 10.0,
         }[state]
 
         s = state_scalar
-        K = max(p.K_min, int((1 - p.alpha_K * s) * p.K))
-        t = max(p.t_min, (1 - p.alpha_t * s) * p.t)
-        tau = max(1e-6, (1 - p.alpha_tau * s) * p.tau)
+        K = max(k_min, int((1 - alpha_k * s) * k0))
+        t = max(t_min, (1 - alpha_t * s) * t0)
+        tau = max(1e-6, (1 - alpha_tau * s) * tau0)
+
         if s >= 1:
             eta = 0.0
         else:
-            eta = max(0.0, (1 - p.alpha_eta * s) * p.eta)
-        B = p.B + p.beta_B * s
+            eta = max(0.0, (1 - alpha_eta * s) * eta0)
+
+        B = b0 + beta_b * s
+
         if state == SleepState.FREEZE:
-            lambda_ = 0.0
+            curr_lambda = 0.0
         elif state == SleepState.DEEP:
-            lambda_ = max(0.0, p.lambda_ * 0.5)
+            curr_lambda = max(0.0, lambda_0 * 0.5)
         elif state == SleepState.LIGHT:
-            lambda_ = max(0.0, p.lambda_ * 0.8)
+            curr_lambda = max(0.0, lambda_0 * 0.8)
         else:
-            lambda_ = p.lambda_
+            curr_lambda = lambda_0
 
         return {
             "K": K,
             "t": t,
             "tau": tau,
             "eta": eta,
-            "lambda": lambda_,
+            "lambda": curr_lambda,
             "B": B,
         }
 

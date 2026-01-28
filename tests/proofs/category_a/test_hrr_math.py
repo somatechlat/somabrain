@@ -84,6 +84,7 @@ def role_token_strategy(draw: st.DrawFn) -> str:
 
 
 @pytest.mark.math_proof
+@pytest.mark.django_db
 class TestHRRMathematicalCorrectness:
     """Property-based tests for HRR mathematical correctness.
 

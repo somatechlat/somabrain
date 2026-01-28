@@ -299,19 +299,22 @@ def check_entropy_cap(
     gamma: float,
     tau: float,
     tenant_id: str,
-) -> None:
-    """Check if retrieval weights exceed entropy cap.
+) -> tuple[float, float, float, float, bool]:
+    """Check if retrieval weights exceed entropy cap and sharpen if needed.
+
+    INTEGRAL BEHAVIOR: Never crashes. Sharpens weights to reduce entropy below cap.
 
     Args:
         alpha, beta, gamma, tau: Retrieval weight values
         tenant_id: Tenant identifier
 
-    Raises:
-        RuntimeError: If entropy exceeds configured cap
+    Returns:
+        Tuple of (alpha, beta, gamma, tau, was_sharpened).
+        If entropy was above cap, weights are sharpened toward dominant component.
     """
     entropy_cap = get_entropy_cap(tenant_id)
     if entropy_cap <= 0.0:
-        return
+        return alpha, beta, gamma, tau, False
 
     vec = [
         max(1e-9, float(alpha)),
@@ -325,17 +328,69 @@ def check_entropy_cap(
     # Use Rust native entropy computation for hot path
     entropy = _rust_compute_entropy(probs)
 
-    if entropy > entropy_cap:
-        try:
-            from somabrain import metrics as _metrics
+    if entropy <= entropy_cap:
+        return alpha, beta, gamma, tau, False
 
-            _metrics.update_learning_retrieval_entropy(tenant_id, entropy)
-            _metrics.entropy_cap_events.labels(tenant_id=tenant_id).inc()
-        except Exception:
-            pass
-        raise RuntimeError(
-            f"Entropy: {entropy:.4f} exceeds configured cap {entropy_cap:.4f} for tenant {tenant_id}"
-        )
+    # INTEGRAL: Sharpen weights instead of crashing
+    # Iteratively reduce non-dominant components until entropy <= cap
+    # NO MAGIC NUMBERS: use brain_settings for sharpening rates
+    try:
+        from somabrain.brain_settings.models import BrainSetting
+        sharpen_rate = BrainSetting.get("entropy_sharpen_rate", tenant_id)
+        final_sharpen = BrainSetting.get("entropy_final_sharpen", tenant_id)
+    except Exception:
+        sharpen_rate = 0.8  # Fallback only if DB unavailable
+        final_sharpen = 0.05
+
+    largest_idx = max(range(4), key=lambda i: vec[i])
+    for _ in range(10):
+        for i in range(4):
+            if i != largest_idx:
+                vec[i] *= sharpen_rate  # Configurable reduction per iteration
+        s = sum(vec)
+        if s > 0:
+            probs = [v / s for v in vec]
+            entropy = _rust_compute_entropy(probs)
+            if entropy <= entropy_cap:
+                break
+
+    # Final strong sharpen if still above cap
+    if entropy > entropy_cap:
+        for i in range(4):
+            if i != largest_idx:
+                vec[i] *= final_sharpen  # Configurable final sharpen
+        s = sum(vec)
+        if s > 0:
+            probs = [v / s for v in vec]
+
+    # Normalize to sum=1 for return (original scale preserved via proportions)
+    s = sum(vec)
+    if s > 0:
+        vec = [v / s for v in vec]
+
+    # Scale back to original magnitude (preserve semantic meaning of weights)
+    original_sum = alpha + beta + gamma + tau
+    vec = [v * original_sum for v in vec]
+
+    # Log warning for observability
+    logger.warning(
+        "Entropy cap exceeded for tenant %s (H=%.4f > cap=%.4f). "
+        "Sharpened weights toward dominant component.",
+        tenant_id,
+        entropy,
+        entropy_cap,
+    )
+
+    # Emit metrics
+    try:
+        from somabrain import metrics as _metrics
+
+        _metrics.update_learning_retrieval_entropy(tenant_id, entropy)
+        _metrics.entropy_cap_events.labels(tenant_id=tenant_id).inc()
+    except Exception:
+        pass
+
+    return vec[0], vec[1], vec[2], vec[3], True
 
 
 
