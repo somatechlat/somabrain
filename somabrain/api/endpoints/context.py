@@ -15,7 +15,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.tenant import get_tenant
 
@@ -36,7 +36,7 @@ def feature_flags_endpoint(request: HttpRequest):
         return {}
 
 
-@router.post("/evaluate", auth=bearer_auth)
+@router.post("/evaluate", auth=api_key_auth)
 def evaluate_endpoint(request: HttpRequest, payload: dict):
     """Evaluate context and return prompt with memories."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
@@ -70,7 +70,7 @@ def evaluate_endpoint(request: HttpRequest, payload: dict):
         raise HttpError(500, f"Context build failed: {exc}")
 
 
-@router.post("/feedback", auth=bearer_auth)
+@router.post("/feedback", auth=api_key_auth)
 def feedback_endpoint(request: HttpRequest, payload: dict):
     """Record feedback for learning adaptation."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
@@ -133,7 +133,7 @@ def feedback_endpoint(request: HttpRequest, payload: dict):
         raise HttpError(500, f"Feedback processing failed: {exc}")
 
 
-@router.get("/adaptation/state", auth=bearer_auth)
+@router.get("/adaptation/state", auth=api_key_auth)
 def adaptation_state_endpoint(request: HttpRequest, tenant_id: Optional[str] = None):
     """Get current adaptation weights and learning state."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
@@ -184,7 +184,7 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: Optional[str] = N
         raise HttpError(500, f"Failed to get adaptation state: {exc}")
 
 
-@router.post("/adaptation/reset", auth=bearer_auth)
+@router.post("/adaptation/reset", auth=api_key_auth)
 def adaptation_reset_endpoint(request: HttpRequest, payload: dict):
     """Reset adaptation engine to defaults (dev mode only)."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))

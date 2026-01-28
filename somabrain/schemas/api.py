@@ -57,7 +57,7 @@ class HealthResponse(BaseModel):
     predictor_provider: Optional[str] = None
     full_stack: Optional[bool] = None
     embedder: Optional[Dict[str, Any]] = None
-    stub_counts: Optional[Dict[str, int]] = None
+    component_counts: Optional[Dict[str, int]] = None
     ready: Optional[bool] = None
     memory_items: Optional[int] = None
     predictor_ok: Optional[bool] = None

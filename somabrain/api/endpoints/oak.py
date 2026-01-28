@@ -17,7 +17,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.milvus_client import MilvusClient
 from somabrain.oak.option_manager import option_manager
@@ -46,7 +46,7 @@ class OakPlanSuggestResponse(Schema):
     plan: List[str]
 
 
-@router.post("/option/create", response=OakPlanSuggestResponse, auth=bearer_auth)
+@router.post("/option/create", response=OakPlanSuggestResponse, auth=api_key_auth)
 def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
     """Create a new Oak option and store it in Milvus."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
@@ -72,7 +72,7 @@ def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
         raise HttpError(500, f"Option creation failed: {exc}")
 
 
-@router.put("/option/{option_id}", response=OakPlanSuggestResponse, auth=bearer_auth)
+@router.put("/option/{option_id}", response=OakPlanSuggestResponse, auth=api_key_auth)
 def oak_option_update(
     request: HttpRequest, option_id: str, body: OakOptionCreateRequest
 ):
@@ -98,7 +98,7 @@ def oak_option_update(
         raise HttpError(500, f"Option update failed: {exc}")
 
 
-@router.get("/plan", response=OakPlanSuggestResponse, auth=bearer_auth)
+@router.get("/plan", response=OakPlanSuggestResponse, auth=api_key_auth)
 def oak_plan(request: HttpRequest, max_options: Optional[int] = None):
     """Return a ranked list of Oak option identifiers for the tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))

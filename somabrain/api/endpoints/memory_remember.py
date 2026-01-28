@@ -17,7 +17,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.api.memory.helpers import (
     _compose_memory_payload,
     _get_embedder,
@@ -53,7 +53,7 @@ def _ensure_runtime():
 
 # Splitting logic to handle async nature properly
 # We need to redefine the view as async because memsvc likely uses async HTTP/DB
-@router.post("/remember", response=MemoryWriteResponse, auth=bearer_auth)
+@router.post("/remember", response=MemoryWriteResponse, auth=api_key_auth)
 async def remember_memory_async(request: HttpRequest, payload: MemoryWriteRequest):
     """Store a memory (Async)."""
     require_auth(request, settings)
@@ -176,7 +176,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     }
 
 
-@router.post("/remember/batch", response=MemoryBatchWriteResponse, auth=bearer_auth)
+@router.post("/remember/batch", response=MemoryBatchWriteResponse, auth=api_key_auth)
 async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteRequest):
     """Store multiple memories in batch."""
     require_auth(request, settings)

@@ -21,7 +21,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.infrastructure.cb_registry import get_cb
 from somabrain.opa.client import opa_client
@@ -65,7 +65,7 @@ def _check_rate_limit(tenant_id: str, path: str):
     cache.set(cache_key, current + 1, timeout=60)
 
 
-@router.get("/state", auth=bearer_auth)
+@router.get("/state", auth=api_key_auth)
 def get_sleep_state(request: HttpRequest):
     """Get current sleep state for tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
@@ -181,7 +181,7 @@ def _process_sleep_transition(
     return {"ok": True, "tenant": tenant_id, "new_state": target_state.value}
 
 
-@router.post("/brain/mode", auth=bearer_auth)
+@router.post("/brain/mode", auth=api_key_auth)
 def brain_sleep_mode(request: HttpRequest, payload: dict):
     """Cognitive-level sleep state transition (Brain)."""
     return _process_sleep_transition(
@@ -193,7 +193,7 @@ def brain_sleep_mode(request: HttpRequest, payload: dict):
     )
 
 
-@router.post("/util/mode", auth=bearer_auth)
+@router.post("/util/mode", auth=api_key_auth)
 def util_sleep_mode(request: HttpRequest, payload: dict):
     """Utility sleep state transition (Util)."""
     return _process_sleep_transition(
@@ -205,7 +205,7 @@ def util_sleep_mode(request: HttpRequest, payload: dict):
     )
 
 
-@router.post("/policy/mode", auth=bearer_auth)
+@router.post("/policy/mode", auth=api_key_auth)
 def policy_sleep_mode(request: HttpRequest, payload: dict):
     """Policy-driven sleep state transition."""
     return _process_sleep_transition(
@@ -218,7 +218,7 @@ def policy_sleep_mode(request: HttpRequest, payload: dict):
 
 
 # Retaining generic /state and /transition for backward compat or unified access
-@router.post("/state", auth=bearer_auth)
+@router.post("/state", auth=api_key_auth)
 def set_sleep_state(request: HttpRequest, payload: dict):
     """Set sleep state (Generic)."""
     # Map to brain mode for generic setting?
@@ -227,7 +227,7 @@ def set_sleep_state(request: HttpRequest, payload: dict):
     )
 
 
-@router.post("/transition", auth=bearer_auth)
+@router.post("/transition", auth=api_key_auth)
 def transition_sleep_state(request: HttpRequest, payload: dict):
     """Transition based on trigger."""
     # This logic was: manager.transition(trigger)

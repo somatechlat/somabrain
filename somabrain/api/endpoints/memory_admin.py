@@ -13,7 +13,7 @@ from django.http import HttpRequest
 from ninja import Query, Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import admin_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.api.memory.models import (
     AnnRebuildRequest,
     OutboxEventSummary,
@@ -43,7 +43,7 @@ def _get_tiered_registry():
         return None
 
 
-@router.post("/rebuild-ann", auth=admin_auth)
+@router.post("/rebuild-ann", auth=api_key_auth)
 def rebuild_ann_indexes(
     request: HttpRequest, payload: AnnRebuildRequest
 ) -> Dict[str, Any]:
@@ -58,7 +58,7 @@ def rebuild_ann_indexes(
     return {"ok": True, "results": results}
 
 
-@router.get("/outbox", response=List[OutboxEventSummary], auth=admin_auth)
+@router.get("/outbox", response=List[OutboxEventSummary], auth=api_key_auth)
 def list_outbox_events(
     request: HttpRequest,
     status: str = Query("failed", description="Outbox status filter"),
@@ -97,7 +97,7 @@ def list_outbox_events(
     return summaries
 
 
-@router.post("/outbox/replay", auth=admin_auth)
+@router.post("/outbox/replay", auth=api_key_auth)
 def replay_outbox_events(
     request: HttpRequest, payload: OutboxReplayRequest
 ) -> Dict[str, Any]:

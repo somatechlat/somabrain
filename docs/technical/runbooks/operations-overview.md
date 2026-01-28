@@ -28,7 +28,7 @@ Backend-enforced deployments keep `/health` red until every dependency responds.
 1. Export backend-enforcement variables (`SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1`, `SOMABRAIN_FORCE_FULL_STACK=1`, `SOMABRAIN_REQUIRE_MEMORY=1`).
 2. Ensure Redis, Postgres, Kafka, and the memory HTTP service are reachable.
 3. Launch the API container or `uvicorn` process.
-4. Confirm `/health` reports `ready: true` and `stub_counts: {}`.
+4. Confirm `/health` reports `ready: true` and `component_counts: {}`.
 5. Verify Prometheus scrape (`/metrics`).
 
 If any dependency is missing, backend enforcement keeps the API unhealthy—investigate the root cause rather than disabling enforcement.

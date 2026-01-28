@@ -15,7 +15,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.services.memory_service import MemoryService
 from somabrain.tenant import get_tenant
@@ -74,7 +74,7 @@ class RecallRequest(BaseModel):
     tenant: Optional[str] = None
     namespace: Optional[str] = None
 
-@router.post("/recall", auth=bearer_auth)
+@router.post("/recall", auth=api_key_auth)
 async def recall_memory(request: HttpRequest, payload: RecallRequest):
     """Unified recall endpoint backed by retrieval pipeline."""
     ctx = await get_tenant(request, getattr(settings, "NAMESPACE", "default"))
@@ -128,7 +128,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     }
 
 
-@router.get("/metrics", auth=bearer_auth)
+@router.get("/metrics", auth=api_key_auth)
 def memory_metrics(
     request: HttpRequest, tenant: Optional[str] = None, namespace: Optional[str] = None
 ):
