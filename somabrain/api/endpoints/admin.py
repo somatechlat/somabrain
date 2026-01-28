@@ -17,7 +17,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import admin_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.db import outbox as outbox_db
 from somabrain.schemas import (
     FeatureFlagsResponse,
@@ -57,7 +57,7 @@ def _supervisor() -> ServerProxy:
 
 
 # Service management endpoints
-@router.get("/services", auth=admin_auth)
+@router.get("/services", auth=api_key_auth)
 def list_services(request: HttpRequest):
     """List all supervisor-managed services."""
     try:
@@ -70,7 +70,7 @@ def list_services(request: HttpRequest):
         raise HttpError(503, f"cannot reach supervisor: {e}")
 
 
-@router.get("/services/{name}", auth=admin_auth)
+@router.get("/services/{name}", auth=api_key_auth)
 def service_status(request: HttpRequest, name: str):
     """Get status of a specific service."""
     try:
@@ -83,7 +83,7 @@ def service_status(request: HttpRequest, name: str):
         raise HttpError(503, f"cannot reach supervisor: {e}")
 
 
-@router.post("/services/{name}/start", auth=admin_auth)
+@router.post("/services/{name}/start", auth=api_key_auth)
 def service_start(request: HttpRequest, name: str):
     """Start a service."""
     try:
@@ -96,7 +96,7 @@ def service_start(request: HttpRequest, name: str):
         raise HttpError(503, f"cannot reach supervisor: {e}")
 
 
-@router.post("/services/{name}/stop", auth=admin_auth)
+@router.post("/services/{name}/stop", auth=api_key_auth)
 def service_stop(request: HttpRequest, name: str):
     """Stop a service."""
     try:
@@ -109,7 +109,7 @@ def service_stop(request: HttpRequest, name: str):
         raise HttpError(503, f"cannot reach supervisor: {e}")
 
 
-@router.post("/services/{name}/restart", auth=admin_auth)
+@router.post("/services/{name}/restart", auth=api_key_auth)
 def service_restart(request: HttpRequest, name: str):
     """Restart a service."""
     try:
@@ -129,7 +129,7 @@ def service_restart(request: HttpRequest, name: str):
 
 
 # Outbox management
-@router.get("/outbox", auth=admin_auth)
+@router.get("/outbox", auth=api_key_auth)
 def admin_list_outbox(
     request: HttpRequest,
     status: str = "pending",
@@ -166,7 +166,7 @@ def admin_list_outbox(
     )
 
 
-@router.post("/outbox/replay", auth=admin_auth)
+@router.post("/outbox/replay", auth=api_key_auth)
 def admin_replay_outbox(request: HttpRequest, body: OutboxReplayRequest):
     """Replay specific outbox events by ID."""
     try:
@@ -197,7 +197,7 @@ def admin_replay_outbox(request: HttpRequest, body: OutboxReplayRequest):
 
 
 # Quota management
-@router.get("/quotas", auth=admin_auth)
+@router.get("/quotas", auth=api_key_auth)
 def admin_list_quotas(
     request: HttpRequest,
     limit: int = 100,
@@ -239,7 +239,7 @@ def admin_list_quotas(
 
 
 # Feature flags
-@router.get("/features", auth=admin_auth)
+@router.get("/features", auth=api_key_auth)
 def admin_features_state(request: HttpRequest) -> FeatureFlagsResponse:
     """Return current feature-flag status."""
     return FeatureFlagsResponse(
@@ -247,7 +247,7 @@ def admin_features_state(request: HttpRequest) -> FeatureFlagsResponse:
     )
 
 
-@router.post("/features", auth=admin_auth)
+@router.post("/features", auth=api_key_auth)
 def admin_features_update(
     request: HttpRequest,
     body: FeatureFlagsUpdateRequest,

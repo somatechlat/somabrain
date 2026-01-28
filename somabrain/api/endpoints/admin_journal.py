@@ -13,7 +13,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import admin_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.db import outbox_journal
 from somabrain.schemas import OutboxReplayRequest as JournalReplayRequest
 
@@ -22,7 +22,7 @@ logger = logging.getLogger("somabrain.api.endpoints.admin_journal")
 router = Router(tags=["admin"])
 
 
-@router.get("/journal/events", auth=admin_auth)
+@router.get("/journal/events", auth=api_key_auth)
 def list_journal_events(
     request: HttpRequest,
     limit: int = 100,
@@ -54,7 +54,7 @@ def list_journal_events(
         raise HttpError(500, f"Failed to list journal events: {exc}")
 
 
-@router.post("/journal/replay", auth=admin_auth)
+@router.post("/journal/replay", auth=api_key_auth)
 def replay_journal_events(
     request: HttpRequest,
     body: JournalReplayRequest,
@@ -77,7 +77,7 @@ def replay_journal_events(
         raise HttpError(500, f"Failed to replay journal events: {exc}")
 
 
-@router.delete("/journal/cleanup", auth=admin_auth)
+@router.delete("/journal/cleanup", auth=api_key_auth)
 def cleanup_journal(
     request: HttpRequest,
     older_than_days: int = 30,

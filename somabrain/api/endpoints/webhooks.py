@@ -153,7 +153,7 @@ def get_webhook_model():
     try:
         return apps.get_model("aaas", "Webhook")
     except LookupError:
-        # Model not yet migrated - return a stub for API registration
+        # Model not yet migrated - allow import without routing the endpoints
         return None
 
 

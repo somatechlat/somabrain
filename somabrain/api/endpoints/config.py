@@ -14,7 +14,7 @@ from typing import Dict, Any
 from ninja import Router
 from pydantic import BaseModel
 
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.tenant import get_tenant
 
@@ -29,7 +29,7 @@ logger = logging.getLogger("somabrain.api.endpoints.config")
 router = Router(tags=["config"])
 
 
-@router.get("/", response=ConfigResponse, auth=bearer_auth)
+@router.get("/", response=ConfigResponse, auth=api_key_auth)
 def get_config(request: HttpRequest):
     """Get current configuration for tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))

@@ -15,7 +15,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.models import CognitiveThread
 
@@ -53,7 +53,7 @@ class ThreadCreateRequest(Schema):
     options: List[str]
 
 
-@router.post("/thread", auth=bearer_auth)
+@router.post("/thread", auth=api_key_auth)
 def create_thread(request: HttpRequest, body: ThreadCreateRequest):
     """Create or replace a thread for tenant_id."""
     require_auth(request, settings)
@@ -69,7 +69,7 @@ def create_thread(request: HttpRequest, body: ThreadCreateRequest):
     return {"ok": True, "tenant_id": body.tenant_id, "option_count": len(body.options)}
 
 
-@router.get("/thread/next", auth=bearer_auth)
+@router.get("/thread/next", auth=api_key_auth)
 def next_option(request: HttpRequest, tenant_id: str):
     """Return next option and advance cursor."""
     require_auth(request, settings)
@@ -100,7 +100,7 @@ def next_option(request: HttpRequest, tenant_id: str):
         raise HttpError(500, str(exc))
 
 
-@router.put("/thread/reset", auth=bearer_auth)
+@router.put("/thread/reset", auth=api_key_auth)
 def reset_thread(request: HttpRequest, tenant_id: str):
     """Reset the thread."""
     require_auth(request, settings)

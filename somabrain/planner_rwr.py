@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from somabrain.memory.graph_client import GraphClient
 
 from somabrain.metrics.planning import PLAN_GRAPH_UNAVAILABLE
+from somabrain.planning import coord_to_str, get_graph_client, task_key_to_coord
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +58,14 @@ def rwr_plan(
     max_nodes = 100  # Maximum nodes in local subgraph
 
     # Get GraphClient from memory client if not provided directly
-    graph = graph_client or _get_graph_client(mem)
+    graph = graph_client or get_graph_client(mem)
     if graph is None:
         PLAN_GRAPH_UNAVAILABLE.inc()
         logger.warning("GraphClient not available for RWR planning")
         return []
 
     # Get starting coordinate from task_key
-    start_coord = _task_key_to_coord(task_key, mem, universe)
+    start_coord = task_key_to_coord(task_key, mem, universe)
     if start_coord is None:
         logger.debug("Could not resolve task_key to coordinate", task_key=task_key)
         return []
@@ -80,7 +81,7 @@ def rwr_plan(
     n = len(nodes)
     node_list = list(nodes.keys())
 
-    start_str = _coord_to_str(start_coord)
+    start_str = coord_to_str(start_coord)
     if start_str not in nodes:
         logger.debug("Start node not in subgraph")
         return []
@@ -139,7 +140,7 @@ def _build_local_subgraph(
 
     while queue and len(nodes) < max_nodes:
         coord = queue.pop(0)
-        coord_str = _coord_to_str(coord)
+        coord_str = coord_to_str(coord)
 
         if coord_str in nodes:
             continue
@@ -154,7 +155,7 @@ def _build_local_subgraph(
             continue
 
         for neighbor in neighbors:
-            neighbor_str = _coord_to_str(neighbor.coord)
+            neighbor_str = coord_to_str(neighbor.coord)
             edges.append((coord_str, neighbor_str, neighbor.strength))
 
             # Store metadata if available
@@ -195,63 +196,3 @@ def _build_transition_matrix(
     T = T / col_sums
 
     return T
-
-
-def _get_graph_client(mem) -> Optional["GraphClient"]:
-    """Extract GraphClient from memory client."""
-    if mem is None:
-        return None
-
-    # Try direct attribute
-    if hasattr(mem, "graph_client") and mem.graph_client is not None:
-        return mem.graph_client
-
-    # Try to get from _graph attribute
-    if hasattr(mem, "_graph") and mem._graph is not None:
-        return mem._graph
-
-    # Try to construct from transport
-    if hasattr(mem, "_transport") and mem._transport is not None:
-        try:
-            from somabrain.memory.graph_client import GraphClient
-
-            tenant = getattr(mem, "_tenant", "default")
-            return GraphClient(mem._transport, tenant=tenant)
-        except Exception as exc:
-            logger.debug("Could not construct GraphClient", error=str(exc))
-
-    return None
-
-
-def _task_key_to_coord(
-    task_key: str, mem, universe: Optional[str]
-) -> Optional[Tuple[float, ...]]:
-    """Convert task_key to coordinate."""
-    # Try parsing as coordinate string
-    try:
-        parts = task_key.split(",")
-        if len(parts) >= 2:
-            coord = tuple(float(p.strip()) for p in parts)
-            return coord
-    except (ValueError, AttributeError):
-        pass
-
-    # Try looking up in memory
-    if mem is not None and hasattr(mem, "search"):
-        try:
-            results = mem.search(query=task_key, limit=1, universe=universe)
-            if results and len(results) > 0:
-                result = results[0]
-                if hasattr(result, "coord"):
-                    return result.coord
-                if hasattr(result, "coordinate"):
-                    return result.coordinate
-        except Exception as exc:
-            logger.debug("Memory search for task_key failed", error=str(exc))
-
-    return None
-
-
-def _coord_to_str(coord: Tuple[float, ...]) -> str:
-    """Convert coordinate tuple to string."""
-    return ",".join(f"{c:.6f}" for c in coord)

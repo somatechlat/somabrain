@@ -15,7 +15,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.focus_state import FocusState
 from somabrain.schemas import (
@@ -138,7 +138,7 @@ def _get_graph_client(mem_client):
 
 
 # Endpoints
-@router.post("/plan/suggest", response=PlanSuggestResponse, auth=bearer_auth)
+@router.post("/plan/suggest", response=PlanSuggestResponse, auth=api_key_auth)
 def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
     """Suggest a small plan derived from semantic graph around task key."""
     mt_memory = _get_mt_memory()
@@ -201,7 +201,7 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
     return {"plan": plan_result}
 
 
-@router.post("/act", response=ActResponse, auth=bearer_auth)
+@router.post("/act", response=ActResponse, auth=api_key_auth)
 def act_endpoint(request: HttpRequest, body: ActRequest):
     """Execute an action/task and return step results."""
     mt_memory = _get_mt_memory()
@@ -322,13 +322,13 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     )
 
 
-@router.post("/personality", response=PersonalityState, auth=bearer_auth)
+@router.post("/personality", response=PersonalityState, auth=api_key_auth)
 def set_personality(request: HttpRequest, state: PersonalityState) -> PersonalityState:
     """Set personality traits (reserved for future implementation)."""
     raise HttpError(404, "Not Found")
 
 
-@router.get("/micro/diag", auth=bearer_auth)
+@router.get("/micro/diag", auth=api_key_auth)
 def micro_diag(request: HttpRequest):
     """Get microcircuit diagnostics for the current tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))

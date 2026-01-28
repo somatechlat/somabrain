@@ -14,7 +14,7 @@ from typing import Optional, Dict, Any
 from ninja import Router
 from pydantic import BaseModel
 
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.tenant import get_tenant
 
@@ -29,7 +29,7 @@ logger = logging.getLogger("somabrain.api.endpoints.proxy")
 router = Router(tags=["proxy"])
 
 
-@router.post("/forward", auth=bearer_auth)
+@router.post("/forward", auth=api_key_auth)
 def forward_request(request: HttpRequest, body: ProxyRequest):
     """Forward request to external service."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))

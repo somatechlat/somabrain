@@ -14,7 +14,7 @@ from typing import Optional
 from ninja import Router
 from pydantic import BaseModel
 
-from somabrain.api.auth import bearer_auth
+from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
 from somabrain.tenant import get_tenant
 
@@ -29,7 +29,7 @@ logger = logging.getLogger("somabrain.api.endpoints.neuromod")
 router = Router(tags=["neuromod"])
 
 
-@router.get("/state", auth=bearer_auth)
+@router.get("/state", auth=api_key_auth)
 def get_neuromod_state(request: HttpRequest):
     """Get neuromodulator state for tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
@@ -69,7 +69,7 @@ def get_neuromod_state(request: HttpRequest):
     }
 
 
-@router.post("/adjust", auth=bearer_auth)
+@router.post("/adjust", auth=api_key_auth)
 def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
     """Adjust neuromodulator values for tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
