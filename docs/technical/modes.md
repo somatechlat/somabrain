@@ -125,7 +125,7 @@ docker compose --profile full-local up -d
 **Enforced by Mode**:
 1. Avro-only serialization for all cognitive topics
 2. Fail-fast Kafka producers (no silent failures)
-3. No deprecated clients or JSON fallbacks
+3. No retired clients or JSON fallbacks
 4. Mode assertions: `full-local` implies all core services enabled
 
 **Validation**:
