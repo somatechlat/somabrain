@@ -247,7 +247,6 @@ async def aremember_bulk(
     require_healthy_fn: Callable,
     store_bulk_http_async_fn: Callable,
     store_http_async_fn: Callable,
-    sync_fallback_fn: Callable,
     prepare_bulk_items_fn: Callable,
     process_bulk_response_fn: Callable,
     has_async_transport: bool,
@@ -264,7 +263,7 @@ async def aremember_bulk(
         return []
 
     if not has_async_transport:
-        return sync_fallback_fn(records, request_id)
+        raise RuntimeError("Async memory transport unavailable for bulk remember")
 
     rid = request_id or str(uuid.uuid4())
     headers = {"X-Request-ID": rid}
@@ -284,17 +283,6 @@ async def aremember_bulk(
     if success and response is not None:
         return process_bulk_response_fn(response, prepared, coords, rid)
 
-    if status in (404, 405):
-        for idx, entry in enumerate(prepared):
-            single_headers = dict(headers)
-            single_headers["X-Request-ID"] = f"{rid}:{idx}"
-            ok, resp = await store_http_async_fn(entry["body"], single_headers)
-            if ok and resp is not None:
-                server_coord = _extract_memory_coord(
-                    resp, idempotency_key=single_headers["X-Request-ID"]
-                )
-                if server_coord:
-                    coords[idx] = server_coord
-        return coords
-
-    raise RuntimeError("Memory service unavailable (async bulk remember failed)")
+    raise RuntimeError(
+        f"Memory service unavailable (async bulk remember failed, status={status})"
+    )

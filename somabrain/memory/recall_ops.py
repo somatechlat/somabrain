@@ -423,7 +423,6 @@ async def arecall_with_degradation(
     request_id: str,
     require_healthy_fn: callable,
     http_recall_async_fn: callable,
-    sync_fallback_fn: callable,
     has_async_client: bool,
 ) -> List[RecallHit]:
     """Async recall with degradation handling.
@@ -438,40 +437,30 @@ async def arecall_with_degradation(
         request_id: Request ID for tracing.
         require_healthy_fn: Function to check SFM health.
         http_recall_async_fn: Async function to perform HTTP recall.
-        sync_fallback_fn: Sync fallback function.
         has_async_client: Whether async client is available.
 
     Returns:
         List of RecallHit objects.
     """
-    import asyncio
-
     from somabrain.infrastructure.degradation import get_degradation_manager
 
     degradation_mgr = get_degradation_manager()
 
     if degradation_mgr.is_degraded(tenant):
         degradation_mgr.check_alert(tenant)
-        logger.warning(
-            "SFM degraded mode (async): returning empty results",
-            extra={"tenant": tenant},
-        )
-        return []
+        degradation_mgr.mark_degraded(tenant)
+        raise RuntimeError("SFM degraded mode - recall blocked")
 
     try:
         if has_async_client:
             results = await http_recall_async_fn(query, top_k, universe, request_id)
             degradation_mgr.mark_recovered(tenant)
             return results
-        # Fallback to sync in executor
-        results = await asyncio.get_event_loop().run_in_executor(
-            None, sync_fallback_fn, query, top_k, universe, request_id
-        )
-        return results
+        raise RuntimeError("Async recall client unavailable")
     except RuntimeError as exc:
         degradation_mgr.mark_degraded(tenant)
         logger.warning(
             "SFM unavailable (async), entering degraded mode",
             extra={"tenant": tenant, "error": str(exc)},
         )
-        return []
+        raise
