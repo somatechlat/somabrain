@@ -68,7 +68,7 @@ try:
     from somabrain.apps.core.embeddings import make_embedder
     from somabrain.mt_wm import MTWMConfig, MultiTenantWM
     from somabrain.microcircuits import MCConfig, MultiColumnWM
-    from somabrain.memory_pool import MultiTenantMemory
+    from somabrain.apps.memory_pool import MultiTenantMemory
 
     embedder = None
     try:

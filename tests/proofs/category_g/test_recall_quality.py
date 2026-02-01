@@ -80,7 +80,7 @@ class TestRecallQualityUnderScale:
 
         Note: Using smaller corpus (1K) for faster CI execution.
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         corpus_size = 1000  # Reduced for CI
         wm = WorkingMemory(capacity=corpus_size + 100)
@@ -136,7 +136,7 @@ class TestRecallQualityUnderScale:
 
         Note: Using smaller corpus (500) for faster CI execution.
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         corpus_size = 500  # Reduced for CI
         wm = WorkingMemory(capacity=corpus_size + 100)
@@ -187,7 +187,7 @@ class TestRecallQualityUnderScale:
         WHEN results are ranked
         THEN nDCG@10 SHALL be above 75%.
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=200)
 
@@ -242,7 +242,7 @@ class TestRecallQualityUnderScale:
         WHEN results are returned
         THEN pairwise similarity SHALL be below 90% (diverse results).
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=200)
 
@@ -295,7 +295,7 @@ class TestRecallQualityUnderScale:
         WHEN results are ranked
         THEN fresher items SHALL be weighted appropriately.
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
 

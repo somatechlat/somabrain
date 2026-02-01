@@ -14,7 +14,7 @@ from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router
 
-from somabrain.healthchecks import check_kafka, check_postgres
+from somabrain.runtime.healthchecks import check_kafka, check_postgres
 from somabrain.schemas import HealthResponse
 from somabrain.tenant import get_tenant
 from somabrain.version import API_VERSION
@@ -175,7 +175,7 @@ def health_check(request: HttpRequest) -> Dict[str, Any]:
 
     10-PERSONA COMPLIANT: Architect, Security, QA, Docs, DBA, SRE, Perf, UX, Django, DevOps
     """
-    from somabrain.healthchecks import check_from_env
+    from somabrain.runtime.healthchecks import check_from_env
 
     result = {"status": "ok", "components": {}}
 

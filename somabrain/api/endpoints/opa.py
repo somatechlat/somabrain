@@ -9,7 +9,7 @@ from ninja.errors import HttpError
 
 import somabrain.opa.policy_manager as policy_manager
 import somabrain.opa.signature as opa_signature
-from somabrain.auth import require_admin_auth
+from somabrain.core.security.legacy_auth import require_admin_auth
 from somabrain.opa.client import opa_client
 from somabrain.opa.policy_builder import build_policy
 from somabrain.services.constitution import get_constitution_engine

@@ -15,7 +15,7 @@ def _backend_available() -> bool:
     """Check if memory backend is available for testing."""
     try:
         from django.conf import settings
-        from somabrain.memory_pool import MultiTenantMemory
+        from somabrain.apps.memory.pool import MultiTenantMemory
 
         # Try to create a real backend
         mt_memory = MultiTenantMemory(settings, scorer=None, embedder=None)
@@ -36,7 +36,7 @@ def memory_service():
         pytest.skip("Memory backend not available for unit tests")
 
     from django.conf import settings
-    from somabrain.memory_pool import MultiTenantMemory
+    from somabrain.apps.memory.pool import MultiTenantMemory
 
     mt_memory = MultiTenantMemory(settings, scorer=None, embedder=None)
     return MemoryService(mt_memory, "test:unit")

@@ -21,9 +21,9 @@ import logging
 
 from django.conf import settings
 
-from somabrain.memory.client import MemoryClient
+from somabrain.apps.memory.client import MemoryClient
 from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL, report_outbox_pending
-from somabrain.models import OutboxEvent
+from somabrain.apps.core.models import OutboxEvent
 
 logger = logging.getLogger(__name__)
 

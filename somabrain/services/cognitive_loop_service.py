@@ -26,7 +26,7 @@ import numpy as np
 
 from somabrain.core.container import container
 from somabrain.metrics.predictor import PREDICTOR_ALTERNATIVE
-from somabrain.modes import feature_enabled
+from somabrain.runtime.modes import feature_enabled
 from somabrain.sleep import SleepState, SleepStateManager
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class CognitiveLoopState:
                 return state
 
         try:
-            from somabrain.models import SleepState as DbSleepState
+            from somabrain.apps.core.models import SleepState as DbSleepState
 
             # Use Django ORM to fetch sleep state
             # order_by('-timestamp') to get the latest if multiple exist (though ideally unique per tenant)

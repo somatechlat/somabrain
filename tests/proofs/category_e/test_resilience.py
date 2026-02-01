@@ -490,7 +490,7 @@ class TestSFMDegradationMode:
         This test verifies the DegradationManager correctly tracks
         degraded state and the system responds appropriately.
         """
-        from somabrain.infrastructure.degradation import (
+        from somabrain.core.infrastructure_defs.degradation import (
             DegradationManager,
             reset_degradation_manager,
         )
@@ -543,7 +543,7 @@ class TestSFMDegradationMode:
         """
         import time
 
-        from somabrain.infrastructure.degradation import DegradationManager
+        from somabrain.core.infrastructure_defs.degradation import DegradationManager
 
         # Create manager with very short threshold for testing
         manager = DegradationManager(circuit_breaker=None, alert_threshold_seconds=0.1)
@@ -574,7 +574,7 @@ class TestSFMDegradationMode:
         **Feature: deep-memory-integration**
         **Validates: Requirements E1.1**
         """
-        from somabrain.infrastructure.degradation import DegradationManager
+        from somabrain.core.infrastructure_defs.degradation import DegradationManager
 
         # Create a mock-like circuit breaker for testing
         # Note: We're not using mocks, but creating a minimal implementation
@@ -694,7 +694,7 @@ class TestSFMDegradationMode:
         **Feature: deep-memory-integration**
         **Validates: Requirements E1.1**
         """
-        from somabrain.infrastructure.degradation import (
+        from somabrain.core.infrastructure_defs.degradation import (
             get_degradation_manager,
             reset_degradation_manager,
         )

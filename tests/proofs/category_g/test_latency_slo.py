@@ -64,7 +64,7 @@ class TestLatencySLOs:
         WHEN remember() is called
         THEN p95 latency SHALL be under 300ms.
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
         latencies: List[float] = []
@@ -97,7 +97,7 @@ class TestLatencySLOs:
         WHEN recall() is called
         THEN p95 latency SHALL be under 400ms.
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
 
@@ -168,8 +168,8 @@ class TestLatencySLOs:
         WHEN /health is called
         THEN p99 latency SHALL be under 100ms.
         """
-        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
-        from somabrain.infrastructure.degradation import DegradationManager
+        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.core.infrastructure_defs.degradation import DegradationManager
 
         cb = CircuitBreaker(
             failure_threshold=5, recovery_timeout=60.0, half_open_max_calls=1
@@ -256,7 +256,7 @@ class TestLatencyStatistics:
         **Feature: full-capacity-testing**
         **Validates: Requirements G1.1-G1.5**
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
         latencies: List[float] = []

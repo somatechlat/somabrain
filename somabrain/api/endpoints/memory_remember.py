@@ -33,7 +33,7 @@ from somabrain.api.memory.models import (
     MemoryWriteRequest,
     MemoryWriteResponse,
 )
-from somabrain.auth import require_auth
+from somabrain.core.security.legacy_auth import require_auth
 from somabrain.metrics import record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.tiered_memory_registry import TieredMemoryRegistry

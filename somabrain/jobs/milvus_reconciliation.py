@@ -29,7 +29,7 @@ from somabrain.metrics import (
     MILVUS_RECONCILE_MISSING,
     MILVUS_RECONCILE_ORPHAN,
 )
-from somabrain.milvus_client import MilvusClient
+from somabrain.apps.memory.milvus_client import MilvusClient
 from somabrain.oak.option_manager import option_manager
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ def _memory_pool():
     if pool is None:
         from django.conf import settings as cfg
 
-        from somabrain.memory_pool import MultiTenantMemory
+        from somabrain.apps.memory.pool import MultiTenantMemory
 
         pool = MultiTenantMemory(cfg)
         if runtime_mod is not None:

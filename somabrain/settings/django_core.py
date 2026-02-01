@@ -22,6 +22,20 @@ env = environ.Env(
     SOMABRAIN_POSTGRES_DSN=(str, ""),
 )
 
+# Vault Integration for Secrets
+try:
+    from somabrain.core.security.vault_client import get_jwt_secret, VaultNotConfigured
+    try:
+        # Prioritize Vault for the Critical Secret
+        _vault_secret = get_jwt_secret()
+        if _vault_secret:
+            os.environ["SOMABRAIN_JWT_SECRET"] = _vault_secret
+            os.environ["SECRET_KEY"] = _vault_secret
+    except (VaultNotConfigured, ImportError):
+        pass
+except ImportError:
+    pass
+
 SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
 DEBUG = env("SOMABRAIN_LOG_LEVEL") == "DEBUG"
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
@@ -34,7 +48,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "somabrain",  # Main app
-    "somabrain.aaas",  # AAAS: tenants, subscriptions, API keys
+    "somabrain.apps.aaas",  # AAAS: tenants, subscriptions, API keys
     "somabrain.brain_settings",  # GMD MathCore settings
     "ninja",  # Django Ninja
 ]
@@ -49,7 +63,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "somabrain.urls"
+ROOT_URLCONF = "somabrain.config.urls"
 
 TEMPLATES = [
     {
@@ -67,8 +81,8 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "somabrain.wsgi.application"
-ASGI_APPLICATION = "somabrain.asgi.application"
+WSGI_APPLICATION = "somabrain.config.wsgi.application"
+ASGI_APPLICATION = "somabrain.config.asgi.application"
 
 # Database - PostgreSQL only
 DATABASES = {

@@ -21,7 +21,7 @@ from typing import Any, List, Optional
 
 from somabrain.apps.core.embeddings import make_embedder
 from somabrain.schemas import RetrievalCandidate, RetrievalRequest, RetrievalResponse
-from somabrain.scoring import UnifiedScorer
+from somabrain.apps.core.learning.scoring import UnifiedScorer
 from somabrain.services.memory_service import MemoryService
 
 # The repository contains both a ``runtime`` package (exposing WorkingMemoryBuffer)

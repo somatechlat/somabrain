@@ -9,9 +9,9 @@ import httpx
 import pytest
 
 from django.conf import settings
-from somabrain.memory.client import MemoryClient
+from somabrain.apps.memory.client import MemoryClient
 from somabrain.services.outbox_sync import _send_event
-from somabrain.models import OutboxEvent
+from somabrain.apps.core.models import OutboxEvent
 
 # Use centralized Settings for test configuration
 MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"

@@ -1,7 +1,7 @@
 """Memory Service Module for SomaBrain.
 
 Provides a high‑level ``MemoryService`` class that wraps a backend client and
-delegates circuit‑breaker logic to the shared :class:`~somabrain.infrastructure.
+delegates circuit‑breaker logic to the shared :class:`~somabrain.core.infrastructure_defs.
  circuit_breaker.CircuitBreaker` implementation.
 """
 

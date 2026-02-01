@@ -14,7 +14,7 @@ import logging
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient, GraphNeighbor
+    from somabrain.apps.memory.graph_client import GraphClient, GraphNeighbor
 
 from somabrain.metrics.planning import PLAN_GRAPH_UNAVAILABLE
 from somabrain.planning import coord_to_str, get_graph_client, task_key_to_coord

@@ -8,7 +8,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 
-from somabrain.memory.superposed_trace import CleanupIndex
+from somabrain.apps.memory.superposed_trace import CleanupIndex
 
 
 @dataclass

@@ -24,7 +24,7 @@ from django.conf import settings
 
 import somabrain.metrics as app_metrics
 from common.infra_utils import assert_ready
-from somabrain.modes import feature_enabled
+from somabrain.runtime.modes import feature_enabled
 
 # Leader election metrics
 LEADER_ELECTION_TOTAL = app_metrics.get_counter(

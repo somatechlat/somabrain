@@ -132,7 +132,7 @@ async def enforce_kafka_required() -> None:
     """
     from django.conf import settings
 
-    from somabrain.healthchecks import check_kafka
+    from somabrain.runtime.healthchecks import check_kafka
 
     try:
         kafka_ok = check_kafka(settings.KAFKA_BOOTSTRAP_SERVERS)
@@ -195,7 +195,7 @@ async def init_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
     """
     log = logger or _logger
     try:
-        from somabrain.tenant_manager import get_tenant_manager
+        from somabrain.apps.aaas.logic.tenant_manager import get_tenant_manager
 
         await get_tenant_manager()
         log.info("Tenant manager initialized successfully")

@@ -109,7 +109,7 @@ class TestStateIsolation:
         WHEN tenant A's circuit breaker opens
         THEN tenant B's circuit breaker SHALL remain closed.
         """
-        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
+        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         # Create circuit breaker with per-tenant tracking
         cb = CircuitBreaker(
@@ -203,7 +203,7 @@ class TestStateIsolation:
         WHEN tenant A fills WM to capacity
         THEN tenant B's WM capacity SHALL be unaffected.
         """
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
         import numpy as np
 
         # Create separate WM instances for each tenant
@@ -326,7 +326,7 @@ class TestCircuitBreakerPerTenant:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.2**
         """
-        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
+        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=2,
@@ -363,7 +363,7 @@ class TestCircuitBreakerPerTenant:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.2**
         """
-        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
+        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=2,

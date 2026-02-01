@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Optional
 from django.conf import settings
 
 if TYPE_CHECKING:
-    from somabrain.prediction import BudgetedPredictor
+    from somabrain.apps.core.learning.prediction import BudgetedPredictor
     from somabrain.apps.core.quantum import QuantumLayer
 
 logger = logging.getLogger("somabrain.bootstrap.singletons")
@@ -41,7 +41,7 @@ def make_predictor(cfg) -> "BudgetedPredictor":
     Raises:
         RuntimeError: If a disabled provider is requested.
     """
-    from somabrain.prediction import (
+    from somabrain.apps.core.learning.prediction import (
         BudgetedPredictor,
         LLMPredictor,
         MahalanobisPredictor,
@@ -196,7 +196,7 @@ def make_fd_sketch(cfg):
     if getattr(settings, "SOMABRAIN_SALIENCE_METHOD", "dense").lower() != "fd":
         return None
 
-    from somabrain.salience import FDSalienceSketch
+    from somabrain.apps.core.learning.salience import FDSalienceSketch
 
     embed_dim = getattr(settings, "EMBED_DIM", 256)
     return FDSalienceSketch(
@@ -226,7 +226,7 @@ def make_unified_scorer(cfg, fd_sketch=None):
     Returns:
         UnifiedScorer: Configured scorer instance.
     """
-    from somabrain.scoring import UnifiedScorer
+    from somabrain.apps.core.learning.scoring import UnifiedScorer
 
     return UnifiedScorer(
         w_cosine=getattr(settings, "SOMABRAIN_SCORER_W_COSINE", 0.5),

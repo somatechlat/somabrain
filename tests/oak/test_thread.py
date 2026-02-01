@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from django.conf import settings
-from somabrain.models import CognitiveThread
+from somabrain.apps.core.models import CognitiveThread
 from somabrain.oak import planner as oak_planner
 
 

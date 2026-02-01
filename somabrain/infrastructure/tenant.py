@@ -1,4 +1,4 @@
-"""somabrain.infrastructure.tenant
+"""somabrain.core.infrastructure_defs.tenant
 ===================================
 
 Centralised helper for normalising tenant / namespace strings.

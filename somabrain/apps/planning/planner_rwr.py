@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 import numpy as np
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.apps.memory.graph_client import GraphClient
 
 from somabrain.metrics.planning import PLAN_GRAPH_UNAVAILABLE
 from somabrain.planning import coord_to_str, get_graph_client, task_key_to_coord

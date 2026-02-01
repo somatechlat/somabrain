@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 import requests
 
-from somabrain.infrastructure import get_opa_url
+from somabrain.core.infrastructure_defs import get_opa_url
 
 LOGGER = logging.getLogger("somabrain.opa")
 

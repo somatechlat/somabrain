@@ -24,7 +24,7 @@ class TestMemoryModeSettings:
             if 'somabrain.settings' in mod:
                 del sys.modules[mod]
 
-        from somabrain.memory.backends import get_memory_mode
+        from somabrain.apps.memory.backends import get_memory_mode
         assert get_memory_mode() == "http"
 
     def test_direct_mode_detected(self, monkeypatch):
@@ -37,7 +37,7 @@ class TestMemoryModeSettings:
             if 'somabrain.settings' in mod:
                 del sys.modules[mod]
 
-        from somabrain.memory.backends import get_memory_mode, is_aaas_mode
+        from somabrain.apps.memory.backends import get_memory_mode, is_aaas_mode
         assert get_memory_mode() == "direct"
         assert is_aaas_mode() is True
 
@@ -51,7 +51,7 @@ class TestMemoryModeSettings:
             if 'somabrain.settings' in mod:
                 del sys.modules[mod]
 
-        from somabrain.memory.backends import is_aaas_mode
+        from somabrain.apps.memory.backends import is_aaas_mode
         assert is_aaas_mode() is False
 
 
@@ -60,7 +60,7 @@ class TestKeyToCoordinate:
 
     def test_key_to_coord_deterministic(self):
         """Same key should always produce same coordinate."""
-        from somabrain.memory.direct_backend import _key_to_coord
+        from somabrain.apps.memory.direct_backend import _key_to_coord
 
         coord1 = _key_to_coord("test_key")
         coord2 = _key_to_coord("test_key")
@@ -70,7 +70,7 @@ class TestKeyToCoordinate:
 
     def test_key_to_coord_bounds(self):
         """Coordinates should be in [-1, 1] range."""
-        from somabrain.memory.direct_backend import _key_to_coord
+        from somabrain.apps.memory.direct_backend import _key_to_coord
 
         for key in ["a", "test", "very_long_key_name_12345", "unicode_Ω_测试"]:
             coord = _key_to_coord(key)
@@ -80,7 +80,7 @@ class TestKeyToCoordinate:
 
     def test_different_keys_different_coords(self):
         """Different keys should produce different coordinates."""
-        from somabrain.memory.direct_backend import _key_to_coord
+        from somabrain.apps.memory.direct_backend import _key_to_coord
 
         coord1 = _key_to_coord("key1")
         coord2 = _key_to_coord("key2")
@@ -93,12 +93,12 @@ class TestDirectMemoryBackendClass:
 
     def test_class_exists(self):
         """DirectMemoryBackend class should be importable."""
-        from somabrain.memory.direct_backend import DirectMemoryBackend
+        from somabrain.apps.memory.direct_backend import DirectMemoryBackend
         assert DirectMemoryBackend is not None
 
     def test_class_has_required_methods(self):
         """Class should have all MemoryBackend Protocol methods."""
-        from somabrain.memory.direct_backend import DirectMemoryBackend
+        from somabrain.apps.memory.direct_backend import DirectMemoryBackend
 
         required_methods = [
             "remember",
@@ -117,7 +117,7 @@ class TestDirectMemoryBackendClass:
 
     def test_class_has_graph_extension_methods(self):
         """Class should have graph extension methods."""
-        from somabrain.memory.direct_backend import DirectMemoryBackend
+        from somabrain.apps.memory.direct_backend import DirectMemoryBackend
 
         graph_methods = ["link", "alink", "links_from", "k_hop", "payloads_for_coords"]
 
@@ -128,7 +128,7 @@ class TestDirectMemoryBackendClass:
 class TestBackendFactory:
     """Test get_memory_backend factory function."""
 
-    @patch("somabrain.memory.backends.MemoryClient")
+    @patch("somabrain.apps.memory.backends.MemoryClient")
     def test_http_mode_returns_memory_client(self, mock_client, monkeypatch):
         """HTTP mode should return MemoryClient."""
         monkeypatch.setenv("SOMABRAIN_MEMORY_MODE", "http")
@@ -139,7 +139,7 @@ class TestBackendFactory:
             if 'somabrain.settings' in mod:
                 del sys.modules[mod]
 
-        from somabrain.memory.backends import get_memory_backend
+        from somabrain.apps.memory.backends import get_memory_backend
 
         mock_client.return_value = MagicMock()
         backend = get_memory_backend(namespace="test")
@@ -156,13 +156,15 @@ class TestBackendFactory:
             if 'somabrain.settings' in mod:
                 del sys.modules[mod]
 
-        from somabrain.memory.backends import get_memory_backend
+        from somabrain.apps.memory.backends import get_memory_backend
 
-        # This should raise ImportError because somafractalmemory is not properly installed
-        with pytest.raises(ImportError) as exc_info:
-            get_memory_backend(namespace="test")
+        # Mock sys.modules to simulate missing somafractalmemory
+        with patch.dict("sys.modules", {"somafractalmemory": None, "somafractalmemory.services": None}):
+            # This should raise ImportError because somafractalmemory is not properly installed
+            with pytest.raises(ImportError) as exc_info:
+                get_memory_backend(namespace="test")
 
-        assert "somafractalmemory" in str(exc_info.value).lower()
+        assert "aaas mode requires somafractalmemory" in str(exc_info.value).lower()
 
 
 class TestLazyImports:
@@ -170,15 +172,15 @@ class TestLazyImports:
 
     def test_lazy_get_memory_backend(self):
         """get_memory_backend should be available from main module."""
-        from somabrain.memory import get_memory_backend
+        from somabrain.apps.memory import get_memory_backend
         assert callable(get_memory_backend)
 
     def test_lazy_is_aaas_mode(self):
         """is_aaas_mode should be available from main module."""
-        from somabrain.memory import is_aaas_mode
+        from somabrain.apps.memory import is_aaas_mode
         assert callable(is_aaas_mode)
 
     def test_lazy_get_memory_mode(self):
         """get_memory_mode should be available from main module."""
-        from somabrain.memory import get_memory_mode
+        from somabrain.apps.memory import get_memory_mode
         assert callable(get_memory_mode)
