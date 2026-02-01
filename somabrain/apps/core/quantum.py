@@ -22,7 +22,7 @@ from somabrain import roles as _roles
 from somabrain.math import cosine_similarity
 from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
 from somabrain.metrics_extra.math_metrics import MathematicalMetrics
-from somabrain.numerics import normalize_array
+from somabrain.apps.core.numerics import normalize_array
 from somabrain.seed import seed_to_uint64
 
 try:

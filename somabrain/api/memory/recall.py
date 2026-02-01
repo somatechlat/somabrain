@@ -33,7 +33,7 @@ from somabrain.api.memory.models import (
     MemoryRecallResponse,
 )
 from somabrain.metrics import observe_recall_latency, record_memory_snapshot
-from somabrain.runtime.config_runtime import (
+from somabrain.core.runtime.config_runtime import (
     ensure_config_dispatcher,
     ensure_supervisor_worker,
     submit_metrics_snapshot,

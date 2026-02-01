@@ -147,7 +147,7 @@ async def enforce_kafka_required() -> None:
 async def enforce_opa_postgres_required() -> None:
     """Fail fast if OPA or Postgres are not reachable.
 
-    The ``assert_ready`` helper in ``somabrain.common.infra`` performs the
+    The ``assert_ready`` helper in ``common.infra_utils`` performs the
     actual connectivity checks. We call it with ``require_kafka=False`` because
     Kafka is already enforced by ``enforce_kafka_required``. If any check
     fails, we log a clear error and raise ``RuntimeError`` so the container
@@ -157,7 +157,7 @@ async def enforce_opa_postgres_required() -> None:
         RuntimeError: If OPA or Postgres are not ready
     """
     try:
-        from somabrain.common.infra import assert_ready
+        from common.infra_utils import assert_ready
 
         # OPA and Postgres are required; Kafka is already handled separately.
         assert_ready(require_kafka=False, require_opa=True, require_postgres=True)

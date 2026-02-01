@@ -79,7 +79,7 @@ def get_memory_backend(
 
     elif mode == "http":
         # Default: HTTP mode
-        from somabrain.memory_client import MemoryClient
+        from somabrain.memory.client import MemoryClient
 
         return MemoryClient(cfg)
 

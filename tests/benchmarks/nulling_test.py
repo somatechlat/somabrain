@@ -6,8 +6,8 @@ Run under the project's venv with PYTHONPATH=. to validate imports and API.
 import numpy as np
 
 from somabrain.math import cosine_similarity
-from somabrain.numerics import irfft_norm, rfft_norm
-from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.apps.core.numerics import irfft_norm, rfft_norm
+from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
 
 def run_once(seed: int = 1234, D: int = 1024, null_frac: float = 0.2):

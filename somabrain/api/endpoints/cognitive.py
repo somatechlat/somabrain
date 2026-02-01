@@ -17,7 +17,7 @@ from ninja.errors import HttpError
 
 from somabrain.api.auth import api_key_auth
 from somabrain.auth import require_auth
-from somabrain.focus_state import FocusState
+from somabrain.brain.focus_state import FocusState
 from somabrain.schemas import (
     ActRequest,
     ActResponse,

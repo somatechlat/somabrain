@@ -23,7 +23,7 @@ from typing import Dict, Optional, Tuple
 from django.conf import settings
 
 import somabrain.metrics as app_metrics
-from somabrain.common.infra import assert_ready
+from common.infra_utils import assert_ready
 from somabrain.modes import feature_enabled
 
 # Leader election metrics

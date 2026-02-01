@@ -33,7 +33,7 @@ from typing import Dict, List
 
 import numpy as np
 
-from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
 
 def percentiles(vals: List[float], ps: List[float]) -> Dict[float, float]:

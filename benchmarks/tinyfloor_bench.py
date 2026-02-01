@@ -15,8 +15,8 @@ from pathlib import Path
 import numpy as np
 
 from somabrain import numerics
-from somabrain.quantum import HRRConfig, QuantumLayer
-from somabrain.quantum_pure import PureQuantumLayer
+from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+from somabrain.apps.core.quantum_pure import PureQuantumLayer
 
 
 def tiny_floor_sqrt(dtype, dim):

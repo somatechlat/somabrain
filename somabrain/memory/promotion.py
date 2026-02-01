@@ -22,7 +22,7 @@ from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:
     from somabrain.memory.graph_client import GraphClient
-    from somabrain.memory_client import MemoryClient
+    from somabrain.memory.client import MemoryClient
 
 logger = logging.getLogger(__name__)
 

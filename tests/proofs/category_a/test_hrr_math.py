@@ -20,7 +20,7 @@ import numpy as np
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 from somabrain.math import cosine_similarity
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any, Dict
 
-from somabrain.neuromodulators import NeuromodState
+from somabrain.brain.neuromodulators import NeuromodState
 
 
 class UnifiedBrainCore:

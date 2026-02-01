@@ -18,7 +18,7 @@ from cachetools import TTLCache
 from django.conf import settings
 
 from somabrain.math import cosine_similarity
-from somabrain.memory_client import RecallHit
+from somabrain.memory.client import RecallHit
 from somabrain.memory_pool import MultiTenantMemory
 from somabrain.services.memory_service import MemoryService
 

@@ -32,12 +32,12 @@ def run_stress(metrics_sink: str | None = None):
             a = rng.normal(size=D).astype(np.float32)
             a = a / (np.linalg.norm(a) + 1e-30)
             role_token = f"stress_role_{D}_{sd}"
-            from somabrain.quantum import HRRConfig, QuantumLayer
+            from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
             q = QuantumLayer(HRRConfig(dim=D, dtype="float32", renorm=True))
             q.make_unitary_role(role_token)
             c_clean = q.bind_unitary(a, role_token)
-            from somabrain.numerics import irfft_norm, rfft_norm
+            from somabrain.apps.core.numerics import irfft_norm, rfft_norm
 
             C = rfft_norm(c_clean)
             S = (C * np.conjugate(C)).real

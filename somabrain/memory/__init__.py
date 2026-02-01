@@ -5,9 +5,11 @@ This module provides:
 - SuperposedTrace: Trace configuration for memory operations
 - RecallHit: Normalized memory recall hit from the SFM service
 - MemoryHTTPTransport: HTTP transport layer for memory service
-- MemoryClient: Main client for memory operations (lazy import from memory_client)
+- MemoryClient: Main client for memory operations
 - get_memory_backend: Factory for HTTP or Direct backend (AAAS mode)
 """
+
+from .client import MemoryClient, RecallHit as ClientRecallHit
 
 from .filtering import _filter_payloads_by_keyword
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
@@ -162,9 +164,7 @@ __all__ = [
 
 
 def get_memory_client():
-    """Lazy import of MemoryClient to avoid circular imports."""
-    from somabrain.memory_client import MemoryClient
-
+    """Return MemoryClient class (now directly imported)."""
     return MemoryClient
 
 

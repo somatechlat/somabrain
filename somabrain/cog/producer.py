@@ -7,7 +7,7 @@ from typing import Dict, Optional
 
 from django.conf import settings
 
-from somabrain.common.kafka import encode, make_producer
+from common.kafka_utils import encode, make_producer
 
 
 def _bootstrap_from_env() -> Optional[str]:

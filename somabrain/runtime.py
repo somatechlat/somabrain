@@ -37,7 +37,7 @@ def _initialize_embedder() -> Any:
         return embedder
 
     try:
-        from somabrain.embeddings import make_embedder
+        from somabrain.apps.core.embeddings import make_embedder
 
         embedder = make_embedder(settings)
         logger.info("Embedder initialized successfully")
@@ -64,8 +64,8 @@ def _initialize_working_memory() -> Any:
     try:
         from somabrain.mt_wm import MultiTenantWM
 
-        # Default dimension 384 for embeddings
-        mt_wm = MultiTenantWM(dim=384)
+        # Use configured embedding dimension from settings
+        mt_wm = MultiTenantWM(dim=settings.SOMABRAIN_EMBED_DIM)
         logger.info("Working memory initialized successfully")
         return mt_wm
     except Exception as e:

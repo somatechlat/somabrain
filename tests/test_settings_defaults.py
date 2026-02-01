@@ -7,7 +7,7 @@ from pathlib import Path
 from django.conf import settings
 from somabrain.microcircuits import MCConfig
 from somabrain.mt_wm import MTWMConfig
-from somabrain.planner_rwr import rwr_plan
+from somabrain.apps.planning.planner_rwr import rwr_plan
 from somabrain.prediction import BudgetedPredictor, SlowPredictor
 from somabrain.wm import WorkingMemory
 

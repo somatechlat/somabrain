@@ -45,8 +45,8 @@ from typing import Callable, Dict, List
 
 from django.conf import settings
 
-from .adaptive.core import AdaptiveParameter, PerformanceMetrics
-from .metrics.neuromodulator import (
+from somabrain.adaptive.core import AdaptiveParameter, PerformanceMetrics
+from somabrain.metrics.neuromodulator import (
     NEUROMOD_ACETYLCHOLINE,
     NEUROMOD_DOPAMINE,
     NEUROMOD_NORADRENALINE,
@@ -56,7 +56,7 @@ from .metrics.neuromodulator import (
 
 logger = logging.getLogger(__name__)
 
-from .core.rust_bridge import get_rust_module, is_rust_available
+from somabrain.core.rust_bridge import get_rust_module, is_rust_available
 
 
 @dataclass

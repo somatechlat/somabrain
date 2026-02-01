@@ -1,7 +1,7 @@
 """Quick smoke tests for core math primitives: QuantumLayer bind/unbind/unitary roles and numerics."""
 
-from somabrain.quantum import HRRConfig, make_quantum_layer
-from somabrain.numerics import (
+from somabrain.apps.core.quantum import HRRConfig, make_quantum_layer
+from somabrain.apps.core.numerics import (
     normalize_array,
     compute_tiny_floor,
     rfft_norm,

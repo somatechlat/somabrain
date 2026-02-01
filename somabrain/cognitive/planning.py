@@ -71,7 +71,7 @@ class Planner:
         Returns:
             List of task strings representing the plan
         """
-        from somabrain.planner import plan_from_graph
+        from somabrain.apps.planning.planner import plan_from_graph
 
         steps = max_steps or self._max_steps
 

@@ -16,7 +16,7 @@ def normalize_vector(vec_like, dim: int = HRR_DIM):
     Convert an input sequence/array to a unit-norm float32 list of length `dim`.
     Raises ValueError on invalid inputs.
     """
-    from somabrain.numerics import normalize_array
+    from somabrain.apps.core.numerics import normalize_array
 
     arr = np.asarray(vec_like, dtype=HRR_DTYPE)
     if arr.ndim != 1:

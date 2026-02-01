@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 # Strict: use confluent-kafka Consumer only
 from confluent_kafka import Consumer as CKConsumer
 
-from somabrain.common.infra import assert_ready
+from common.infra_utils import assert_ready
 
 try:  # Redis optional
     import redis

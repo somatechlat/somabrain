@@ -15,8 +15,8 @@ import numpy as np
 import pytest
 from hypothesis import given, settings as hyp_settings, strategies as st
 
-from somabrain.quantum import QuantumLayer, HRRConfig
-from somabrain.numerics import compute_tiny_floor
+from somabrain.apps.core.quantum import QuantumLayer, HRRConfig
+from somabrain.apps.core.numerics import compute_tiny_floor
 from somabrain.math.bhdc_encoder import BHDCEncoder
 
 
