@@ -1,4 +1,4 @@
-"""BHDC quantum layer implementation for SomaBrain.
+r"""BHDC quantum layer implementation for SomaBrain.
 
 Binary/sparse hypervectors with permutation binding replace legacy FFT and
 mask-based composers. Binding is hardware-friendly and invertible by
@@ -18,12 +18,12 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from somabrain import roles as _roles
+from somabrain.apps.core import roles as _roles
 from somabrain.math import cosine_similarity
 from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
 from somabrain.metrics_extra.math_metrics import MathematicalMetrics
 from somabrain.apps.core.numerics import normalize_array
-from somabrain.seed import seed_to_uint64
+from somabrain.core.utils.seed import seed_to_uint64
 
 try:
     from memory.density import DensityMatrix

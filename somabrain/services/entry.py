@@ -6,7 +6,7 @@ and learner) in background threads within a single process. Each service
 respects its own feature flags, and a composite flag `ENABLE_COG_THREADS=1`
 will enable defaults suitable for full-capacity local runs.
 
-Behavior is governed by centralized modes (see `somabrain.modes`). Legacy
+Behavior is governed by centralized modes (see `somabrain.runtime.modes`). Legacy
 ENABLE_* and SOMABRAIN_FF_* env flags are removed.
 
 Usage:
@@ -102,7 +102,7 @@ def main() -> None:  # pragma: no cover
 
     from django.conf import settings
 
-    from somabrain.modes import feature_enabled
+    from somabrain.runtime.modes import feature_enabled
 
     threads: list[threading.Thread] = []
 

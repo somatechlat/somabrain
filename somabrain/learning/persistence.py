@@ -17,7 +17,7 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     settings = None
 
-from somabrain.infrastructure import get_redis_url
+from somabrain.core.infrastructure_defs import get_redis_url
 
 
 def get_redis() -> "Redis | None":

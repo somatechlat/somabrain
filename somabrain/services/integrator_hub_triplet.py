@@ -37,7 +37,7 @@ except Exception as exc:  # pragma: no cover
 import requests
 
 import somabrain.metrics as metrics
-from somabrain.infrastructure import get_redis_url
+from somabrain.core.infrastructure_defs import get_redis_url
 
 
 def _load_schema(path: str):

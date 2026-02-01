@@ -27,7 +27,7 @@ from django.conf import settings
 
 import somabrain.metrics as metrics
 from common.kafka_utils import encode, make_producer
-from somabrain.modes import feature_enabled
+from somabrain.runtime.modes import feature_enabled
 from somabrain.segmentation.evaluator import evaluate_boundaries, update_metrics
 from somabrain.segmentation.hmm import (
     HMMParams,

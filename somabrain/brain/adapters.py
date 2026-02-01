@@ -11,7 +11,7 @@ UnifiedBrainCore uses the centralized MemoryClient lane strictly.
 
 from typing import Any, Dict, List, Tuple
 
-from somabrain.memory.client import MemoryClient
+from somabrain.apps.memory.client import MemoryClient
 
 
 class FractalClientAdapter:

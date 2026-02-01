@@ -14,7 +14,7 @@ from django.db.models import Count
 
 from somabrain.journal import JournalEvent, get_journal
 from somabrain.metrics import report_outbox_replayed
-from somabrain.models import OutboxEvent
+from somabrain.apps.core.models import OutboxEvent
 
 VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
 

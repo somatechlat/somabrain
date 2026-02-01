@@ -16,7 +16,7 @@ from django.conf import settings
 
 if TYPE_CHECKING:
     from somabrain.apps.core.quantum import QuantumLayer
-    from somabrain.scoring import UnifiedScorer
+    from somabrain.apps.core.learning.scoring import UnifiedScorer
 
 logger = logging.getLogger("somabrain.bootstrap.core_singletons")
 
@@ -208,7 +208,7 @@ def create_supervisor(cfg):
     if not getattr(settings, "SOMABRAIN_USE_META_BRAIN", False):
         return None
 
-    from somabrain.supervisor import Supervisor, SupervisorConfig
+    from somabrain.runtime.supervisor import Supervisor, SupervisorConfig
 
     return Supervisor(
         SupervisorConfig(
@@ -294,7 +294,7 @@ def create_ewma_monitors():
     Returns:
         dict: Dictionary containing EWMA instances for various metrics.
     """
-    from somabrain.stats import EWMA
+    from somabrain.core.utils.stats import EWMA
 
     return {
         "novelty": EWMA(alpha=0.05),
@@ -347,7 +347,7 @@ def create_fractal_memory(cfg):
     # We need a memory client instance.
     # In strictly layered architecture, we might create a dedicated one here
     # or access the global one. For bootstrap, we instantiate a client.
-    from somabrain.memory.client import MemoryClient
+    from somabrain.apps.memory.client import MemoryClient
 
     # Instantiate client configured for the specific namespace if needed,
     # or standard config.

@@ -2,14 +2,14 @@
 
 import time
 import pytest
-from somabrain.memory.client import MemoryClient, RecallHit
+from somabrain.apps.memory.client import MemoryClient, RecallHit
 from django.conf import settings
 from common.logging import logger
 import httpx
 
 """Integration test for the real memory service.
 
-This test exercises the :class:`~somabrain.memory_client.MemoryClient` against a
+This test exercises the :class:`~somabrain.interfaces.cli.memoryent.MemoryClient` against a
 live HTTP memory backend. It stores a simple payload and then performs a recall
 query that should return the stored memory. The test is deliberately minimal –
 its purpose is to verify end‑to‑end connectivity without mocking any part of

@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from somabrain.wm import WorkingMemory
+from somabrain.apps.memory.wm.core import WorkingMemory
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 Feature flags view derived from central modes.
 
 This module exposes a stable API for the Features router and tooling while
-delegating the source of truth to `somabrain.modes`. Environment-variable based
+delegating the source of truth to `somabrain.runtime.modes`. Environment-variable based
 flags are removed; optional local overrides are persisted in a JSON file and
 applied only in `full-local` mode.
 """
@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List
 
-from somabrain.modes import feature_enabled, mode_config
+from somabrain.runtime.modes import feature_enabled, mode_config
 from django.conf import settings
 
 

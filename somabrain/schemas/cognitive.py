@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 from pydantic import BaseModel, model_validator
 
-from somabrain.nano_profile import HRR_DIM
+from somabrain.core.utils.nano_profile import HRR_DIM
 from .common import normalize_vector
 
 

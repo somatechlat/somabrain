@@ -22,7 +22,7 @@ from django.db import transaction
 from django.db.models import Count
 
 from somabrain.journal import JournalEvent, get_journal
-from somabrain.models import OutboxEvent
+from somabrain.apps.core.models import OutboxEvent
 
 logger = logging.getLogger(__name__)
 

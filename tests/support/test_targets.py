@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 import requests
 
-from somabrain.infrastructure import (
+from somabrain.core.infrastructure_defs import (
     get_api_base_url,
     get_memory_http_endpoint,
     get_redis_url,

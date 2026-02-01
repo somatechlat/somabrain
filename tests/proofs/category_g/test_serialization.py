@@ -40,7 +40,7 @@ class TestSerializationForSFM:
         WHEN payload contains tuples THEN they SHALL be converted to lists
         because JSON does not support tuple type.
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         payload = {
             "coordinate": (1.0, 2.0, 3.0),
@@ -70,7 +70,7 @@ class TestSerializationForSFM:
         WHEN payload contains numpy arrays THEN they SHALL be converted
         to Python lists for JSON serialization.
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         try:
             import numpy as np
@@ -110,7 +110,7 @@ class TestSerializationForSFM:
         WHEN payload contains epoch timestamps (float > 1e9)
         THEN they SHALL be converted to ISO 8601 strings.
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         # Use a known timestamp: 2024-01-15 12:00:00 UTC
         epoch_ts = 1705320000.0
@@ -145,7 +145,7 @@ class TestSerializationForSFM:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.3**
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         dt = datetime.datetime(2024, 1, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
         date_only = datetime.date(2024, 1, 15)
@@ -172,7 +172,7 @@ class TestSerializationForSFM:
         **Feature: deep-memory-integration, Property G1.4**
         **Validates: Requirements G1.4**
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         payload = {
             "level1": {
@@ -205,7 +205,7 @@ class TestSerializationForSFM:
         **Feature: deep-memory-integration, Property G1.5**
         **Validates: Requirements G1.5**
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         payload = {
             "null_field": None,
@@ -223,7 +223,7 @@ class TestSerializationForSFM:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.5**
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         payload = {
             "utf8_bytes": b"hello world",
@@ -244,7 +244,7 @@ class TestSerializationForSFM:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.5**
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         assert serialize_for_sfm({}) == {}
         assert serialize_for_sfm(None) == {}
@@ -258,7 +258,7 @@ class TestSerializationForSFM:
         This is the comprehensive test for Task 9.6 that verifies
         all serialization requirements together.
         """
-        from somabrain.memory.serialization import serialize_for_sfm
+        from somabrain.apps.memory.serialization import serialize_for_sfm
 
         try:
             import numpy as np
@@ -334,7 +334,7 @@ class TestDeserializationFromSFM:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.3 (inverse)**
         """
-        from somabrain.memory.serialization import deserialize_from_sfm
+        from somabrain.apps.memory.serialization import deserialize_from_sfm
 
         payload = {
             "created_at": "2024-01-15T12:00:00+00:00",
@@ -358,7 +358,7 @@ class TestDeserializationFromSFM:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.4 (inverse)**
         """
-        from somabrain.memory.serialization import deserialize_from_sfm
+        from somabrain.apps.memory.serialization import deserialize_from_sfm
 
         payload = {
             "metadata": {
@@ -394,7 +394,7 @@ class TestCoordinateSerialization:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.1**
         """
-        from somabrain.memory.serialization import serialize_coordinate
+        from somabrain.apps.memory.serialization import serialize_coordinate
 
         coord = (1.0, 2.5, 3.14159)
         result = serialize_coordinate(coord)
@@ -408,7 +408,7 @@ class TestCoordinateSerialization:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.1 (inverse)**
         """
-        from somabrain.memory.serialization import deserialize_coordinate
+        from somabrain.apps.memory.serialization import deserialize_coordinate
 
         coord_str = "1.0,2.5,3.14159"
         result = deserialize_coordinate(coord_str)
@@ -422,7 +422,7 @@ class TestCoordinateSerialization:
         **Feature: deep-memory-integration**
         **Validates: Requirements G1.1**
         """
-        from somabrain.memory.serialization import (
+        from somabrain.apps.memory.serialization import (
             serialize_coordinate,
             deserialize_coordinate,
         )

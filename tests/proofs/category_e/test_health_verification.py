@@ -413,7 +413,7 @@ class TestSFMIntegrationHealth:
         This test uses the check_sfm_integration_health function directly
         to verify the health check logic.
         """
-        from somabrain.healthchecks import (
+        from somabrain.runtime.healthchecks import (
             SFMIntegrationHealth,
             check_sfm_integration_health,
         )
@@ -496,7 +496,7 @@ class TestSFMIntegrationHealth:
         WHEN health check exceeds 2 seconds THEN it SHALL timeout
         and report unknown status.
         """
-        from somabrain.healthchecks import check_sfm_integration_health
+        from somabrain.runtime.healthchecks import check_sfm_integration_health
 
         # Use a non-existent endpoint to trigger timeout
         # This simulates SFM being slow/unresponsive
@@ -520,7 +520,7 @@ class TestSFMIntegrationHealth:
         WHEN SFM is completely unreachable THEN SB health SHALL report
         degraded with sfm_available=false.
         """
-        from somabrain.healthchecks import check_sfm_integration_health
+        from somabrain.runtime.healthchecks import check_sfm_integration_health
 
         # Use invalid endpoint to simulate unreachable SFM
         health = check_sfm_integration_health(
@@ -543,7 +543,7 @@ class TestSFMIntegrationHealth:
         """
         import asyncio
 
-        from somabrain.healthchecks import check_sfm_integration_health_async
+        from somabrain.runtime.healthchecks import check_sfm_integration_health_async
 
         async def run_async_check():
             """Execute run async check."""

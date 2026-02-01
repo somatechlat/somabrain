@@ -56,11 +56,11 @@ class TestWMPersistence:
 
         This test verifies the WMRestorer correctly restores WM state.
         """
-        from somabrain.memory.wm_persistence import (
+        from somabrain.apps.memory.wm_persistence import (
             WMPersister,
             WMRestorer,
         )
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         # Create a mock memory client for testing
         # Note: This is a minimal implementation, not a mock
@@ -168,8 +168,8 @@ class TestWMPersistence:
         WHEN WM item is admitted THEN it SHALL be asynchronously
         persisted to SFM within 1 second.
         """
-        from somabrain.memory.wm_persistence import WMPersister
-        from somabrain.wm import WMItem
+        from somabrain.apps.memory.wm_persistence import WMPersister
+        from somabrain.apps.memory.wm.core import WMItem
 
         # Create test memory client
         class TestMemoryClient:
@@ -241,7 +241,7 @@ class TestWMPersistence:
         WHEN WM item is evicted THEN the corresponding SFM entry
         SHALL be marked as evicted (not deleted) for audit.
         """
-        from somabrain.memory.wm_persistence import WMPersister
+        from somabrain.apps.memory.wm_persistence import WMPersister
 
         # Create test memory client
         class TestMemoryClient:
@@ -292,7 +292,7 @@ class TestWMPersistence:
         **Feature: deep-memory-integration**
         **Validates: Requirements A1.1**
         """
-        from somabrain.memory.wm_persistence import WMPersistenceEntry
+        from somabrain.apps.memory.wm_persistence import WMPersistenceEntry
 
         entry = WMPersistenceEntry(
             tenant_id="test_tenant",
@@ -337,8 +337,8 @@ class TestWMRestorerTimeout:
         **Feature: deep-memory-integration**
         **Validates: Requirements A1.2**
         """
-        from somabrain.memory.wm_persistence import WMRestorer
-        from somabrain.wm import WorkingMemory
+        from somabrain.apps.memory.wm_persistence import WMRestorer
+        from somabrain.apps.memory.wm.core import WorkingMemory
 
         # Create a slow memory client
         class SlowMemoryClient:

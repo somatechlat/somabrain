@@ -9,7 +9,7 @@ Keys: wm:updates:{tenant}:{domain}
  - Store last N (configurable) items
  - Set TTL per key (default 8s)
 
-Feature gating is centralized via somabrain.modes.feature_enabled("wm_updates_cache"); legacy SOMABRAIN_FF_WM_UPDATES_CACHE removed.
+Feature gating is centralized via somabrain.runtime.modes.feature_enabled("wm_updates_cache"); legacy SOMABRAIN_FF_WM_UPDATES_CACHE removed.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 
 from django.conf import settings
 
-from somabrain.modes import feature_enabled
+from somabrain.runtime.modes import feature_enabled
 
 logger = logging.getLogger(__name__)
 

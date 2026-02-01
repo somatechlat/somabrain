@@ -53,7 +53,7 @@ def _get_tiered_registry():
 
 def _tiered_enabled() -> bool:
     """Check if tiered memory feature is enabled."""
-    from somabrain.modes import feature_enabled
+    from somabrain.runtime.modes import feature_enabled
 
     return feature_enabled("tiered_memory")
 

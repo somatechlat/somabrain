@@ -11,9 +11,9 @@ from django.http import HttpRequest, HttpResponse
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.auth import require_auth
+from somabrain.core.security.legacy_auth import require_auth
 from somabrain.schemas import Persona
-from somabrain.tenant_manager import get_tenant_manager
+from somabrain.apps.aaas.logic.tenant_manager import get_tenant_manager
 
 # Note: Ideally move these imports to top-level if dependencies allow,
 # but keeping structure similar to original for safety during rapid migration.

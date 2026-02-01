@@ -15,7 +15,7 @@ from ninja import Router
 from pydantic import BaseModel
 
 from somabrain.api.auth import api_key_auth
-from somabrain.auth import require_auth
+from somabrain.core.security.legacy_auth import require_auth
 from somabrain.tenant import get_tenant
 
 class ConfigResponse(BaseModel):

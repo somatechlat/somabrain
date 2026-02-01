@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Dict, Optional
 
 if TYPE_CHECKING:
-    from somabrain.infrastructure.circuit_breaker import CircuitBreaker
+    from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
 
 @dataclass

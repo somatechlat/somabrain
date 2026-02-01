@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
+from somabrain.core.utils.nano_profile import HRR_DIM, HRR_DTYPE
 
 
 def normalize_vector(vec_like, dim: int = HRR_DIM):

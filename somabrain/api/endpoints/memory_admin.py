@@ -19,7 +19,7 @@ from somabrain.api.memory.models import (
     OutboxEventSummary,
     OutboxReplayRequest,
 )
-from somabrain.auth import require_admin_auth
+from somabrain.core.security.legacy_auth import require_admin_auth
 from somabrain.db import outbox as outbox_db
 
 logger = logging.getLogger("somabrain.api.endpoints.memory_admin")

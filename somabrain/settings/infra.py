@@ -12,6 +12,34 @@ import os
 os.environ["TF_METAL_DEVICE_HANDLING"] = "1"
 
 # PostgreSQL
+try:
+    from somabrain.core.security.vault_client import get_db_credentials, get_secret, VaultNotConfigured
+
+    try:
+        db_creds = get_db_credentials()
+        # Construct DSN from Vault if available
+        # Expected format: postgres://user:pass@host:port/db
+        if db_creds:
+            _user = db_creds.get("username")
+            _pass = db_creds.get("password")
+            _host = db_creds.get("host", "localhost")
+            _port = db_creds.get("port", 5432)
+            _name = db_creds.get("dbname", "somabrain")
+
+            # Prioritize Vault!
+            os.environ["SOMABRAIN_POSTGRES_DSN"] = f"postgres://{_user}:{_pass}@{_host}:{_port}/{_name}"
+
+            # Redis from Vault?
+            redis_creds = get_secret("somabrain/redis")
+            if redis_creds:
+                 os.environ["SOMABRAIN_REDIS_URL"] = redis_creds.get("url", "")
+
+    except (VaultNotConfigured, ImportError):
+        # Fallback to pure Env if Vault not configured (e.g. CI without Vault)
+        pass
+except ImportError:
+    pass
+
 SOMABRAIN_POSTGRES_DSN = env.str("SOMABRAIN_POSTGRES_DSN", default="")
 # Remove legacy DATABASE_URL fallback to avoid collisions
 # DATABASE_URL = env.str("DATABASE_URL", default=None)

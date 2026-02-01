@@ -12,7 +12,7 @@ from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
 from somabrain.apps.core.embeddings import make_embedder
 from somabrain.learning import UtilityWeights
-from somabrain.memory_pool import MultiTenantMemory
+from somabrain.apps.memory.pool import MultiTenantMemory
 
 _embedder = None
 try:

@@ -1,11 +1,11 @@
 """Infrastructure **package** for SomaBrain.
 
-Historically the project exposed a *module* ``somabrain.infrastructure`` that
+Historically the project exposed a *module* ``somabrain.core.infrastructure_defs`` that
 contained a collection of helper functions such as ``get_memory_http_endpoint``
 and ``get_api_base_url``.  A later refactor introduced a **package** named
-``somabrain.infrastructure`` with an ``__init__`` that only provided
+``somabrain.core.infrastructure_defs`` with an ``__init__`` that only provided
 ``get_redis_url``.  Import statements throughout the codebase (e.g.
-``from somabrain.infrastructure import get_memory_http_endpoint``) therefore
+``from somabrain.core.infrastructure_defs import get_memory_http_endpoint``) therefore
 resolved to the package and failed with ``ImportError`` because the symbols were
 no longer exported.
 

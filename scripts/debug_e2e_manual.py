@@ -9,7 +9,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = "http://127.0.0.1:10101"
 django.setup()
 
-from somabrain.memory.client import MemoryClient
+from somabrain.apps.memory.client import MemoryClient
 
 
 def run_debug():

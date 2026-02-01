@@ -10,7 +10,7 @@ Tests that PROVE circuit breaker state machine correctness:
 - HALF_OPEN -> CLOSED on success
 - HALF_OPEN -> OPEN on failure
 
-Uses the real CircuitBreaker implementation from somabrain.infrastructure.
+Uses the real CircuitBreaker implementation from somabrain.core.infrastructure_defs.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import time
 
 import pytest
 
-from somabrain.infrastructure.circuit_breaker import CircuitBreaker
+from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
 
 @pytest.mark.circuit_breaker

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import numpy as np
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.apps.memory.graph_client import GraphClient
 
 from somabrain.metrics.planning import PLAN_EMPTY, PLAN_LATENCY
 from somabrain.apps.planning.planner import plan_from_graph

@@ -14,7 +14,7 @@ Helm chart created under ``charts/somabrain``. It follows the VIBE rules:
 Typical usage:
 
 ```
-python -m somabrain.cli.canary \
+python -m somabrain.interfaces.cli.main.canary \
     --release somabrain \
     --namespace soma \
     --chart ./charts/somabrain \

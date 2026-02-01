@@ -17,7 +17,7 @@ from django.db import transaction
 from django.db.models import Count
 
 from somabrain.metrics import report_outbox_replayed
-from somabrain.models import OutboxEvent
+from somabrain.apps.core.models import OutboxEvent
 
 logger = logging.getLogger(__name__)
 

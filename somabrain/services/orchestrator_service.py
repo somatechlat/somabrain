@@ -32,7 +32,7 @@ from typing import Any, Dict, Optional
 # Strict mode: use confluent-kafka Consumer
 from confluent_kafka import Consumer as CKConsumer
 
-from somabrain.modes import feature_enabled
+from somabrain.runtime.modes import feature_enabled
 
 logger = logging.getLogger(__name__)
 
