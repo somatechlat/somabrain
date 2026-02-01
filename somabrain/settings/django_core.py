@@ -22,6 +22,11 @@ env = environ.Env(
     SOMABRAIN_POSTGRES_DSN=(str, ""),
 )
 
+# API Authentication Token
+# Standardized to support SOMA_API_TOKEN or SOMA_API_TOKEN_FILE via environ's support
+SOMA_API_TOKEN = env.str("SOMA_API_TOKEN", default=None)
+SOMA_API_TOKEN_FILE = env.str("SOMA_API_TOKEN_FILE", default=None)
+
 # Vault Integration for Secrets
 try:
     from somabrain.core.security.vault_client import get_jwt_secret, VaultNotConfigured
@@ -112,6 +117,24 @@ STATIC_URL = "static/"
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# -----------------------------------------------------------------------------
+# Helper function to load API token (matches existing logic)
+# -----------------------------------------------------------------------------
+def get_api_token() -> str | None:
+    """Load the API token from settings or file."""
+    if SOMA_API_TOKEN:
+        return SOMA_API_TOKEN
+
+    if SOMA_API_TOKEN_FILE:
+        try:
+            p = Path(SOMA_API_TOKEN_FILE)
+            if p.exists():
+                return p.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+
+    return None
 
 # ============================================================================
 # DJANGO LOGGING CONFIGURATION
