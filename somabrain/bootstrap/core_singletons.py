@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from django.conf import settings
 
 if TYPE_CHECKING:
-    from somabrain.quantum import QuantumLayer
+    from somabrain.apps.core.quantum import QuantumLayer
     from somabrain.scoring import UnifiedScorer
 
 logger = logging.getLogger("somabrain.bootstrap.core_singletons")
@@ -160,7 +160,7 @@ def create_amygdala(cfg, fd_sketch: Any = None):
     Returns:
         AmygdalaSalience: The salience computation singleton.
     """
-    from somabrain.amygdala import AmygdalaSalience, SalienceConfig
+    from somabrain.apps.cognitive.amygdala import AmygdalaSalience, SalienceConfig
 
     return AmygdalaSalience(
         SalienceConfig(
@@ -191,7 +191,7 @@ def create_hippocampus():
     Returns:
         Hippocampus: The consolidation singleton.
     """
-    from somabrain.hippocampus import ConsolidationConfig, Hippocampus
+    from somabrain.apps.cognitive.hippocampus import ConsolidationConfig, Hippocampus
 
     return Hippocampus(ConsolidationConfig())
 
@@ -230,7 +230,7 @@ def create_exec_controller(cfg):
     if not getattr(settings, "SOMABRAIN_USE_EXEC_CONTROLLER", False):
         return None
 
-    from somabrain.exec_controller import ExecConfig, ExecutiveController
+    from somabrain.apps.planning.exec_controller import ExecConfig, ExecutiveController
 
     return ExecutiveController(
         ExecConfig(
@@ -280,7 +280,7 @@ def create_sdr_encoder(cfg):
     if not getattr(settings, "SOMABRAIN_USE_SDR_PREFILTER", False):
         return None
 
-    from somabrain.sdr import SDREncoder
+    from somabrain.apps.core.sdr import SDREncoder
 
     return SDREncoder(
         dim=getattr(settings, "SOMABRAIN_SDR_DIM", 2048),
@@ -347,7 +347,7 @@ def create_fractal_memory(cfg):
     # We need a memory client instance.
     # In strictly layered architecture, we might create a dedicated one here
     # or access the global one. For bootstrap, we instantiate a client.
-    from somabrain.memory_client import MemoryClient
+    from somabrain.memory.client import MemoryClient
 
     # Instantiate client configured for the specific namespace if needed,
     # or standard config.

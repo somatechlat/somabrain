@@ -11,8 +11,8 @@ from pathlib import Path
 import numpy as np
 
 from somabrain.math import cosine_similarity
-from somabrain.numerics import irfft_norm, rfft_norm
-from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.apps.core.numerics import irfft_norm, rfft_norm
+from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
 
 def run_bench(

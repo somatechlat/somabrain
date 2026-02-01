@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from somabrain.memory_client import MemoryClient
+    from somabrain.memory.client import MemoryClient
     from somabrain.wm import WMItem, WorkingMemory
 
 logger = logging.getLogger(__name__)

@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from common.config.settings import settings
+from django.conf import settings
 
 
 def http_setting(attr: str, default_val: int) -> int:

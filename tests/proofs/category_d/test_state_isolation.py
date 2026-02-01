@@ -50,7 +50,7 @@ class TestStateIsolation:
         WHEN tenant A modifies neuromodulators
         THEN tenant B's neuromodulators SHALL be unchanged.
         """
-        from somabrain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+        from somabrain.brain.neuromodulators import NeuromodState, PerTenantNeuromodulators
 
         per_tenant = PerTenantNeuromodulators()
 
@@ -171,7 +171,7 @@ class TestStateIsolation:
         THEN tenant B's adaptive parameters SHALL be unchanged.
         """
         from somabrain.adaptive.core import PerformanceMetrics
-        from somabrain.neuromodulators import AdaptivePerTenantNeuromodulators
+        from somabrain.brain.neuromodulators import AdaptivePerTenantNeuromodulators
 
         adaptive = AdaptivePerTenantNeuromodulators()
 
@@ -251,7 +251,7 @@ class TestAdaptivePerTenantNeuromodulators:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.4**
         """
-        from somabrain.neuromodulators import AdaptivePerTenantNeuromodulators
+        from somabrain.brain.neuromodulators import AdaptivePerTenantNeuromodulators
 
         adaptive = AdaptivePerTenantNeuromodulators()
 
@@ -271,7 +271,7 @@ class TestAdaptivePerTenantNeuromodulators:
         **Validates: Requirements D2.4**
         """
         from somabrain.adaptive.core import PerformanceMetrics
-        from somabrain.neuromodulators import AdaptivePerTenantNeuromodulators
+        from somabrain.brain.neuromodulators import AdaptivePerTenantNeuromodulators
 
         adaptive = AdaptivePerTenantNeuromodulators()
 

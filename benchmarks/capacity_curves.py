@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 
 from somabrain.math.similarity import cosine_similarity
-from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
 
 def run(

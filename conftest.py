@@ -34,7 +34,7 @@ os.environ.setdefault(
 os.environ.setdefault("DATABASE_URL", os.environ["TEST_PG_DSN"])
 os.environ.setdefault("SOMABRAIN_POSTGRES_DSN", os.environ["TEST_PG_DSN"])
 try:
-    from common.config.settings import settings as _settings
+    from django.conf import settings as _settings
 
     _settings.postgres_dsn = os.environ["TEST_PG_DSN"]
     tok = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")

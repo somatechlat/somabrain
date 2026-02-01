@@ -13,9 +13,9 @@ Goals:
 - Maintain SOMA compatibility emission when enabled via runtime config.
 
 Strict mode assumptions:
-- Avro encode via `somabrain.common.kafka.encode` with schema names: belief_update,
+- Avro encode via `common.kafka_utils.encode` with schema names: belief_update,
   belief_update_soma (optional), next_event.
-- Confluent Kafka producer from `somabrain.common.kafka.make_producer`.
+- Confluent Kafka producer from `common.kafka_utils.make_producer`.
 
 Environment / runtime_config keys (mirroring legacy mains):
 - *_update_period for each domain (state_update_period, agent_update_period, action_update_period)
@@ -25,7 +25,7 @@ Environment / runtime_config keys (mirroring legacy mains):
 
 from __future__ import annotations
 
-from common.config.settings import settings
+from django.conf import settings
 import random
 import time
 from typing import Dict, Any, Tuple
@@ -34,8 +34,8 @@ import numpy as np
 
 from somabrain.observability.provider import init_tracing, get_tracer
 
-from somabrain.common.kafka import make_producer, encode, TOPICS
-from somabrain.common.events import build_next_event
+from common.kafka_utils import make_producer, encode, TOPICS
+from common.events import build_next_event
 
 try:
     from somabrain import metrics as _metrics

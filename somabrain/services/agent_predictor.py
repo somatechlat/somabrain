@@ -24,7 +24,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 from django.conf import settings
 
-from somabrain.common.kafka import encode, make_producer
+from common.kafka_utils import encode, make_producer
 from somabrain.prediction import (
     BudgetedPredictor,
     MahalanobisPredictor,

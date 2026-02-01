@@ -94,7 +94,7 @@ class TestStandaloneImports:
     def test_memory_client_importable(self):
         """Verify memory client can be imported."""
         try:
-            from somabrain.memory_client import MemoryClient
+            from somabrain.memory.client import MemoryClient
             assert MemoryClient is not None
         except ImportError as e:
             pytest.fail(f"Failed to import MemoryClient: {e}")

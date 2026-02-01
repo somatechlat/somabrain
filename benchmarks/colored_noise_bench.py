@@ -8,8 +8,8 @@ from pathlib import Path
 
 import numpy as np
 
-from somabrain.numerics import irfft_norm
-from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.apps.core.numerics import irfft_norm
+from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
 
 def make_colored_noise_spectrum(n_bins, exponent=1.0, seed=0):

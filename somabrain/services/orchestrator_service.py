@@ -48,7 +48,7 @@ except Exception:  # pragma: no cover
     AvroSerde = None
 
 # Outbox API (DB-backed) required
-from somabrain.common.infra import assert_ready
+from common.infra_utils import assert_ready
 from somabrain.db.outbox import enqueue_event
 
 # Topic configuration constants (centralised settings only)

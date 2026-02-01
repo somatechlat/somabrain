@@ -25,7 +25,7 @@ from somabrain.math.similarity import (
     cosine_distance,
     batch_cosine_similarity,
 )
-from somabrain.numerics import normalize_array
+from somabrain.apps.core.numerics import normalize_array
 
 
 # ---------------------------------------------------------------------------

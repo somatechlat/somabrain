@@ -21,7 +21,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
-    from somabrain.quantum import QuantumLayer
+    from somabrain.apps.core.quantum import QuantumLayer
     from somabrain.scoring import UnifiedScorer
 
 logger = logging.getLogger("somabrain.bootstrap.runtime_init")

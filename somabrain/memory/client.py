@@ -23,11 +23,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from common.config.settings import settings
+from django.conf import settings
 from somabrain.infrastructure import get_memory_http_endpoint
 from somabrain.interfaces.memory import MemoryBackend
 
-from .config import Config
+from somabrain.config import Config
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
@@ -1246,7 +1246,7 @@ class MemoryClient:
         else:
             # Fallback to unified settings when legacy runtime is unavailable
             try:
-                from common.config.settings import settings as _settings
+                from django.conf import settings as _settings
 
                 weighting_enabled = bool(
                     getattr(_settings, "memory_enable_weighting", False)
@@ -1461,7 +1461,7 @@ class MemoryClient:
                 fast_ack = False
         else:
             try:
-                from common.config.settings import settings as _rt
+                from django.conf import settings as _rt
 
                 fast_ack = _rt.get_bool("memory_fast_ack", False)
             except Exception:

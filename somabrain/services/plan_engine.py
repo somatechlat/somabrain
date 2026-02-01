@@ -21,8 +21,8 @@ if TYPE_CHECKING:
     from somabrain.memory.graph_client import GraphClient
 
 from somabrain.metrics.planning import PLAN_EMPTY, PLAN_LATENCY
-from somabrain.planner import plan_from_graph
-from somabrain.planner_rwr import rwr_plan
+from somabrain.apps.planning.planner import plan_from_graph
+from somabrain.apps.planning.planner_rwr import rwr_plan
 
 logger = logging.getLogger(__name__)
 

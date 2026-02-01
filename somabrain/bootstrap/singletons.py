@@ -16,7 +16,7 @@ from django.conf import settings
 
 if TYPE_CHECKING:
     from somabrain.prediction import BudgetedPredictor
-    from somabrain.quantum import QuantumLayer
+    from somabrain.apps.core.quantum import QuantumLayer
 
 logger = logging.getLogger("somabrain.bootstrap.singletons")
 
@@ -109,7 +109,7 @@ def make_quantum_layer(cfg) -> Optional["QuantumLayer"]:
         return None
 
     try:
-        from somabrain.quantum import HRRConfig, QuantumLayer
+        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
         hrr_cfg = HRRConfig(
             dim=getattr(settings, "SOMABRAIN_HRR_DIM", 1024),
@@ -152,7 +152,7 @@ def make_embedder_with_dim(cfg, quantum=None):
     """
     import numpy as np
 
-    from somabrain.embeddings import make_embedder
+    from somabrain.apps.core.embeddings import make_embedder
 
     embedder = make_embedder(cfg, quantum=quantum)
 

@@ -23,7 +23,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from somabrain.numerics import (
+from somabrain.apps.core.numerics import (
     compute_tiny_floor,
     irfft_norm,
     make_unitary_role,
@@ -150,12 +150,12 @@ def extended_snr_capacity_run(
             a = a / (np.linalg.norm(a) + 1e-30)
             role_token = f"bench_role_{D}_{sd}"
             # Use the quantum layer to generate a role and bind
-            from somabrain.quantum import HRRConfig, QuantumLayer
+            from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
 
             q = QuantumLayer(HRRConfig(dim=D, dtype="float32", renorm=True))
             q.make_unitary_role(role_token)
             c_clean = q.bind_unitary(a, role_token)
-            from somabrain.numerics import irfft_norm, rfft_norm
+            from somabrain.apps.core.numerics import irfft_norm, rfft_norm
 
             C = rfft_norm(c_clean)
             S = (C * np.conjugate(C)).real

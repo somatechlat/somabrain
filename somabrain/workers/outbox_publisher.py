@@ -32,7 +32,7 @@ django.setup()
 from django.conf import settings
 from django.db import transaction
 
-from somabrain.common.infra import assert_ready
+from common.infra_utils import assert_ready
 from somabrain.db.outbox import (
     get_pending_counts_by_tenant,
     get_pending_events_by_tenant_batch,
