@@ -45,7 +45,7 @@ class TestTraceContextInjection:
         **Feature: deep-memory-integration**
         **Validates: Requirements H1.1**
         """
-        from somabrain.apps.memory.http_helpers import inject_trace_context
+        from somabrain.memory.http_helpers import inject_trace_context
 
         assert inject_trace_context is not None, "Function should exist"
         assert callable(inject_trace_context), "Should be callable"
@@ -59,7 +59,7 @@ class TestTraceContextInjection:
         WHEN inject_trace_context is called with headers dict
         THEN traceparent and tracestate headers SHALL be added.
         """
-        from somabrain.apps.memory.http_helpers import inject_trace_context
+        from somabrain.memory.http_helpers import inject_trace_context
 
         headers = {"X-Request-ID": "test-123"}
 
@@ -77,7 +77,7 @@ class TestTraceContextInjection:
         **Feature: deep-memory-integration**
         **Validates: Requirements H1.2**
         """
-        from somabrain.apps.memory.http_helpers import _start_span
+        from somabrain.memory.http_helpers import _start_span
 
         assert _start_span is not None, "Function should exist"
         assert callable(_start_span), "Should be callable"
@@ -88,7 +88,7 @@ class TestTraceContextInjection:
         **Feature: deep-memory-integration**
         **Validates: Requirements H1.4**
         """
-        from somabrain.apps.memory.http_helpers import _end_span
+        from somabrain.memory.http_helpers import _end_span
 
         assert _end_span is not None, "Function should exist"
         assert callable(_end_span), "Should be callable"
@@ -99,7 +99,7 @@ class TestTraceContextInjection:
         **Feature: deep-memory-integration**
         **Validates: Requirements H1.2, H1.4**
         """
-        from somabrain.apps.memory.http_helpers import _start_span, _end_span
+        from somabrain.memory.http_helpers import _start_span, _end_span
 
         # Start a span with correct signature: (operation, tenant, endpoint)
         span = _start_span("test_operation", "test_tenant", "/test/endpoint")
@@ -135,7 +135,7 @@ class TestTracePropagation:
         """
         # This test verifies the integration exists
         # Actual trace propagation requires OpenTelemetry SDK configuration
-        from somabrain.apps.memory.http_helpers import (
+        from somabrain.memory.http_helpers import (
             inject_trace_context,
             _start_span,
             _end_span,
@@ -224,7 +224,7 @@ class TestGraphClientTracing:
         **Validates: Requirements H1.2**
         """
         # Verify GraphClient imports tracer
-        from somabrain.apps.memory.graph_client import GraphClient
+        from somabrain.memory.graph_client import GraphClient
 
         # GraphClient should use opentelemetry.trace
         import inspect
@@ -242,7 +242,7 @@ class TestGraphClientTracing:
         **Validates: Requirements H1.2**
         """
         import inspect
-        from somabrain.apps.memory.graph_client import GraphClient
+        from somabrain.memory.graph_client import GraphClient
 
         source = inspect.getsource(GraphClient)
 

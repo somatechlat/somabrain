@@ -12,13 +12,13 @@ from .infra import *
 # =============================================================================
 
 # Remove AAAS Application
-if "somabrain.apps.aaas" in INSTALLED_APPS:
-    INSTALLED_APPS.remove("somabrain.apps.aaas")
+if "somabrain.aaas" in INSTALLED_APPS:
+    INSTALLED_APPS.remove("somabrain.aaas")
 
 # Remove AAAS Middleware (Billing, Rate Limiting, etc)
 MIDDLEWARE = [
     m for m in MIDDLEWARE
-    if "somabrain.apps.aaas" not in m
+    if "somabrain.aaas" not in m
     and "UsageTrackingMiddleware" not in m
 ]
 

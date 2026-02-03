@@ -50,7 +50,7 @@ class TestMemoryIsolation:
         WHEN tenant A stores a memory
         THEN tenant B's recall SHALL NOT return it.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
         # Create separate WM instances for each tenant
@@ -82,7 +82,7 @@ class TestMemoryIsolation:
         WHEN tenant A queries with tenant B's coordinate
         THEN results SHALL be empty.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
         # Create separate WM instances
@@ -113,7 +113,7 @@ class TestMemoryIsolation:
         WHEN namespace header is set
         THEN all operations SHALL be scoped to that namespace.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
         # Create WM instances representing different namespaces
@@ -142,7 +142,7 @@ class TestMemoryIsolation:
         WHEN tenant header is missing
         THEN SB SHALL use default tenant, NOT leak cross-tenant data.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
         # Create default WM (simulates missing tenant header)
@@ -173,7 +173,7 @@ class TestMemoryIsolation:
         WHEN 100 tenants operate concurrently
         THEN zero cross-tenant leakage SHALL occur.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
         num_tenants = 20  # Reduced for faster test execution
@@ -289,7 +289,7 @@ class TestWorkingMemoryTenantIsolation:
         WHEN tenant A fills WM to capacity
         THEN tenant B's WM capacity SHALL be unaffected.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
         # Create WM for each tenant with same capacity

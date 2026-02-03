@@ -20,7 +20,7 @@ def setup_settings():
 
 from somabrain.learning.adaptation import AdaptationEngine
 from somabrain.context.builder import RetrievalWeights
-from somabrain.metrics_extra.math_metrics import MathematicalMetrics
+from somabrain.metrics.math_metrics import MathematicalMetrics
 
 @pytest.mark.integration
 @pytest.mark.django_db

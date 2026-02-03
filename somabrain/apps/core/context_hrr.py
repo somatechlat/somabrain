@@ -23,7 +23,7 @@ from typing import Callable, Tuple
 
 import numpy as np
 
-from somabrain.metrics_extra.context_metrics import ContextMetrics
+from somabrain.metrics.context_metrics import ContextMetrics
 
 from .quantum import QuantumLayer
 

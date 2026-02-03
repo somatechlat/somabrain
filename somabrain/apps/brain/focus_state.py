@@ -21,7 +21,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from somabrain.context_hrr import HRRContext
-    from somabrain.apps.memory.graph_client import GraphClient
+    from somabrain.memory.graph_client import GraphClient
 
 from somabrain.metrics.planning import FOCUS_PERSIST, FOCUS_UPDATE_LATENCY
 

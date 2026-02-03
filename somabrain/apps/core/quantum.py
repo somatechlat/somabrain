@@ -21,7 +21,7 @@ import numpy as np
 from somabrain.apps.core import roles as _roles
 from somabrain.math import cosine_similarity
 from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
-from somabrain.metrics_extra.math_metrics import MathematicalMetrics
+from somabrain.metrics.math_metrics import MathematicalMetrics
 from somabrain.apps.core.numerics import normalize_array
 from somabrain.core.utils.seed import seed_to_uint64
 
@@ -200,7 +200,7 @@ class QuantumLayer:
     def superpose(self, *vectors) -> np.ndarray:
         """Execute superpose."""
 
-        from somabrain.metrics_extra.advanced_math_metrics import (
+        from somabrain.metrics.advanced_math_metrics import (
             AdvancedMathematicalMetrics,
         )
 
@@ -268,7 +268,7 @@ class QuantumLayer:
         MathematicalMetrics.verify_operation_correctness("bind", cosine_a)
 
         # Record binder condition number for diagnostics
-        from somabrain.metrics_extra.advanced_math_metrics import (
+        from somabrain.metrics.advanced_math_metrics import (
             AdvancedMathematicalMetrics,
         )
 
@@ -354,7 +354,7 @@ class QuantumLayer:
 
         # Verify orthogonality against existing roles before caching
         if self._role_cache and self.cfg.roles_unitary:
-            from somabrain.metrics_extra.advanced_math_metrics import (
+            from somabrain.metrics.advanced_math_metrics import (
                 AdvancedMathematicalMetrics,
             )
 
@@ -376,7 +376,7 @@ class QuantumLayer:
             role_token: The role_token.
         """
 
-        from somabrain.metrics_extra.advanced_math_metrics import (
+        from somabrain.metrics.advanced_math_metrics import (
             AdvancedMathematicalMetrics,
         )
 
@@ -526,7 +526,7 @@ class QuantumLayer:
             "unitary_role_norm", abs(norm - 1.0)
         )
 
-        from somabrain.metrics_extra.advanced_math_metrics import (
+        from somabrain.metrics.advanced_math_metrics import (
             AdvancedMathematicalMetrics,
         )
 

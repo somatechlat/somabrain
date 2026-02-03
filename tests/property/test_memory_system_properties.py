@@ -16,8 +16,8 @@ from __future__ import annotations
 import numpy as np
 from hypothesis import given, settings as hyp_settings, strategies as st
 
-from somabrain.apps.memory.superposed_trace import SuperposedTrace, TraceConfig
-from somabrain.apps.memory.wm.core import WorkingMemory
+from somabrain.memory.superposed_trace import SuperposedTrace, TraceConfig
+from somabrain.memory.wm.core import WorkingMemory
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 import time
 import pytest
-from somabrain.apps.memory.client import MemoryClient, RecallHit
+from somabrain.memory.client import MemoryClient, RecallHit
 from django.conf import settings
 from common.logging import logger
 import httpx

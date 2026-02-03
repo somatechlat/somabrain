@@ -12,7 +12,7 @@ from threading import RLock
 from typing import Dict
 
 from somabrain.schemas import PersonalityState
-from somabrain.apps.aaas.logic.tenant_manager import get_tenant_manager
+from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 
 
 class PersonalityStore:

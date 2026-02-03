@@ -203,7 +203,7 @@ def check_milvus() -> Dict[str, Any]:
     def _check():
         """Execute check."""
 
-        from somabrain.apps.memory.milvus_client import MilvusClient
+        from somabrain.memory.milvus_client import MilvusClient
 
         client = MilvusClient()
 

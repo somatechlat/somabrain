@@ -496,7 +496,7 @@ def get_system_health(request: AuthenticatedRequest):
 
     # Milvus
     try:
-        from somabrain.apps.memory.milvus_client import MilvusClient
+        from somabrain.memory.milvus_client import MilvusClient
 
         client = MilvusClient()
         if client.collection is not None:

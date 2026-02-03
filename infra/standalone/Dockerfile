@@ -117,8 +117,8 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install fastavro
 # already prevents those directories from being added, but we explicitly omit
 # them here for clarity.
 
-COPY observability /app/observability
-COPY services /app/services
+# COPY observability /app/observability
+# COPY services /app/services
 # Django migrations are created in somabrain/migrations/ and aaas/migrations/
 # Alembic/SQLAlchemy removed per VIBE rules - pure Django ORM
 # Avro/IDL schemas are required for the cognition services
@@ -146,13 +146,13 @@ COPY scripts/initialize_runtime.py /app/scripts/initialize_runtime.py
 COPY somabrain /app/somabrain
 
 # Add memory package back for runtime imports
-COPY memory /app/memory
+# COPY memory /app/memory
 # Copy shared `common` helpers so imports like `from common...` work at runtime
 COPY common /app/common
 
 # Copy optional helper libraries (e.g., kafka_cog) into the image. These are pure Python packages without a
 # setuptools/pyproject configuration, so we expose them via PYTHONPATH instead of installing with pip.
-COPY libs /app/libs
+# COPY libs /app/libs
 
 # Ensure runtime imports can find the copied libraries.
 ENV PYTHONPATH=/app:/app/libs:${PYTHONPATH:-}
@@ -164,7 +164,7 @@ ENV PYTHONPATH=/app:${PYTHONPATH:-}
 RUN mkdir -p /app/logs && chmod 0755 /app/logs
 
 # Supervisor config for multi-process cognitive services (used by somabrain_cog container)
-COPY ops/supervisor /app/ops/supervisor
+# COPY ops/supervisor /app/ops/supervisor
 
 # Create non-root user with UID/GID 1000
 RUN set -eux; \

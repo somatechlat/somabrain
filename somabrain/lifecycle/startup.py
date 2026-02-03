@@ -195,7 +195,7 @@ async def init_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
     """
     log = logger or _logger
     try:
-        from somabrain.apps.aaas.logic.tenant_manager import get_tenant_manager
+        from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 
         await get_tenant_manager()
         log.info("Tenant manager initialized successfully")
