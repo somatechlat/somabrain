@@ -53,7 +53,7 @@ class TestThroughputCapacity:
         WHEN 100 concurrent requests are made
         THEN 99% SHALL succeed.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         # Create shared WM (thread-safe operations)
         wm = WorkingMemory(capacity=200)
@@ -98,7 +98,7 @@ class TestThroughputCapacity:
         WHEN 1000 memories are stored in 10 seconds
         THEN no data loss SHALL occur.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=1100)  # Slightly larger than test size
 
@@ -133,7 +133,7 @@ class TestThroughputCapacity:
         WHEN 500 recalls are performed
         THEN all SHALL complete within 10 seconds.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
 
@@ -169,7 +169,7 @@ class TestThroughputCapacity:
 
         Note: This test runs a shortened version (30 seconds) for CI.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import gc
 
         wm = WorkingMemory(capacity=100)
@@ -210,7 +210,7 @@ class TestThroughputCapacity:
         WHEN a traffic spike occurs
         THEN system SHALL recover within 30 seconds.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
 
@@ -273,7 +273,7 @@ class TestConcurrentOperations:
         **Feature: full-capacity-testing**
         **Validates: Requirements G2.1**
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=200)
 

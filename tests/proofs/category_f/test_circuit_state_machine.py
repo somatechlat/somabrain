@@ -19,7 +19,7 @@ import time
 
 import pytest
 
-from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
 
 @pytest.mark.circuit_breaker

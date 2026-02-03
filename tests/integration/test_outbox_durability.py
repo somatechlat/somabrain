@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from django.conf import settings
-from somabrain.apps.memory.client import MemoryClient
+from somabrain.memory.client import MemoryClient
 from somabrain.services.outbox_sync import _send_event
 from somabrain.apps.core.models import OutboxEvent
 

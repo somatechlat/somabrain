@@ -13,7 +13,7 @@ import logging
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
-    from somabrain.apps.memory.graph_client import GraphClient
+    from somabrain.memory.graph_client import GraphClient
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class Planner:
         Returns:
             List of task strings representing the plan
         """
-        from somabrain.apps.planning.planner import plan_from_graph
+        from somabrain.planning.planner import plan_from_graph
 
         steps = max_steps or self._max_steps
 

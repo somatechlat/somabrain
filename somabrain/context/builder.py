@@ -18,8 +18,8 @@ from cachetools import TTLCache
 from django.conf import settings
 
 from somabrain.math import cosine_similarity
-from somabrain.apps.memory.client import RecallHit
-from somabrain.apps.memory.pool import MultiTenantMemory
+from somabrain.memory.client import RecallHit
+from somabrain.memory.pool import MultiTenantMemory
 from somabrain.services.memory_service import MemoryService
 
 # VIBE Compliance: Use TYPE_CHECKING for forward references to avoid circular imports

@@ -30,6 +30,6 @@ URLS = {
 # Authentication
 # ---------------------------------------------------------------------------
 AUTH = {
-    "sfm_token": "dev-token-somastack2024",
-    "api_token": "dev-token-somastack2024",
+    "sfm_token": "test-token-123",
+    "api_token": "test-token-123",
 }

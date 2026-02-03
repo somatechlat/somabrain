@@ -20,7 +20,26 @@ env = environ.Env(
     # SomaBrain core settings with defaults
     SOMABRAIN_LOG_LEVEL=(str, "INFO"),
     SOMABRAIN_POSTGRES_DSN=(str, ""),
+    SOMABRAIN_API_URL=(str, "http://localhost:30101"),
+    SOMABRAIN_MEMORY_HTTP_ENDPOINT=(str, "http://localhost:10101"),
+    SOMABRAIN_MEMORY_HTTP_TOKEN=(str, "test-token-123"),
+    SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD=(int, 5),
+    SOMABRAIN_CIRCUIT_RESET_INTERVAL=(float, 30.0),
+    SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL=(float, 60.0),
+    SOMABRAIN_WM_ALPHA=(float, 0.5),
+    SOMABRAIN_WM_BETA=(float, 0.2),
+    SOMABRAIN_WM_GAMMA=(float, 0.3),
+    SOMABRAIN_WM_RECENCY_TIME_SCALE=(float, 60.0),
+    SOMABRAIN_WM_RECENCY_MAX_STEPS=(float, 10.0),
+    SOMABRAIN_WM_SALIENCE_THRESHOLD=(float, 0.6),
 )
+
+SOMABRAIN_API_URL = env("SOMABRAIN_API_URL")
+SOMABRAIN_MEMORY_HTTP_ENDPOINT = env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+SOMABRAIN_MEMORY_HTTP_TOKEN = env("SOMABRAIN_MEMORY_HTTP_TOKEN")
+SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD = env("SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD")
+SOMABRAIN_CIRCUIT_RESET_INTERVAL = env("SOMABRAIN_CIRCUIT_RESET_INTERVAL")
+SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL = env("SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL", default=60.0)
 
 # API Authentication Token
 # Standardized to support SOMA_API_TOKEN or SOMA_API_TOKEN_FILE via environ's support
@@ -53,7 +72,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "somabrain",  # Main app
-    "somabrain.apps.aaas",  # AAAS: tenants, subscriptions, API keys
+    "somabrain.aaas",  # AAAS: tenants, subscriptions, API keys
     "somabrain.brain_settings",  # GMD MathCore settings
     "ninja",  # Django Ninja
 ]

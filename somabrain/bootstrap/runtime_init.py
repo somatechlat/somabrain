@@ -92,7 +92,7 @@ def create_mt_memory(cfg, scorer: "UnifiedScorer", embedder: Any, _rt: Any):
     Returns:
         MultiTenantMemory: The memory singleton instance.
     """
-    from somabrain.apps.memory.pool import MultiTenantMemory
+    from somabrain.memory.pool import MultiTenantMemory
 
     if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
         mt_memory = MultiTenantMemory(cfg, scorer=scorer, embedder=embedder)

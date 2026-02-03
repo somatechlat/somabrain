@@ -64,7 +64,7 @@ class TestLatencySLOs:
         WHEN remember() is called
         THEN p95 latency SHALL be under 300ms.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
         latencies: List[float] = []
@@ -97,7 +97,7 @@ class TestLatencySLOs:
         WHEN recall() is called
         THEN p95 latency SHALL be under 400ms.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
 
@@ -256,7 +256,7 @@ class TestLatencyStatistics:
         **Feature: full-capacity-testing**
         **Validates: Requirements G1.1-G1.5**
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(capacity=100)
         latencies: List[float] = []

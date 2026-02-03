@@ -80,7 +80,7 @@ def _initialize_memory_pool() -> Any:
         return mt_memory
 
     try:
-        from somabrain.apps.memory.pool import MultiTenantMemory
+        from somabrain.memory.pool import MultiTenantMemory
 
         mt_memory = MultiTenantMemory(cfg=settings)
         logger.info("Memory pool initialized successfully")

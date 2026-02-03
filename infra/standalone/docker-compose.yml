@@ -253,7 +253,7 @@ services:
     ports:
       - "${PROMETHEUS_HOST_PORT:-30105}:${PROMETHEUS_CONTAINER_PORT:-9090}"
     volumes:
-      - ../../ops/prometheus/etc/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      #      - ../../ops/prometheus/etc/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     # Production-like Prometheus configuration
     command:
@@ -444,8 +444,8 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       # Use external memory service configured via environment variables (no mock)
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somafractalmemory_standalone_api:10101"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:10101"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN-test-token-123}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
       SOMABRAIN_PORT: "${SOMABRAIN_PORT:-30101}"
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"

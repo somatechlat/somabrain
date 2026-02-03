@@ -10,7 +10,7 @@ import pytest
 from hypothesis import given, settings as hypothesis_settings, strategies as st
 
 from django.conf import settings
-from somabrain.apps.memory.client import MemoryClient, _stable_coord
+from somabrain.memory.client import MemoryClient, _stable_coord
 
 pytestmark = pytest.mark.property
 

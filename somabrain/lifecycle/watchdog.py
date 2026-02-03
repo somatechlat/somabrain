@@ -72,7 +72,7 @@ async def shutdown_tenant_manager(logger: Optional[logging.Logger] = None) -> No
     """
     log = logger or _logger
     try:
-        from somabrain.apps.aaas.logic.tenant_manager import close_tenant_manager
+        from somabrain.aaas.logic.tenant_manager import close_tenant_manager
 
         await close_tenant_manager()
         log.info("Tenant manager shutdown completed")

@@ -173,7 +173,7 @@ def health_view(request):
     def check_milvus():
         """Execute check milvus."""
 
-        from somabrain.apps.memory.milvus_client import MilvusClient
+        from somabrain.memory.milvus_client import MilvusClient
 
         client = MilvusClient()
         return {

@@ -8,6 +8,25 @@ from django.db import models
 from django.utils import timezone
 
 
+class DynamicConfig(models.Model):
+    """
+    Store dynamic configuration parameters for runtime tuning.
+
+    Verified Vibe Rule: Hot changes must be saved in the ORM.
+    """
+    key = models.CharField(max_length=255, unique=True, help_text="Config key (e.g. 'circuit_breaker.threshold')")
+    value = models.JSONField(help_text="Configuration value (JSON typed)")
+    description = models.TextField(blank=True, help_text="Documentation for this setting")
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Dynamic Configuration"
+        verbose_name_plural = "Dynamic Configurations"
+
+    def __str__(self):
+        return f"{self.key} = {self.value}"
+
 class OutboxEvent(models.Model):
     """
     Transactional outbox pattern for reliable event publishing.

@@ -77,7 +77,7 @@ coordinate_strategy = st.tuples(
 
 from somabrain.brain.neuromodulators import NeuromodState, PerTenantNeuromodulators
 from somabrain.datetime_utils import coerce_to_epoch_seconds
-from somabrain.apps.memory.client import RecallHit
+from somabrain.memory.client import RecallHit
 
 
 class TestTenantIsolation:

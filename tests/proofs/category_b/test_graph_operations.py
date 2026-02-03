@@ -237,12 +237,12 @@ class TestGraphAugmentedRecall:
             assert b_neighbor is not None, "B should be a neighbor of A"
 
         # Now test the boost logic with real RecallHit objects
-        from somabrain.apps.memory.recall_ops import recall_with_graph_boost
-        from somabrain.apps.memory.types import RecallHit
+        from somabrain.memory.recall_ops import recall_with_graph_boost
+        from somabrain.memory.types import RecallHit
 
         # Create a minimal graph client that queries real SFM
-        from somabrain.apps.memory.graph_client import GraphClient
-        from somabrain.apps.memory.transport import MemoryHTTPTransport
+        from somabrain.memory.graph_client import GraphClient
+        from somabrain.memory.transport import MemoryHTTPTransport
 
         transport = MemoryHTTPTransport(
             base_url=sfm_url,
@@ -292,8 +292,8 @@ class TestGraphAugmentedRecall:
 
         This is a pure logic test - no infrastructure needed.
         """
-        from somabrain.apps.memory.recall_ops import recall_with_graph_boost
-        from somabrain.apps.memory.types import RecallHit
+        from somabrain.memory.recall_ops import recall_with_graph_boost
+        from somabrain.memory.types import RecallHit
 
         initial_hits = [
             RecallHit(
@@ -319,7 +319,7 @@ class TestGraphAugmentedRecall:
 
         This is a pure logic test - no infrastructure needed.
         """
-        from somabrain.apps.memory.recall_ops import recall_with_graph_boost
+        from somabrain.memory.recall_ops import recall_with_graph_boost
 
         boosted_hits = recall_with_graph_boost(
             hits=[],

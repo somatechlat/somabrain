@@ -18,11 +18,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import numpy as np
 
 if TYPE_CHECKING:
-    from somabrain.apps.memory.graph_client import GraphClient
+    from somabrain.memory.graph_client import GraphClient
 
 from somabrain.metrics.planning import PLAN_EMPTY, PLAN_LATENCY
-from somabrain.apps.planning.planner import plan_from_graph
-from somabrain.apps.planning.planner_rwr import rwr_plan
+from somabrain.planning.planner import plan_from_graph
+from somabrain.planning.planner_rwr import rwr_plan
 
 logger = logging.getLogger(__name__)
 

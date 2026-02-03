@@ -230,7 +230,7 @@ def create_exec_controller(cfg):
     if not getattr(settings, "SOMABRAIN_USE_EXEC_CONTROLLER", False):
         return None
 
-    from somabrain.apps.planning.exec_controller import ExecConfig, ExecutiveController
+    from somabrain.planning.exec_controller import ExecConfig, ExecutiveController
 
     return ExecutiveController(
         ExecConfig(
@@ -347,7 +347,7 @@ def create_fractal_memory(cfg):
     # We need a memory client instance.
     # In strictly layered architecture, we might create a dedicated one here
     # or access the global one. For bootstrap, we instantiate a client.
-    from somabrain.apps.memory.client import MemoryClient
+    from somabrain.memory.client import MemoryClient
 
     # Instantiate client configured for the specific namespace if needed,
     # or standard config.

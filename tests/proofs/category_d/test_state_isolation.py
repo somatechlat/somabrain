@@ -203,7 +203,7 @@ class TestStateIsolation:
         WHEN tenant A fills WM to capacity
         THEN tenant B's WM capacity SHALL be unaffected.
         """
-        from somabrain.apps.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
         # Create separate WM instances for each tenant

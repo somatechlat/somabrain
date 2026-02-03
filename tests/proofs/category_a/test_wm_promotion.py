@@ -51,7 +51,7 @@ class TestPromotionTracker:
         WHEN WM item maintains salience >= 0.85 for 3+ consecutive ticks
         THEN it SHALL be promoted to LTM.
         """
-        from somabrain.apps.memory.promotion import PromotionTracker
+        from somabrain.memory.promotion import PromotionTracker
 
         tracker = PromotionTracker(
             threshold=0.85,
@@ -99,7 +99,7 @@ class TestPromotionTracker:
         **Feature: deep-memory-integration**
         **Validates: Requirements A2.1**
         """
-        from somabrain.apps.memory.promotion import PromotionTracker
+        from somabrain.memory.promotion import PromotionTracker
 
         tracker = PromotionTracker(threshold=0.85, min_ticks=3)
 
@@ -129,7 +129,7 @@ class TestPromotionTracker:
         **Feature: deep-memory-integration**
         **Validates: Requirements A2.2**
         """
-        from somabrain.apps.memory.promotion import PromotionTracker
+        from somabrain.memory.promotion import PromotionTracker
 
         tracker = PromotionTracker(threshold=0.85, min_ticks=3)
 
@@ -154,7 +154,7 @@ class TestPromotionTracker:
         **Feature: deep-memory-integration**
         **Validates: Requirements A2.1**
         """
-        from somabrain.apps.memory.promotion import PromotionTracker
+        from somabrain.memory.promotion import PromotionTracker
 
         tracker = PromotionTracker(threshold=0.85, min_ticks=3)
 
@@ -173,7 +173,7 @@ class TestPromotionTracker:
         **Feature: deep-memory-integration**
         **Validates: Requirements A2.1**
         """
-        from somabrain.apps.memory.promotion import PromotionTracker
+        from somabrain.memory.promotion import PromotionTracker
 
         tracker = PromotionTracker(threshold=0.85, min_ticks=3)
 
@@ -219,7 +219,7 @@ class TestWMLTMPromoter:
         **Feature: deep-memory-integration**
         **Validates: Requirements A2.1**
         """
-        from somabrain.apps.memory.promotion import WMLTMPromoter
+        from somabrain.memory.promotion import WMLTMPromoter
 
         # Create a minimal memory client for testing
         class TestMemoryClient:
@@ -260,7 +260,7 @@ class TestWMLTMPromoter:
         **Validates: Requirements A2.2**
         """
         import asyncio
-        from somabrain.apps.memory.promotion import WMLTMPromoter
+        from somabrain.memory.promotion import WMLTMPromoter
 
         # Create test memory client
         class TestMemoryClient:
@@ -325,7 +325,7 @@ class TestWMLTMPromoter:
         - promotion_timestamp
         """
         import asyncio
-        from somabrain.apps.memory.promotion import WMLTMPromoter
+        from somabrain.memory.promotion import WMLTMPromoter
 
         # Create test memory client that captures payload
         class TestMemoryClient:
@@ -392,7 +392,7 @@ class TestPromotionMetrics:
         **Feature: deep-memory-integration**
         **Validates: Requirements A2.5**
         """
-        from somabrain.apps.memory.promotion import (
+        from somabrain.memory.promotion import (
             WM_PROMOTION_TOTAL,
             WM_PROMOTION_LATENCY,
         )
