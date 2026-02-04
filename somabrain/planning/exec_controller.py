@@ -44,7 +44,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Deque, Dict, Optional, Tuple
 
-from .metrics.executive import EXEC_BANDIT_ARM
+from somabrain.metrics.executive import EXEC_BANDIT_ARM
 
 logger = logging.getLogger(__name__)
 
