@@ -88,7 +88,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "somabrain",  # Main app
     "somabrain.aaas",  # AAAS: tenants, subscriptions, API keys
-    "somabrain.admin.brain_settings",  # GMD MathCore settings
+    "somabrain.brain_settings",  # GMD MathCore settings
     "ninja",  # Django Ninja
 ]
 
