@@ -22,26 +22,26 @@ import pytest
 
 AAAS_ENV = {
     # PostgreSQL (somastack_postgres)
-    "SOMA_DB_HOST": "localhost",
+    "SOMA_DB_HOST": "127.0.0.1",
     "SOMA_DB_PORT": "63932",
     "SOMA_DB_USER": "soma",
     "SOMA_DB_PASSWORD": "soma",
     "SOMA_DB_NAME": "somabrain",
     # Redis (somastack_redis)
-    "SOMA_REDIS_HOST": "localhost",
+    "SOMA_REDIS_HOST": "127.0.0.1",
     "SOMA_REDIS_PORT": "63979",
     # Milvus (somastack_milvus)
-    "SOMA_MILVUS_HOST": "localhost",
+    "SOMA_MILVUS_HOST": "127.0.0.1",
     "SOMA_MILVUS_PORT": "63953",
     # Kafka (somastack_kafka)
-    "KAFKA_BOOTSTRAP_SERVERS": "localhost:63992",
+    "KAFKA_BOOTSTRAP_SERVERS": "127.0.0.1:63992",
     # Mode flags
     "SOMA_AAAS_MODE": "true",
     "SA01_DEPLOYMENT_MODE": "AAAS",
 }
 
 STANDALONE_ENV = {
-    "SOMA_DB_HOST": "localhost",
+    "SOMA_DB_HOST": "127.0.0.1",
     "SOMA_DB_PORT": "5432",
     "SOMA_MILVUS_PORT": "19530",
     "SOMA_REDIS_PORT": "6379",
@@ -103,7 +103,7 @@ def standalone_mode():
 def postgres_available():
     """Check if PostgreSQL is available."""
     import socket
-    host = os.environ.get("SOMA_DB_HOST", "localhost")
+    host = os.environ.get("SOMA_DB_HOST", "127.0.0.1")
     port = int(os.environ.get("SOMA_DB_PORT", "63932"))
     try:
         with socket.create_connection((host, port), timeout=2):
@@ -116,7 +116,7 @@ def postgres_available():
 def milvus_available():
     """Check if Milvus is available."""
     import socket
-    host = os.environ.get("SOMA_MILVUS_HOST", "localhost")
+    host = os.environ.get("SOMA_MILVUS_HOST", "127.0.0.1")
     port = int(os.environ.get("SOMA_MILVUS_PORT", "63953"))
     try:
         with socket.create_connection((host, port), timeout=2):
@@ -129,7 +129,7 @@ def milvus_available():
 def redis_available():
     """Check if Redis is available."""
     import socket
-    host = os.environ.get("SOMA_REDIS_HOST", "localhost")
+    host = os.environ.get("SOMA_REDIS_HOST", "127.0.0.1")
     port = int(os.environ.get("SOMA_REDIS_PORT", "63979"))
     try:
         with socket.create_connection((host, port), timeout=2):
@@ -143,7 +143,7 @@ def kafka_available():
     """Check if Kafka is available."""
     import socket
     try:
-        with socket.create_connection(("localhost", 63992), timeout=2):
+        with socket.create_connection(("127.0.0.1", 63992), timeout=2):
             return True
     except (socket.error, socket.timeout):
-        pytest.skip("Kafka not available at localhost:63992")
+        pytest.skip("Kafka not available at 127.0.0.1:63992")
