@@ -27,5 +27,6 @@ See the documentation for detailed API usage and configuration options.
 """
 
 from .version import PACKAGE_VERSION as __version__
+from .core.security import audit
 
-__all__ = ["__version__"]
+__all__ = ["__version__", "audit"]
