@@ -18,11 +18,11 @@ from typing import Dict, Optional
 
 import numpy as np
 
-from somabrain.apps.core import roles as _roles
+from somabrain.admin.core import roles as _roles
 from somabrain.math import cosine_similarity
 from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
 from somabrain.metrics.math_metrics import MathematicalMetrics
-from somabrain.apps.core.numerics import normalize_array
+from somabrain.admin.core.numerics import normalize_array
 from somabrain.core.utils.seed import seed_to_uint64
 
 try:

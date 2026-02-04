@@ -49,8 +49,8 @@ class CognitiveLoopState:
                 publisher = BeliefUpdatePublisher()
                 if getattr(publisher, "enabled", False):
                     self._bu_publisher = publisher
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to initialize BeliefUpdatePublisher: {e}")
 
     @property
     def bu_publisher(self):
@@ -66,7 +66,7 @@ class CognitiveLoopState:
                 return state
 
         try:
-            from somabrain.apps.core.models import SleepState as DbSleepState
+            from somabrain.admin.core.models import SleepState as DbSleepState
 
             # Use Django ORM to fetch sleep state
             # order_by('-timestamp') to get the latest if multiple exist (though ideally unique per tenant)

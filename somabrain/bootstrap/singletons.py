@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING, Optional
 from django.conf import settings
 
 if TYPE_CHECKING:
-    from somabrain.apps.core.learning.prediction import BudgetedPredictor
-    from somabrain.apps.core.quantum import QuantumLayer
+    from somabrain.admin.core.learning.prediction import BudgetedPredictor
+    from somabrain.admin.core.quantum import QuantumLayer
 
 logger = logging.getLogger("somabrain.bootstrap.singletons")
 
@@ -41,7 +41,7 @@ def make_predictor(cfg) -> "BudgetedPredictor":
     Raises:
         RuntimeError: If a disabled provider is requested.
     """
-    from somabrain.apps.core.learning.prediction import (
+    from somabrain.admin.core.learning.prediction import (
         BudgetedPredictor,
         LLMPredictor,
         MahalanobisPredictor,
@@ -109,7 +109,7 @@ def make_quantum_layer(cfg) -> Optional["QuantumLayer"]:
         return None
 
     try:
-        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         hrr_cfg = HRRConfig(
             dim=getattr(settings, "SOMABRAIN_HRR_DIM", 1024),
@@ -152,7 +152,7 @@ def make_embedder_with_dim(cfg, quantum=None):
     """
     import numpy as np
 
-    from somabrain.apps.core.embeddings import make_embedder
+    from somabrain.admin.core.embeddings import make_embedder
 
     embedder = make_embedder(cfg, quantum=quantum)
 
@@ -196,7 +196,7 @@ def make_fd_sketch(cfg):
     if getattr(settings, "SOMABRAIN_SALIENCE_METHOD", "dense").lower() != "fd":
         return None
 
-    from somabrain.apps.core.learning.salience import FDSalienceSketch
+    from somabrain.admin.core.learning.salience import FDSalienceSketch
 
     embed_dim = getattr(settings, "EMBED_DIM", 256)
     return FDSalienceSketch(
@@ -226,7 +226,7 @@ def make_unified_scorer(cfg, fd_sketch=None):
     Returns:
         UnifiedScorer: Configured scorer instance.
     """
-    from somabrain.apps.core.learning.scoring import UnifiedScorer
+    from somabrain.admin.core.learning.scoring import UnifiedScorer
 
     return UnifiedScorer(
         w_cosine=getattr(settings, "SOMABRAIN_SCORER_W_COSINE", 0.5),

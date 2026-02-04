@@ -37,7 +37,7 @@ def _initialize_embedder() -> Any:
         return embedder
 
     try:
-        from somabrain.apps.core.embeddings import make_embedder
+        from somabrain.admin.core.embeddings import make_embedder
 
         embedder = make_embedder(settings)
         logger.info("Embedder initialized successfully")

@@ -283,14 +283,14 @@ def normalize_array(
 
 # Backwards-compatible wrappers: tests and older code expect `make_unitary_role`
 # to accept a token/name and keyword args like `D` and `global_seed`. The
-# canonical implementation lives in `somabrain.apps.core.roles` which uses a (dim, seed)
+# canonical implementation lives in `somabrain.admin.core.roles` which uses a (dim, seed)
 # signature. Provide a thin adapter here to preserve the legacy API.
 
 
 def make_unitary_role(
     token_or_dim, D=None, global_seed=None, seed=None, dtype=np.float32, **kwargs
 ):
-    """Legacy-compatible wrapper that lazily imports `somabrain.apps.core.roles`.
+    """Legacy-compatible wrapper that lazily imports `somabrain.admin.core.roles`.
 
     Accepts either (dim:int, ...) or (token:str, D=dim, global_seed=...),
     normalizes into (dim, seed) and calls the canonical implementation.
@@ -300,7 +300,7 @@ def make_unitary_role(
         from . import roles as _roles
     except Exception as e:  # pragma: no cover - import failure
         raise ImportError(
-            "make_unitary_role is unavailable; failed to import somabrain.apps.core.roles"
+            "make_unitary_role is unavailable; failed to import somabrain.admin.core.roles"
         ) from e
 
     if isinstance(token_or_dim, str):
@@ -322,7 +322,7 @@ def role_spectrum_from_seed(
         from . import roles as _roles
     except Exception as e:  # pragma: no cover - import failure
         raise ImportError(
-            "role_spectrum_from_seed is unavailable; failed to import somabrain.apps.core.roles"
+            "role_spectrum_from_seed is unavailable; failed to import somabrain.admin.core.roles"
         ) from e
 
     if isinstance(token_or_dim, str):

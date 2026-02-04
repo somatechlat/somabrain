@@ -17,7 +17,7 @@ from ninja.errors import HttpError
 
 from somabrain.api.auth import api_key_auth
 from somabrain.core.security.legacy_auth import require_auth
-from somabrain.apps.brain.focus_state import FocusState
+from somabrain.admin.brain.focus_state import FocusState
 from somabrain.schemas import (
     ActRequest,
     ActResponse,

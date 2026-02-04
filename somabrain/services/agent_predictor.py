@@ -25,7 +25,7 @@ import numpy as np
 from django.conf import settings
 
 from common.kafka_utils import encode, make_producer
-from somabrain.apps.core.learning.prediction import (
+from somabrain.admin.core.learning.prediction import (
     BudgetedPredictor,
     MahalanobisPredictor,
     PredictionResult,

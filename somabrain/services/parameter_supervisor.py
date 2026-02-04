@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, Tuple
 
-from somabrain.apps.core.presets import get_preset
+from somabrain.admin.core.presets import get_preset
 from somabrain.services.config_service import ConfigService
 
 logger = logging.getLogger(__name__)

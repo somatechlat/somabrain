@@ -21,7 +21,7 @@ from typing import List
 
 from django.conf import settings
 
-from somabrain.apps.core.models import CognitiveThread
+from somabrain.admin.core.models import CognitiveThread
 
 __all__ = ["plan_for_tenant"]
 

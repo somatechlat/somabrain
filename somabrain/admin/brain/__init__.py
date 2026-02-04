@@ -1,8 +1,8 @@
 """SomaBrain Brain Core - Unified processing and intelligence modules."""
 
-from somabrain.apps.brain.complexity import ComplexityDetector
-from somabrain.apps.brain.focus_state import FocusState
-from somabrain.apps.brain.neuromodulators import (
+from somabrain.admin.brain.complexity import ComplexityDetector
+from somabrain.admin.brain.focus_state import FocusState
+from somabrain.admin.brain.neuromodulators import (
     AdaptiveNeuromodulators,
     AdaptivePerTenantNeuromodulators,
     NeuromodState,
@@ -10,7 +10,7 @@ from somabrain.apps.brain.neuromodulators import (
     PerTenantNeuromodulators,
     adaptive_per_tenant_neuromods,
 )
-from somabrain.apps.brain.unified_core import UnifiedBrainCore
+from somabrain.admin.brain.unified_core import UnifiedBrainCore
 
 __all__ = [
     "UnifiedBrainCore",

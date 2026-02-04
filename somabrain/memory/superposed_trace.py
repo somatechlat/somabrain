@@ -18,7 +18,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Protocol, Tuple
 
 import numpy as np
 
-from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
 logger = logging.getLogger(__name__)
 
