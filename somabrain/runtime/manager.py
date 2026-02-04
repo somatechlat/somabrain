@@ -131,3 +131,32 @@ def get_memory_pool() -> Any:
     if mt_memory is None:
         _initialize_memory_pool()
     return mt_memory
+
+
+class Runtime:
+    """
+    Facade for runtime singletons.
+
+    Provides static access to core services to satisfy import requirements
+    and provide a centralized access point.
+    """
+
+    @staticmethod
+    def initialize() -> dict:
+        """Initialize all runtime singletons."""
+        return initialize_runtime()
+
+    @staticmethod
+    def get_embedder() -> Any:
+        """Get the embedder singleton."""
+        return get_embedder()
+
+    @staticmethod
+    def get_working_memory() -> Any:
+        """Get the working memory singleton."""
+        return get_working_memory()
+
+    @staticmethod
+    def get_memory_pool() -> Any:
+        """Get the memory pool singleton."""
+        return get_memory_pool()

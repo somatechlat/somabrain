@@ -1,5 +1,8 @@
 from .core import APIKeyAuth
-from .models import APIKey, AuditLog, TenantStatus, FieldPermission, Role
+from somabrain.aaas.models.api import APIKey
+from somabrain.aaas.models.audit import AuditLog
+from somabrain.aaas.logic.tenant_types import TenantStatus
+from somabrain.aaas.models.auth import FieldPermission, Role
 from ninja.errors import HttpError
 
 # =============================================================================
