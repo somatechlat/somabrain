@@ -65,7 +65,7 @@ try:
                 quantum = None
 
     # Create embedder and working memories
-    from somabrain.apps.core.embeddings import make_embedder
+    from somabrain.admin.core.embeddings import make_embedder
     from somabrain.mt_wm import MTWMConfig, MultiTenantWM
     from somabrain.microcircuits import MCConfig, MultiColumnWM
     from somabrain.memory_pool import MultiTenantMemory

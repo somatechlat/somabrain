@@ -51,7 +51,7 @@ class TestContextAndAttention:
     ):
         """Helper to create HRRContext with QuantumLayer."""
         from somabrain.context_hrr import HRRContext, HRRContextConfig
-        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=dim)
         q = QuantumLayer(q_cfg)
@@ -115,7 +115,7 @@ class TestContextAndAttention:
             return current_time[0]
 
         from somabrain.context_hrr import HRRContext, HRRContextConfig
-        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=512)
         q = QuantumLayer(q_cfg)
@@ -256,7 +256,7 @@ class TestNoveltyDetection:
     def _create_context(self, dim: int = 512):
         """Helper to create HRRContext."""
         from somabrain.context_hrr import HRRContext, HRRContextConfig
-        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=dim)
         q = QuantumLayer(q_cfg)
@@ -376,7 +376,7 @@ class TestContextProperties:
         **Validates: Requirements C4.5**
         """
         from somabrain.context_hrr import HRRContext, HRRContextConfig
-        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         max_anchors = 10
         q_cfg = HRRConfig(dim=128)
@@ -407,7 +407,7 @@ class TestContextProperties:
         **Validates: Requirements C4.1**
         """
         from somabrain.context_hrr import HRRContext, HRRContextConfig
-        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=128)
         q = QuantumLayer(q_cfg)

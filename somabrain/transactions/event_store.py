@@ -302,7 +302,7 @@ class TransactionEventStore:
     def _store_to_outbox(self, event: TransactionEvent) -> None:
         """Store event to PostgreSQL outbox for durability using Django ORM."""
         try:
-            from somabrain.apps.core.models import OutboxEvent
+            from somabrain.admin.core.models import OutboxEvent
 
             OutboxEvent.objects.create(
                 topic=TRANSACTION_TOPICS["events"],
@@ -344,7 +344,7 @@ class TransactionEventStore:
         """
         # Query from PostgreSQL outbox using Django ORM
         try:
-            from somabrain.apps.core.models import OutboxEvent
+            from somabrain.admin.core.models import OutboxEvent
 
             qs = OutboxEvent.objects.filter(topic=TRANSACTION_TOPICS["events"])
 
