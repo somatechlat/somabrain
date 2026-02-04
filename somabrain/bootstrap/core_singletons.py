@@ -15,8 +15,8 @@ from typing import TYPE_CHECKING, Any, Optional
 from django.conf import settings
 
 if TYPE_CHECKING:
-    from somabrain.apps.core.quantum import QuantumLayer
-    from somabrain.apps.core.learning.scoring import UnifiedScorer
+    from somabrain.admin.core.quantum import QuantumLayer
+    from somabrain.admin.core.learning.scoring import UnifiedScorer
 
 logger = logging.getLogger("somabrain.bootstrap.core_singletons")
 
@@ -160,7 +160,7 @@ def create_amygdala(cfg, fd_sketch: Any = None):
     Returns:
         AmygdalaSalience: The salience computation singleton.
     """
-    from somabrain.apps.cognitive.amygdala import AmygdalaSalience, SalienceConfig
+    from somabrain.admin.cognitive.amygdala import AmygdalaSalience, SalienceConfig
 
     return AmygdalaSalience(
         SalienceConfig(
@@ -191,7 +191,7 @@ def create_hippocampus():
     Returns:
         Hippocampus: The consolidation singleton.
     """
-    from somabrain.apps.cognitive.hippocampus import ConsolidationConfig, Hippocampus
+    from somabrain.admin.cognitive.hippocampus import ConsolidationConfig, Hippocampus
 
     return Hippocampus(ConsolidationConfig())
 
@@ -280,7 +280,7 @@ def create_sdr_encoder(cfg):
     if not getattr(settings, "SOMABRAIN_USE_SDR_PREFILTER", False):
         return None
 
-    from somabrain.apps.core.sdr import SDREncoder
+    from somabrain.admin.core.sdr import SDREncoder
 
     return SDREncoder(
         dim=getattr(settings, "SOMABRAIN_SDR_DIM", 2048),
@@ -342,7 +342,7 @@ def create_fractal_memory(cfg):
     Returns:
         FractalClientAdapter: VIBE-compliant interface to the memory system.
     """
-    from somabrain.apps.brain.adapters import FractalClientAdapter
+    from somabrain.admin.brain.adapters import FractalClientAdapter
 
     # We need a memory client instance.
     # In strictly layered architecture, we might create a dedicated one here
@@ -369,7 +369,7 @@ def create_fnom_memory(cfg, embedder):
     from somafractalmemory.implementations.milvus_vector import MilvusVectorStore
     from somafractalmemory.implementations.postgres_kv import PostgresKeyValueStore
 
-    from somabrain.apps.brain.fnom import PersistentFNOM
+    from somabrain.admin.brain.fnom import PersistentFNOM
 
     # Reuse valid connection parameters for shared persistence layer
     # Segregate data via explicit namespacing

@@ -10,7 +10,7 @@ from django.conf import settings
 from somabrain.cognitive.working_memory_buffer import WorkingMemoryBuffer
 from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
-from somabrain.apps.core.embeddings import make_embedder
+from somabrain.admin.core.embeddings import make_embedder
 from somabrain.learning import UtilityWeights
 from somabrain.memory.pool import MultiTenantMemory
 
@@ -19,13 +19,13 @@ try:
     # Use production embedder by default; allow tiny embedder only when explicitly enabled.
     # Use Settings attribute "allow_tiny_embedder" (bool) instead of getenv.
     if getattr(settings, "allow_tiny_embedder", False):
-        from somabrain.apps.core.embeddings import TinyDeterministicEmbedder
+        from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
         _embedder = TinyDeterministicEmbedder(dim=256)
     else:
         _embedder = make_embedder(settings, quantum=None)
 except Exception:
-    from somabrain.apps.core.embeddings import TinyDeterministicEmbedder
+    from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
     _embedder = TinyDeterministicEmbedder(dim=256)
 _working_memory = WorkingMemoryBuffer()

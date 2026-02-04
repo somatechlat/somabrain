@@ -25,7 +25,7 @@ import numpy as np
 from django.conf import settings
 
 from common.kafka_utils import encode, make_producer
-from somabrain.apps.core.learning.prediction import MahalanobisPredictor, PredictionResult
+from somabrain.admin.core.learning.prediction import MahalanobisPredictor, PredictionResult
 
 try:
     from confluent_kafka import Consumer as CKConsumer

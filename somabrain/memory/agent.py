@@ -180,7 +180,7 @@ async def store_memory_item(content: str, **kwargs) -> dict:
 
     # Generate embedding via quantum layer if available
     try:
-        from somabrain.apps.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         quantum = QuantumLayer(HRRConfig(dim=dim))
         embedding = quantum.encode_text(content).tolist()

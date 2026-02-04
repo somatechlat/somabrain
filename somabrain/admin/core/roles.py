@@ -11,7 +11,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from somabrain.apps.core import numerics as _num
+from somabrain.admin.core import numerics as _num
 from somabrain.core.utils import seed as _seed
 
 

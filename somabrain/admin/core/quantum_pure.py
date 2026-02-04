@@ -9,7 +9,7 @@ when any frequency component of the divisor is exactly zero.
 Intended usage:
 - Import `PureQuantumLayer` in tests or benchmarking scripts and compare
   results with the production `QuantumLayer` implemented in
-  `somabrain.apps.core.quantum`.
+  `somabrain.admin.core.quantum`.
 
 Notes:
 - This module is test-only. Do NOT use `PureQuantumLayer` in production
@@ -25,8 +25,8 @@ from typing import Dict, Tuple
 import numpy as np
 
 from somabrain.math import cosine_similarity
-from somabrain.apps.core.numerics import normalize_array
-from somabrain.apps.core.quantum import HRRConfig
+from somabrain.admin.core.numerics import normalize_array
+from somabrain.admin.core.quantum import HRRConfig
 from somabrain.core.utils.seed import seed_to_uint64
 
 

@@ -19,6 +19,8 @@ def get_constitution_engine() -> ConstitutionEngine:
         # Optionally load initial state
         try:
             _engine.load()
-        except Exception:
-            pass  # Fail silent on load as per original pattern or log warning
+        except Exception as exc:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to load constitution engine: {exc}")
     return _engine
