@@ -342,7 +342,7 @@ def create_fractal_memory(cfg):
     Returns:
         FractalClientAdapter: VIBE-compliant interface to the memory system.
     """
-    from somabrain.brain.adapters import FractalClientAdapter
+    from somabrain.apps.brain.adapters import FractalClientAdapter
 
     # We need a memory client instance.
     # In strictly layered architecture, we might create a dedicated one here
@@ -369,7 +369,7 @@ def create_fnom_memory(cfg, embedder):
     from somafractalmemory.implementations.milvus_vector import MilvusVectorStore
     from somafractalmemory.implementations.postgres_kv import PostgresKeyValueStore
 
-    from somabrain.brain.fnom import PersistentFNOM
+    from somabrain.apps.brain.fnom import PersistentFNOM
 
     # Reuse valid connection parameters for shared persistence layer
     # Segregate data via explicit namespacing

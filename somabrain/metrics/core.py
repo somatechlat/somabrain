@@ -224,6 +224,22 @@ def get_histogram(
     return _histogram(name, documentation, registry=registry, **kwargs)
 
 
+def get_summary(
+    name: str,
+    documentation: str,
+    labelnames: list[str] | None = None,
+    **kwargs: Any,
+) -> _MetricProtocol:
+    """Get or create a Summary in the central registry."""
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if labelnames:
+        return _summary(name, documentation, labelnames, registry=registry, **kwargs)
+    return _summary(name, documentation, registry=registry, **kwargs)
+
+
 # ---------------------------------------------------------------------------
 # Core HTTP Metrics
 # ---------------------------------------------------------------------------
@@ -287,6 +303,7 @@ __all__ = [
     "get_counter",
     "get_gauge",
     "get_histogram",
+    "get_summary",
     # Core metrics
     "HTTP_COUNT",
     "HTTP_LATENCY",

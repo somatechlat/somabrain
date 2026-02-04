@@ -436,7 +436,7 @@ class AdaptationEngine:
         """Execute get dopamine level."""
 
         try:
-            from somabrain.brain.neuromodulators import PerTenantNeuromodulators
+            from somabrain.apps.brain.neuromodulators import PerTenantNeuromodulators
 
             return PerTenantNeuromodulators().get_state(self._tenant_id).dopamine
         except Exception:
