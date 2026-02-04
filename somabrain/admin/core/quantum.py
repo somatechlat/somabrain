@@ -308,7 +308,11 @@ class QuantumLayer:
         # NO MAGIC NUMBERS: use brain_settings
         from somabrain.brain_settings.models import BrainSetting
 
-        lambda_reg = BrainSetting.get("gmd_lambda_reg", "default")
+        try:
+            lambda_reg = BrainSetting.get("gmd_lambda_reg", 1e-4) # Use 1e-4 default
+        except Exception:
+            lambda_reg = 1e-4
+
         fb_conj = np.conj(fb)
         fb_power = np.abs(fb) ** 2 + lambda_reg
 

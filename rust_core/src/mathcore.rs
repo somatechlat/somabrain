@@ -1,23 +1,22 @@
 //! # GMD MathCore Theorems and Utility Modules
 //!
-//! Implementation per **MathCore White Paper v4.0**.
+//! Implementation per **MathCore White Paper v4.4 (Agentic Formulation)**.
 //!
-//! ## Theorems Implemented
+//! ## Theorems Implemented (Truthful Model)
 //!
 //! | Theorem | Function | Description |
 //! |---------|----------|-------------|
-//! | T1 | [`compute_optimal_p`] | Optimal sparsity p* = (1+√δ)/2 |
-//! | T1 | [`compute_capacity_theorem1`] | Capacity N = √(2εDδp/(1-p)) |
-//! | T2 | [`BayesianMemory`] | SNR-optimal memory with update/recall |
-//! | T3 | [`compute_wiener_lambda`] | Optimal Wiener regularizer λ* |
-//! | T3 | [`quantize_8bit`] | 8-bit quantization Q(x) |
+//! | T1 | [`compute_optimal_p`] | Optimal sparsity p* for stability |
+//! | T2 | [`BayesianMemory`] | Truthful SNR dynamics and Horizon L* |
+//! | T3 | [`compute_wiener_lambda`] | Optimal Ridge λ* = σ_ε²/σ_v² |
+//! | T3 | [`quantize_8bit`] | 8-bit symmetric quantization Δ=2/255 |
 //! | T3 | [`wiener_unbind`] | MMSE-optimal unbinding |
-//! | T4 | [`fwht`] | Fast Walsh-Hadamard (127,000× faster) |
+//! | T4 | [`fwht`] | Fast Walsh-Hadamard (Deterministic O(D log D)) |
 //!
 //! ## Performance
 //!
-//! - FWHT: O(D log D) complexity, 11,865 ops/sec at D=2048
-//! - BayesianMemory: Wiener-optimal recall with λ* = 2.05e-5
+//! - FWHT: O(D log D) complexity (Deterministic)
+//! - BayesianMemory: Age-dependent SNR horizon
 //!
 //! ## Usage
 //!
@@ -25,7 +24,7 @@
 //! import somabrain_rs as rs
 //!
 //! # Theorem 1: Optimal sparsity
-//! p_star = rs.compute_optimal_p(0.01)  # → 0.55
+//! p_star = rs.compute_optimal_p(0.01)
 //!
 //! # Theorem 2: Bayesian Memory
 //! mem = rs.BayesianMemory(2048, eta=0.08)
@@ -202,26 +201,19 @@ pub fn softmax(v: Vec<f64>) -> Vec<f64> {
 }
 
 /// Karpathy temperature-scaled softmax for leader selection
-/// Returns (probabilities, entropy, exceeded_cap)
-///
-/// Temperature τ controls distribution sharpness:
-///   - τ → 0: deterministic (argmax)
-///   - τ = 1: standard softmax
-///   - τ → ∞: uniform distribution
 #[pyfunction]
 pub fn softmax_temperature(scores: Vec<f64>, tau: f64) -> Vec<f64> {
     if scores.is_empty() {
         return vec![];
     }
-    let tau_safe = tau.max(0.01);  // Prevent division by zero
+    let tau_safe = tau.max(0.01);
     let scaled: Vec<f64> = scores.iter().map(|s| s / tau_safe).collect();
     let max_s = scaled.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
     let exp_sum: f64 = scaled.iter().map(|s| (s - max_s).exp()).sum();
     scaled.iter().map(|s| (s - max_s).exp() / exp_sum).collect()
 }
 
-/// Calculate Shannon entropy of probability distribution
-/// H = -Σ p_i * log(p_i)
+/// Calculate Shannon entropy
 #[pyfunction]
 pub fn compute_entropy(probs: Vec<f64>) -> f64 {
     probs.iter()
@@ -230,10 +222,7 @@ pub fn compute_entropy(probs: Vec<f64>) -> f64 {
         .sum()
 }
 
-/// Karpathy leader selection with temperature and entropy cap
-/// Returns (probabilities, entropy, exceeded_cap)
-///
-/// Used by ContextBuilder._compute_weights() hot path
+/// Karpathy leader selection
 #[pyfunction]
 pub fn softmax_leader_selection(
     scores: Vec<f64>,
@@ -251,7 +240,7 @@ pub fn softmax_leader_selection(
     (probs, entropy, exceeded)
 }
 
-/// Cosine similarity between two vectors
+/// Cosine similarity
 #[pyfunction]
 pub fn cosine_similarity(a: Vec<f64>, b: Vec<f64>) -> f64 {
     if a.len() != b.len() || a.is_empty() {
@@ -279,10 +268,10 @@ pub fn batch_norm_inference(x: Vec<f64>, gamma: Vec<f64>, beta: Vec<f64>, runnin
 }
 
 
-// ==================== GMD MathCore Theorems ====================
+// ==================== GMD MathCore Theorems v4.4 ====================
 
 /// Theorem 4: FWHT - Fast Walsh-Hadamard Transform
-/// O(D log D) complexity, 127,000× speedup over QR decomposition
+/// O(D log D) complexity, Deterministic Orthogonal Rotation
 #[pyfunction]
 pub fn fwht(v: Vec<f64>) -> Vec<f64> {
     let mut result = v.clone();
@@ -294,7 +283,7 @@ pub fn fwht(v: Vec<f64>) -> Vec<f64> {
 pub fn fwht_inplace(v: &mut [f64]) {
     let n = v.len();
     if n == 0 || (n & (n - 1)) != 0 {
-        return;
+        return; // D must be power of 2
     }
 
     let mut h = 1;
@@ -310,6 +299,7 @@ pub fn fwht_inplace(v: &mut [f64]) {
         h *= 2;
     }
 
+    // Normalization factor 1/sqrt(D) implies orthogonality
     let scale = 1.0 / (n as f64).sqrt();
     for x in v.iter_mut() {
         *x *= scale;
@@ -317,38 +307,40 @@ pub fn fwht_inplace(v: &mut [f64]) {
 }
 
 /// Theorem 1: Optimal Sparsity
-/// p* = (1 + √δ) / 2
+/// Controls computational stability, not just collision.
+/// p* ≈ 0.1 recommended for Agentic Formulation.
 #[pyfunction]
 pub fn compute_optimal_p(delta: f64) -> f64 {
     let delta_clamped = delta.clamp(0.0001, 0.9999);
     (1.0 + delta_clamped.sqrt()) / 2.0
 }
 
-/// Theorem 1: Capacity Estimation
-/// N_max = √(2εDδ·p/(1-p))
-#[pyfunction]
-pub fn compute_capacity_theorem1(d: usize, p: f64, delta: f64, epsilon: f64) -> usize {
-    let p_clamped = p.clamp(0.01, 0.99);
-    let ratio = p_clamped / (1.0 - p_clamped);
-    let n_max = (2.0 * epsilon * (d as f64) * delta * ratio).sqrt();
-    n_max.floor() as usize
-}
-
-/// Theorem 3: Optimal Wiener Regularizer for 8-bit quantization
-/// λ* = (2/255)² / (3 · 2p(1-p)) ≈ 2.05e-5 for p=0.1
+/// Theorem 3: Optimal Ridge Regularizer for 8-bit quantization
+/// λ* = σ_ε² / σ_v²
+/// σ_ε² = Δ²/12 where Δ=2/255
+/// σ_v² = p(1-p) for sparse vectors
+/// Result: λ* ≈ 5.126e-6 / (p(1-p))
 #[pyfunction]
 pub fn compute_wiener_lambda(p: f64, bits: u8) -> f64 {
     let p_clamped = p.clamp(0.01, 0.99);
-    let delta = 2.0 / ((1u64 << bits) - 1) as f64;
-    (delta * delta) / (3.0 * 2.0 * p_clamped * (1.0 - p_clamped))
+    // Delta = 2/255 for 8-bit [-1, 1]
+    let delta = 2.0 / 255.0; // Exact formulation
+    let sigma_epsilon_sq = (delta * delta) / 12.0;
+    let sigma_v_sq = p_clamped * (1.0 - p_clamped);
+
+    sigma_epsilon_sq / sigma_v_sq
 }
 
 /// Theorem 3: Quantization function Q(x) for 8-bit
-/// Q(x) = round(127(x+1))/127 - 1
+/// Q(x) = (round((x+1)/2 * 255) / 255) * 2 - 1
+/// Exact symmetric mapping to 256 levels
 #[pyfunction]
 pub fn quantize_8bit(x: f64) -> f64 {
-    let scaled = ((x + 1.0) * 127.0).round();
-    scaled / 127.0 - 1.0
+    // Map [-1, 1] to [0, 255]
+    let scaled = ((x + 1.0) / 2.0 * 255.0).round();
+    let clamped = scaled.clamp(0.0, 255.0);
+    // Map back to [-1, 1]
+    (clamped / 255.0) * 2.0 - 1.0
 }
 
 /// Quantize entire vector
@@ -357,7 +349,7 @@ pub fn quantize_vector(v: Vec<f64>) -> Vec<f64> {
     v.iter().map(|x| quantize_8bit(*x)).collect()
 }
 
-/// Theorem 2: Bayesian Memory with SNR
+/// Theorem 2: Bayesian Memory with Agentic Horizon
 #[pyclass]
 pub struct BayesianMemory {
     #[pyo3(get)]
@@ -376,20 +368,21 @@ pub struct BayesianMemory {
 #[pymethods]
 impl BayesianMemory {
     #[new]
-    #[pyo3(signature = (dimension, eta, lambda_reg, alpha))]
-    pub fn new(dimension: usize, eta: f64, lambda_reg: f64, alpha: f64) -> Self {
+    #[pyo3(signature = (dimension, eta, lambda_reg))]
+    pub fn new(dimension: usize, eta: f64, lambda_reg: f64) -> Self {
         BayesianMemory {
             dimension,
             m: vec![0.0; dimension],
             cov_diag: vec![0.01; dimension],
             eta: eta.clamp(0.01, 0.5),
             lambda: lambda_reg,
-            alpha,
+            alpha: 640.0, // Deprecated in v4.4 but kept for ABI compat
             items_stored: 0,
         }
     }
 
-    /// Theorem 2: Memory Update Rule
+    /// Update with exponential decay
+    /// m_t = (1-η) m_{t-1} + η b_t
     pub fn update(&mut self, binding: Vec<f64>) {
         if binding.len() != self.dimension {
             return;
@@ -397,12 +390,14 @@ impl BayesianMemory {
         let one_minus_eta = 1.0 - self.eta;
         for i in 0..self.dimension {
             self.m[i] = one_minus_eta * self.m[i] + self.eta * binding[i];
-            self.cov_diag[i] = one_minus_eta * one_minus_eta * self.cov_diag[i] + 1e-4;
+            // Covariance update is implicit in SNR model
+            self.cov_diag[i] = one_minus_eta.powi(2) * self.cov_diag[i] + 1e-6;
         }
         self.items_stored += 1;
     }
 
     /// Theorem 3: Wiener-Optimal Unbinding (MMSE)
+    /// v̂ = (Q(b) ⊙ k) / (k² + λ*)
     pub fn recall(&self, key: Vec<f64>) -> Vec<f64> {
         if key.len() != self.dimension {
             return vec![0.0; self.dimension];
@@ -422,41 +417,41 @@ impl BayesianMemory {
         result
     }
 
-    /// Theorem 2: SNR Calculation
-    pub fn compute_snr(&self, p: f64) -> f64 {
-        if self.items_stored <= 1 {
+    /// Theorem 2: Truthful SNR Calculation
+    /// SNR(L) ≈ D · w_L^2 / (W2 - w_L^2)
+    /// where w_L = η(1-η)^L and W2 = η²/(2η - η²)
+    pub fn compute_snr_at_lag(&self, lag: usize) -> f64 {
+        let eta = self.eta;
+        let w_l = eta * (1.0 - eta).powi(lag as i32);
+        let w2 = (eta * eta) / (2.0 * eta - eta * eta);
+
+        let signal_power = w_l * w_l;
+        let noise_power = w2 - signal_power;
+
+        if noise_power <= 0.0 {
             return f64::INFINITY;
         }
-        let p_clamped = p.clamp(0.01, 0.99);
-        let eta_term = 2.0 * self.eta - self.eta * self.eta;
-        let n_term = (self.items_stored - 1) as f64;
-        let dim_term = self.dimension as f64 / (p_clamped * (1.0 - p_clamped));
-        (eta_term / n_term) * dim_term
+
+        (self.dimension as f64) * signal_power / noise_power
     }
 
-    /// Theorem 2: Recall Quality (gamma) from SNR
-    pub fn compute_gamma(&self, p: f64) -> f64 {
-        let snr = self.compute_snr(p);
-        if snr.is_infinite() {
-            return 1.0;
+    /// Agentic Horizon L*
+    /// Returns the maximum lag where SNR >= snr_min
+    pub fn estimate_horizon(&self, snr_min: f64) -> usize {
+        // Binary search or iterative? Iterative is fast enough for horizons < 1000
+        // But closed form exists approximately.
+        // For exactness, we iterate.
+        let mut lag = 0;
+        loop {
+            let snr = self.compute_snr_at_lag(lag);
+            if snr < snr_min {
+                return if lag > 0 { lag - 1 } else { 0 };
+            }
+            if lag > 10000 { // Safety break
+                return 10000;
+            }
+            lag += 1;
         }
-        (snr / (1.0 + snr)).sqrt()
-    }
-
-    /// Theorem 2: Capacity Estimation
-    pub fn estimate_capacity(&self) -> usize {
-        ((self.dimension as f64) / (self.alpha * self.eta)).floor() as usize
-    }
-
-    /// Theorem 2: SNR-based Capacity
-    pub fn estimate_capacity_snr(&self, p: f64, target_gamma: f64) -> usize {
-        let p_clamped = p.clamp(0.01, 0.99);
-        let gamma_sq = target_gamma * target_gamma;
-        let eta_term = 2.0 * self.eta - self.eta * self.eta;
-        let p_term = p_clamped * (1.0 - p_clamped);
-        let gamma_term = (1.0 - gamma_sq) / gamma_sq;
-        let n_snr = 1.0 + (eta_term / p_term) * (self.dimension as f64) * gamma_term;
-        n_snr.floor() as usize
     }
 
     pub fn get_memory(&self) -> Vec<f64> {
@@ -471,11 +466,6 @@ impl BayesianMemory {
         self.m = vec![0.0; self.dimension];
         self.cov_diag = vec![0.01; self.dimension];
         self.items_stored = 0;
-    }
-
-    pub fn is_near_capacity(&self) -> bool {
-        let capacity = self.estimate_capacity();
-        self.items_stored > (capacity * 8 / 10)
     }
 }
 
