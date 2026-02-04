@@ -474,7 +474,7 @@ services:
     ports:
       - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-30101}"
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:9696/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:30101/health || exit 1" ]
       interval: 30s
       timeout: 10s
       start_period: 30s
