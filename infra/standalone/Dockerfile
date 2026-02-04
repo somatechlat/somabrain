@@ -164,7 +164,7 @@ ENV PYTHONPATH=/app:${PYTHONPATH:-}
 RUN mkdir -p /app/logs && chmod 0755 /app/logs
 
 # Supervisor config for multi-process cognitive services (used by somabrain_cog container)
-# COPY ops/supervisor /app/ops/supervisor
+COPY infra/standalone/ops/supervisor /app/ops/supervisor
 
 # Create non-root user with UID/GID 1000
 RUN set -eux; \
