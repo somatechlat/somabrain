@@ -56,19 +56,40 @@ class ModeConfig:
 
         return {k: getattr(self, k) for k in self.__dataclass_fields__ if k != "name"}
 
+# Alias for backward compatibility
+SomaBrainMode = ModeConfig
+
 
 def _resolve_mode() -> str:
-    """Execute resolve mode."""
+    """Execute resolve mode.
 
-    raw = (settings.SOMABRAIN_MODE or "").strip().lower()
+    Standardized resolution logic:
+    SOMA_DEPLOY_MODE (Unified) > SOMABRAIN_MODE (Legacy)
+
+    Mappings:
+    - FULL_LOCAL, full-local, dev, local -> full-local
+    - PROD_DISTRIBUTED, prod, production -> prod
+    - TEST_CI, ci, test -> ci
+    """
+
+    # 1. Check Unified Standard
+    raw = (settings.SOMA_DEPLOY_MODE or "").strip().upper()
+
+    # 2. Fallback to Legacy
+    if not raw:
+        raw = (settings.SOMABRAIN_MODE or "").strip().upper()
+
     if not raw:
         return "full-local" if settings.home_dir else "prod"
-    if raw in {"full", "local", "full_local", "full-local", "dev"}:
+
+    # Map to internal canonical names
+    if raw in {"FULL_LOCAL", "FULL-LOCAL", "FULL", "LOCAL", "DEV", "STANDALONE"}:
         return "full-local"
-    if raw in {"ci", "test", "testing"}:
+    if raw in {"TEST_CI", "CI", "TEST", "TESTING"}:
         return "ci"
-    if raw in {"production", "prod", "enterprise"}:
+    if raw in {"PROD_DISTRIBUTED", "PROD", "PRODUCTION", "ENTERPRISE"}:
         return "prod"
+
     # Unknown -> prod (fail‑closed)
     return "prod"
 
