@@ -20,11 +20,11 @@ env = environ.Env(
     # SomaBrain core settings with defaults
     SOMABRAIN_LOG_LEVEL=(str, "INFO"),
     SOMABRAIN_POSTGRES_DSN=(str, ""),
-    SOMABRAIN_API_URL=(str, "http://localhost:30101"),
+    SOMABRAIN_API_URL=(str, "http://127.0.0.1:30101"),
     # Deployment Mode Standardization
     SOMA_DEPLOY_MODE=(str, "FULL_LOCAL"),
     SOMABRAIN_MODE=(str, "full-local"), # Legacy fallback
-    SOMABRAIN_MEMORY_HTTP_ENDPOINT=(str, "http://localhost:10101"),
+    SOMABRAIN_MEMORY_HTTP_ENDPOINT=(str, "http://127.0.0.1:10101"),
     SOMABRAIN_MEMORY_HTTP_TOKEN=(str, "test-token-123"),
     SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD=(int, 5),
     SOMABRAIN_CIRCUIT_RESET_INTERVAL=(float, 30.0),

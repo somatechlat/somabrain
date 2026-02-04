@@ -22,7 +22,7 @@ MIDDLEWARE = [
     and "UsageTrackingMiddleware" not in m
 ]
 
-# Disable Tenant/SaaS Features
+# Disable Tenant/AAAS Features
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS = False  # Allow running with minimal deps
 SOMABRAIN_DEFAULT_TENANT = "standalone"
 SOMABRAIN_TENANT_ID = "standalone"

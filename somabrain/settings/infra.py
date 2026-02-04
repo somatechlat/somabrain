@@ -22,7 +22,7 @@ try:
         if db_creds:
             _user = db_creds.get("username")
             _pass = db_creds.get("password")
-            _host = db_creds.get("host", "localhost")
+            _host = db_creds.get("host", "127.0.0.1")
             _port = db_creds.get("port", 5432)
             _name = db_creds.get("dbname", "somabrain")
 
@@ -62,7 +62,7 @@ def _parse_port(value: str | int | None, default: int) -> int:
 
 # Redis
 SOMABRAIN_REDIS_URL = env.str("SOMABRAIN_REDIS_URL", default="")
-SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="localhost")
+SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="127.0.0.1")
 SOMABRAIN_REDIS_PORT = _parse_port(env.str("SOMABRAIN_REDIS_PORT", default=None), 6379)
 SOMABRAIN_REDIS_DB = env.int("SOMABRAIN_REDIS_DB", default=0)
 
@@ -158,7 +158,7 @@ SOMABRAIN_TENANT_ID = env.str("SOMABRAIN_TENANT_ID", default="default")
 # URLs
 SOMABRAIN_API_URL = env.str("SOMABRAIN_API_URL", default="")
 SOMABRAIN_DEFAULT_BASE_URL = env.str(
-    "SOMABRAIN_DEFAULT_BASE_URL", default="http://localhost:30101"
+    "SOMABRAIN_DEFAULT_BASE_URL", default="http://127.0.0.1:30101"
 )
 BASE_URL = env.str("BASE_URL", default="")
 SUPERVISOR_URL = env.str("SUPERVISOR_URL", default=None)
