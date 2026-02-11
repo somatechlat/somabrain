@@ -145,10 +145,10 @@ COMPOSE?=docker compose -f infra/standalone/docker-compose.yml -p $(PROJECT)
 .PHONY: compose-preflight
 
 compose-build:
-	$(COMPOSE) build somabrain
+	$(COMPOSE) build somabrain_standalone_app
 
 compose-up:
-	$(COMPOSE) up -d somabrain
+	$(COMPOSE) up -d somabrain_standalone_app
 	@echo "Waiting for API health..."
 	@for i in $$(seq 1 20); do \
 		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
@@ -163,10 +163,10 @@ compose-down:
 	$(COMPOSE) down --remove-orphans
 
 compose-restart:
-	$(COMPOSE) restart somabrain
+	$(COMPOSE) restart somabrain_standalone_app
 
 compose-logs:
-	$(COMPOSE) logs -f --tail=200 somabrain
+	$(COMPOSE) logs -f --tail=200 somabrain_standalone_app
 
 compose-ps:
 	$(COMPOSE) ps
@@ -212,11 +212,11 @@ full-setup: ## Build, migrate, start services and run memory e2e test
 	@echo "--- Building Docker images ---"
 	@$(COMPOSE_CMD) build
 	@echo "--- Applying database migrations ---"
-	@$(COMPOSE_CMD) run --rm somabrain_db_migrate
+	@$(COMPOSE_CMD) run --rm somabrain_standalone_db_migrate
 	@echo "--- Starting development stack (API, Kafka, Postgres, Redis) ---"
 	# Export a custom memory endpoint to avoid port conflicts with any existing service.
 	export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9596 && \
-	$(COMPOSE_CMD) up -d somabrain_app somabrain_postgres somabrain_kafka somabrain_redis
+	$(COMPOSE_CMD) up -d somabrain_standalone_app somabrain_standalone_postgres somabrain_standalone_kafka somabrain_standalone_redis
 	@echo "Waiting for API health..."
 	@for i in $$(seq 1 30); do \
 		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
@@ -244,7 +244,7 @@ up-prod-like:
 	@echo "Prod-like URLs:"
 	@echo "- API:            http://127.0.0.1:9696/health"
 	@echo "- Redis:          redis://127.0.0.1:30100"
-	@echo "- Kafka broker:   127.0.0.1:30102 (internal clients should use somabrain_kafka:9092)"
+	@echo "- Kafka broker:   127.0.0.1:30102 (internal clients should use somabrain_standalone_kafka:9092)"
 	@echo "- OPA:            http://127.0.0.1:30104/health"
 	@echo "- Prometheus:     http://127.0.0.1:30105"
 	@echo "- Postgres:       127.0.0.1:30106"
@@ -264,7 +264,7 @@ logs-prod-like:
 
 up-dev:
 	@echo "Starting simplified dev mode (embed reward+learner under main API)..."
-	@SOMABRAIN_MODE=dev SOMABRAIN_EMBED_DEV_SERVICES=1 $(PORT_OVERRIDES) $(COMPOSE_CMD) up -d --remove-orphans somabrain_redis somabrain_kafka somabrain_opa somabrain_postgres somabrain_app
+	@SOMABRAIN_MODE=dev SOMABRAIN_EMBED_DEV_SERVICES=1 $(PORT_OVERRIDES) $(COMPOSE_CMD) up -d --remove-orphans somabrain_standalone_redis somabrain_standalone_kafka somabrain_standalone_opa somabrain_standalone_postgres somabrain_standalone_app
 	@echo "Dev URLs:"
 	@echo "- API:            http://127.0.0.1:9696/health"
 	@echo "- Reward:         http://127.0.0.1:9696/reward/health"

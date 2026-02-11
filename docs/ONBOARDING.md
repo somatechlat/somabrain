@@ -181,10 +181,10 @@ SomaBrain provides a **memory-as-a-service** platform that:
 - **Scalability**: Operations remain efficient as memory size grows
 - **Interpretability**: Memory representations can be analyzed and understood
 
-#### Why Python & FastAPI?
+#### Why Python & Django Ninja?
 - **Developer Familiarity**: Largest AI/ML developer community
 - **Rich Ecosystem**: Extensive libraries for mathematics and machine learning
-- **Performance**: Fast enough with proper optimization, easy to profile and optimize
+- **Performance**: Strong API throughput with explicit typing and schema validation
 - **Maintainability**: Clean, readable code that new developers can quickly understand
 
 #### Why Strict Real Mode?
@@ -206,7 +206,7 @@ SomaBrain provides a **memory-as-a-service** platform that:
 - Initial API design and proof-of-concept
 
 #### Phase 2: Platform Development (2024 Q3-Q4)
-- Production-grade FastAPI service implementation
+- Production-grade Django + Django Ninja service implementation
 - Multi-tenant working memory system
 - Comprehensive observability and monitoring
 - Docker-based development and deployment infrastructure
@@ -1073,7 +1073,7 @@ rate_rps: float = 50.0      # Requests per second
 rate_burst: int = 100       # Burst capacity
 ```
 
-**Usage** (from `somabrain/app.py`):
+**Usage** (from `somabrain/api/v1.py`):
 
 ```python
 if not rate_limiter.allow(ctx.tenant_id):
@@ -1115,7 +1115,7 @@ opa_ok = opa_client.is_ready()  # Required for readiness
 
 ## Input Validation
 
-**Implementation**: `somabrain/app.py` (CognitiveInputValidator)
+**Implementation**: `somabrain/api/v1.py` (CognitiveInputValidator)
 
 ### Text Validation
 
@@ -1146,7 +1146,7 @@ def sanitize_query(query: str) -> str:
 
 ## Security Middleware
 
-**Implementation**: `somabrain/app.py` (SecurityMiddleware)
+**Implementation**: `somabrain/api/v1.py` (SecurityMiddleware)
 
 **Blocked Patterns**:
 
@@ -1244,8 +1244,8 @@ audit.log_admin_action(request, "neuromodulators_set", {
 - 30100-30108: Infrastructure (optional, can be removed in prod)
 
 **Internal-Only Services**:
-- Kafka broker: `somabrain_kafka:9092` (not exposed to host by default)
-- Redis: `somabrain_redis:6379` (exposed for dev, should be internal in prod)
+- Kafka broker: `somabrain_standalone_kafka:9092` (not exposed to host by default)
+- Redis: `somabrain_standalone_redis:6379` (exposed for dev, should be internal in prod)
 
 ## Security Checklist
 
@@ -1275,7 +1275,7 @@ audit.log_admin_action(request, "neuromodulators_set", {
 2. `somabrain/tenant.py` - Tenant isolation
 3. `somabrain/ratelimit.py` - Rate limiting
 4. `somabrain/quotas.py` - Quota enforcement
-5. `somabrain/app.py` - Input validation, security middleware
+5. `somabrain/api/v1.py` - Input validation, security middleware
 6. `ops/opa/policies/` - OPA policy definitions
 7. `docker-compose.yml` - Container security settings
 # Agent Zero: First Steps
@@ -1474,7 +1474,7 @@ curl http://localhost:9696/health | jq '{
 **Fix**: Start missing services
 
 ```bash
-docker compose up -d somabrain_kafka somabrain_postgres somabrain_opa
+docker compose up -d somabrain_standalone_kafka somabrain_standalone_postgres somabrain_opa
 ```
 
 ### 3. Rate Limit Exceeded
@@ -1486,7 +1486,7 @@ docker compose up -d somabrain_kafka somabrain_postgres somabrain_opa
 ```bash
 export SOMABRAIN_RATE_RPS=100
 export SOMABRAIN_RATE_BURST=200
-docker compose restart somabrain_app
+docker compose restart somabrain_standalone_app
 ```
 
 ## Next Steps
@@ -1511,7 +1511,7 @@ docker compose restart somabrain_app
 
 ## Code Entry Points
 
-- **Main App**: `somabrain/app.py`
+- **Main App**: `somabrain/api/v1.py`
 - **Config**: `somabrain/config.py`
 - **Memory**: `somabrain/memory/`
 - **Quantum/HRR**: `somabrain/quantum.py`
@@ -1556,7 +1556,7 @@ You're ready to build when:
 
 | Property | Value | Source |
 |----------|-------|--------|
-| **Main API File** | `somabrain/app.py` | FastAPI application |
+| **Main API File** | `somabrain/api/v1.py` | Django Ninja application |
 | **API Port** | 9696 (host and container) | `docker-compose.yml` |
 | **Config System** | `somabrain/config.py` | Dataclass-based with env overrides |
 | **Memory Dimension** | 256 (default `embed_dim`) | `Config` dataclass |
@@ -1566,8 +1566,8 @@ You're ready to build when:
 ## Core Components (Actual Locations)
 
 ### 1. API Layer
-- **File**: `somabrain/app.py`
-- **Framework**: FastAPI
+- **File**: `somabrain/api/v1.py`
+- **Framework**: Django Ninja
 - **Key Endpoints**:
   - `POST /remember` - Store memory
   - `POST /recall` - Retrieve memory
@@ -1613,7 +1613,7 @@ SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"  # Required - set your actual to
 SOMABRAIN_REDIS_URL="redis://localhost:30100"
 
 # Kafka
-SOMABRAIN_KAFKA_URL="somabrain_kafka:9092"
+SOMABRAIN_KAFKA_URL="somabrain_standalone_kafka:9092"
 
 # Postgres
 SOMABRAIN_POSTGRES_DSN="postgresql://soma:soma@localhost:30106/somabrain"
@@ -1632,12 +1632,12 @@ SOMABRAIN_PREDICTOR_PROVIDER="mahal"  # mahal|slow|llm
 
 | Service | Host Port | Container Port | Internal Name |
 |---------|-----------|----------------|---------------|
-| API | 9696 | 9696 | somabrain_app |
-| Redis | 30100 | 6379 | somabrain_redis |
-| Kafka | 30102 | 9092 | somabrain_kafka |
+| API | 9696 | 9696 | somabrain_standalone_app |
+| Redis | 30100 | 6379 | somabrain_standalone_redis |
+| Kafka | 30102 | 9092 | somabrain_standalone_kafka |
 | OPA | 30104 | 8181 | somabrain_opa |
 | Prometheus | 30105 | 9090 | somabrain_prometheus |
-| Postgres | 30106 | 5432 | somabrain_postgres |
+| Postgres | 30106 | 5432 | somabrain_standalone_postgres |
 | Schema Registry | 30108 | 8081 | somabrain_schema_registry |
 
 ## Next Steps
@@ -1648,7 +1648,7 @@ SOMABRAIN_PREDICTOR_PROVIDER="mahal"  # mahal|slow|llm
 
 ## Code Navigation Tips
 
-- **Start here**: `somabrain/app.py` (main FastAPI app)
+- **Start here**: `somabrain/api/v1.py` (main Django Ninja app)
 - **Config**: `somabrain/config.py` (all settings)
 - **Math**: `somabrain/quantum.py` (BHDC operations)
 - **Memory**: `somabrain/memory/` (storage abstractions)
@@ -1663,7 +1663,7 @@ SOMABRAIN_PREDICTOR_PROVIDER="mahal"  # mahal|slow|llm
 
 **Endpoint**: `POST /remember`
 
-**Implementation**: `somabrain/app.py` line ~2800
+**Implementation**: `somabrain/api/v1.py` line ~2800
 
 **Request Body** (two formats supported):
 
@@ -1714,7 +1714,7 @@ OR (legacy format):
 
 **Endpoint**: `POST /recall`
 
-**Implementation**: `somabrain/app.py` line ~2400
+**Implementation**: `somabrain/api/v1.py` line ~2400
 
 **Request**:
 
@@ -1825,7 +1825,7 @@ POST /remember
   }
 }
 
-# 2. API processes (somabrain/app.py)
+# 2. API processes (somabrain/api/v1.py)
 # - Auth: require_auth()
 # - Tenant: get_tenant() → "sandbox"
 # - Rate limit: rate_limiter.allow("sandbox") → True
@@ -1859,7 +1859,7 @@ curl -X POST http://localhost:9696/recall \
 
 ## Key Files to Read
 
-1. `somabrain/app.py` - API endpoints (remember, recall)
+1. `somabrain/api/v1.py` - API endpoints (remember, recall)
 2. `somabrain/scoring.py` - UnifiedScorer implementation
 3. `somabrain/mt_wm.py` - Working memory
 4. `somabrain/services/memory_service.py` - Backend client
@@ -1872,7 +1872,7 @@ curl -X POST http://localhost:9696/recall \
 
 **Endpoint**: `GET /health`
 
-**Implementation**: `somabrain/app.py` line ~1900
+**Implementation**: `somabrain/api/v1.py` line ~1900
 
 **Response Structure** (actual fields from code):
 
@@ -1901,7 +1901,7 @@ curl -X POST http://localhost:9696/recall \
 
 ## Readiness Checks (Actual Logic)
 
-**From `somabrain/app.py` health endpoint**:
+**From `somabrain/api/v1.py` health endpoint**:
 
 ```python
 # Backend enforcement requires:
@@ -1980,7 +1980,7 @@ somabrain_hrr_rerank_applied_total
 scrape_configs:
   - job_name: 'somabrain'
     static_configs:
-      - targets: ['somabrain_app:9696']
+      - targets: ['somabrain_standalone_app:9696']
     metrics_path: '/metrics'
     scrape_interval: 15s
 ```
@@ -2042,7 +2042,7 @@ if _circuit_open and (time.time() - _last_failure_time) > _reset_interval:
 
 ## Logging Configuration
 
-**File**: `somabrain/app.py` (setup_logging function)
+**File**: `somabrain/api/v1.py` (setup_logging function)
 
 **Log Levels**:
 - `INFO`: General system events
@@ -2110,7 +2110,7 @@ Based on actual metrics:
 
 ## Key Files to Read
 
-1. `somabrain/app.py` - Health endpoint implementation
+1. `somabrain/api/v1.py` - Health endpoint implementation
 2. `somabrain/metrics.py` - Metrics definitions
 3. `somabrain/healthchecks.py` - Health check functions
 4. `somabrain/services/memory_service.py` - Circuit breaker
@@ -3274,7 +3274,7 @@ Stuck on something? Here's how to get help:
 
 **Audience**: New developers, agent coders, and contributors joining the SomaBrain project.
 
-**Prerequisites**: Basic understanding of Python, FastAPI, and modern web development. Completed [Local Setup](../development/local-setup.md).
+**Prerequisites**: Basic understanding of Python, Django Ninja, and modern web development. Completed [Local Setup](../development/local-setup.md).
 
 ---
 
@@ -3283,7 +3283,7 @@ Stuck on something? Here's how to get help:
 ```
 somabrain/
 ├── somabrain/           # Main application package
-│   ├── api/            # FastAPI application and routes
+│   ├── api/            # Django Ninja application and routes
 │   ├── core/           # Business logic and cognitive operations
 │   ├── database/       # Database models and connections
 │   ├── models/         # Pydantic data models
@@ -3323,7 +3323,7 @@ somabrain/
           └──────────────────────┼──────────────────────┘
                                  │
                     ┌─────────────▼─────────────┐
-                    │       FastAPI Server      │
+                    │       Django Ninja Server      │
                     │    (Port 9696)           │
                     └─────────────┬─────────────┘
                                   │
@@ -3332,7 +3332,7 @@ somabrain/
     ┌─────▼─────┐         ┌─────▼─────┐         ┌─────▼─────┐
     │ PostgreSQL│         │   Redis   │         │  Vector   │
     │ Database  │         │   Cache   │         │ Service   │
-    │(Port 5432)│         │(Port 6379)│         │ (Qdrant)  │
+    │(Port 5432)│         │(Port 6379)│         │ (Milvus)  │
     └───────────┘         └───────────┘         └───────────┘
 ```
 
@@ -3502,11 +3502,13 @@ class DatabaseManager:
 
 ### 4. API Layer (`somabrain/api/`)
 
-**Main Application** (`main.py`):
+**Main Application** (`v1.py`):
 ```python
-def create_app(config: AppConfig) -> FastAPI:
+from ninja import NinjaAPI
+
+def create_app(config: AppConfig) -> NinjaAPI:
     """
-    FastAPI application factory.
+    Django Ninja application factory.
 
     Sets up:
     - CORS middleware for web clients
@@ -3515,7 +3517,7 @@ def create_app(config: AppConfig) -> FastAPI:
     - Request/response logging
     - Error handlers
     """
-    app = FastAPI(
+    app = NinjaAPI(
         title="SomaBrain API",
         description="Cognitive Memory Platform",
         version=__version__
@@ -3768,7 +3770,7 @@ async def test_store_and_recall_workflow():
 
 ### Dependency Injection
 
-**FastAPI Dependencies**:
+**Django Ninja Dependencies**:
 ```python
 # somabrain/api/dependencies.py
 async def get_database_manager() -> DatabaseManager:
@@ -5170,7 +5172,7 @@ Thanks for the great first issue suggestion!
 ### Skills Developed
 
 **Technical Skills**:
-- ✅ FastAPI endpoint development
+- ✅ Django Ninja endpoint development
 - ✅ Pydantic model design and validation
 - ✅ SQL query optimization
 - ✅ Async Python patterns

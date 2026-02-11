@@ -1,6 +1,5 @@
-"""Health Router - Django Ninja Version
+"""Health Router - Django Ninja Version.
 
-Migrated from FastAPI to Django Ninja.
 Provides /health, /healthz, /diagnostics, /metrics endpoints.
 """
 
@@ -11,7 +10,7 @@ import time
 from typing import Any, Dict
 
 from django.conf import settings
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from ninja import Router
 
 from somabrain.runtime.healthchecks import check_kafka, check_postgres
@@ -250,11 +249,9 @@ def diagnostics(request: HttpRequest) -> Dict[str, Any]:
     return diag
 
 
-@router.get("/metrics")
-def metrics_endpoint(request: HttpRequest) -> Dict[str, Any]:
-    """Prometheus-style metrics endpoint."""
-    # Return collected metrics
-    return {
-        "metrics": "prometheus_format_here",
-        "timestamp": time.time(),
-    }
+@router.get("/metrics", include_in_schema=False)
+def metrics_endpoint(request: HttpRequest) -> HttpResponse:
+    """Prometheus metrics endpoint."""
+    from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+    return HttpResponse(generate_latest(), content_type=CONTENT_TYPE_LATEST)
