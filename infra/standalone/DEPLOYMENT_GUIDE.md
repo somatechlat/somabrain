@@ -15,8 +15,7 @@ This guide provides step-by-step instructions for deploying SomaBrain with the R
 cd /path/to/somabrain
 
 # 2. Start all services
-cd infra/docker
-docker compose --profile all up -d
+docker compose -f infra/standalone/docker-compose.yml up -d
 
 # 3. Verify health (all 16 services should be healthy)
 docker ps --format "table {{.Names}}\t{{.Status}}"
@@ -53,10 +52,8 @@ cp .env.example .env
 ### Step 2: Start Core Services
 
 ```bash
-cd infra/docker
-
-# Start with all profiles
-docker compose --profile all up -d
+# Start standalone stack
+docker compose -f infra/standalone/docker-compose.yml up -d
 
 # Wait for services to initialize (30-60 seconds)
 sleep 30
@@ -75,14 +72,14 @@ docker compose ps
 
 ```bash
 # Apply Django migrations
-docker exec somabrain-somabrain_app-1 python manage.py migrate
+docker exec somabrain_standalone_app python manage.py migrate
 ```
 
 ### Step 5: Verify Rust Core
 
 ```bash
 # Check Rust core is loaded
-docker exec somabrain-somabrain_app-1 python -c \
+docker exec somabrain_standalone_app python -c \
   "from somabrain.core.rust_bridge import is_rust_available; print('Rust:', is_rust_available())"
 
 # Expected: Rust: True
@@ -104,12 +101,12 @@ curl -s http://localhost:30101/api/health/diagnostics | python3 -m json.tool
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| somabrain_app | 30101 | Main API + Rust Core |
-| somabrain_postgres | 5432 | PostgreSQL database |
-| somabrain_redis | 6379 | Cache + KV store |
-| somabrain_milvus | 19530 | Vector store |
-| somabrain_kafka | 9092 | Event streaming |
-| somabrain_opa | 20181 | Policy engine |
+| somabrain_standalone_app | 30101 | Main API + Rust Core |
+| somabrain_standalone_postgres | 5432 | PostgreSQL database |
+| somabrain_standalone_redis | 6379 | Cache + KV store |
+| somabrain_standalone_milvus | 19530 | Vector store |
+| somabrain_standalone_kafka | 9092 | Event streaming |
+| somabrain_standalone_opa | 8181 | Policy engine |
 
 ---
 
@@ -126,7 +123,7 @@ SlowPredictor, batch_norm_inference, norm_l2, softmax
 
 Verify with:
 ```bash
-docker exec somabrain-somabrain_app-1 python -c \
+docker exec somabrain_standalone_app python -c \
   "import somabrain_rs; print([m for m in dir(somabrain_rs) if not m.startswith('_')])"
 ```
 
@@ -156,7 +153,7 @@ DJANGO_SETTINGS_MODULE=somabrain.settings \
 ### Container Restarting
 ```bash
 # Check logs
-docker logs somabrain-somabrain_app-1 --tail 50
+docker logs somabrain_standalone_app --tail 50
 
 # Common fix: Extend health check timing
 docker compose down && docker compose up -d
@@ -165,7 +162,7 @@ docker compose down && docker compose up -d
 ### Rust Core Not Loading
 ```bash
 # Verify wheel is installed
-docker exec somabrain-somabrain_app-1 pip list | grep somabrain
+docker exec somabrain_standalone_app pip list | grep somabrain
 
 # Rebuild if needed
 cd rust_core && ./scripts/build_rust.sh
@@ -174,7 +171,7 @@ cd rust_core && ./scripts/build_rust.sh
 ### Database Connection Issues
 ```bash
 # Use correct DSN format
-export SOMABRAIN_POSTGRES_DSN=postgresql://somabrain:somabrain@somabrain_postgres:5432/somabrain
+export SOMABRAIN_POSTGRES_DSN=postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain
 ```
 
 ---
@@ -190,7 +187,7 @@ For production, use Kubernetes. See:
 
 ## Related Documentation
 
-- [SomaFractalMemory Deployment](../../somafractalmemory/infra/docker/DEPLOYMENT_GUIDE.md)
+- [SomaFractalMemory Deployment](../../somafractalmemory/infra/standalone/DEPLOYMENT_GUIDE.md)
 - [Kubernetes Guide](../k8s/README.md)
 - [API Reference](../../docs/api.md)
 

@@ -965,7 +965,7 @@ Use these signals to verify that ingestion and recall behave as expected in your
 
 **Purpose** Show how to call SomaBrain’s public HTTP endpoints safely and reproducibly.
 
-**Audience** Developers building clients, SDKs, or integrations against the FastAPI runtime in `somabrain/app.py`.
+**Audience** Developers building clients, SDKs, or integrations against the Django Ninja runtime in `somabrain/api/v1.py`.
 
 **Prerequisites** SomaBrain stack is running (see [Installation](../installation.md)), and you can authenticate with either a static API token or JWT.
 
@@ -1210,7 +1210,7 @@ Use the same approach for feedback and planning—serialise the Pydantic models 
 
 - Consolidation routines: `somabrain/consolidation.py`
 - Hippocampus integration: `somabrain/hippocampus.py`
-- Sleep API handler: `somabrain/app.py::sleep_run`
+- Sleep API handler: `somabrain/api/endpoints/sleep.py::sleep_run`
 
 ---
 
@@ -1261,7 +1261,7 @@ Common local pitfall (Docker on macOS/Windows): using `http://127.0.0.1:9595` in
 
 ### Q2. Can I run the API without Docker?
 
-Yes, but you must provide the dependencies yourself (Redis, Kafka, OPA, Postgres, memory HTTP service). The `uvicorn somabrain.app:app` command in the [Installation Guide](installation.md) assumes these services already exist. For most users the Docker Compose bundle is the quickest path.
+Yes, but you must provide the dependencies yourself (Redis, Kafka, OPA, Postgres, memory HTTP service). The direct Django run commands in the [Installation Guide](installation.md) assume these services already exist. For most users the Docker Compose bundle is the quickest path.
 
 ### Q3. How do I disable auth for local testing?
 ### Q4. How do I quickly verify my wiring?
@@ -1305,7 +1305,7 @@ The payload is validated by `somabrain/api/schemas/context.py::FeedbackRequest`,
 
 ### Q9. I see `"adaptation_applied": false` in the feedback response. Why?
 
-`apply_feedback` returns `False` when the signal is `None`, when the adapter rejects the update due to constraint violations, or when the payload fails validation. Check the response HTTP status (should be 400 if validation failed) and inspect `somabrain/app.py::feedback_endpoint` log messages for details.
+`apply_feedback` returns `False` when the signal is `None`, when the adapter rejects the update due to constraint violations, or when the payload fails validation. Check the response HTTP status (should be 400 if validation failed) and inspect `somabrain/api/endpoints/context.py::feedback_endpoint` log messages for details.
 
 ---
 
@@ -1338,7 +1338,7 @@ Exporters for Redis, Kafka, Postgres, and Prometheus itself are exposed on ports
 Pass `X-Request-ID` with your call. The same ID appears in:
 
 - API responses (`trace_id`).
-- Structured logs (logged in `somabrain/app.py` handlers).
+- Structured logs (logged in endpoint handlers under `somabrain/api/endpoints/`).
 - Prometheus metrics labels when applicable.
 
 ---
@@ -1356,7 +1356,7 @@ Still stuck? Reach out via your team channel with the `trace_id`, tenant ID, and
 
 ## What SomaBrain Provides
 
-SomaBrain is a FastAPI service that exposes cognitive memory and planning primitives. The production binary defined in `somabrain/app.py` wires together:
+SomaBrain is a Django + Django Ninja service that exposes cognitive memory and planning primitives. The production runtime wiring is configured through `somabrain/config/urls.py` and `somabrain/api/v1.py`:
 
 - `/remember` for episodic memory ingestion handled by `somabrain.services.memory_service.MemoryService`.
 - `/recall` for semantic retrieval backed by working memory (`somabrain.mt_wm.MultiTenantWM`) and long‑term storage via the external memory HTTP service.
@@ -1408,7 +1408,7 @@ Each page includes prerequisites, verification steps, and references so you can 
 **Prerequisites**
 - Followed the [Installation Guide](installation.md) and confirmed `/health` returns HTTP 200.
 - A memory backend listening on port 9595.
-  - For host runs (uvicorn on your machine): `http://localhost:9595`.
+  - For host runs (Django on your machine): `http://localhost:9595`.
   - For Docker containers (macOS/Windows): `http://host.docker.internal:9595`.
   - Verify wiring at `GET /diagnostics` and check `memory_endpoint`.
 - A valid bearer token. In dev mode auth may be relaxed; otherwise add `-H "Authorization: Bearer <token>"` to the examples.
@@ -1558,14 +1558,14 @@ Check out the branch/tag you intend to run, then copy `.env.example` to `.env` i
 
 ## 2. Start Required Dependencies
 
-The Docker Compose bundle in the repo launches the FastAPI runtime plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters. It **does not** ship the external memory HTTP service – start your memory backend separately before booting SomaBrain.
+The Docker Compose bundle in the repo launches the Django runtime plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters. It **does not** ship the external memory HTTP service – start your memory backend separately before booting SomaBrain.
 
 ```bash
 # bring up SomaBrain services
 docker compose up -d
 
 # follow logs if you need to confirm startup
-docker compose logs -f somabrain_app
+docker compose logs -f somabrain_standalone_app
 ```
 
 Alternatively, use the helper script that writes a complete `.env`, builds the image if needed, and waits for health:
@@ -1597,11 +1597,11 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -U pip && pip install -e .[dev]
 
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595   # For direct host runs (uvicorn)
+export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595   # For direct host runs (Django)
 export SOMABRAIN_MODE=development          # dev only (auth relaxed via mode)
 export SOMABRAIN_REQUIRE_MEMORY=0          # unless you have a live backend
 
-uvicorn somabrain.app:app --host 127.0.0.1 --port 9696 --reload
+python manage.py runserver 127.0.0.1:9696
 ```
 
 Do not relax auth outside development mode; use proper Bearer tokens in shared environments.
@@ -1639,7 +1639,7 @@ If any check fails, consult [FAQ](faq.md) and `docker compose logs`.
 
 - `503 memory backend unavailable` – the memory HTTP service on port 9595 was not reachable; either point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at a working endpoint or set `SOMABRAIN_REQUIRE_MEMORY=0` for non-production testing.
 - Port clashes on 9696 / 20001‑20007 – adjust exported ports in `.env`.
-- Kafka slow to start – wait for the broker healthcheck (`somabrain_kafka` container) before sending recall requests.
+- Kafka slow to start – wait for the broker healthcheck (`somabrain_standalone_kafka` container) before sending recall requests.
 - Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`). In dev mode, auth may be relaxed by policy.
 
 ---

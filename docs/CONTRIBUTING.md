@@ -112,7 +112,7 @@ git checkout -b feature/123-add-memory-search
    # }
 
    # 2. Identify components to modify
-   # - Add search endpoint to FastAPI router
+   # - Add search endpoint to Django Ninja router
    # - Implement search logic in MemoryManager
    # - Add database search method
    # - Create response models
@@ -128,84 +128,76 @@ git checkout -b feature/123-add-memory-search
 3. **Implement Changes**:
    ```python
    # somabrain/api/routers/memory.py
-   from fastapi import APIRouter, Depends, HTTPException
+   from ninja import Router
+   from ninja.errors import HttpError
    from typing import List, Optional
 
    from somabrain.models.search import SearchRequest, SearchResponse
    from somabrain.core.memory_manager import MemoryManager
    from somabrain.api.dependencies import get_memory_manager, get_current_tenant
 
-   router = APIRouter()
+   router = Router()
 
-   @router.post("/search", response_model=SearchResponse)
+   @router.post("/search", response=SearchResponse)
    async def search_memories(
-       request: SearchRequest,
-       memory_manager: MemoryManager = Depends(get_memory_manager),
-       tenant_id: str = Depends(get_current_tenant)
+       request,
+       payload: SearchRequest,
    ):
        """
        Search memories using semantic similarity.
 
        Args:
-           request: Search parameters including query and filters
-           memory_manager: Injected memory manager instance
-           tenant_id: Current tenant identifier
+           request: Django request object
+           payload: Search parameters including query and filters
 
        Returns:
            SearchResponse with matching memories and metadata
 
        Raises:
-           HTTPException: For invalid requests or search failures
+           HttpError: For invalid requests or search failures
        """
        try:
            # Validate request
-           if not request.query.strip():
-               raise HTTPException(
-                   status_code=400,
-                   detail="Search query cannot be empty"
-               )
+           if not payload.query.strip():
+               raise HttpError(400, "Search query cannot be empty")
 
            # Perform search
+           memory_manager = get_memory_manager()
            results = await memory_manager.search_memories(
-               query=request.query,
-               filters=request.filters,
-               k=request.options.k,
-               threshold=request.options.threshold,
-               tenant_id=tenant_id
+               query=payload.query,
+               filters=payload.filters,
+               k=payload.options.k,
+               threshold=payload.options.threshold,
+               tenant_id=get_current_tenant(request),
            )
 
            return SearchResponse(
                results=results,
                total_count=len(results),
-               query=request.query,
+               query=payload.query,
                processing_time_ms=results.processing_time
            )
 
        except ValueError as e:
-           raise HTTPException(status_code=400, detail=str(e))
+           raise HttpError(400, str(e))
        except Exception as e:
            logger.error(f"Search failed: {e}", exc_info=True)
-           raise HTTPException(
-               status_code=500,
-               detail="Search operation failed"
-           )
+           raise HttpError(500, "Search operation failed")
    ```
 
 4. **Write Comprehensive Tests**:
    ```python
    # tests/unit/api/test_memory_search.py
    import pytest
-   from fastapi.testclient import TestClient
-   from unittest.mock import AsyncMock, patch
+   from django.test import Client
 
-   from somabrain.api.main import app
    from somabrain.models.memory import Memory
 
-   client = TestClient(app)
+   client = Client()
 
    @pytest.fixture
-   def mock_search_results():
-       """Mock search results for testing."""
+   def sample_search_results():
+       """Sample search results for testing."""
        return [
            Memory(
                id="mem_1",
