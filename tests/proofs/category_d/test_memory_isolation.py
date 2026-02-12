@@ -54,8 +54,8 @@ class TestMemoryIsolation:
         import numpy as np
 
         # Create separate WM instances for each tenant
-        wm_tenant_a = WorkingMemory(capacity=10)
-        wm_tenant_b = WorkingMemory(capacity=10)
+        wm_tenant_a = WorkingMemory(dim=512, capacity=10)
+        wm_tenant_b = WorkingMemory(dim=512, capacity=10)
 
         # Tenant A stores a memory
         vec_a = np.random.randn(512).astype(np.float32)
@@ -86,8 +86,8 @@ class TestMemoryIsolation:
         import numpy as np
 
         # Create separate WM instances
-        wm_tenant_a = WorkingMemory(capacity=10)
-        wm_tenant_b = WorkingMemory(capacity=10)
+        wm_tenant_a = WorkingMemory(dim=512, capacity=10)
+        wm_tenant_b = WorkingMemory(dim=512, capacity=10)
 
         # Tenant B stores a memory
         vec_b = np.random.randn(512).astype(np.float32)
@@ -117,8 +117,8 @@ class TestMemoryIsolation:
         import numpy as np
 
         # Create WM instances representing different namespaces
-        wm_ns1 = WorkingMemory(capacity=10)
-        wm_ns2 = WorkingMemory(capacity=10)
+        wm_ns1 = WorkingMemory(dim=512, capacity=10)
+        wm_ns2 = WorkingMemory(dim=512, capacity=10)
 
         # Store in namespace 1
         vec = np.random.randn(512).astype(np.float32)
@@ -146,7 +146,7 @@ class TestMemoryIsolation:
         import numpy as np
 
         # Create default WM (simulates missing tenant header)
-        wm_default = WorkingMemory(capacity=10)
+        wm_default = WorkingMemory(dim=512, capacity=10)
 
         # Store in default namespace
         vec = np.random.randn(512).astype(np.float32)
@@ -158,7 +158,7 @@ class TestMemoryIsolation:
         assert len(results) > 0, "Default namespace should work"
 
         # Create explicit tenant WM
-        wm_explicit = WorkingMemory(capacity=10)
+        wm_explicit = WorkingMemory(dim=512, capacity=10)
 
         # Explicit tenant should not see default tenant's data
         results_explicit = wm_explicit.recall(vec, top_k=5)
@@ -183,7 +183,7 @@ class TestMemoryIsolation:
         # Create WM for each tenant and store unique data
         for i in range(num_tenants):
             tenant_id = f"tenant_{i}"
-            wm = WorkingMemory(capacity=10)
+            wm = WorkingMemory(dim=512, capacity=10)
             tenant_wms[tenant_id] = wm
 
             # Create unique vector for this tenant
@@ -208,7 +208,7 @@ class TestMemoryIsolation:
                 continue  # OK - might not find due to similarity
 
             # Check that results belong to this tenant
-            for item_id, score, payload in results:
+            for score, payload in results:
                 if payload.get("tenant") != tenant_id:
                     leakage_count += 1
 
@@ -293,8 +293,8 @@ class TestWorkingMemoryTenantIsolation:
         import numpy as np
 
         # Create WM for each tenant with same capacity
-        wm_a = WorkingMemory(capacity=5)
-        wm_b = WorkingMemory(capacity=5)
+        wm_a = WorkingMemory(dim=512, capacity=5)
+        wm_b = WorkingMemory(dim=512, capacity=5)
 
         # Fill tenant A's WM to capacity
         for i in range(10):  # More than capacity

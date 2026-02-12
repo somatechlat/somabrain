@@ -2,7 +2,6 @@
 import os
 import django
 import hashlib
-import uuid
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
@@ -38,7 +37,7 @@ def create_key():
         print(f"Key already exists: {raw_key}")
         return
 
-    api_key = APIKey.objects.create(
+    APIKey.objects.create(
         tenant=tenant,
         name="Integration Test Key",
         key_prefix="sbk_test",

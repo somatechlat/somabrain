@@ -18,7 +18,6 @@ import hashlib
 import logging
 from typing import Optional
 
-from django.conf import settings
 from django.http import HttpRequest
 from django.utils import timezone
 from ninja.security import HttpBearer

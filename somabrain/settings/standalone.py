@@ -7,6 +7,7 @@ Usage: DJANGO_SETTINGS_MODULE=somabrain.settings.standalone
 from .django_core import *
 from .infra import *
 from .cognitive import *
+from .neuro import *
 
 # =============================================================================
 # STANDALONE ISOLATION - STRIP AAAS

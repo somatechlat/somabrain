@@ -38,8 +38,10 @@ def _service_available() -> bool:
         settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101"
     )
     try:
+        from tests.integration.infra_config import AUTH
+        headers = {"Authorization": f"Bearer {AUTH['api_token']}"}
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
-            resp = client.get("/health")
+            resp = client.get("/health", headers=headers)
             # If we get a response, the service is reachable.
             # 503 Service Unavailable is reachable but unhealthy, so we return True
             # to let the main test check 'healthy' status properly.
@@ -49,7 +51,9 @@ def _service_available() -> bool:
         return False
 
 
-@pytest.mark.integration
+# Mark as integration test
+@pytest.mark.django_db
+@pytest.mark.filterwarnings("ignore:Unknown pytest.mark.integration")
 def test_memory_remember_and_recall() -> None:
     """Store a payload and verify it can be recalled.
 
@@ -70,7 +74,8 @@ def test_memory_remember_and_recall() -> None:
         )
 
     if not _service_available():
-        pytest.fail("Memory service not reachable at http://localhost:10101 - test failed")
+        endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")
+        pytest.fail(f"Memory service not reachable at {endpoint} - test failed")
 
     from tests.integration.infra_config import AUTH
 

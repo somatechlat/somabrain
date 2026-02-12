@@ -4,8 +4,7 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Tuple, Iterable
-from django.conf import settings
+from typing import Any, List, Iterable
 from .types import RecallHit
 from .serialization import _extract_memory_coord
 

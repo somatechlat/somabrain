@@ -13,7 +13,7 @@ Decomposition:
 
 from __future__ import annotations
 
-from dataclasses import asdict, replace
+from dataclasses import replace
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:

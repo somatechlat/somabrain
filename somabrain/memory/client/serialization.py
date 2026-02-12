@@ -1,7 +1,6 @@
 from __future__ import annotations
 import hashlib
-import json
-from typing import Any, Tuple, Optional, Iterable, List, Dict
+from typing import Any, Tuple, Optional, List
 from .types import RecallHit
 
 def _stable_coord(key: str) -> Tuple[float, float, float]:

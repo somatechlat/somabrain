@@ -7,9 +7,7 @@ graceful degradation states to ensure zero-latency and zero data loss.
 """
 
 import logging
-import time
 from enum import Enum
-from typing import Any, Dict, Optional
 from django.conf import settings
 from django.core.cache import cache
 
@@ -53,7 +51,7 @@ class DegradationManager:
 
     def _reevaluate_health(self, tenant: str):
         """Analyze reported signals and shift health status."""
-        current_status = self.get_status(tenant)
+        self.get_status(tenant)
         # Logic to escalate/deescalate based on recent latency/errors
         # Placeholder for complex ROAMDP-based health evaluation
         pass

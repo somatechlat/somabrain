@@ -9,7 +9,7 @@ and multi-tenant cognitive operations.
 import logging
 import time
 import httpx
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 from django.conf import settings
 from .degradation import degradation_manager, HealthStatus
 

@@ -50,7 +50,7 @@ class TestDegradedModeOperation:
         WHEN LTM circuit is open
         THEN recall SHALL return WM-only results with degraded=true.
         """
-        from somabrain.core.infrastructure_defs.degradation import DegradationManager
+        from somabrain.infrastructure.degradation import DegradationManager
         from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
@@ -98,7 +98,7 @@ class TestDegradedModeOperation:
         WHEN system is in degraded mode
         THEN health check SHALL report degraded status.
         """
-        from somabrain.core.infrastructure_defs.degradation import DegradationManager
+        from somabrain.infrastructure.degradation import DegradationManager
         from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
@@ -189,7 +189,7 @@ class TestDegradationManager:
         **Feature: full-capacity-testing**
         **Validates: Requirements F3.1**
         """
-        from somabrain.core.infrastructure_defs.degradation import DegradationManager
+        from somabrain.infrastructure.degradation import DegradationManager
         from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
@@ -214,7 +214,7 @@ class TestDegradationManager:
         **Feature: full-capacity-testing**
         **Validates: Requirements F3.3**
         """
-        from somabrain.core.infrastructure_defs.degradation import DegradationManager
+        from somabrain.infrastructure.degradation import DegradationManager
         from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
@@ -245,7 +245,7 @@ class TestDegradationManager:
         **Feature: full-capacity-testing**
         **Validates: Requirements F3.4**
         """
-        from somabrain.core.infrastructure_defs.degradation import DegradationManager
+        from somabrain.infrastructure.degradation import DegradationManager
         from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(

@@ -50,7 +50,7 @@ class TestContextAndAttention:
         dim: int = 512,
     ):
         """Helper to create HRRContext with QuantumLayer."""
-        from somabrain.context_hrr import HRRContext, HRRContextConfig
+        from somabrain.admin.core.context_hrr import HRRContext, HRRContextConfig
         from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=dim)
@@ -114,7 +114,7 @@ class TestContextAndAttention:
 
             return current_time[0]
 
-        from somabrain.context_hrr import HRRContext, HRRContextConfig
+        from somabrain.admin.core.context_hrr import HRRContext, HRRContextConfig
         from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=512)
@@ -255,7 +255,7 @@ class TestNoveltyDetection:
 
     def _create_context(self, dim: int = 512):
         """Helper to create HRRContext."""
-        from somabrain.context_hrr import HRRContext, HRRContextConfig
+        from somabrain.admin.core.context_hrr import HRRContext, HRRContextConfig
         from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=dim)
@@ -328,7 +328,7 @@ class TestCleanupResult:
         **Feature: full-capacity-testing**
         **Validates: Requirements C4.3**
         """
-        from somabrain.context_hrr import CleanupResult
+        from somabrain.admin.core.context_hrr import CleanupResult
 
         result = CleanupResult(best_id="test", best_score=0.9, second_score=0.7)
 
@@ -342,7 +342,7 @@ class TestCleanupResult:
         **Feature: full-capacity-testing**
         **Validates: Requirements C4.3**
         """
-        from somabrain.context_hrr import CleanupResult
+        from somabrain.admin.core.context_hrr import CleanupResult
 
         result = CleanupResult(best_id="test", best_score=0.9, second_score=0.7)
 
@@ -375,7 +375,7 @@ class TestContextProperties:
         **Feature: full-capacity-testing, Property: Bounded Anchors**
         **Validates: Requirements C4.5**
         """
-        from somabrain.context_hrr import HRRContext, HRRContextConfig
+        from somabrain.admin.core.context_hrr import HRRContext, HRRContextConfig
         from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         max_anchors = 10
@@ -406,7 +406,7 @@ class TestContextProperties:
         **Feature: full-capacity-testing, Property: Valid Novelty**
         **Validates: Requirements C4.1**
         """
-        from somabrain.context_hrr import HRRContext, HRRContextConfig
+        from somabrain.admin.core.context_hrr import HRRContext, HRRContextConfig
         from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
         q_cfg = HRRConfig(dim=128)

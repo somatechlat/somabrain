@@ -3,10 +3,20 @@
 Central API instance for all SomaBrain endpoints.
 100% Django Ninja - VIBE Coding Rules compliant.
 
-All routers are registered here for clean architecture.
+Router registration is split into two sections:
+  1. CORE routers — always loaded (cognitive, memory, health, etc.)
+  2. AAAS routers — loaded ONLY when ``somabrain.aaas`` is in INSTALLED_APPS
+
+This ensures Standalone deployments boot cleanly without importing AAAS
+modules, while AAAS deployments retain full functionality.
 """
 
+import logging
+
+from django.apps import apps
 from ninja import NinjaAPI
+
+logger = logging.getLogger(__name__)
 
 api = NinjaAPI(
     title="SomaBrain API",
@@ -31,23 +41,18 @@ def _safe_add_router(api_instance, prefix, router, **kwargs):
 
 
 # =============================================================================
-# ROUTER REGISTRATION - ALL ROUTERS CONSOLIDATED HERE
+# CORE ROUTERS — ALWAYS LOADED (Standalone + AAAS)
 # =============================================================================
-
-# AAAS Admin Router - Tenant management, API keys, subscriptions
-from somabrain.api.endpoints.aaas.endpoints import router as aaas_admin_router
-
-_safe_add_router(api, "/aaas/", aaas_admin_router, tags=["AAAS Admin"])
-
-# Auth Router - Login, OAuth callback, session management
-from somabrain.api.endpoints.auth import router as auth_router
-
-_safe_add_router(api, "/auth/", auth_router, tags=["Authentication"])
 
 # Health Router
 from somabrain.api.endpoints.health import router as health_router
 
 _safe_add_router(api, "/health/", health_router, tags=["Health"])
+
+# System Health Router (Comprehensive) — core infra checks, no AAAS dep
+from somabrain.api.endpoints.system_health import router as system_health_router
+
+_safe_add_router(api, "/health/", system_health_router, tags=["Health"])
 
 # Admin Router (system admin, not AAAS)
 from somabrain.api.endpoints.admin import router as admin_router
@@ -58,11 +63,6 @@ _safe_add_router(api, "/admin/", admin_router, tags=["Admin"])
 from somabrain.api.endpoints.admin_journal import router as admin_journal_router
 
 _safe_add_router(api, "/admin/journal/", admin_journal_router, tags=["Admin"])
-
-# Brain Settings Router
-from somabrain.api.endpoints.brain_settings import router as brain_settings_router
-
-_safe_add_router(api, "/brain/", brain_settings_router, tags=["Brain Settings"])
 
 # Cognitive Router
 from somabrain.api.endpoints.cognitive import router as cognitive_router
@@ -112,16 +112,6 @@ from somabrain.api.endpoints.features import router as features_router
 
 _safe_add_router(api, "/features/", features_router, tags=["Features"])
 
-# Persona Router
-from somabrain.api.endpoints.persona import router as persona_router
-
-_safe_add_router(api, "/persona/", persona_router, tags=["Persona"])
-
-# Constitution Router
-from somabrain.api.endpoints.constitution import router as constitution_router
-
-_safe_add_router(api, "/constitution/", constitution_router, tags=["Constitution"])
-
 # Thread Router (root level)
 from somabrain.api.endpoints.thread import router as thread_router
 
@@ -142,233 +132,267 @@ from somabrain.api.endpoints.calibration import router as calibration_router
 
 _safe_add_router(api, "/calibration/", calibration_router, tags=["Calibration"])
 
-# Identity Providers Router (OAuth admin)
-from somabrain.api.endpoints.identity_providers import (
-    router as identity_providers_router,
-)
+# Persona Router
+from somabrain.api.endpoints.persona import router as persona_router
 
-_safe_add_router(
-    api, "/identity-providers/", identity_providers_router, tags=["Identity Providers"]
-)
+_safe_add_router(api, "/persona/", persona_router, tags=["Persona"])
 
-# Roles & Permissions Router
-from somabrain.api.endpoints.roles import router as roles_router
+# Constitution Router
+from somabrain.api.endpoints.constitution import router as constitution_router
 
-_safe_add_router(api, "/roles/", roles_router, tags=["Roles"])
+_safe_add_router(api, "/constitution/", constitution_router, tags=["Constitution"])
 
-# Users Router
-from somabrain.api.endpoints.users import router as users_router
 
-_safe_add_router(api, "/users/", users_router, tags=["Users"])
+# =============================================================================
+# AAAS ROUTERS — LOADED ONLY WHEN somabrain.aaas IS INSTALLED
+# =============================================================================
 
-# Tenant Auth Settings Router
-from somabrain.api.endpoints.tenant_auth import router as tenant_auth_router
+if apps.is_installed("somabrain.aaas"):
+    logger.info("AAAS mode detected — registering AAAS routers")
 
-_safe_add_router(api, "/tenant-auth/", tenant_auth_router, tags=["Tenant Auth"])
+    # AAAS Admin Router - Tenant management, API keys, subscriptions
+    from somabrain.api.endpoints.aaas.endpoints import router as aaas_admin_router
 
-# Billing Router
-from somabrain.api.endpoints.billing import router as billing_router
+    _safe_add_router(api, "/aaas/", aaas_admin_router, tags=["AAAS Admin"])
 
-_safe_add_router(api, "/billing/", billing_router, tags=["Billing"])
+    # Auth Router - Login, OAuth callback, session management
+    from somabrain.api.endpoints.auth import router as auth_router
 
-# Admin Dashboard Router
-from somabrain.api.endpoints.dashboard import router as dashboard_router
+    _safe_add_router(api, "/auth/", auth_router, tags=["Authentication"])
 
-_safe_add_router(api, "/admin/dashboard/", dashboard_router, tags=["Admin Dashboard"])
+    # Brain Settings Router (depends on aaas.auth, aaas.granular, aaas.rate_limit)
+    from somabrain.api.endpoints.brain_settings import router as brain_settings_router
 
-# Tenant Analytics Router
-from somabrain.api.endpoints.analytics import router as analytics_router
+    _safe_add_router(api, "/brain/", brain_settings_router, tags=["Brain Settings"])
 
-_safe_add_router(api, "/analytics/", analytics_router, tags=["Tenant Analytics"])
+    # Identity Providers Router (OAuth admin)
+    from somabrain.api.endpoints.identity_providers import (
+        router as identity_providers_router,
+    )
 
-# Webhooks Router
-from somabrain.api.endpoints.webhooks import router as webhooks_router
+    _safe_add_router(
+        api, "/identity-providers/", identity_providers_router, tags=["Identity Providers"]
+    )
 
-_safe_add_router(api, "/webhooks/", webhooks_router, tags=["Webhooks"])
+    # Roles & Permissions Router
+    from somabrain.api.endpoints.roles import router as roles_router
 
-# Notifications Router
-from somabrain.api.endpoints.notifications import router as notifications_router
+    _safe_add_router(api, "/roles/", roles_router, tags=["Roles"])
 
-_safe_add_router(api, "/notifications/", notifications_router, tags=["Notifications"])
+    # Users Router
+    from somabrain.api.endpoints.users import router as users_router
 
-# System Health Router (Comprehensive)
-from somabrain.api.endpoints.system_health import router as system_health_router
+    _safe_add_router(api, "/users/", users_router, tags=["Users"])
 
-_safe_add_router(api, "/health/", system_health_router, tags=["Health"])
+    # Tenant Auth Settings Router
+    from somabrain.api.endpoints.tenant_auth import router as tenant_auth_router
 
-# Audit Logs Router
-from somabrain.api.endpoints.audit_logs import router as audit_logs_router
+    _safe_add_router(api, "/tenant-auth/", tenant_auth_router, tags=["Tenant Auth"])
 
-_safe_add_router(api, "/audit/", audit_logs_router, tags=["Audit Logs"])
+    # Billing Router
+    from somabrain.api.endpoints.billing import router as billing_router
 
-# Feature Flags Router
-from somabrain.api.endpoints.feature_flags import router as feature_flags_router
+    _safe_add_router(api, "/billing/", billing_router, tags=["Billing"])
 
-_safe_add_router(api, "/features/", feature_flags_router, tags=["Feature Flags"])
+    # Admin Dashboard Router
+    from somabrain.api.endpoints.dashboard import router as dashboard_router
 
-# Onboarding Wizard Router
-from somabrain.api.endpoints.onboarding import router as onboarding_router
+    _safe_add_router(api, "/admin/dashboard/", dashboard_router, tags=["Admin Dashboard"])
 
-_safe_add_router(api, "/onboarding/", onboarding_router, tags=["Onboarding"])
+    # Tenant Analytics Router
+    from somabrain.api.endpoints.analytics import router as analytics_router
 
-# Reports Router
-from somabrain.api.endpoints.reports import router as reports_router
+    _safe_add_router(api, "/analytics/", analytics_router, tags=["Tenant Analytics"])
 
-_safe_add_router(api, "/reports/", reports_router, tags=["Reports"])
+    # Webhooks Router
+    from somabrain.api.endpoints.webhooks import router as webhooks_router
 
-# Settings Router
-from somabrain.api.endpoints.settings import router as settings_router
+    _safe_add_router(api, "/webhooks/", webhooks_router, tags=["Webhooks"])
 
-_safe_add_router(api, "/settings/", settings_router, tags=["Settings"])
+    # Notifications Router
+    from somabrain.api.endpoints.notifications import router as notifications_router
 
-# Invitations Router
-from somabrain.api.endpoints.invitations import router as invitations_router
+    _safe_add_router(api, "/notifications/", notifications_router, tags=["Notifications"])
 
-_safe_add_router(api, "/invitations/", invitations_router, tags=["Invitations"])
+    # Audit Logs Router
+    from somabrain.api.endpoints.audit_logs import router as audit_logs_router
 
-# Import/Export Router
-from somabrain.api.endpoints.import_export import router as import_export_router
+    _safe_add_router(api, "/audit/", audit_logs_router, tags=["Audit Logs"])
 
-_safe_add_router(api, "/import-export/", import_export_router, tags=["Import/Export"])
+    # Feature Flags Router
+    from somabrain.api.endpoints.feature_flags import router as feature_flags_router
 
-# Search Router
-from somabrain.api.endpoints.search import router as search_router
+    _safe_add_router(api, "/features/", feature_flags_router, tags=["Feature Flags"])
 
-_safe_add_router(api, "/search/", search_router, tags=["Search"])
+    # Onboarding Wizard Router
+    from somabrain.api.endpoints.onboarding import router as onboarding_router
 
-# System Config Router
-from somabrain.api.endpoints.system_config import router as system_config_router
+    _safe_add_router(api, "/onboarding/", onboarding_router, tags=["Onboarding"])
 
-_safe_add_router(api, "/system/", system_config_router, tags=["System"])
+    # Reports Router
+    from somabrain.api.endpoints.reports import router as reports_router
 
-# Activity Router
-from somabrain.api.endpoints.activity import router as activity_router
+    _safe_add_router(api, "/reports/", reports_router, tags=["Reports"])
 
-_safe_add_router(api, "/activity/", activity_router, tags=["Activity"])
+    # Settings Router
+    from somabrain.api.endpoints.settings import router as settings_router
 
-# Backup Router
-from somabrain.api.endpoints.backup import router as backup_router
+    _safe_add_router(api, "/settings/", settings_router, tags=["Settings"])
 
-_safe_add_router(api, "/backup/", backup_router, tags=["Backup"])
+    # Invitations Router
+    from somabrain.api.endpoints.invitations import router as invitations_router
 
-# Versioning Router
-from somabrain.api.endpoints.versioning import router as versioning_router
+    _safe_add_router(api, "/invitations/", invitations_router, tags=["Invitations"])
 
-_safe_add_router(api, "/versioning/", versioning_router, tags=["API Versioning"])
+    # Import/Export Router
+    from somabrain.api.endpoints.import_export import router as import_export_router
 
-# API Metrics Router
-from somabrain.api.endpoints.api_metrics import router as api_metrics_router
+    _safe_add_router(api, "/import-export/", import_export_router, tags=["Import/Export"])
 
-_safe_add_router(api, "/metrics/", api_metrics_router, tags=["Metrics"])
+    # Search Router
+    from somabrain.api.endpoints.search import router as search_router
 
-# API Keys Enhanced Router
-from somabrain.api.endpoints.api_keys_enhanced import router as api_keys_enhanced_router
+    _safe_add_router(api, "/search/", search_router, tags=["Search"])
 
-_safe_add_router(api, "/keys/", api_keys_enhanced_router, tags=["API Keys (Enhanced)"])
+    # System Config Router
+    from somabrain.api.endpoints.system_config import router as system_config_router
 
-# User Preferences Router
-from somabrain.api.endpoints.user_preferences import router as user_preferences_router
+    _safe_add_router(api, "/system/", system_config_router, tags=["System"])
 
-_safe_add_router(api, "/profile/", user_preferences_router, tags=["User Preferences"])
+    # Activity Router
+    from somabrain.api.endpoints.activity import router as activity_router
 
-# Teams Router
-from somabrain.api.endpoints.teams import router as teams_router
+    _safe_add_router(api, "/activity/", activity_router, tags=["Activity"])
 
-_safe_add_router(api, "/teams/", teams_router, tags=["Teams"])
+    # Backup Router
+    from somabrain.api.endpoints.backup import router as backup_router
 
-# Branding Router
-from somabrain.api.endpoints.branding import router as branding_router
+    _safe_add_router(api, "/backup/", backup_router, tags=["Backup"])
 
-_safe_add_router(api, "/branding/", branding_router, tags=["Branding"])
+    # Versioning Router
+    from somabrain.api.endpoints.versioning import router as versioning_router
 
-# SSO Router
-from somabrain.api.endpoints.sso import router as sso_router
+    _safe_add_router(api, "/versioning/", versioning_router, tags=["API Versioning"])
 
-_safe_add_router(api, "/sso/", sso_router, tags=["SSO"])
+    # API Metrics Router
+    from somabrain.api.endpoints.api_metrics import router as api_metrics_router
 
-# Retention Router
-from somabrain.api.endpoints.retention import router as retention_router
+    _safe_add_router(api, "/metrics/", api_metrics_router, tags=["Metrics"])
 
-_safe_add_router(api, "/retention/", retention_router, tags=["Data Retention"])
+    # API Keys Enhanced Router
+    from somabrain.api.endpoints.api_keys_enhanced import router as api_keys_enhanced_router
 
-# Request Logs Router
-from somabrain.api.endpoints.request_logs import router as request_logs_router
+    _safe_add_router(api, "/keys/", api_keys_enhanced_router, tags=["API Keys (Enhanced)"])
 
-_safe_add_router(api, "/request-logs/", request_logs_router, tags=["Request Logs"])
+    # User Preferences Router
+    from somabrain.api.endpoints.user_preferences import router as user_preferences_router
 
-# Geo Access Router
-from somabrain.api.endpoints.geo_access import router as geo_access_router
+    _safe_add_router(api, "/profile/", user_preferences_router, tags=["User Preferences"])
 
-_safe_add_router(api, "/geo/", geo_access_router, tags=["Geo Access"])
+    # Teams Router
+    from somabrain.api.endpoints.teams import router as teams_router
 
-# Playground Router
-from somabrain.api.endpoints.playground import router as playground_router
+    _safe_add_router(api, "/teams/", teams_router, tags=["Teams"])
 
-_safe_add_router(api, "/playground/", playground_router, tags=["API Playground"])
+    # Branding Router
+    from somabrain.api.endpoints.branding import router as branding_router
 
-# Changelog Router
-from somabrain.api.endpoints.changelog import router as changelog_router
+    _safe_add_router(api, "/branding/", branding_router, tags=["Branding"])
 
-_safe_add_router(api, "/changelog/", changelog_router, tags=["Changelog"])
+    # SSO Router
+    from somabrain.api.endpoints.sso import router as sso_router
 
-# License Router
-from somabrain.api.endpoints.license import router as license_router
+    _safe_add_router(api, "/sso/", sso_router, tags=["SSO"])
 
-_safe_add_router(api, "/license/", license_router, tags=["Licensing"])
+    # Retention Router
+    from somabrain.api.endpoints.retention import router as retention_router
 
-# Sessions Router
-from somabrain.api.endpoints.sessions import router as sessions_router
+    _safe_add_router(api, "/retention/", retention_router, tags=["Data Retention"])
 
-_safe_add_router(api, "/sessions/", sessions_router, tags=["Sessions"])
+    # Request Logs Router
+    from somabrain.api.endpoints.request_logs import router as request_logs_router
 
-# Rate Limits Router
-from somabrain.api.endpoints.rate_limits import router as rate_limits_router
+    _safe_add_router(api, "/request-logs/", request_logs_router, tags=["Request Logs"])
 
-_safe_add_router(api, "/rate-limits/", rate_limits_router, tags=["Rate Limits"])
+    # Geo Access Router
+    from somabrain.api.endpoints.geo_access import router as geo_access_router
 
-# Quotas Router
-from somabrain.api.endpoints.quotas import router as quotas_router
+    _safe_add_router(api, "/geo/", geo_access_router, tags=["Geo Access"])
 
-_safe_add_router(api, "/quotas/", quotas_router, tags=["Quotas"])
+    # Playground Router
+    from somabrain.api.endpoints.playground import router as playground_router
 
-# User Notifications Router
-from somabrain.api.endpoints.user_notifications import (
-    router as user_notifications_router,
-)
+    _safe_add_router(api, "/playground/", playground_router, tags=["API Playground"])
 
-_safe_add_router(
-    api, "/notifications/", user_notifications_router, tags=["Notifications"]
-)
+    # Changelog Router
+    from somabrain.api.endpoints.changelog import router as changelog_router
 
-# Webhooks Dashboard Router
-from somabrain.api.endpoints.webhooks_dashboard import (
-    router as webhooks_dashboard_router,
-)
+    _safe_add_router(api, "/changelog/", changelog_router, tags=["Changelog"])
 
-_safe_add_router(
-    api, "/webhooks-dashboard/", webhooks_dashboard_router, tags=["Webhooks Dashboard"]
-)
+    # License Router
+    from somabrain.api.endpoints.license import router as license_router
 
-# Service Health Router
-from somabrain.api.endpoints.service_health import router as service_health_router
+    _safe_add_router(api, "/license/", license_router, tags=["Licensing"])
 
-_safe_add_router(
-    api, "/service-health/", service_health_router, tags=["Service Health"]
-)
+    # Sessions Router
+    from somabrain.api.endpoints.sessions import router as sessions_router
 
-# Admin Override Router
-from somabrain.api.endpoints.admin_override import router as admin_override_router
+    _safe_add_router(api, "/sessions/", sessions_router, tags=["Sessions"])
 
-_safe_add_router(
-    api, "/admin-override/", admin_override_router, tags=["Admin Override"]
-)
+    # Rate Limits Router
+    from somabrain.api.endpoints.rate_limits import router as rate_limits_router
 
-# Environment Router
-from somabrain.api.endpoints.environment import router as environment_router
+    _safe_add_router(api, "/rate-limits/", rate_limits_router, tags=["Rate Limits"])
 
-_safe_add_router(api, "/environment/", environment_router, tags=["Environment"])
+    # Quotas Router
+    from somabrain.api.endpoints.quotas import router as quotas_router
 
-# System Metrics Router
-from somabrain.api.endpoints.system_metrics import router as system_metrics_router
+    _safe_add_router(api, "/quotas/", quotas_router, tags=["Quotas"])
 
-_safe_add_router(api, "/metrics/", system_metrics_router, tags=["System Metrics"])
+    # User Notifications Router
+    from somabrain.api.endpoints.user_notifications import (
+        router as user_notifications_router,
+    )
+
+    _safe_add_router(
+        api, "/notifications/", user_notifications_router, tags=["Notifications"]
+    )
+
+    # Webhooks Dashboard Router
+    from somabrain.api.endpoints.webhooks_dashboard import (
+        router as webhooks_dashboard_router,
+    )
+
+    _safe_add_router(
+        api, "/webhooks-dashboard/", webhooks_dashboard_router, tags=["Webhooks Dashboard"]
+    )
+
+    # Service Health Router
+    from somabrain.api.endpoints.service_health import router as service_health_router
+
+    _safe_add_router(
+        api, "/service-health/", service_health_router, tags=["Service Health"]
+    )
+
+    # Admin Override Router
+    from somabrain.api.endpoints.admin_override import router as admin_override_router
+
+    _safe_add_router(
+        api, "/admin-override/", admin_override_router, tags=["Admin Override"]
+    )
+
+    # Environment Router
+    from somabrain.api.endpoints.environment import router as environment_router
+
+    _safe_add_router(api, "/environment/", environment_router, tags=["Environment"])
+
+    # System Metrics Router
+    from somabrain.api.endpoints.system_metrics import router as system_metrics_router
+
+    _safe_add_router(api, "/metrics/", system_metrics_router, tags=["System Metrics"])
+
+else:
+    logger.info(
+        "Standalone mode — AAAS routers NOT loaded (%d core routers registered)",
+        len(api._routers),
+    )
