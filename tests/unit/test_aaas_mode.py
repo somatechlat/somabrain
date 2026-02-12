@@ -6,7 +6,6 @@ infrastructure stack. For full integration tests, use test_aaas_integration.py.
 VIBE Compliance: These are unit tests, so mocking is acceptable here.
 """
 
-import os
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -142,7 +141,7 @@ class TestBackendFactory:
         from somabrain.memory.backends import get_memory_backend
 
         mock_client.return_value = MagicMock()
-        backend = get_memory_backend(namespace="test")
+        get_memory_backend(namespace="test")
 
         mock_client.assert_called_once()
 

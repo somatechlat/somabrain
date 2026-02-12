@@ -7,7 +7,7 @@ Standalone helper functions for coordinate generation, parsing, and filtering.
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from django.conf import settings
 

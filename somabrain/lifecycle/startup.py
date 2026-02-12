@@ -190,11 +190,19 @@ async def init_health_watchdog(
 async def init_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
     """Initialize centralized tenant management system.
 
+    Skipped in Standalone mode (somabrain.aaas not in INSTALLED_APPS).
+
     Args:
         logger: Optional logger instance for status messages
     """
     log = logger or _logger
     try:
+        from django.apps import apps
+
+        if not apps.is_installed("somabrain.aaas"):
+            log.info("Standalone mode — tenant manager initialization skipped")
+            return
+
         from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 
         await get_tenant_manager()

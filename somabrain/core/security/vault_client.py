@@ -102,7 +102,7 @@ def get_jwt_secret() -> str:
 
 def get_api_key(service: str) -> str:
     """Get API key for a service from Vault."""
-    return get_secret(f"somabrain/api-keys", service)
+    return get_secret("somabrain/api-keys", service)
 
 
 def get_db_credentials() -> dict:

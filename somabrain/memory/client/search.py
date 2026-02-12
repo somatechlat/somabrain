@@ -1,6 +1,5 @@
 from __future__ import annotations
-import uuid
-from typing import List, Tuple
+from typing import List
 from .types import RecallHit
 from .serialization import _compat_enrich_payload, _normalize_recall_hits
 from .ranking import _filter_hits_by_keyword, _deduplicate_hits, _rescore_and_rank_hits

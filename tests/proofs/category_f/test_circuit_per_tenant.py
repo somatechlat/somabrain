@@ -50,7 +50,7 @@ class TestPerTenantCircuitIsolation:
         WHEN tenant A's SFM calls fail 5 times
         THEN only tenant A's circuit SHALL open.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=5,
@@ -82,7 +82,7 @@ class TestPerTenantCircuitIsolation:
         WHEN tenant A's circuit is open
         THEN tenant B's SFM calls SHALL proceed normally.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=3,
@@ -119,7 +119,7 @@ class TestPerTenantCircuitIsolation:
         WHEN tenant A's circuit resets
         THEN tenant B's circuit state SHALL be unchanged.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=3,
@@ -155,7 +155,7 @@ class TestPerTenantCircuitIsolation:
         WHEN multiple tenants have open circuits
         THEN each SHALL recover independently.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=3,
@@ -195,7 +195,7 @@ class TestPerTenantCircuitIsolation:
         WHEN circuit state is queried
         THEN metrics SHALL be labeled by tenant_id.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=3,
@@ -239,7 +239,7 @@ class TestCircuitBreakerStateTransitions:
         **Feature: full-capacity-testing**
         **Validates: Requirements F2.1**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=2,
@@ -265,7 +265,7 @@ class TestCircuitBreakerStateTransitions:
         **Feature: full-capacity-testing**
         **Validates: Requirements F2.4**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=2,
@@ -308,7 +308,7 @@ class TestConcurrentTenantOperations:
         **Feature: full-capacity-testing**
         **Validates: Requirements F2.1**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=3,
@@ -339,7 +339,7 @@ class TestConcurrentTenantOperations:
         **Feature: full-capacity-testing**
         **Validates: Requirements F2.2**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=3,

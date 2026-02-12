@@ -67,11 +67,19 @@ async def stop_memory_watchdog(app: Any) -> None:
 async def shutdown_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
     """Shutdown tenant manager gracefully.
 
+    Skipped in Standalone mode (somabrain.aaas not in INSTALLED_APPS).
+
     Args:
         logger: Optional logger instance for status messages
     """
     log = logger or _logger
     try:
+        from django.apps import apps
+
+        if not apps.is_installed("somabrain.aaas"):
+            log.info("Standalone mode — tenant manager shutdown skipped")
+            return
+
         from somabrain.aaas.logic.tenant_manager import close_tenant_manager
 
         await close_tenant_manager()

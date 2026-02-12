@@ -96,8 +96,8 @@ def _opa_available() -> bool:
     """Check if OPA is reachable on SomaBrain cluster."""
     try:
         import os
-        host = os.environ.get("SOMA_OPA_HOST", "localhost")
-        port = int(os.environ.get("SOMA_OPA_PORT", "63999")) # Assumption for OPA? No, Agent used one.
+        os.environ.get("SOMA_OPA_HOST", "localhost")
+        int(os.environ.get("SOMA_OPA_PORT", "63999")) # Assumption for OPA? No, Agent used one.
         # Agent used SA01_OPA_URL. Let's use env var or skip if not sure.
         # But for valid verification, we need OPA.
         # Checking Agent env config (Step 1234): AAAS_ENV didn't list OPA explicitly?

@@ -1,8 +1,3 @@
-from .core import APIKeyAuth
-from somabrain.aaas.models.api import APIKey
-from somabrain.aaas.models.audit import AuditLog
-from somabrain.aaas.logic.tenant_types import TenantStatus
-from somabrain.aaas.models.auth import FieldPermission, Role
 from ninja.errors import HttpError
 
 # =============================================================================
@@ -98,7 +93,6 @@ def require_auth(roles: list = None, any_role: bool = False):
                 request: The request.
             """
 
-            from ninja.errors import HttpError
 
             # Check for JWT auth
             auth = getattr(request, "auth", None)
@@ -269,7 +263,6 @@ class FieldPermissionChecker:
         if "super-admin" in self.user_roles:
             return
 
-        from ninja.errors import HttpError
 
         editable = self.get_editable_fields(model, list(data.keys()))
         forbidden = [k for k in data.keys() if k not in editable]

@@ -9,11 +9,9 @@ Verifies:
 4. Automated Degradation (Killing Milvus/Redis)
 """
 
-import os
 import time
 import asyncio
 import pytest
-import httpx
 from somabrain.controls.memory_client import memory_client
 from somabrain.controls.degradation import degradation_manager, HealthStatus
 from somabrain.brain_settings.models import BrainSetting

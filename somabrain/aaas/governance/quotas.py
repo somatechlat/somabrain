@@ -37,7 +37,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
-from .tenant_manager import get_tenant_manager
+from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 
 
 @dataclass

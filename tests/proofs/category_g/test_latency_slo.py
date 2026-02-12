@@ -66,7 +66,7 @@ class TestLatencySLOs:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=100)
+        wm = WorkingMemory(dim=512, capacity=100)
         latencies: List[float] = []
 
         # Run multiple remember operations
@@ -99,7 +99,7 @@ class TestLatencySLOs:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=100)
+        wm = WorkingMemory(dim=512, capacity=100)
 
         # Pre-populate WM
         for i in range(50):
@@ -136,7 +136,7 @@ class TestLatencySLOs:
         WHEN plan() is called
         THEN p95 latency SHALL be under 1000ms.
         """
-        from somabrain.cognitive.planning import Planner
+        from somabrain.admin.cognitive.planning import Planner
 
         planner = Planner(max_depth=3)
         latencies: List[float] = []
@@ -168,8 +168,8 @@ class TestLatencySLOs:
         WHEN /health is called
         THEN p99 latency SHALL be under 100ms.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
-        from somabrain.core.infrastructure_defs.degradation import DegradationManager
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.degradation import DegradationManager
 
         cb = CircuitBreaker(
             failure_threshold=5, recovery_timeout=60.0, half_open_max_calls=1
@@ -258,7 +258,7 @@ class TestLatencyStatistics:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=100)
+        wm = WorkingMemory(dim=512, capacity=100)
         latencies: List[float] = []
 
         # Run operations

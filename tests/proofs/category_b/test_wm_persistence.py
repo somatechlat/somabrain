@@ -106,7 +106,7 @@ class TestWMPersistence:
         persister = WMPersister(client, tenant_id)
 
         # Create WM and add items
-        wm = WorkingMemory(capacity=10)
+        wm = WorkingMemory(dim=512, capacity=10)
 
         # Add test items to WM
         test_items = []
@@ -136,7 +136,7 @@ class TestWMPersistence:
         assert len(client._stored) >= 3, "Should have stored items"
 
         # Create a NEW WM instance (simulates restart)
-        wm2 = WorkingMemory(capacity=10)
+        wm2 = WorkingMemory(dim=512, capacity=10)
         assert len(wm2._items) == 0, "New WM should be empty"
 
         # Restore WM state
@@ -362,7 +362,7 @@ class TestWMRestorerTimeout:
         client = SlowMemoryClient()
         restorer = WMRestorer(client, tenant_id, timeout_s=0.5)
 
-        wm = WorkingMemory(capacity=10)
+        wm = WorkingMemory(dim=512, capacity=10)
 
         async def test_timeout():
             """Execute test timeout."""

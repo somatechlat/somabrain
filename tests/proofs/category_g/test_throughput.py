@@ -56,7 +56,7 @@ class TestThroughputCapacity:
         from somabrain.memory.wm.core import WorkingMemory
 
         # Create shared WM (thread-safe operations)
-        wm = WorkingMemory(capacity=200)
+        wm = WorkingMemory(dim=512, capacity=200)
 
         def admit_item(i: int) -> Tuple[int, bool]:
             """Execute admit item.
@@ -100,7 +100,7 @@ class TestThroughputCapacity:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=1100)  # Slightly larger than test size
+        wm = WorkingMemory(dim=512, capacity=1100)  # Slightly larger than test size
 
         start = time.perf_counter()
         stored_ids: List[str] = []
@@ -135,7 +135,7 @@ class TestThroughputCapacity:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=100)
+        wm = WorkingMemory(dim=512, capacity=100)
 
         # Pre-populate WM
         for i in range(100):
@@ -172,7 +172,7 @@ class TestThroughputCapacity:
         from somabrain.memory.wm.core import WorkingMemory
         import gc
 
-        wm = WorkingMemory(capacity=100)
+        wm = WorkingMemory(dim=512, capacity=100)
 
         # Run for 30 seconds (shortened for CI)
         duration = 30  # seconds
@@ -212,7 +212,7 @@ class TestThroughputCapacity:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=100)
+        wm = WorkingMemory(dim=512, capacity=100)
 
         # Normal load
         normal_latencies: List[float] = []
@@ -275,7 +275,7 @@ class TestConcurrentOperations:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=200)
+        wm = WorkingMemory(dim=512, capacity=200)
 
         # Pre-populate
         for i in range(50):

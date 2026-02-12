@@ -29,7 +29,7 @@ class TestEntropyLatency:
         def compute_entropy():
             return -sum(p * math.log(p) for p in probs if p > 0)
 
-        result = benchmark(compute_entropy)
+        benchmark(compute_entropy)
         # SLO: < 100μs for entropy computation
         assert benchmark.stats.mean < 0.0001, (
             f"Entropy computation took {benchmark.stats.mean * 1e6:.2f}μs, "
@@ -46,7 +46,7 @@ class TestEntropyLatency:
         from somabrain.learning.annealing import _rust_compute_entropy
 
         probs = [0.25, 0.25, 0.25, 0.25]
-        result = benchmark(lambda: _rust_compute_entropy(probs))
+        benchmark(lambda: _rust_compute_entropy(probs))
 
         # SLO: < 100μs with Rust acceleration
         assert benchmark.stats.mean < 0.0001, (
@@ -67,7 +67,7 @@ class TestSoftmaxLatency:
             w = np.exp(s / tau)
             return w / w.sum()
 
-        result = benchmark(compute_softmax)
+        benchmark(compute_softmax)
 
         # SLO: < 1ms for 100-memory softmax
         assert benchmark.stats.mean < 0.001, (
@@ -84,7 +84,7 @@ class TestSoftmaxLatency:
             w = np.exp(s / tau)
             return w / w.sum()
 
-        result = benchmark(compute_softmax)
+        benchmark(compute_softmax)
 
         # SLO: < 5ms for 1000-memory softmax
         assert benchmark.stats.mean < 0.005, (
@@ -104,7 +104,7 @@ class TestTauAnnealingLatency:
 
         from somabrain.learning.annealing import linear_decay
 
-        result = benchmark(lambda: linear_decay(tau_0=1.0, tau_min=0.1, alpha=0.01, t=50))
+        benchmark(lambda: linear_decay(tau_0=1.0, tau_min=0.1, alpha=0.01, t=50))
 
         # SLO: < 50μs
         assert benchmark.stats.mean < 0.00005, (
@@ -120,7 +120,7 @@ class TestTauAnnealingLatency:
 
         from somabrain.learning.annealing import exponential_decay
 
-        result = benchmark(lambda: exponential_decay(tau_0=1.0, gamma=0.95, t=50))
+        benchmark(lambda: exponential_decay(tau_0=1.0, gamma=0.95, t=50))
 
         # SLO: < 50μs
         assert benchmark.stats.mean < 0.00005, (
@@ -138,7 +138,7 @@ class TestTauAnnealingLatency:
 
         tenant_override = {"tau_anneal_mode": "linear", "tau_anneal_rate": 0.01}
 
-        result = benchmark(
+        benchmark(
             lambda: apply_tau_annealing(
                 current_tau=0.7,
                 tenant_id="benchmark",
@@ -166,7 +166,7 @@ class TestEntropyCapLatency:
         from somabrain.learning.annealing import check_entropy_cap
 
         # Already dominated by alpha (low entropy)
-        result = benchmark(
+        benchmark(
             lambda: check_entropy_cap(
                 alpha=0.9,
                 beta=0.05,

@@ -81,6 +81,13 @@ def configure_test_environment(request):
     django.setup()
 
 
+@pytest.fixture(autouse=True)
+def init_brain_settings(db):
+    """Initialize brain settings for every test that uses the database."""
+    from somabrain.brain_settings.models import BrainSetting
+    BrainSetting.initialize_defaults()
+
+
 @pytest.fixture
 def aaas_mode():
     """Fixture to ensure AAAS mode environment."""

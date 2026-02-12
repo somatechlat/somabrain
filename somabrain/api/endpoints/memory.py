@@ -89,7 +89,6 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     MemoryService(pool, namespace)
 
     # Extract query parameters
-    query = payload.query
     top_k = payload.top_k
     layer = payload.layer
 

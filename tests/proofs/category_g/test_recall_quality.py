@@ -83,7 +83,7 @@ class TestRecallQualityUnderScale:
         from somabrain.memory.wm.core import WorkingMemory
 
         corpus_size = 1000  # Reduced for CI
-        wm = WorkingMemory(capacity=corpus_size + 100)
+        wm = WorkingMemory(dim=512, capacity=corpus_size + 100)
 
         # Create corpus with known structure
         # Group items into clusters for measurable precision
@@ -139,7 +139,7 @@ class TestRecallQualityUnderScale:
         from somabrain.memory.wm.core import WorkingMemory
 
         corpus_size = 500  # Reduced for CI
-        wm = WorkingMemory(capacity=corpus_size + 100)
+        wm = WorkingMemory(dim=512, capacity=corpus_size + 100)
 
         # Create corpus with known relevant items
         relevant_items: List[Tuple[str, np.ndarray]] = []
@@ -189,7 +189,7 @@ class TestRecallQualityUnderScale:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=200)
+        wm = WorkingMemory(dim=512, capacity=200)
 
         # Create query
         query = np.random.randn(512).astype(np.float32)
@@ -244,7 +244,7 @@ class TestRecallQualityUnderScale:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=200)
+        wm = WorkingMemory(dim=512, capacity=200)
 
         # Create diverse corpus
         for i in range(100):
@@ -297,7 +297,7 @@ class TestRecallQualityUnderScale:
         """
         from somabrain.memory.wm.core import WorkingMemory
 
-        wm = WorkingMemory(capacity=100)
+        wm = WorkingMemory(dim=512, capacity=100)
 
         # Create query
         query = np.random.randn(512).astype(np.float32)

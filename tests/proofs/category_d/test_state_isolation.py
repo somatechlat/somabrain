@@ -109,7 +109,7 @@ class TestStateIsolation:
         WHEN tenant A's circuit breaker opens
         THEN tenant B's circuit breaker SHALL remain closed.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         # Create circuit breaker with per-tenant tracking
         cb = CircuitBreaker(
@@ -143,23 +143,64 @@ class TestStateIsolation:
         WHEN tenant A exhausts quota
         THEN tenant B's quota SHALL be unaffected.
         """
-        from somabrain.quotas import QuotaManager
+        from somabrain.aaas.governance.quotas import QuotaManager, QuotaConfig
+        from somabrain.aaas.logic.tenant_manager import get_tenant_manager
+        import asyncio
 
-        qm = QuotaManager()
+        # Get tenant manager synchronously
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
 
-        # Set quotas for both tenants
-        qm.set_quota("tenant_a", max_requests=10)
-        qm.set_quota("tenant_b", max_requests=10)
+        tenant_mgr = loop.run_until_complete(get_tenant_manager())
 
-        # Exhaust tenant A's quota
-        for _ in range(15):
-            qm.consume("tenant_a", 1)
+        # Configure Tenant A with low quota (10)
+        # We must create/update the tenant to persist this config in Redis
+        # so QuotaManager picks it up.
+        loop.run_until_complete(tenant_mgr.create_tenant(
+            "Tenant A",
+            "public",
+            config={"quota": {"daily_quota": 10}}
+        ))
 
-        # Tenant A should be over quota
-        assert not qm.check_quota("tenant_a", 1), "Tenant A should be over quota"
+        # Ensure we use the proper ID (TenantManager might normalize "Tenant A" to something else,
+        # but create_tenant uses an ID generation logic or we can assume it returns the ID)
+        # Actually create_tenant returns the ID.
+        # But for this test we assumed "tenant_a" string.
+        # Let's forcibly update config for "tenant_a" assuming it exists or creation allows specifying ID?
+        # create_tenant signature: (display_name, ...) -> str. ID is generated.
 
-        # Tenant B should still have quota
-        assert qm.check_quota("tenant_b", 1), "Tenant B should have quota available"
+        # Strategy: Use a known ID. create_tenant doesn't allow custom ID.
+        # BUT QuotaManager uses whatever string we pass to allow_write.
+        # So we should use the ID returned by create_tenant.
+
+        tenant_a_id = loop.run_until_complete(tenant_mgr.create_tenant(
+            "Tenant A Test",
+            "public",
+            config={"quota": {"daily_quota": 10}}
+        ))
+
+        tenant_b_id = loop.run_until_complete(tenant_mgr.create_tenant(
+            "Tenant B Test",
+            "public",
+            config={"quota": {"daily_quota": 10}}
+        ))
+
+        cfg = QuotaConfig(daily_writes=10)
+        qm = QuotaManager(cfg)
+
+        # Exhaust tenant A's quota (10 writes)
+        for _ in range(10):
+            allowed = qm.allow_write(tenant_a_id, 1)
+            assert allowed, "Tenant A should be allowed within quota"
+
+        # Tenant A should be over quota on 11th attempt
+        assert not qm.allow_write(tenant_a_id, 1), "Tenant A should be over quota"
+
+        # Tenant B should still be allowed (independent counters)
+        assert qm.allow_write(tenant_b_id, 1), "Tenant B should be unaffected by Tenant A"
 
     def test_adaptation_isolation(self) -> None:
         """D2.4: Adaptation isolation.
@@ -207,8 +248,8 @@ class TestStateIsolation:
         import numpy as np
 
         # Create separate WM instances for each tenant
-        wm_a = WorkingMemory(capacity=5)
-        wm_b = WorkingMemory(capacity=5)
+        wm_a = WorkingMemory(dim=512, capacity=5)
+        wm_b = WorkingMemory(dim=512, capacity=5)
 
         # Fill tenant A's WM beyond capacity
         for i in range(10):
@@ -326,7 +367,7 @@ class TestCircuitBreakerPerTenant:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.2**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=2,
@@ -363,7 +404,7 @@ class TestCircuitBreakerPerTenant:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.2**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         cb = CircuitBreaker(
             failure_threshold=2,

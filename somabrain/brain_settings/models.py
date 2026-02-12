@@ -9,8 +9,9 @@ Multi-tenant. Hot-reload via cache. NO FALLBACKS - fail fast.
 from django.db import models
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
-from typing import Any, Dict, Tuple
+from typing import Any
 import logging
+from somabrain.admin.common.messages import ErrorCode, get_message
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class BrainSetting(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        app_label = "somabrain"
+        # app_label = "somabrain"  <-- REMOVED to allow proper migration as brain_settings app
         db_table = "brain_settings"
         unique_together = [["key", "tenant"]]
 
@@ -99,7 +100,9 @@ class BrainSetting(models.Model):
             cache.set(cache_key, v, cls.CACHE_TIMEOUT)
             return v
         except cls.DoesNotExist:
-            raise BrainSettingNotFound(f"'{key}' not found. Run initialize_defaults().")
+            raise BrainSettingNotFound(
+                get_message(ErrorCode.BRAIN_SETTING_NOT_FOUND, key=key, tenant=tenant)
+            )
 
     @classmethod
     def set(cls, key: str, value: Any, tenant: str = "default") -> "BrainSetting":
@@ -315,8 +318,6 @@ BRAIN_DEFAULTS = {
     "neuro_k_r_acetyl": {"v": 0.4, "cat": "neuro", "learnable": True, "min": 0.0, "max": 1.0},
     # u_scale: control input scaling
     "neuro_u_scale": {"v": 0.1, "cat": "neuro", "learnable": True, "min": 0.0, "max": 0.5},
-    # NEURO (Managed via PLASTICITY)
-    "neuro_k_d_dopamine": {"v": 0.8, "cat": "neuro", "learnable": True, "min": 0.0, "max": 2.0},
 
     # PLANNER
     "plan_max_steps": {"v": 5, "cat": "planner"},
@@ -367,7 +368,6 @@ BRAIN_DEFAULTS = {
     "retrieval_alpha": {"v": 1.0, "cat": "retrieval", "learnable": True, "min": 0.0, "max": 5.0},
     "retrieval_beta": {"v": 0.2, "cat": "retrieval", "learnable": True, "min": 0.0, "max": 1.0},
     "retrieval_gamma": {"v": 0.1, "cat": "retrieval", "learnable": True, "min": 0.0, "max": 0.5},
-    "retrieval_gamma": {"v": 0.1, "cat": "retrieval", "learnable": True, "min": 0.0, "max": 0.5},
     "retrieval_tau": {"v": 0.7, "cat": "retrieval", "learnable": True, "min": 0.0, "max": 2.0},
     # tau (Managed via ELASTICITY)
 
@@ -376,7 +376,6 @@ BRAIN_DEFAULTS = {
     "salience_fd_rank": {"v": 128, "cat": "salience"},
     "salience_fd_weight": {"v": 0.25, "cat": "salience", "learnable": True, "min": 0.0, "max": 1.25},
     "salience_hysteresis": {"v": 0.1, "cat": "salience"},
-    "salience_w_error": {"v": 0.4, "cat": "salience"},
     "salience_w_error": {"v": 0.4, "cat": "salience"},
     # salience_w_novelty (Managed via ELASTICITY)
 

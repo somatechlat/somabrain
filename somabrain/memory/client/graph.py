@@ -3,7 +3,7 @@ import uuid
 import asyncio
 import logging
 from typing import List, Tuple
-from .serialization import _response_json, _parse_coord_string
+from .serialization import _response_json
 
 logger = logging.getLogger(__name__)
 

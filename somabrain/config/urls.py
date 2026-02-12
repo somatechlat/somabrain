@@ -12,8 +12,12 @@ from django.utils import timezone
 # Import consolidated API from v1
 from somabrain.api.v1 import api
 
-# Webhook handler
-from somabrain.aaas.webhooks import lago_webhook
+from django.apps import apps as _django_apps
+
+# Webhook handler — AAAS only
+_lago_webhook = None
+if _django_apps.is_installed("somabrain.aaas"):
+    from somabrain.aaas.webhooks import lago_webhook as _lago_webhook
 
 # =============================================================================
 # HEALTH VIEWS - VIBE Coding Rules
@@ -242,6 +246,9 @@ def health_view(request):
     def check_lago():
         """Execute check lago."""
 
+        if not _django_apps.is_installed("somabrain.aaas"):
+            return {"configured": False, "mode": "standalone"}
+
         from somabrain.aaas.billing import get_lago_client
 
         lago = get_lago_client()
@@ -337,6 +344,10 @@ urlpatterns = [
     path("metrics", metrics_view, name="metrics"),
     # Django Ninja API - all routers registered in v1.py
     path("api/", api.urls),
-    # Webhooks
-    path("webhooks/lago/", lago_webhook, name="lago_webhook"),
 ]
+
+# AAAS-only: Lago webhook endpoint
+if _lago_webhook is not None:
+    urlpatterns.append(
+        path("webhooks/lago/", _lago_webhook, name="lago_webhook")
+    )
