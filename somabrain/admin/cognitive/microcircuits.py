@@ -39,8 +39,11 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 from django.conf import settings
-
-from .metrics import MICRO_COLUMN_ADMIT, MICRO_COLUMN_BEST, MICRO_VOTE_ENTROPY
+from somabrain.metrics.executive import (
+    MICRO_COLUMN_ADMIT,
+    MICRO_COLUMN_BEST,
+    MICRO_VOTE_ENTROPY,
+)
 from .wm import WorkingMemory
 
 

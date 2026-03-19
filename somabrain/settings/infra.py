@@ -139,8 +139,78 @@ REQUIRE_MEMORY = env.bool("REQUIRE_MEMORY", default=True)
 REQUIRE_INFRA = env.str("REQUIRE_INFRA", default="1")
 RUNNING_IN_DOCKER = env.bool("RUNNING_IN_DOCKER", default=False)
 
-# HTTP client settings
-SOMABRAIN_HTTP_MAX_CONNS = env.int("SOMABRAIN_HTTP_MAX_CONNS", default=64)
+# ============================================================================
+# CENTRALIZED CONNECTION DEFAULTS (Docker vs Local)
+# ============================================================================
+# If running in Docker (standalone), default to internal service names.
+# If running locally, default to localhost ports.
+# ALL can be overridden by explicit env vars.
+
+if RUNNING_IN_DOCKER:
+    _KAFKA_DEFAULT = "somabrain_standalone_kafka:9092"
+    _OPA_DEFAULT = "http://somabrain_standalone_opa:8181"
+    # In standalone docker, Brain (30101) talks to SFM (10101) on host
+    # via host.docker.internal gateway
+    _MEMORY_DEFAULT = "http://host.docker.internal:10101"
+    _REDIS_DEFAULT = "redis://somabrain_standalone_redis:6379/0"
+else:
+    _KAFKA_DEFAULT = "127.0.0.1:9092"
+    _OPA_DEFAULT = "http://127.0.0.1:8181"
+    _MEMORY_DEFAULT = "http://127.0.0.1:10101"
+    _REDIS_DEFAULT = "redis://127.0.0.1:6379/0"
+
+# Kafka
+# ----------------------------------------------------------------------------
+SOMABRAIN_KAFKA_URL = env.str("SOMABRAIN_KAFKA_URL", default=_KAFKA_DEFAULT)
+# Bootstrap servers often mirror URL
+KAFKA_BOOTSTRAP_SERVERS = env.str(
+    "KAFKA_BOOTSTRAP_SERVERS", default=SOMABRAIN_KAFKA_URL
+).replace("kafka://", "")
+
+SOMABRAIN_KAFKA_HOST = env.str(
+    "SOMABRAIN_KAFKA_HOST", default=env.str("KAFKA_HOST", default=None)
+)
+SOMABRAIN_KAFKA_PORT = env.int(
+    "SOMABRAIN_KAFKA_PORT", default=env.int("KAFKA_PORT", default=0)
+)
+SOMABRAIN_KAFKA_SCHEME = env.str(
+    "SOMABRAIN_KAFKA_SCHEME", default=env.str("KAFKA_SCHEME", default="kafka")
+)
+# Alias for consistency
+SOMA_KAFKA_BOOTSTRAP = env.str("SOMA_KAFKA_BOOTSTRAP", default=SOMABRAIN_KAFKA_URL)
+
+KAFKA_GROUP_ID = env.str("KAFKA_GROUP_ID", default=None)
+SOMABRAIN_CONSUMER_GROUP = env.str(
+    "SOMABRAIN_CONSUMER_GROUP", default="orchestrator-service"
+)
+
+# OPA
+# ----------------------------------------------------------------------------
+SOMABRAIN_OPA_URL = env.str("SOMABRAIN_OPA_URL", default=_OPA_DEFAULT)
+
+SOMABRAIN_OPA_HOST = env.str(
+    "SOMABRAIN_OPA_HOST", default=env.str("OPA_HOST", default=None)
+)
+SOMABRAIN_OPA_PORT = env.int(
+    "SOMABRAIN_OPA_PORT", default=env.int("OPA_PORT", default=0)
+)
+SOMABRAIN_OPA_SCHEME = env.str(
+    "SOMABRAIN_OPA_SCHEME", default=env.str("OPA_SCHEME", default="http")
+)
+SOMABRAIN_OPA_TIMEOUT = env.float("SOMABRAIN_OPA_TIMEOUT", default=2.0)
+OPA_BUNDLE_PATH = env.str("OPA_BUNDLE_PATH", default="./opa")
+SOMABRAIN_OPA_ALLOW_ON_ERROR = env.bool("SOMABRAIN_OPA_ALLOW_ON_ERROR", default=False)
+SOMABRAIN_OPA_POLICY_KEY = env.str(
+    "SOMABRAIN_OPA_POLICY_KEY", default="soma:opa:policy"
+)
+SOMABRAIN_OPA_POLICY_SIG_KEY = env.str(
+    "SOMABRAIN_OPA_POLICY_SIG_KEY", default="soma:opa:policy:sig"
+)
+
+# External Memory (SFM)
+# ----------------------------------------------------------------------------
+SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str("SOMABRAIN_MEMORY_HTTP_ENDPOINT", default=_MEMORY_DEFAULT)
+SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="test-token-123")
 SOMABRAIN_HTTP_KEEPALIVE = env.int("SOMABRAIN_HTTP_KEEPALIVE", default=32)
 SOMABRAIN_HTTP_RETRIES = env.int("SOMABRAIN_HTTP_RETRIES", default=1)
 

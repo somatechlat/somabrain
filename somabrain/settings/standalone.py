@@ -14,8 +14,11 @@ from .neuro import *
 # =============================================================================
 
 # Remove AAAS Application
-if "somabrain.aaas" in INSTALLED_APPS:
-    INSTALLED_APPS.remove("somabrain.aaas")
+INSTALLED_APPS = [
+    app for app in INSTALLED_APPS
+    if "aaas" not in app
+    and app != "somabrain.aaas"
+]
 
 # Remove AAAS Middleware (Billing, Rate Limiting, etc)
 MIDDLEWARE = [

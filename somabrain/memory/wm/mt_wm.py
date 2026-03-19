@@ -39,8 +39,8 @@ from django.conf import settings
 
 # Import metrics for working‑memory instrumentation. The metrics module defines
 # counters such as ``WM_ADMIT``, ``WM_HITS``, ``WM_MISSES`` and ``WM_EVICTIONS``.
-from . import metrics as M
-from .wm import WorkingMemory
+from somabrain.metrics import memory_metrics as M
+from .core import WorkingMemory
 
 
 @dataclass
