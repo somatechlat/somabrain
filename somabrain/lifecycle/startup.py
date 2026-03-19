@@ -16,6 +16,10 @@ import time
 from typing import Any, Optional
 
 
+_logger = logging.getLogger("somabrain.lifecycle")
+"""Module-level fallback logger used by startup handlers that accept an optional logger arg."""
+
+
 async def startup_mode_banner(app: Any) -> None:
     """Log mode, derived flags, and deprecation notices on boot.
 

@@ -99,11 +99,14 @@ def _get_embedder():
     Raises:
         HTTPException: 503 if embedder is not initialized.
     """
-    rt = _get_runtime()
-    embedder = getattr(rt, "embedder", None) if rt else None
-    if embedder is None:
-        raise HttpError(503, "embedder unavailable")
-    return embedder
+    try:
+        from somabrain.runtime.manager import get_embedder
+        embedder = get_embedder()
+        if embedder is None:
+            raise HttpError(503, "embedder unavailable")
+        return embedder
+    except ImportError:
+        raise HttpError(503, "runtime manager unavailable")
 
 
 def _get_wm():
@@ -115,11 +118,14 @@ def _get_wm():
     Raises:
         HTTPException: 503 if working memory is not initialized.
     """
-    rt = _get_runtime()
-    wm = getattr(rt, "mt_wm", None) if rt else None
-    if wm is None:
-        raise HttpError(503, "working memory unavailable")
-    return wm
+    try:
+        from somabrain.runtime.manager import get_working_memory
+        wm = get_working_memory()
+        if wm is None:
+            raise HttpError(503, "working memory unavailable")
+        return wm
+    except ImportError:
+        raise HttpError(503, "runtime manager unavailable")
 
 
 def _get_memory_pool():
@@ -131,11 +137,14 @@ def _get_memory_pool():
     Raises:
         HTTPException: 503 if memory pool is not initialized.
     """
-    rt = _get_runtime()
-    pool = getattr(rt, "mt_memory", None) if rt else None
-    if pool is None:
-        raise HttpError(503, "memory pool unavailable")
-    return pool
+    try:
+        from somabrain.runtime.manager import get_memory_pool
+        pool = get_memory_pool()
+        if pool is None:
+            raise HttpError(503, "memory pool unavailable")
+        return pool
+    except ImportError:
+        raise HttpError(503, "runtime manager unavailable")
 
 
 def _resolve_namespace(tenant: str, namespace: str) -> str:

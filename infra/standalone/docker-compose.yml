@@ -371,20 +371,85 @@ services:
       - -c
       - autovacuum_max_workers=2
 
+  # --- Vault secrets (30xxx range infrastructure) ----------------------------
+  somabrain_standalone_vault:
+    image: hashicorp/vault:1.13.3
+    container_name: somabrain_standalone_vault
+    restart: unless-stopped
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      VAULT_ADDR: "http://0.0.0.0:8200"
+    ports:
+      # Brain-range Vault port: 30200
+      - "30200:8200"
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: [ "CMD", "vault", "status" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - somabrain_standalone_net
+
+  # --- Vault init helper -----------------------------------------------------
+  somabrain_standalone_vault_init:
+    image: alpine:latest
+    container_name: somabrain_standalone_vault_init
+    depends_on:
+      somabrain_standalone_vault:
+        condition: service_healthy
+    environment:
+      SOMABRAIN_VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      POSTGRES_USER: "${POSTGRES_USER:-somabrain}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB:-somabrain}"
+      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
+      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:-soma-insecure-dev-secret}"
+    networks:
+      - somabrain_standalone_net
+    entrypoint: [ "sh", "-c" ]
+    command:
+      - |
+        apk add --no-cache curl jq
+        # Wait for vault
+        until curl -s http://somabrain_standalone_vault:8200/v1/sys/health; do sleep 1; done
+
+        # Mount KV v2
+        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST -d '{"type":"kv-v2"}' http://somabrain_standalone_vault:8200/v1/sys/mounts/somabrain
+
+        # 1. Database Credentials
+        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
+          -d "{\"data\": {\"username\": \"$${POSTGRES_USER}\", \"password\": \"$${POSTGRES_PASSWORD}\", \"host\": \"somabrain_standalone_postgres\", \"port\": 5432, \"dbname\": \"$${POSTGRES_DB}\"}}" \
+          http://somabrain_standalone_vault:8200/v1/somabrain/data/database
+
+        # 2. Redis Credentials
+        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
+          -d "{\"data\": {\"url\": \"$${SOMABRAIN_REDIS_URL}\"}}" \
+          http://somabrain_standalone_vault:8200/v1/somabrain/data/redis
+
+        # 3. JWT Secret
+        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
+          -d "{\"data\": {\"jwt_secret\": \"$${SOMABRAIN_JWT_SECRET}\"}}" \
+          http://somabrain_standalone_vault:8200/v1/somabrain/data/auth
+
+        echo "Vault initialized and secrets populated."
+
   somabrain_standalone_db_migrate:
     image: somabrain:latest
     depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
       somabrain_standalone_postgres:
         condition: service_healthy
     networks:
       - somabrain_standalone_net
     environment:
-      # Use the internal service hostname to reach Postgres from within the network
-      # Compose will substitute these from your .env
-      POSTGRES_USER: "${POSTGRES_USER}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB}"
-      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB}"
+      # VAULT BOOTSTRAP ONLY
+      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
+      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
+      RUNNING_IN_DOCKER: "true"
     # Dev convenience: run Django migrations.
     command: [ "sh", "-lc", "cd /app && python manage.py migrate --noinput" ]
     restart: "no"
@@ -427,6 +492,8 @@ services:
         reservations:
           memory: 1G
     depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
       somabrain_standalone_redis:
         condition: service_healthy
       somabrain_standalone_kafka:
@@ -442,18 +509,36 @@ services:
     # Ensure containers can reach host services (e.g., external memory on 9595)
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ../../somabrain:/app/somabrain:ro
+      - ../../scripts:/app/scripts:ro
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          mode: 1777
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 1777
     environment:
-      # Use external memory service configured via environment variables (no mock)
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:10101"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN-test-token-123}"
+      # Django settings MUST be set for standalone scripts like initialize_runtime.py
+      DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
+      RUNNING_IN_DOCKER: "true"
+
+      # VAULT BOOTSTRAP ONLY
+      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
+      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+
+      # Configuration Pass-throughs (No hardcoded URLs)
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:-test-token-123}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
       SOMABRAIN_PORT: "${SOMABRAIN_PORT:-30101}"
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
-      SOMABRAIN_KAFKA_URL: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL:-http://somabrain_standalone_opa:8181}"
-      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain}"
+      SOMABRAIN_OPA_URL: "http://somabrain_standalone_opa:8181"
+      SOMABRAIN_KAFKA_URL: "kafka://somabrain_standalone_kafka:9092"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:10101"
+
+      # Feature Flags
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
@@ -486,8 +571,6 @@ services:
     read_only: true
     security_opt:
       - no-new-privileges:true
-    tmpfs:
-      - /app/logs
 
   somabrain_standalone_cog:
     build:
@@ -496,6 +579,8 @@ services:
     image: somabrain:latest
     restart: unless-stopped
     depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
       somabrain_standalone_postgres:
         condition: service_healthy
       somabrain_standalone_redis:
@@ -514,20 +599,20 @@ services:
     networks:
       - somabrain_standalone_net
     environment:
-      # Explicitly require a real external memory service; no dev fallback
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somafractalmemory_standalone_api:10101"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
+      RUNNING_IN_DOCKER: "true"
+
+      # VAULT BOOTSTRAP ONLY
+      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
+      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+
+      # Configuration Pass-throughs
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:-test-token-123}"
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
       SOMABRAIN_MODE: "full-local"
       SOMA_HEAT_METHOD: "lanczos"
-      # Centralized feature gating; composite toggles are handled via runtime config
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
-      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
-      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain}"
       # Enable OTEL tracing to Jaeger collector
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://somabrain_standalone_jaeger:4318"
       OTEL_SERVICE_NAME: "somabrain-cog"
@@ -558,6 +643,8 @@ services:
       # Segmentation health
       - "${SEGMENTATION_HEALTH_HOST_PORT:-30116}:9016"
     command: [ "/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf", "-l", "/dev/stdout" ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: [ "CMD", "curl", "-fsS", "http://admin:soma@localhost:9001" ]
       interval: 30s
@@ -590,6 +677,8 @@ services:
         reservations:
           memory: 128M
     depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
       somabrain_standalone_kafka:
         condition: service_healthy
       somabrain_standalone_postgres:
@@ -599,16 +688,16 @@ services:
     command: [ "python", "-m", "somabrain.workers.outbox_publisher" ]
     environment:
       # Django settings MUST be first - required for all Django workers
-      DJANGO_SETTINGS_MODULE: "somabrain.settings"
+      DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
+      RUNNING_IN_DOCKER: "true"
+
+      # VAULT BOOTSTRAP ONLY
+      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
+      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
-      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
-      KAFKA_BOOTSTRAP_SERVERS: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
-      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN:-postgresql://somabrain:somabrain@somabrain_standalone_postgres:5432/somabrain}"
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:-100}
       SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY:-5.0}
       # Propagate the global memory cap to the outbox publisher.
@@ -750,21 +839,26 @@ services:
     image: somabrain:latest
     restart: unless-stopped
     depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
       somabrain_standalone_kafka:
         condition: service_healthy
     networks:
       - somabrain_standalone_net
     environment:
       # Django settings MUST be first - required for all Django workers
-      DJANGO_SETTINGS_MODULE: "somabrain.settings"
-      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
-      KAFKA_BOOTSTRAP_SERVERS: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
+      RUNNING_IN_DOCKER: "true"
+
+      # VAULT BOOTSTRAP ONLY
+      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
+      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+
       # Propagate the global memory cap to the integrator service.
       SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
       SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
       SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:-cog.state.updates}"
       SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:-cog.agent.updates}"
-      SOMABRAIN_TOPIC_ACTION_UPDATES: "${SOMABRAIN_TOPIC_ACTION_UPDATES:-cog.action.updates}"
       SOMABRAIN_TOPIC_GLOBAL_FRAME: "${SOMABRAIN_TOPIC_GLOBAL_FRAME:-cog.global.frame}"
       SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:-cog.next_event}"
       SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"

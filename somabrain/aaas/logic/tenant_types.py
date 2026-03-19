@@ -28,6 +28,7 @@ class TenantStatus(str, Enum):
     SUSPENDED = "suspended"
     DISABLED = "disabled"
     PENDING = "pending"
+    TRIAL = "trial"
 
 
 @dataclass

@@ -15,16 +15,15 @@ Key features:
 from __future__ import annotations
 
 import os
-import threading
+from common.config.settings import settings
 import time
+import threading
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
-from django.conf import settings
-
+from somabrain.common.infra import assert_ready
+from somabrain.modes import feature_enabled
 import somabrain.metrics as app_metrics
-from common.infra_utils import assert_ready
-from somabrain.runtime.modes import feature_enabled
 
 # Leader election metrics
 LEADER_ELECTION_TOTAL = app_metrics.get_counter(
@@ -96,15 +95,13 @@ class IntegratorLeaderElection:
 
     def __init__(self, redis_url: Optional[str] = None) -> None:
         # Prefer explicit argument; fall back to central settings.
-        """Initialize the instance."""
-
-        self._redis_url = redis_url or settings.SOMABRAIN_REDIS_URL or ""
+        self._redis_url = redis_url or settings.redis_url or ""
         self._redis_client = None
         self._leader_states: Dict[str, LeaderState] = {}
         self._configs: Dict[str, LeaderConfig] = {}
         self._lock_prefix = "integrator_leader"
         # Use centralized configuration for hostname
-        self._instance_id = f"{settings.SOMABRAIN_HOST}-{int(time.time())}"
+        self._instance_id = f"{settings.hostname}-{int(time.time())}"
         self._running = False
         self._heartbeat_thread: Optional[threading.Thread] = None
 
@@ -139,8 +136,8 @@ class IntegratorLeaderElection:
             import yaml
 
             config_path = (
-                settings.SOMABRAIN_LEARNING_TENANTS_FILE
-                or settings.LEARNING_TENANTS_CONFIG
+                settings.learning_tenants_file
+                or settings.learning_tenants_config
                 or "config/learning.tenants.yaml"
             )
 
