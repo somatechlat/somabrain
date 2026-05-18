@@ -210,41 +210,41 @@ class TestTracePropagation:
 
 
 @pytest.mark.memory_proof
-class TestGraphClientTracing:
-    """Tests for GraphClient OpenTelemetry integration.
+class TestMemoryClientTracing:
+    """Tests for MemoryClient OpenTelemetry integration.
 
     **Feature: deep-memory-integration**
     **Validates: Requirements H1.1, H1.2**
     """
 
     def test_graph_client_creates_spans(self) -> None:
-        """GraphClient operations create OpenTelemetry spans.
+        """MemoryClient operations create OpenTelemetry spans.
 
         **Feature: deep-memory-integration**
         **Validates: Requirements H1.2**
         """
-        # Verify GraphClient imports tracer
-        from somabrain.memory.graph_client import GraphClient
+        # Verify MemoryClient imports tracer
+        from somabrain.memory.client import MemoryClient
 
-        # GraphClient should use opentelemetry.trace
+        # MemoryClient should use opentelemetry.trace
         import inspect
 
-        source = inspect.getsource(GraphClient)
+        source = inspect.getsource(MemoryClient)
 
         # Verify tracer usage in source
         assert "trace.get_tracer" in source, "Should use OpenTelemetry tracer"
         assert "start_as_current_span" in source, "Should create spans"
 
     def test_graph_client_span_names(self) -> None:
-        """GraphClient uses descriptive span names.
+        """MemoryClient uses descriptive span names.
 
         **Feature: deep-memory-integration**
         **Validates: Requirements H1.2**
         """
         import inspect
-        from somabrain.memory.graph_client import GraphClient
+        from somabrain.memory.client import MemoryClient
 
-        source = inspect.getsource(GraphClient)
+        source = inspect.getsource(MemoryClient)
 
         # Verify span names are descriptive
         assert "sb_graph_link" in source, "Should have link span"

@@ -13,7 +13,7 @@ import logging
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.client import MemoryClient
 
 logger = logging.getLogger(__name__)
 
@@ -27,25 +27,25 @@ class Planner:
 
     def __init__(
         self,
-        graph_client: Optional["GraphClient"] = None,
+        graph_client: Optional["MemoryClient"] = None,
         max_steps: int = 5,
     ) -> None:
         """Initialize the cognitive planner.
 
         Args:
-            graph_client: Optional GraphClient for graph-based planning
+            graph_client: Optional MemoryClient for graph-based planning
             max_steps: Maximum number of planning steps (default 5)
         """
         self._graph_client = graph_client
         self._max_steps = max_steps
 
     @property
-    def graph_client(self) -> Optional["GraphClient"]:
+    def graph_client(self) -> Optional["MemoryClient"]:
         """Get the graph client."""
         return self._graph_client
 
     @graph_client.setter
-    def graph_client(self, client: Optional["GraphClient"]) -> None:
+    def graph_client(self, client: Optional["MemoryClient"]) -> None:
         """Set the graph client."""
         self._graph_client = client
 

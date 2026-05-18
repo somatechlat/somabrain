@@ -96,7 +96,7 @@ SERVER_MODE="${SOMA_DEPLOY_MODE:-${SOMABRAIN_MODE:-}}"
 SERVER_MODE="$(printf '%s' "$SERVER_MODE" | tr '[:upper:]' '[:lower:]')"
 if [ "${RUNNING_IN_DOCKER:-}" = "true" ] || [ "$SERVER_MODE" = "production" ] || [ "$SERVER_MODE" = "prod" ] || [ "$SERVER_MODE" = "enterprise" ] || [ "$SERVER_MODE" = "full-local" ] || [ "$SERVER_MODE" = "standalone" ]; then
   echo "Starting gunicorn (production mode)"
-  exec gunicorn somabrain.wsgi:application \
+  exec gunicorn somabrain.config.wsgi:application \
     --bind "$HOST:$PORT" \
     --workers "${SOMABRAIN_WORKERS:-2}" \
     --timeout 120 \

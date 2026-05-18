@@ -1,7 +1,7 @@
 """Random Walk with Restart (RWR) Planner Module - REAL IMPLEMENTATION.
 
-This module provides RWR-based planning using the EXISTING GraphClient.
-The GraphClient connects to SomaFractalMemory's /graph/neighbors endpoint.
+This module provides RWR-based planning using the EXISTING MemoryClient.
+The MemoryClient connects to SomaFractalMemory's /graph/neighbors endpoint.
 
 NO STUBS. NO MOCKS. NO HARDCODED RETURNS.
 
@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 import numpy as np
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.client import MemoryClient
 
 from somabrain.metrics.planning import PLAN_GRAPH_UNAVAILABLE
 from somabrain.planning import coord_to_str, get_graph_client, task_key_to_coord
@@ -31,12 +31,12 @@ def rwr_plan(
     restart: Optional[float] = None,
     universe: Optional[str] = None,
     max_items: Optional[int] = None,
-    graph_client: Optional["GraphClient"] = None,
+    graph_client: Optional["MemoryClient"] = None,
 ) -> List[str]:
     """
-    Random Walk with Restart planning using EXISTING GraphClient.
+    Random Walk with Restart planning using EXISTING MemoryClient.
 
-    This function uses the fully-implemented GraphClient which connects
+    This function uses the fully-implemented MemoryClient which connects
     to SFM's /graph/neighbors endpoint.
 
     Args:
@@ -46,7 +46,7 @@ def rwr_plan(
         restart: Restart probability (default: 0.15)
         universe: Optional namespace/universe filter
         max_items: Maximum items to return (default: 5)
-        graph_client: Optional GraphClient instance
+        graph_client: Optional MemoryClient instance
 
     Returns:
         List of task strings representing the plan, ranked by RWR probability
@@ -57,11 +57,11 @@ def rwr_plan(
     max_items = max_items if max_items is not None else 5
     max_nodes = 100  # Maximum nodes in local subgraph
 
-    # Get GraphClient from memory client if not provided directly
+    # Get MemoryClient from memory client if not provided directly
     graph = graph_client or get_graph_client(mem)
     if graph is None:
         PLAN_GRAPH_UNAVAILABLE.inc()
-        logger.warning("GraphClient not available for RWR planning")
+        logger.warning("MemoryClient not available for RWR planning")
         return []
 
     # Get starting coordinate from task_key
@@ -70,7 +70,7 @@ def rwr_plan(
         logger.debug("Could not resolve task_key to coordinate", task_key=task_key)
         return []
 
-    # Build local subgraph using GraphClient.get_neighbors()
+    # Build local subgraph using MemoryClient.get_neighbors()
     nodes, edges = _build_local_subgraph(graph, start_coord, max_nodes)
 
     if len(nodes) < 2:
@@ -123,11 +123,11 @@ def rwr_plan(
 
 
 def _build_local_subgraph(
-    graph: "GraphClient",
+    graph: "MemoryClient",
     start_coord: Tuple[float, ...],
     max_nodes: int,
 ) -> Tuple[Dict[str, Dict], List[Tuple[str, str, float]]]:
-    """Build local subgraph using GraphClient.get_neighbors().
+    """Build local subgraph using MemoryClient.get_neighbors().
 
     Returns:
         Tuple of (nodes dict, edges list)
@@ -147,7 +147,7 @@ def _build_local_subgraph(
 
         nodes[coord_str] = {"coord": coord}
 
-        # Use EXISTING GraphClient.get_neighbors()
+        # Use EXISTING MemoryClient.get_neighbors()
         try:
             neighbors = graph.get_neighbors(coord, k_hop=1, limit=20)
         except Exception as exc:

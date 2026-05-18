@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.client import MemoryClient
     from somabrain.memory.client import MemoryClient
 
 logger = logging.getLogger(__name__)
@@ -216,7 +216,7 @@ class WMLTMPromoter:
     def __init__(
         self,
         memory_client: "MemoryClient",
-        graph_client: Optional["GraphClient"] = None,
+        graph_client: Optional["MemoryClient"] = None,
         tenant_id: str = "default",
         threshold: Optional[float] = None,
         min_ticks: Optional[int] = None,
@@ -225,7 +225,7 @@ class WMLTMPromoter:
 
         Args:
             memory_client: MemoryClient for SFM communication.
-            graph_client: Optional GraphClient for creating promotion links.
+            graph_client: Optional MemoryClient for creating promotion links.
             tenant_id: Tenant ID for isolation and metrics.
             threshold: Salience threshold for promotion (default 0.85).
             min_ticks: Minimum consecutive ticks (default 3).
@@ -339,7 +339,7 @@ class WMLTMPromoter:
             self._ltm_references[item_id] = ltm_coord
 
             # Create "promoted_from" link in graph store (A2.6)
-            # Note: GraphClient.create_link is synchronous
+            # Note: MemoryClient.create_link is synchronous
             if self._graph_client and wm_coordinate:
                 try:
                     self._graph_client.create_link(
@@ -463,7 +463,7 @@ _promoters: Dict[str, WMLTMPromoter] = {}
 
 def get_wm_ltm_promoter(
     memory_client: "MemoryClient",
-    graph_client: Optional["GraphClient"] = None,
+    graph_client: Optional["MemoryClient"] = None,
     tenant_id: str = "default",
     threshold: Optional[float] = None,
     min_ticks: Optional[int] = None,
@@ -472,7 +472,7 @@ def get_wm_ltm_promoter(
 
     Args:
         memory_client: MemoryClient for SFM communication.
-        graph_client: Optional GraphClient for graph operations.
+        graph_client: Optional MemoryClient for graph operations.
         tenant_id: Tenant ID for isolation.
         threshold: Salience threshold for promotion.
         min_ticks: Minimum consecutive ticks.

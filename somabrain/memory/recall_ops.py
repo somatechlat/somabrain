@@ -17,7 +17,7 @@ from somabrain.memory.hit_processing import deduplicate_hits, normalize_recall_h
 from somabrain.memory.types import RecallHit
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.client import MemoryClient
     from somabrain.memory.transport import MemoryHTTPTransport
 
 logger = logging.getLogger(__name__)
@@ -259,7 +259,7 @@ async def memories_search_async(
 
 def recall_with_graph_boost(
     hits: List[RecallHit],
-    graph_client: "GraphClient",
+    graph_client: "MemoryClient",
     graph_boost_factor: Optional[float] = None,
     max_neighbors: Optional[int] = None,
 ) -> List[RecallHit]:
@@ -306,7 +306,7 @@ def recall_with_graph_boost(
             coord = tuple(coord)
 
         try:
-            # B2.5: 100ms timeout is handled by GraphClient
+            # B2.5: 100ms timeout is handled by MemoryClient
             neighbors = graph_client.get_neighbors(coord, k_hop=1, limit=max_neighbors)
 
             # B2.2: Boost neighbor scores
