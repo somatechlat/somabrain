@@ -1,10 +1,12 @@
 """Metrics module - Prometheus-based observability."""
 
+from somabrain.metrics import advanced_math_metrics, context_metrics, math_metrics
 from somabrain.metrics.core import (
     get_counter,
     get_gauge,
     get_histogram,
     get_summary,
+    registry,
 )
 from somabrain.metrics.outbox_metrics import (
     DEFAULT_TENANT_LABEL,
@@ -12,6 +14,7 @@ from somabrain.metrics.outbox_metrics import (
     report_outbox_processed,
 )
 from somabrain.metrics.memory_metrics import (
+    MEMORY_OUTBOX_SYNC_TOTAL,
     record_memory_snapshot,
 )
 from somabrain.metrics.oak import (
@@ -31,9 +34,11 @@ __all__ = [
     "get_gauge",
     "get_histogram",
     "get_summary",
+    "registry",
     "DEFAULT_TENANT_LABEL",
     "report_outbox_pending",
     "report_outbox_processed",
+    "MEMORY_OUTBOX_SYNC_TOTAL",
     "record_memory_snapshot",
     "MILVUS_INGEST_LAT_P95",
     "MILVUS_RECONCILE_MISSING",

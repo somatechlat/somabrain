@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 import hashlib
-from typing import Any, Tuple, Optional, List
+from typing import Any, List, Optional, Tuple
+
 from .types import RecallHit
+
 
 def _stable_coord(key: str) -> Tuple[float, float, float]:
     """Derive a deterministic 3D coordinate in [-1,1]^3 from a string key."""
@@ -12,14 +15,17 @@ def _stable_coord(key: str) -> Tuple[float, float, float]:
     # spread over [-1, 1]
     return (2 * a - 1, 2 * b - 1, 2 * c - 1)
 
-def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
+
+def _parse_coord_string(coord_str: str) -> Tuple[float, float, float] | None:
+    """Parse a comma-separated coordinate string into a 3D tuple."""
     try:
-        parts = [float(x.strip()) for x in str(s).split(",")]
+        parts = [float(x.strip()) for x in str(coord_str).split(",")]
         if len(parts) >= 3:
             return (parts[0], parts[1], parts[2])
     except Exception:
         return None
     return None
+
 
 def _extract_memory_coord(
     resp: Any,
@@ -89,6 +95,7 @@ def _extract_memory_coord(
         except (TypeError, ValueError):
             return None
     return None
+
 
 def _normalize_recall_hits(data: Any) -> List[RecallHit]:
     hits: List[RecallHit] = []
@@ -166,6 +173,7 @@ def _normalize_recall_hits(data: Any) -> List[RecallHit]:
             )
     return hits
 
+
 def _compat_enrich_payload(
     cfg: Any, payload: dict, coord_key: str
 ) -> Tuple[dict, str, dict]:
@@ -185,7 +193,9 @@ def _compat_enrich_payload(
     p.setdefault("text", text)
     p.setdefault("content", text)
     p.setdefault("id", p.get("memory_id") or p.get("key") or coord_key)
+
     import time
+
     p.setdefault("timestamp", time.time())
     p.setdefault("universe", universe)
     try:
@@ -197,6 +207,7 @@ def _compat_enrich_payload(
     headers = {"X-Universe": universe}
     return p, universe, headers
 
+
 def _response_json(resp: Any) -> Any:
     """Helper to safely extract JSON from response obj."""
     try:
@@ -204,16 +215,4 @@ def _response_json(resp: Any) -> Any:
             return resp.json()
     except Exception:
         pass
-    return None
-
-def _parse_coord_string(coord_str: str) -> Tuple[float, float, float] | None:
-    """Parse 'x,y,z' string into tuple."""
-    if not coord_str or not isinstance(coord_str, str):
-        return None
-    parts = coord_str.split(",")
-    if len(parts) >= 3:
-        try:
-            return (float(parts[0]), float(parts[1]), float(parts[2]))
-        except ValueError:
-            pass
     return None

@@ -20,7 +20,6 @@ from somabrain.math.normalize import (
 )
 from somabrain.math.similarity import cosine_similarity
 
-
 dim_strategy = st.integers(min_value=2, max_value=2048)
 
 

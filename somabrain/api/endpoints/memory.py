@@ -67,12 +67,14 @@ def _get_wm():
 
 from pydantic import BaseModel, Field
 
+
 class RecallRequest(BaseModel):
     query: str = Field(..., description="Query text")
     top_k: int = Field(10, description="Max results")
     layer: str = Field("both", description="wm, ltm, or both")
     tenant: Optional[str] = None
     namespace: Optional[str] = None
+
 
 @router.post("/recall", auth=api_key_auth)
 async def recall_memory(request: HttpRequest, payload: RecallRequest):

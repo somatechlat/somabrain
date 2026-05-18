@@ -239,7 +239,10 @@ class TestPerTenantNeuromodulatorIsolation:
         WHEN tenant A modifies neuromodulators
         THEN tenant B's neuromodulators SHALL be unchanged.
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+        from somabrain.admin.brain.neuromodulators import (
+            NeuromodState,
+            PerTenantNeuromodulators,
+        )
         import time
 
         per_tenant = PerTenantNeuromodulators()

@@ -93,7 +93,6 @@ def require_auth(roles: list = None, any_role: bool = False):
                 request: The request.
             """
 
-
             # Check for JWT auth
             auth = getattr(request, "auth", None)
             if auth is None:
@@ -262,7 +261,6 @@ class FieldPermissionChecker:
         """
         if "super-admin" in self.user_roles:
             return
-
 
         editable = self.get_editable_fields(model, list(data.keys()))
         forbidden = [k for k in data.keys() if k not in editable]

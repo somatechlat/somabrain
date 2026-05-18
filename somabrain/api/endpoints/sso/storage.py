@@ -27,7 +27,9 @@ def get_idp_key(idp_id: str) -> str:
     return f"idp:{idp_id}"
 
 
-def create_idp(tenant_id: str, name: str, provider_type: str, config: dict, created_by: str) -> dict:
+def create_idp(
+    tenant_id: str, name: str, provider_type: str, config: dict, created_by: str
+) -> dict:
     """Create a new identity provider."""
     idp_id = str(uuid4())
     idp = {

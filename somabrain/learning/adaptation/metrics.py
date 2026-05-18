@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from typing import Any
 
+
 def update_metrics(
     tenant_id: str,
     retrieval: Any,
@@ -25,11 +26,7 @@ def update_metrics(
             mu=utility.mu,
             nu=utility.nu,
         )
-        _metrics.update_learning_gains(
-            tenant_id=tenant_id, **asdict(gains)
-        )
-        _metrics.update_learning_bounds(
-            tenant_id=tenant_id, **asdict(constraints)
-        )
+        _metrics.update_learning_gains(tenant_id=tenant_id, **asdict(gains))
+        _metrics.update_learning_bounds(tenant_id=tenant_id, **asdict(constraints))
     except Exception:
         pass

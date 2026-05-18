@@ -18,11 +18,13 @@ from somabrain.api.auth import api_key_auth
 from somabrain.core.security.legacy_auth import require_auth
 from somabrain.tenant import get_tenant
 
+
 class ProxyRequest(BaseModel):
     service: str
     endpoint: str
     target_url: Optional[str] = None
     payload: Optional[Dict[str, Any]] = None
+
 
 logger = logging.getLogger("somabrain.api.endpoints.proxy")
 

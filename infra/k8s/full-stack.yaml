@@ -65,9 +65,9 @@ stringData:
   SOMABRAIN_JWT_PUBLIC_KEY_PATH: ""
   jwt_public_key.pem: ""
   SOMABRAIN_KAFKA_URL: "kafka:9092"
-  SOMABRAIN_POSTGRES_DSN: "postgresql://somabrain:somabrain-dev-password@postgres.somabrain-prod.svc.cluster.local:5432/somabrain"
-  SOMABRAIN_TOKEN_LEDGER_DSN: "postgresql://somabrain:somabrain-dev-password@postgres.somabrain-prod.svc.cluster.local:5432/somabrain"
-  SOMABRAIN_FEEDBACK_DSN: "postgresql://somabrain:somabrain-dev-password@postgres.somabrain-prod.svc.cluster.local:5432/somabrain"
+  SOMABRAIN_POSTGRES_DSN: ""
+  SOMABRAIN_TOKEN_LEDGER_DSN: ""
+  SOMABRAIN_FEEDBACK_DSN: ""
 
 ---
 apiVersion: v1
@@ -79,7 +79,7 @@ type: Opaque
 stringData:
   POSTGRES_DB: "somabrain"
   POSTGRES_USER: "somabrain"
-  POSTGRES_PASSWORD: "somabrain-dev-password"
+  POSTGRES_PASSWORD: ""
 
 ---
 apiVersion: v1

@@ -1,5 +1,17 @@
+"""Infrastructure settings and connection defaults for SomaBrain.
 
-import environ
+This module resolves service endpoints in three stages:
+1. Optional Vault bootstrap writes secrets into the process environment.
+2. Explicit environment variables win over every inferred default.
+3. Remaining gaps are filled from Docker-aware local defaults.
+
+That split lets the same code run in standalone Docker, CI, and direct local
+development without scattering connection logic across the codebase.
+"""
+
+import os
+
+import environ  # type: ignore[import-untyped]
 
 env = environ.Env()
 
@@ -7,13 +19,31 @@ env = environ.Env()
 # INFRASTRUCTURE SETTINGS
 # ============================================================================
 
-# TensorFlow / Metal (Mac) - Disable to crash issues
-import os
+# TensorFlow/Metal can trigger device-handling crashes on some macOS hosts.
+# Pinning this before downstream imports keeps local diagnostics reproducible.
 os.environ["TF_METAL_DEVICE_HANDLING"] = "1"
 
-# PostgreSQL
+
+def _set_env_if_present(name: str, value: object | None) -> None:
+    """Set an environment variable only when Vault returned a real value."""
+    if value is None:
+        return
+    text = str(value).strip()
+    if text:
+        os.environ[name] = text
+
+
+# Preload secrets from Vault when the process was bootstrapped with Vault
+# coordinates. The rest of this module still supports plain environment-based
+# configuration when Vault is intentionally absent.
 try:
-    from somabrain.core.security.vault_client import get_db_credentials, get_secret, VaultNotConfigured
+    from somabrain.core.security.vault_client import (
+        SecretNotFound,
+        VaultNotConfigured,
+        get_db_credentials,
+        get_runtime_secrets,
+        get_secret,
+    )
 
     try:
         db_creds = get_db_credentials()
@@ -26,15 +56,40 @@ try:
             _port = db_creds.get("port", 5432)
             _name = db_creds.get("dbname", "somabrain")
 
-            # Prioritize Vault!
-            os.environ["SOMABRAIN_POSTGRES_DSN"] = f"postgres://{_user}:{_pass}@{_host}:{_port}/{_name}"
+            # Vault wins over any stale DSN inherited from the shell.
+            os.environ["SOMABRAIN_POSTGRES_DSN"] = (
+                f"postgres://{_user}:{_pass}@{_host}:{_port}/{_name}"
+            )
 
             # Redis from Vault?
             redis_creds = get_secret("somabrain/redis")
             if redis_creds:
-                 os.environ["SOMABRAIN_REDIS_URL"] = redis_creds.get("url", "")
+                os.environ["SOMABRAIN_REDIS_URL"] = redis_creds.get("url", "")
 
-    except (VaultNotConfigured, ImportError):
+            runtime_secrets = get_runtime_secrets()
+            if runtime_secrets:
+                _set_env_if_present(
+                    "SOMABRAIN_MEMORY_HTTP_TOKEN",
+                    runtime_secrets.get("memory_http_token"),
+                )
+                _set_env_if_present(
+                    "SUPERVISOR_HTTP_PASS",
+                    runtime_secrets.get("supervisor_http_pass"),
+                )
+                _set_env_if_present(
+                    "OUTBOX_API_TOKEN",
+                    runtime_secrets.get("api_token"),
+                )
+                _set_env_if_present(
+                    "SOMABRAIN_API_TOKEN",
+                    runtime_secrets.get("api_token"),
+                )
+                _set_env_if_present(
+                    "SOMA_API_TOKEN",
+                    runtime_secrets.get("api_token"),
+                )
+
+    except (SecretNotFound, VaultNotConfigured, ImportError):
         # Fallback to pure Env if Vault not configured (e.g. CI without Vault)
         pass
 except ImportError:
@@ -44,7 +99,9 @@ SOMABRAIN_POSTGRES_DSN = env.str("SOMABRAIN_POSTGRES_DSN", default="")
 # Remove legacy DATABASE_URL fallback to avoid collisions
 # DATABASE_URL = env.str("DATABASE_URL", default=None)
 
-# Helper for K8s Service env var collision (tcp://host:port)
+
+# Kubernetes service injection can expose ports as tcp://host:port strings.
+# Normalize those values before the rest of settings consumes them as integers.
 def _parse_port(value: str | int | None, default: int) -> int:
     if not value:
         return default
@@ -59,6 +116,7 @@ def _parse_port(value: str | int | None, default: int) -> int:
         return int(value)
     except ValueError:
         return default
+
 
 # Redis
 SOMABRAIN_REDIS_URL = env.str("SOMABRAIN_REDIS_URL", default="")
@@ -144,7 +202,7 @@ RUNNING_IN_DOCKER = env.bool("RUNNING_IN_DOCKER", default=False)
 # ============================================================================
 # If running in Docker (standalone), default to internal service names.
 # If running locally, default to localhost ports.
-# ALL can be overridden by explicit env vars.
+# Explicit environment variables still override these fallbacks.
 
 if RUNNING_IN_DOCKER:
     _KAFKA_DEFAULT = "somabrain_standalone_kafka:9092"
@@ -209,8 +267,10 @@ SOMABRAIN_OPA_POLICY_SIG_KEY = env.str(
 
 # External Memory (SFM)
 # ----------------------------------------------------------------------------
-SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str("SOMABRAIN_MEMORY_HTTP_ENDPOINT", default=_MEMORY_DEFAULT)
-SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="test-token-123")
+SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(
+    "SOMABRAIN_MEMORY_HTTP_ENDPOINT", default=_MEMORY_DEFAULT
+)
+SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="")
 SOMABRAIN_HTTP_KEEPALIVE = env.int("SOMABRAIN_HTTP_KEEPALIVE", default=32)
 SOMABRAIN_HTTP_RETRIES = env.int("SOMABRAIN_HTTP_RETRIES", default=1)
 
@@ -233,7 +293,7 @@ SOMABRAIN_DEFAULT_BASE_URL = env.str(
 BASE_URL = env.str("BASE_URL", default="")
 SUPERVISOR_URL = env.str("SUPERVISOR_URL", default=None)
 SUPERVISOR_HTTP_USER = env.str("SUPERVISOR_HTTP_USER", default="admin")
-SUPERVISOR_HTTP_PASS = env.str("SUPERVISOR_HTTP_PASS", default="soma")
+SUPERVISOR_HTTP_PASS = env.str("SUPERVISOR_HTTP_PASS", default="")
 INTEGRATOR_URL = env.str("INTEGRATOR_URL", default=None)
 SEGMENTATION_URL = env.str("SEGMENTATION_URL", default=None)
 OTEL_EXPORTER_OTLP_ENDPOINT = env.str("OTEL_EXPORTER_OTLP_ENDPOINT", default="")
@@ -257,9 +317,7 @@ OUTBOX_MAX_DELAY = env.float("OUTBOX_MAX_DELAY", default=5.0)
 OUTBOX_MAX_RETRIES = env.int("OUTBOX_MAX_RETRIES", default=5)
 OUTBOX_POLL_INTERVAL = env.float("OUTBOX_POLL_INTERVAL", default=1.0)
 OUTBOX_PRODUCER_RETRY_MS = env.int("OUTBOX_PRODUCER_RETRY_MS", default=1000)
-OUTBOX_API_TOKEN = env.str(
-    "OUTBOX_API_TOKEN", default=env.str("SOMA_API_TOKEN", default=None)
-)
+OUTBOX_API_TOKEN = env.str("OUTBOX_API_TOKEN", default="")
 
 # Journal
 SOMABRAIN_JOURNAL_DIR = env.str(

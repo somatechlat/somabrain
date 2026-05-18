@@ -44,12 +44,12 @@ from somabrain.metrics.executive import (
     MICRO_COLUMN_BEST,
     MICRO_VOTE_ENTROPY,
 )
-from .wm import WorkingMemory
+from somabrain.memory.wm.core import WorkingMemory
 
 
 @dataclass
 class MCConfig:
-    """Mcconfig class implementation."""
+    """Tenant-level sharding and voting parameters for ``MultiColumnWM``."""
 
     columns: int = field(
         default_factory=lambda: max(1, int(settings.SOMABRAIN_MICRO_CIRCUITS))
@@ -92,11 +92,7 @@ class MultiColumnWM:
         self._scorer = scorer
 
     def _ensure(self, tenant_id: str) -> List[WorkingMemory]:
-        """Execute ensure.
-
-        Args:
-            tenant_id: The tenant_id.
-        """
+        """Return the tenant's column set, creating it on first access."""
 
         cols = self._tenants.get(tenant_id)
         if cols is None:
@@ -148,13 +144,7 @@ class MultiColumnWM:
         *,
         cleanup_overlap: float | None = None,
     ) -> None:
-        """Execute admit.
-
-        Args:
-            tenant_id: The tenant_id.
-            vec: The vec.
-            payload: The payload.
-        """
+        """Store an item in the tenant's routed column."""
 
         cols = self._ensure(tenant_id)
         idx = self._choose_column(payload, len(cols))
@@ -167,13 +157,7 @@ class MultiColumnWM:
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
     ) -> List[Tuple[float, dict]]:
-        """Execute recall.
-
-        Args:
-            tenant_id: The tenant_id.
-            vec: The vec.
-            top_k: The top_k.
-        """
+        """Recall top matches by combining per-column results with vote weights."""
 
         cols = self._ensure(tenant_id)
         per_col: List[List[Tuple[float, dict]]] = []
@@ -189,7 +173,8 @@ class MultiColumnWM:
                 MICRO_COLUMN_BEST.labels(column=str(best_idx)).inc()
         except Exception as metric_exc:
             logger.debug("Failed to record micro_column_best metric: %s", metric_exc)
-        # softmax weights over best scores
+        # Weight each column by its best hit so a weak shard does not dominate the
+        # merged ranking just because it returned many middling matches.
         T = max(
             settings.SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR, float(self.cfg.vote_temperature)
         )
@@ -211,12 +196,7 @@ class MultiColumnWM:
         return combined[: max(0, int(top_k))]
 
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
-        """Execute novelty.
-
-        Args:
-            tenant_id: The tenant_id.
-            vec: The vec.
-        """
+        """Return novelty against the best match across every tenant column."""
 
         cols = self._ensure(tenant_id)
         best = 0.0
@@ -227,12 +207,7 @@ class MultiColumnWM:
         return max(0.0, 1.0 - best)
 
     def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
-        """Execute items.
-
-        Args:
-            tenant_id: The tenant_id.
-            limit: The limit.
-        """
+        """Return the tenant payloads flattened across all columns."""
 
         cols = self._ensure(tenant_id)
         data: List[dict] = []
@@ -243,11 +218,7 @@ class MultiColumnWM:
         return data
 
     def stats(self, tenant_id: str) -> Dict[str, int]:
-        """Execute stats.
-
-        Args:
-            tenant_id: The tenant_id.
-        """
+        """Return per-column occupancy for the tenant."""
 
         cols = self._ensure(tenant_id)
         return {f"col_{i}": len(wm._items) for i, wm in enumerate(cols)}

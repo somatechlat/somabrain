@@ -4,15 +4,33 @@ import asyncio
 import os
 import uuid
 import sys
+from urllib.parse import quote
 
 # Configure environment for Host-to-Docker connectivity
-os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = (
-    "http://localhost:9595"  # SFM API (Updated from docker ps)
+os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = os.environ.get(
+    "TEST_MEMORY_HTTP_ENDPOINT",
+    os.environ.get("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101"),
 )
 os.environ["SOMABRAIN_REDIS_URL"] = "redis://localhost:30100/0"  # SomaBrain Redis
-os.environ["SOMABRAIN_POSTGRES_DSN"] = (
-    "postgresql://soma:soma@localhost:30106/somabrain"
+_test_pg_user = os.environ.get(
+    "TEST_PG_USER", os.environ.get("POSTGRES_USER", "somabrain")
 )
+_test_pg_password = os.environ.get(
+    "TEST_PG_PASSWORD",
+    os.environ.get("POSTGRES_PASSWORD", ""),
+)
+_test_pg_host = os.environ.get("TEST_PG_HOST", "localhost")
+_test_pg_port = os.environ.get("TEST_PG_PORT", "30106")
+_test_pg_db = os.environ.get("TEST_PG_DB", os.environ.get("POSTGRES_DB", "somabrain"))
+if _test_pg_password:
+    os.environ["SOMABRAIN_POSTGRES_DSN"] = (
+        f"postgresql://{quote(_test_pg_user)}:{quote(_test_pg_password)}"
+        f"@{_test_pg_host}:{_test_pg_port}/{_test_pg_db}"
+    )
+else:
+    os.environ["SOMABRAIN_POSTGRES_DSN"] = (
+        f"postgresql://{quote(_test_pg_user)}@{_test_pg_host}:{_test_pg_port}/{_test_pg_db}"
+    )
 # Disable other strict checks that might block simple script execution if services aren't perfect yet
 os.environ["SOMABRAIN_STRICT_REAL"] = "0"
 
@@ -28,8 +46,8 @@ class MockConfig:
     def __init__(self):
         """Initialize the instance."""
 
-        self.memory_http_endpoint = "http://localhost:9595"
-        self.memory_http_token = "dev-032f8d463c84e7ef0d834c3a"
+        self.memory_http_endpoint = os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"]
+        self.memory_http_token = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
         self.namespace = "verification_test"
         self.memory_fast_ack = False
         self.memory_db_path = None

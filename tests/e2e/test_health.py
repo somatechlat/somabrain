@@ -11,6 +11,7 @@ API_URL = os.getenv("SOMABRAIN_API_URL", "http://localhost:30101")
 KAFKA_BOOTSTRAP = os.getenv("SOMABRAIN_KAFKA_BOOTSTRAP", "localhost:30102")
 REDIS_URL = os.getenv("SOMABRAIN_REDIS_URL", "redis://localhost:30100/0")
 
+
 def test_api_health():
     """Verify SomaBrain API is reachable and healthy."""
     url = f"{API_URL}/health"
@@ -28,6 +29,7 @@ def test_api_health():
 
     pytest.fail(f"API endpoints at {url} not reachable after retries")
 
+
 def test_kafka_connectivity():
     """Verify Kafka broker is reachable."""
     print(f"Checking Kafka at {KAFKA_BOOTSTRAP}...")
@@ -39,6 +41,7 @@ def test_kafka_connectivity():
     except NoBrokersAvailable:
         pytest.fail(f"Kafka broker at {KAFKA_BOOTSTRAP} unreachable")
 
+
 def test_redis_connectivity():
     """Verify Redis is reachable."""
     print(f"Checking Redis at {REDIS_URL}...")
@@ -48,6 +51,7 @@ def test_redis_connectivity():
         print("Redis Ping: OK")
     except redis.exceptions.ConnectionError:
         pytest.fail(f"Redis at {REDIS_URL} unreachable")
+
 
 if __name__ == "__main__":
     test_api_health()

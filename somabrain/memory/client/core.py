@@ -1,15 +1,16 @@
 from __future__ import annotations
+import asyncio
 import os
-from typing import Optional, Any, Tuple
+from typing import Optional, Any, Tuple, List, Dict
 from django.conf import settings
 from .transport import TransportMixin
 from .write import WriteMixin
 from .read import ReadMixin
 from .search import SearchMixin
-from .graph import GraphMixin
 from .serialization import _stable_coord
 
-class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphMixin):
+
+class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin):
     """Single gateway to the external memory service."""
 
     def __init__(
@@ -51,3 +52,26 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphMixi
     def _init_local(self) -> None:
         """Deprecated: Local memory backend is no longer supported in-process."""
         return
+
+    async def store(
+        self, coordinate: List[float], payload: Dict[str, Any], tenant: str = "default"
+    ) -> bool:
+        """Store a memory with an explicit coordinate (async wrapper)."""
+        try:
+            enriched = dict(payload)
+            enriched.setdefault("coordinate", tuple(coordinate))
+            loop = asyncio.get_event_loop()
+            return await loop.run_in_executor(None, self.store_from_payload, enriched)
+        except Exception:
+            return False
+
+    async def search(
+        self, query: str, top_k: int = 5, tenant: str = "default"
+    ) -> List[Dict[str, Any]]:
+        """Search memories and return raw result dicts (async wrapper)."""
+        try:
+            loop = asyncio.get_event_loop()
+            hits = await loop.run_in_executor(None, self.recall, query, top_k)
+            return [hit.raw if hit.raw is not None else hit.payload for hit in hits]
+        except Exception:
+            return []

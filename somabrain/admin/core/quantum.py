@@ -309,7 +309,7 @@ class QuantumLayer:
         from somabrain.brain_settings.models import BrainSetting
 
         try:
-            lambda_reg = BrainSetting.get("gmd_lambda_reg", 1e-4) # Use 1e-4 default
+            lambda_reg = BrainSetting.get("gmd_lambda_reg", 1e-4)  # Use 1e-4 default
         except Exception:
             lambda_reg = 1e-4
 

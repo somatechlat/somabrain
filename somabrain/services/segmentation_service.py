@@ -16,7 +16,7 @@ import numpy as np
 
 try:
     from confluent_kafka import Consumer as CKConsumer
-    from confluent_kafka import KafkaException
+    from confluent_kafka import KafkaError
 except Exception as exc:  # pragma: no cover
     raise RuntimeError("confluent_kafka required for segmentation_service") from exc
 
@@ -37,8 +37,16 @@ from somabrain.segmentation.hmm import (
 
 logger = logging.getLogger("somabrain.services.segmentation")
 
-CONSUME_TOPIC = getattr(settings, "topic_global_frame", "cog.global.frame")
-PUBLISH_TOPIC = getattr(settings, "topic_segments", "cog.segments")
+CONSUME_TOPIC = getattr(
+    settings,
+    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
+    getattr(settings, "topic_global_frame", "cog.global.frame"),
+)
+PUBLISH_TOPIC = getattr(
+    settings,
+    "SOMABRAIN_TOPIC_SEGMENTS",
+    getattr(settings, "topic_segments", "cog.segments"),
+)
 
 # Thresholds are sourced from central settings – no hard‑coded literals.
 GRAD_THRESH = float(getattr(settings, "segment_grad_threshold", 0.2))
@@ -79,8 +87,11 @@ class SegmentationService:
             - Publishes to: cog.segments (configurable via Settings)
             - Health server port: 9016 (configurable via segment_health_port)
         """
-        bs = getattr(settings, "kafka_bootstrap", None) or getattr(
-            settings, "kafka_bootstrap_servers", None
+        bs = (
+            getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", None)
+            or getattr(settings, "SOMABRAIN_KAFKA_URL", None)
+            or getattr(settings, "kafka_bootstrap", None)
+            or getattr(settings, "kafka_bootstrap_servers", None)
         )
         if not bs:
             raise RuntimeError(
@@ -122,7 +133,7 @@ class SegmentationService:
         )
 
     def _create_consumer(self) -> CKConsumer:
-        """Execute create consumer."""
+        """Create the Kafka consumer bound to the global-frame topic."""
 
         cfg = {
             "bootstrap.servers": self.bootstrap,
@@ -135,11 +146,7 @@ class SegmentationService:
         return c
 
     def _gradient_boundaries(self, values: List[float]) -> List[int]:
-        """Execute gradient boundaries.
-
-        Args:
-            values: The values.
-        """
+        """Detect boundaries where the salience gradient crosses the threshold."""
 
         if len(values) < 2:
             return []
@@ -149,11 +156,7 @@ class SegmentationService:
         return [i + 1 for i, g in enumerate(grad) if g >= thresh]
 
     def _run_hmm(self, values: List[float]) -> List[int]:
-        """Execute run hmm.
-
-        Args:
-            values: The values.
-        """
+        """Run the online two-state HMM smoother over the salience series."""
 
         if not values:
             return []
@@ -172,13 +175,13 @@ class SegmentationService:
         return detect_boundaries(probs, threshold=thresh)
 
     def _serve_health(self) -> None:
-        """Execute serve health."""
+        """Serve a minimal health endpoint for container probes."""
 
         class _Handler(BaseHTTPRequestHandler):
-            """Handler class implementation."""
+            """Handle health/readiness probes for the segmentation worker."""
 
             def do_GET(self):
-                """Execute do GET."""
+                """Return worker health for the supported probe routes."""
 
                 if self.path not in ("/health", "/healthz", "/ready"):
                     self.send_response(404)
@@ -191,11 +194,7 @@ class SegmentationService:
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
 
             def log_message(self, format, *args):  # noqa: N802
-                """Execute log message.
-
-                Args:
-                    format: The format.
-                """
+                """Suppress the default per-request stderr logging."""
 
                 return
 
@@ -206,7 +205,7 @@ class SegmentationService:
             raise RuntimeError(f"Segmentation health server failed: {exc}") from exc
 
     def run(self) -> None:  # pragma: no cover (I/O loop)
-        """Execute run."""
+        """Process Kafka messages continuously until the worker is stopped."""
 
         logger.info("SegmentationService consuming %s", CONSUME_TOPIC)
         try:
@@ -215,7 +214,7 @@ class SegmentationService:
                 if msg is None:
                     continue
                 if msg.error():
-                    if msg.error().code() == KafkaException._PARTITION_EOF:
+                    if msg.error().code() == KafkaError._PARTITION_EOF:
                         continue
                     raise RuntimeError(f"Kafka error: {msg.error()}")
                 try:

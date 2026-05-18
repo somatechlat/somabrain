@@ -4,6 +4,9 @@ Django models for somabrain.
 Migrated from SQLAlchemy models - 100% Django ORM.
 """
 
+from typing import Any
+from uuid import uuid4
+
 from django.db import models
 from django.utils import timezone
 
@@ -14,9 +17,16 @@ class DynamicConfig(models.Model):
 
     Verified Vibe Rule: Hot changes must be saved in the ORM.
     """
-    key = models.CharField(max_length=255, unique=True, help_text="Config key (e.g. 'circuit_breaker.threshold')")
+
+    key = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Config key (e.g. 'circuit_breaker.threshold')",
+    )
     value = models.JSONField(help_text="Configuration value (JSON typed)")
-    description = models.TextField(blank=True, help_text="Documentation for this setting")
+    description = models.TextField(
+        blank=True, help_text="Documentation for this setting"
+    )
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -24,14 +34,16 @@ class DynamicConfig(models.Model):
         verbose_name = "Dynamic Configuration"
         verbose_name_plural = "Dynamic Configurations"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.key} = {self.value}"
+
 
 class OutboxEvent(models.Model):
     """
     Transactional outbox pattern for reliable event publishing.
     """
 
+    objects: models.Manager["OutboxEvent"] = models.Manager()
     id = models.BigAutoField(primary_key=True)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
     topic = models.CharField(max_length=255)
@@ -61,14 +73,14 @@ class OutboxEvent(models.Model):
         ]
         ordering = ["-created_at"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return (
             f"OutboxEvent(id={self.id}, topic='{self.topic}', status='{self.status}')"
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return object representation."""
 
         return self.__str__()
@@ -99,12 +111,12 @@ class EpisodicSnapshot(models.Model):
         ]
         ordering = ["-created_at"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return f"EpisodicSnapshot(id={self.id}, tenant_id={self.tenant_id}, key='{self.key}')"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return object representation."""
 
         return self.__str__()
@@ -132,7 +144,7 @@ class SleepState(models.Model):
         ]
         ordering = ["-timestamp"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return f"SleepState(tenant={self.tenant_id}, state={self.state})"
@@ -146,10 +158,12 @@ class CognitiveThread(models.Model):
     id = models.BigAutoField(primary_key=True)
     thread_id = models.CharField(max_length=255, unique=True, db_index=True)
     tenant_id = models.CharField(max_length=255, db_index=True)
-    content = models.TextField()
+    content = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     status = models.CharField(max_length=50, default="active")
+    options = models.JSONField(default=list, blank=True)
+    cursor = models.PositiveIntegerField(default=0)
     metadata = models.JSONField(null=True, blank=True)
 
     class Meta:
@@ -163,10 +177,47 @@ class CognitiveThread(models.Model):
         ]
         ordering = ["-updated_at"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return f"CognitiveThread(id={self.thread_id}, tenant={self.tenant_id})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Persist a thread with stable defaults for legacy callers.
+
+        Older codepaths still construct ``CognitiveThread`` with only a
+        ``tenant_id`` and then manipulate options in memory before saving. Keep
+        that API intact by generating a thread identifier lazily.
+        """
+        if not self.thread_id:
+            self.thread_id = uuid4().hex
+        if self.cursor < 0:
+            self.cursor = 0
+        super().save(*args, **kwargs)
+
+    def get_options(self) -> list[str]:
+        """Return the thread's option queue as a list of strings."""
+        raw_options = self.options or []
+        return [str(option) for option in raw_options]
+
+    def set_options(self, options: list[str]) -> None:
+        """Replace the option queue and rewind the cursor."""
+        self.options = [str(option) for option in options]
+        self.cursor = 0
+
+    def next_option(self) -> str | None:
+        """Return the next queued option and advance the cursor."""
+        options = self.get_options()
+        if self.cursor >= len(options):
+            return None
+        next_value = options[self.cursor]
+        self.cursor += 1
+        return next_value
+
+    def reset(self) -> None:
+        """Clear the queue and reset cursor state."""
+        self.options = []
+        self.cursor = 0
 
 
 class TokenLedger(models.Model):
@@ -192,7 +243,7 @@ class TokenLedger(models.Model):
         ]
         ordering = ["-timestamp"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return f"TokenLedger(tenant={self.tenant_id}, tokens={self.tokens_used})"
@@ -223,7 +274,7 @@ class FeedbackRecord(models.Model):
         ]
         ordering = ["-timestamp"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return f"FeedbackRecord(id={self.feedback_id}, tenant={self.tenant_id}, rating={self.rating})"
@@ -249,7 +300,7 @@ class ConstitutionVersion(models.Model):
             models.Index(fields=["is_active", "-created_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return f"ConstitutionVersion(checksum={self.checksum[:12]}, active={self.is_active})"
@@ -280,7 +331,7 @@ class ConstitutionSignature(models.Model):
             models.Index(fields=["checksum", "created_at"]),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation."""
 
         return f"ConstitutionSignature(checksum={self.checksum[:12]}, signer={self.signer_id})"

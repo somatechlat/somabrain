@@ -10,7 +10,9 @@ import datetime
 from typing import Union
 
 
-def coerce_to_epoch_seconds(value: Union[datetime.datetime, float, int, str, None]) -> float:
+def coerce_to_epoch_seconds(
+    value: Union[datetime.datetime, float, int, str, None],
+) -> float:
     """
     Coerce a value to epoch seconds (float).
 
@@ -29,7 +31,7 @@ def coerce_to_epoch_seconds(value: Union[datetime.datetime, float, int, str, Non
     if isinstance(value, datetime.datetime):
         # Ensure we have timezone info if possible, usually assume UTC if naive
         if value.tzinfo is None:
-             value = value.replace(tzinfo=datetime.timezone.utc)
+            value = value.replace(tzinfo=datetime.timezone.utc)
         return value.timestamp()
 
     if isinstance(value, str):

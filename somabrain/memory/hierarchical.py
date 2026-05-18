@@ -21,8 +21,12 @@ from .superposed_trace import CleanupIndex, SuperposedTrace, TraceConfig
 class LayerPolicy:
     """Policy parameters for a memory layer."""
 
-    threshold: Optional[float] = None  # minimum cleanup score required to accept the hit
-    promote_margin: Optional[float] = None  # margin requirement to promote into the next tier
+    threshold: Optional[float] = (
+        None  # minimum cleanup score required to accept the hit
+    )
+    promote_margin: Optional[float] = (
+        None  # margin requirement to promote into the next tier
+    )
 
     def __post_init__(self) -> None:
         """Initialize defaults from brain_settings if not provided."""
@@ -30,10 +34,14 @@ class LayerPolicy:
 
         # Explicitly bypass frozen for __post_init__ or use object.__setattr__
         if self.threshold is None:
-            object.__setattr__(self, "threshold", BrainSetting.get("cleanup_threshold", "default"))
+            object.__setattr__(
+                self, "threshold", BrainSetting.get("cleanup_threshold", "default")
+            )
         if self.promote_margin is None:
             object.__setattr__(
-                self, "promote_margin", BrainSetting.get("cleanup_promote_margin", "default")
+                self,
+                "promote_margin",
+                BrainSetting.get("cleanup_promote_margin", "default"),
             )
 
     def validate(self) -> "LayerPolicy":

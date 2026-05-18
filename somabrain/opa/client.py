@@ -9,10 +9,16 @@ from somabrain.core.infrastructure_defs import get_opa_url
 
 LOGGER = logging.getLogger("somabrain.opa")
 
+_settings: Any | None
+
 try:
-    from django.conf import settings
+    from django.conf import settings as django_settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
-    settings = None
+    _settings = None
+else:
+    _settings = django_settings
+
+settings = _settings
 
 
 def _policy_path_for_mode() -> str:
@@ -126,7 +132,7 @@ class OPAClient:
 
 
 # Lazy-load singleton to avoid import-time failures when OPA not configured
-_opa_client_instance = None
+_opa_client_instance: OPAClient | None = None
 
 
 def get_opa_client() -> OPAClient:
@@ -142,7 +148,7 @@ def get_opa_client() -> OPAClient:
 class _OPAClientProxy:
     """Opaclientproxy class implementation."""
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         """Execute getattr  .
 
         Args:

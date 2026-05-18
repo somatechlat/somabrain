@@ -5,6 +5,7 @@ from typing import List, Tuple, Any
 from .types import RecallHit
 from .serialization import _response_json, _parse_coord_string
 
+
 class ReadMixin:
     """Handles high-level recall operations."""
 

@@ -33,7 +33,7 @@ from somabrain.admin.core.learning.prediction import (
 
 try:
     from confluent_kafka import Consumer as CKConsumer
-    from confluent_kafka import KafkaException
+    from confluent_kafka import KafkaError
 except ImportError as e:
     raise RuntimeError(f"Agent predictor requires confluent-kafka: {e}")
 
@@ -208,7 +208,7 @@ class AgentPredictorService:
                         continue
 
                     if msg.error():
-                        if msg.error().code() == KafkaException._PARTITION_EOF:
+                        if msg.error().code() == KafkaError._PARTITION_EOF:
                             continue
                         else:
                             raise RuntimeError(f"Kafka consumer error: {msg.error()}")

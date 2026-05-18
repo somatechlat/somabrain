@@ -264,9 +264,9 @@ def recall_with_graph_boost(
     max_neighbors: Optional[int] = None,
 ) -> List[RecallHit]:
     """Boost recall results using graph neighbor relationships.
-...
-    Returns:
-        List of RecallHit with boosted scores, sorted by final score.
+    ...
+        Returns:
+            List of RecallHit with boosted scores, sorted by final score.
     """
     if not hits or graph_client is None:
         return hits

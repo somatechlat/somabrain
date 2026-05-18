@@ -9,6 +9,7 @@ from .serialization import _compat_enrich_payload, _stable_coord, _extract_memor
 
 logger = logging.getLogger(__name__)
 
+
 class WriteMixin:
     """Handles memory persistence operations."""
 
@@ -38,7 +39,11 @@ class WriteMixin:
             if "domains" in payload:
                 dval = payload["domains"]
                 if isinstance(dval, str):
-                    parts = [p.strip().lower() for p in dval.replace(",", " ").split() if p.strip()]
+                    parts = [
+                        p.strip().lower()
+                        for p in dval.replace(",", " ").split()
+                        if p.strip()
+                    ]
                     payload["domains"] = parts or []
                 elif isinstance(dval, (list, tuple)):
                     cleaned = []
@@ -48,7 +53,9 @@ class WriteMixin:
                     payload["domains"] = cleaned
                 else:
                     payload.pop("domains", None)
-            if "reasoning_chain" in payload and isinstance(payload["reasoning_chain"], str):
+            if "reasoning_chain" in payload and isinstance(
+                payload["reasoning_chain"], str
+            ):
                 rc = payload["reasoning_chain"].strip()
                 if rc:
                     payload["reasoning_chain"] = [rc]

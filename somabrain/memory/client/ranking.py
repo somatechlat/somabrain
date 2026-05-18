@@ -8,6 +8,7 @@ from typing import Any, List, Iterable
 from .types import RecallHit
 from .serialization import _extract_memory_coord
 
+
 def _hit_identity(hit: RecallHit) -> str:
     coord = hit.coordinate
     if coord is None:
@@ -35,6 +36,7 @@ def _hit_identity(hit: RecallHit) -> str:
     except Exception:
         return f"obj:{id(hit)}"
 
+
 def _hit_score(hit: RecallHit) -> float | None:
     score = hit.score
     if isinstance(score, (int, float)) and not math.isnan(score):
@@ -45,6 +47,7 @@ def _hit_score(hit: RecallHit) -> float | None:
         if isinstance(alt, (int, float)) and not math.isnan(alt):
             return float(alt)
     return None
+
 
 def _coerce_timestamp_value(value: Any) -> float | None:
     if value is None:
@@ -78,6 +81,7 @@ def _coerce_timestamp_value(value: Any) -> float | None:
         return value.timestamp()
     return None
 
+
 def _hit_timestamp(hit: RecallHit) -> float | None:
     payload = hit.payload if isinstance(hit.payload, dict) else {}
     candidate_keys = (
@@ -103,6 +107,7 @@ def _hit_timestamp(hit: RecallHit) -> float | None:
                     return ts
     return None
 
+
 def _prefer_candidate_hit(current: RecallHit, candidate: RecallHit) -> bool:
     curr_score = _hit_score(current)
     cand_score = _hit_score(candidate)
@@ -124,6 +129,7 @@ def _prefer_candidate_hit(current: RecallHit, candidate: RecallHit) -> bool:
         return True
     return False
 
+
 def _deduplicate_hits(hits: List[RecallHit]) -> List[RecallHit]:
     winners: dict[str, RecallHit] = {}
     order: List[str] = []
@@ -137,6 +143,7 @@ def _deduplicate_hits(hits: List[RecallHit]) -> List[RecallHit]:
         if _prefer_candidate_hit(existing, hit):
             winners[ident] = hit
     return [winners[idx] for idx in order]
+
 
 def _lexical_bonus(payload: dict, query: str) -> float:
     q = str(query or "").strip()
@@ -166,6 +173,7 @@ def _lexical_bonus(payload: dict, query: str) -> float:
     if token_matches:
         bonus += min(0.25 * token_matches, 1.0)
     return bonus
+
 
 def _rank_hits(hits: List[RecallHit], query: str) -> List[RecallHit]:
     ranked: List[tuple[float, float, float, int, RecallHit]] = []
@@ -199,6 +207,7 @@ def _rank_hits(hits: List[RecallHit], query: str) -> List[RecallHit]:
     ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
     return [item[-1] for item in ranked]
 
+
 def _filter_payloads_by_keyword(payloads: Iterable[Any], keyword: str) -> List[dict]:
     items: List[dict] = [p for p in payloads if isinstance(p, dict)]
     key = str(keyword or "").strip().lower()
@@ -215,6 +224,7 @@ def _filter_payloads_by_keyword(payloads: Iterable[Any], keyword: str) -> List[d
                 break
     return filtered or items
 
+
 def _filter_hits_by_keyword(hits: List[RecallHit], keyword: str) -> List[RecallHit]:
     if not hits:
         return []
@@ -227,18 +237,16 @@ def _filter_hits_by_keyword(hits: List[RecallHit], keyword: str) -> List[RecallH
             return narrowed
     return hits
 
+
 def _recency_normalisation(cfg: Any) -> tuple[float, float]:
     scale = getattr(cfg, "recall_recency_time_scale", 60.0)
-    if (
-        not isinstance(scale, (int, float))
-        or not math.isfinite(scale)
-        or scale <= 0
-    ):
+    if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
         scale = 60.0
     cap = getattr(cfg, "recall_recency_max_steps", 4096.0)
     if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
         cap = 4096.0
     return float(scale), float(cap)
+
 
 def _recency_profile(cfg: Any) -> tuple[float, float, float, float]:
     scale, cap = _recency_normalisation(cfg)
@@ -260,6 +268,7 @@ def _recency_profile(cfg: Any) -> tuple[float, float, float, float]:
         floor = 0.99
     return scale, cap, sharpness, floor
 
+
 def _recency_features(
     cfg: Any, ts_epoch: float | None, now_ts: float
 ) -> tuple[float | None, float]:
@@ -278,6 +287,7 @@ def _recency_features(
         damp = 0.0
     boost = max(floor, min(1.0, damp))
     return recency_steps, boost
+
 
 def _extract_cleanup_margin(hit: RecallHit) -> float | None:
     payload = hit.payload if isinstance(hit.payload, dict) else {}
@@ -300,6 +310,7 @@ def _extract_cleanup_margin(hit: RecallHit) -> float | None:
     if not math.isfinite(numeric):
         return None
     return numeric
+
 
 def _density_factor(cfg: Any, margin: float | None) -> float:
     if margin is None:
@@ -333,6 +344,7 @@ def _density_factor(cfg: Any, margin: float | None) -> float:
     penalty = 1.0 - (weight * deficit)
     return max(floor, min(1.0, penalty))
 
+
 def _parse_payload_timestamp(raw: Any) -> float | None:
     if raw is None:
         return None
@@ -347,9 +359,7 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
                 value = float(txt)
             except ValueError:
                 try:
-                    txt_norm = (
-                        txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
-                    )
+                    txt_norm = txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
                     dt = datetime.fromisoformat(txt_norm)
                     if dt.tzinfo is None:
                         dt = dt.replace(tzinfo=timezone.utc)
@@ -368,6 +378,7 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
     if value > 1e12:
         value /= 1000.0
     return value
+
 
 def _rescore_and_rank_hits(
     cfg: Any, scorer: Any, embedder: Any, hits: List[RecallHit], query: str
@@ -399,9 +410,7 @@ def _rescore_and_rank_hits(
                     if ts_epoch is not None:
                         break
             if ts_epoch is not None:
-                recency_steps, recency_boost = _recency_features(
-                    cfg, ts_epoch, now_ts
-                )
+                recency_steps, recency_boost = _recency_features(cfg, ts_epoch, now_ts)
 
             new_score = scorer.score(
                 query_vec,
@@ -431,6 +440,7 @@ def _rescore_and_rank_hits(
 
     scored_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
     return scored_hits
+
 
 def _apply_weighting_to_hits(cfg: Any, hits: List[RecallHit]) -> None:
     if not hits:

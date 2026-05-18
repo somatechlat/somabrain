@@ -78,7 +78,9 @@ class WebhookDelivery(models.Model):
 
     def __str__(self):
         """Return string representation."""
-        return f"{self.webhook.id}:{self.event_type} - {'OK' if self.success else 'FAIL'}"
+        return (
+            f"{self.webhook.id}:{self.event_type} - {'OK' if self.success else 'FAIL'}"
+        )
 
 
 class Notification(models.Model):

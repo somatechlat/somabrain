@@ -5,7 +5,7 @@ metadata:
   namespace: somabrain
 data:
   SOMABRAIN_LOG_LEVEL: "INFO"
-  SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma@postgres:5432/somabrain"
+  SOMABRAIN_POSTGRES_DSN: ""
   SOMABRAIN_REDIS_URL: "redis://redis:6379/0"
   SOMABRAIN_REDIS_HOST: "redis"
   SOMABRAIN_REDIS_PORT: "6379"
@@ -15,7 +15,7 @@ data:
   SOMABRAIN_MILVUS_HOST: "milvus"
   SOMABRAIN_MILVUS_PORT: "19530"
   ALLOWED_HOSTS: "*"
-  SOMA_API_TOKEN: "dev-token-somastack2024"
+  SOMA_API_TOKEN: ""
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,7 +39,7 @@ spec:
             - name: POSTGRES_USER
               value: soma
             - name: POSTGRES_PASSWORD
-              value: soma
+              value: ""
             - name: POSTGRES_DB
               value: somabrain
           ports:

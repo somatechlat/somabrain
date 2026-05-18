@@ -348,6 +348,4 @@ urlpatterns = [
 
 # AAAS-only: Lago webhook endpoint
 if _lago_webhook is not None:
-    urlpatterns.append(
-        path("webhooks/lago/", _lago_webhook, name="lago_webhook")
-    )
+    urlpatterns.append(path("webhooks/lago/", _lago_webhook, name="lago_webhook"))

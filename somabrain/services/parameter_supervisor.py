@@ -65,7 +65,9 @@ class ParameterSupervisor:
         )
         # No automatic config mutation yet; keep behaviour deterministic for local runs.
 
-    async def apply_preset(self, tenant: str, preset_name: str, actor: str = "system") -> None:
+    async def apply_preset(
+        self, tenant: str, preset_name: str, actor: str = "system"
+    ) -> None:
         """Apply a cognitive preset to a specific tenant.
 
         Args:
@@ -87,7 +89,6 @@ class ParameterSupervisor:
             patch=preset.params,
             actor=actor,
         )
-
 
 
 __all__ = ["MetricsSnapshot", "ParameterSupervisor"]

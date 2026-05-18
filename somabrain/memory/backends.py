@@ -63,7 +63,9 @@ def get_memory_backend(
     from django.conf import settings as django_settings
 
     mode = getattr(django_settings, "SOMABRAIN_MEMORY_MODE", "http")
-    logger.info(f"Creating memory backend in '{mode}' mode", extra={"namespace": namespace})
+    logger.info(
+        f"Creating memory backend in '{mode}' mode", extra={"namespace": namespace}
+    )
 
     if mode == "direct":
         try:
@@ -85,8 +87,7 @@ def get_memory_backend(
 
     else:
         raise ValueError(
-            f"Invalid SOMABRAIN_MEMORY_MODE: {mode}. "
-            "Must be 'http' or 'direct'."
+            f"Invalid SOMABRAIN_MEMORY_MODE: {mode}. " "Must be 'http' or 'direct'."
         )
 
 

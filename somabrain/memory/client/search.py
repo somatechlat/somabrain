@@ -4,6 +4,7 @@ from .types import RecallHit
 from .serialization import _compat_enrich_payload, _normalize_recall_hits
 from .ranking import _filter_hits_by_keyword, _deduplicate_hits, _rescore_and_rank_hits
 
+
 class SearchMixin:
     """Handles memory search and recall aggregation."""
 
@@ -58,7 +59,9 @@ class SearchMixin:
             if not deduped:
                 return []
 
-            ranked = _rescore_and_rank_hits(self.cfg, self._scorer, self._embedder, deduped, query_text)
+            ranked = _rescore_and_rank_hits(
+                self.cfg, self._scorer, self._embedder, deduped, query_text
+            )
             limit = max(1, int(top_k))
             return ranked[:limit]
 
@@ -120,7 +123,9 @@ class SearchMixin:
             if not deduped:
                 return []
 
-            ranked = _rescore_and_rank_hits(self.cfg, self._scorer, self._embedder, deduped, query_text)
+            ranked = _rescore_and_rank_hits(
+                self.cfg, self._scorer, self._embedder, deduped, query_text
+            )
             limit = max(1, int(top_k))
             return ranked[:limit]
 

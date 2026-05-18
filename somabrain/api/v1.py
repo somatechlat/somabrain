@@ -171,7 +171,10 @@ if apps.is_installed("somabrain.aaas"):
     )
 
     _safe_add_router(
-        api, "/identity-providers/", identity_providers_router, tags=["Identity Providers"]
+        api,
+        "/identity-providers/",
+        identity_providers_router,
+        tags=["Identity Providers"],
     )
 
     # Roles & Permissions Router
@@ -197,7 +200,9 @@ if apps.is_installed("somabrain.aaas"):
     # Admin Dashboard Router
     from somabrain.api.endpoints.dashboard import router as dashboard_router
 
-    _safe_add_router(api, "/admin/dashboard/", dashboard_router, tags=["Admin Dashboard"])
+    _safe_add_router(
+        api, "/admin/dashboard/", dashboard_router, tags=["Admin Dashboard"]
+    )
 
     # Tenant Analytics Router
     from somabrain.api.endpoints.analytics import router as analytics_router
@@ -212,7 +217,9 @@ if apps.is_installed("somabrain.aaas"):
     # Notifications Router
     from somabrain.api.endpoints.notifications import router as notifications_router
 
-    _safe_add_router(api, "/notifications/", notifications_router, tags=["Notifications"])
+    _safe_add_router(
+        api, "/notifications/", notifications_router, tags=["Notifications"]
+    )
 
     # Audit Logs Router
     from somabrain.api.endpoints.audit_logs import router as audit_logs_router
@@ -247,7 +254,9 @@ if apps.is_installed("somabrain.aaas"):
     # Import/Export Router
     from somabrain.api.endpoints.import_export import router as import_export_router
 
-    _safe_add_router(api, "/import-export/", import_export_router, tags=["Import/Export"])
+    _safe_add_router(
+        api, "/import-export/", import_export_router, tags=["Import/Export"]
+    )
 
     # Search Router
     from somabrain.api.endpoints.search import router as search_router
@@ -280,14 +289,22 @@ if apps.is_installed("somabrain.aaas"):
     _safe_add_router(api, "/metrics/", api_metrics_router, tags=["Metrics"])
 
     # API Keys Enhanced Router
-    from somabrain.api.endpoints.api_keys_enhanced import router as api_keys_enhanced_router
+    from somabrain.api.endpoints.api_keys_enhanced import (
+        router as api_keys_enhanced_router,
+    )
 
-    _safe_add_router(api, "/keys/", api_keys_enhanced_router, tags=["API Keys (Enhanced)"])
+    _safe_add_router(
+        api, "/keys/", api_keys_enhanced_router, tags=["API Keys (Enhanced)"]
+    )
 
     # User Preferences Router
-    from somabrain.api.endpoints.user_preferences import router as user_preferences_router
+    from somabrain.api.endpoints.user_preferences import (
+        router as user_preferences_router,
+    )
 
-    _safe_add_router(api, "/profile/", user_preferences_router, tags=["User Preferences"])
+    _safe_add_router(
+        api, "/profile/", user_preferences_router, tags=["User Preferences"]
+    )
 
     # Teams Router
     from somabrain.api.endpoints.teams import router as teams_router
@@ -364,7 +381,10 @@ if apps.is_installed("somabrain.aaas"):
     )
 
     _safe_add_router(
-        api, "/webhooks-dashboard/", webhooks_dashboard_router, tags=["Webhooks Dashboard"]
+        api,
+        "/webhooks-dashboard/",
+        webhooks_dashboard_router,
+        tags=["Webhooks Dashboard"],
     )
 
     # Service Health Router

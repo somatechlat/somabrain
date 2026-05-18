@@ -1,21 +1,16 @@
-"""Module serde."""
+"""Minimal Avro serde helpers for Kafka payload round-trips."""
 
 from __future__ import annotations
-from typing import Any, Dict
-from common.logging import logger
-from fastavro import parse_schema, schemaless_reader, schemaless_writer
-import io
 
+import io
+from typing import Any, Dict
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-    # Optional dependency; tests may skip when unavailable.
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from fastavro import parse_schema, schemaless_reader, schemaless_writer
+except Exception:  # pragma: no cover
+    parse_schema = None
+    schemaless_reader = None
+    schemaless_writer = None
 
 
 class AvroSerde:
@@ -25,45 +20,30 @@ class AvroSerde:
     integration can be added later using Confluent serializers with magic bytes.
     """
 
+    def __init__(self, schema: Dict[str, Any]):
+        """Initialize the serde with a parsed Avro schema."""
+        if parse_schema is None:
+            raise RuntimeError(
+                "fastavro not installed; install fastavro or use dev extras to enable Avro serde"
+            )
+        self._schema = parse_schema(schema)
 
-def __init__(self, schema: Dict[str, Any]):
-    """Initialize the instance."""
+    def serialize(self, record: Dict[str, Any]) -> bytes:
+        """Serialize a record to Avro bytes using the configured schema."""
+        if schemaless_writer is None:
+            raise RuntimeError("fastavro not available for serialization")
 
-    if parse_schema is None:
-        raise RuntimeError(
-            "fastavro not installed; install fastavro or use dev extras to enable Avro serde"
-        )
-    # fastavro requires named types to be pre-declared; parse_schema handles that.
-    self._schema = parse_schema(schema)
+        buf = io.BytesIO()
+        schemaless_writer(buf, self._schema, record)
+        return buf.getvalue()
 
+    def deserialize(self, payload: bytes) -> Dict[str, Any]:
+        """Deserialize Avro bytes into a record using the configured schema."""
+        if schemaless_reader is None:
+            raise RuntimeError("fastavro not available for deserialization")
 
-def serialize(self, record: Dict[str, Any]) -> bytes:
-    """Execute serialize.
-
-    Args:
-        record: The record.
-    """
-
-    if schemaless_writer is None:
-        raise RuntimeError("fastavro not available for serialization")
-
-    buf = io.BytesIO()
-    schemaless_writer(buf, self._schema, record)
-    return buf.getvalue()
-
-
-def deserialize(self, payload: bytes) -> Dict[str, Any]:
-    """Execute deserialize.
-
-    Args:
-        payload: The payload.
-    """
-
-    if schemaless_reader is None:
-        raise RuntimeError("fastavro not available for deserialization")
-
-    buf = io.BytesIO(payload)
-    return schemaless_reader(buf, self._schema)
+        buf = io.BytesIO(payload)
+        return schemaless_reader(buf, self._schema)
 
 
 __all__ = ["AvroSerde"]

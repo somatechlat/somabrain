@@ -8,7 +8,7 @@ NO STUBS. NO MOCKS. NO HARDCODED RETURNS.
 
 import time
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -198,7 +198,9 @@ class CircuitBreaker:
             "tenant": tenant or "global",
         }
 
-    def call(self, func: Callable, *args, tenant: Optional[str] = None, **kwargs) -> Any:
+    def call(
+        self, func: Callable, *args, tenant: Optional[str] = None, **kwargs
+    ) -> Any:
         """Execute a function with circuit breaker protection.
 
         Args:
@@ -225,4 +227,3 @@ class CircuitBreaker:
         except Exception:
             self.record_failure(tenant)
             raise
-

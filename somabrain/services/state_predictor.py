@@ -25,11 +25,14 @@ import numpy as np
 from django.conf import settings
 
 from common.kafka_utils import encode, make_producer
-from somabrain.admin.core.learning.prediction import MahalanobisPredictor, PredictionResult
+from somabrain.admin.core.learning.prediction import (
+    MahalanobisPredictor,
+    PredictionResult,
+)
 
 try:
     from confluent_kafka import Consumer as CKConsumer
-    from confluent_kafka import KafkaException
+    from confluent_kafka import KafkaError
 except ImportError as e:
     raise RuntimeError(f"State predictor requires confluent-kafka: {e}")
 
@@ -171,7 +174,7 @@ class StatePredictorService:
                         continue
 
                     if msg.error():
-                        if msg.error().code() == KafkaException._PARTITION_EOF:
+                        if msg.error().code() == KafkaError._PARTITION_EOF:
                             continue
                         else:
                             raise RuntimeError(f"Kafka consumer error: {msg.error()}")

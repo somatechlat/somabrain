@@ -106,6 +106,7 @@ def plan_from_graph(
 
     return results
 
+
 def _extract_task_from_neighbor(neighbor: "GraphNeighbor") -> Optional[str]:
     """Extract task string from neighbor metadata."""
     if neighbor.metadata:

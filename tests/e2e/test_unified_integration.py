@@ -16,6 +16,7 @@ from somabrain.controls.memory_client import memory_client
 from somabrain.controls.degradation import degradation_manager, HealthStatus
 from somabrain.brain_settings.models import BrainSetting
 
+
 @pytest.mark.asyncio
 async def test_unified_cognitive_flow():
     tenant = "test_e2e_tenant"
@@ -39,7 +40,7 @@ async def test_unified_cognitive_flow():
 
     # 4. Test RECALL Mode (Deterministic)
     BrainSetting.set("active_brain_mode", "RECALL", tenant=tenant)
-    assert BrainSetting.get("gmd_eta", tenant=tenant) == 0.01 # Should be frozen
+    assert BrainSetting.get("gmd_eta", tenant=tenant) == 0.01  # Should be frozen
 
     # Search for the same memory
     results = await memory_client.search("Integration Test", top_k=1, tenant=tenant)
@@ -47,14 +48,21 @@ async def test_unified_cognitive_flow():
     assert "Unified Integration" in results[0]["payload"]["content"]
 
     # 5. Simulate DEGRADATION (Heavy Latency)
-    degradation_manager.report_latency(0.150, "memory", tenant=tenant) # 150ms > 50ms cap
-    assert degradation_manager.get_status(tenant=tenant) == HealthStatus.NORMAL # Stays normal on 1st report due to window logic?
+    degradation_manager.report_latency(
+        0.150, "memory", tenant=tenant
+    )  # 150ms > 50ms cap
+    assert (
+        degradation_manager.get_status(tenant=tenant) == HealthStatus.NORMAL
+    )  # Stays normal on 1st report due to window logic?
 
     # Simulate Error
-    degradation_manager.report_error("memory", RuntimeError("Infrastructure Failure"), tenant=tenant)
+    degradation_manager.report_error(
+        "memory", RuntimeError("Infrastructure Failure"), tenant=tenant
+    )
     assert degradation_manager.get_status(tenant=tenant) == HealthStatus.DEGRADED
 
     print(f"✅ E2E Cognitive Flow Proof Complete for tenant: {tenant}")
+
 
 if __name__ == "__main__":
     asyncio.run(test_unified_cognitive_flow())

@@ -346,7 +346,10 @@ class TestPerTenantNeuromodulators:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.1**
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+        from somabrain.admin.brain.neuromodulators import (
+            NeuromodState,
+            PerTenantNeuromodulators,
+        )
 
         per_tenant = PerTenantNeuromodulators()
 
@@ -493,7 +496,10 @@ class TestNeuromodulatorProperties:
         **Feature: full-capacity-testing, Property: State Roundtrip**
         **Validates: Requirements C1.5**
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState as NS, Neuromodulators
+        from somabrain.admin.brain.neuromodulators import (
+            NeuromodState as NS,
+            Neuromodulators,
+        )
 
         neuromods = Neuromodulators()
 

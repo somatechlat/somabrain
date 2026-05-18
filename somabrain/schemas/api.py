@@ -113,7 +113,9 @@ class SleepRunResponse(BaseModel):
     """Sleep run response schema."""
 
     ok: bool = Field(..., description="Whether the sleep run started successfully")
-    run_id: Optional[str] = Field(None, description="Identifier for the initiated sleep run")
+    run_id: Optional[str] = Field(
+        None, description="Identifier for the initiated sleep run"
+    )
 
 
 class SleepStatusResponse(BaseModel):

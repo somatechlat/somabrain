@@ -146,4 +146,3 @@ class CognitiveError(SomabrainError):
             code = "cognitive_error"
 
         super().__init__(message, code=code, cause=cause)
-

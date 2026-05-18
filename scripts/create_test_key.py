@@ -1,4 +1,3 @@
-
 import os
 import django
 import hashlib
@@ -9,6 +8,7 @@ django.setup()
 
 from somabrain.aaas.models import Tenant, APIKey, TenantStatus
 
+
 def create_key():
     # 1. Ensure Tenant exists
     tenant, created = Tenant.objects.get_or_create(
@@ -16,8 +16,8 @@ def create_key():
         defaults={
             "name": "Test Tenant",
             "tier": "enterprise",
-            "status": TenantStatus.ACTIVE
-        }
+            "status": TenantStatus.ACTIVE,
+        },
     )
     if created:
         print(f"Created tenant: {tenant.id}")
@@ -44,9 +44,10 @@ def create_key():
         key_hash=key_hash,
         scopes=["super-admin", "admin", "read:memory", "write:memory"],
         is_test=True,
-        is_active=True
+        is_active=True,
     )
     print(f"Created API Key: {raw_key}")
+
 
 if __name__ == "__main__":
     create_key()

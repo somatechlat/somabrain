@@ -183,11 +183,7 @@ class AdaptationEngine:
     def _maybe_load_state(self) -> None:
         """Execute maybe load state."""
 
-        if (
-            self._redis
-            and self._tenant_id
-            and is_persistence_enabled()
-        ):
+        if self._redis and self._tenant_id and is_persistence_enabled():
             self._load_state()
 
     def set_constraints(self, constraints: AdaptationConstraints) -> None:
@@ -458,7 +454,13 @@ class AdaptationEngine:
 
     def _update_metrics(self) -> None:
         """Execute update metrics."""
-        update_metrics(self._tenant_id, self._retrieval, self._utility, self._gains, self._constraint_bounds)
+        update_metrics(
+            self._tenant_id,
+            self._retrieval,
+            self._utility,
+            self._gains,
+            self._constraint_bounds,
+        )
 
     def _persist_if_enabled(self) -> None:
         """Execute persist if enabled."""

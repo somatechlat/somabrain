@@ -47,7 +47,9 @@ class SleepStateManager:
 
         self.parameters = SleepParameters()
 
-    def compute_parameters(self, state: SleepState, tenant_id: str = "default") -> Dict[str, float]:
+    def compute_parameters(
+        self, state: SleepState, tenant_id: str = "default"
+    ) -> Dict[str, float]:
         """Compute parameters for a given sleep state (hot-configurable via brain_settings)."""
         from somabrain import brain_settings
 

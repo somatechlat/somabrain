@@ -16,7 +16,6 @@ from hypothesis import given, settings as hyp_settings, strategies as st
 from scipy.linalg import expm
 from typing import Callable
 
-
 # ---------------------------------------------------------------------------
 # Strategies for generating test data
 # ---------------------------------------------------------------------------

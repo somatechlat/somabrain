@@ -14,7 +14,6 @@ from __future__ import annotations
 from hypothesis import given, settings as hyp_settings, strategies as st, assume
 from dataclasses import dataclass
 
-
 # ---------------------------------------------------------------------------
 # Strategies for generating test data
 # ---------------------------------------------------------------------------

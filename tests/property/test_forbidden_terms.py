@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 from hypothesis import given, settings, strategies as st
 
-
 FORBIDDEN = ("mock", "stub", "placeholder", "todo", "fixme", "dummy")
 
 # Allow forbidden terms when used in policy documentation context

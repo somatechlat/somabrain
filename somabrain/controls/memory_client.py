@@ -2,8 +2,8 @@
 Unified Memory Client - SomaBrain SFM Integration.
 Copyright (C) 2026 SomaTech LAT.
 
-Supports 'direct' (in-proc) and 'http' (REST) modes for zero-latency
-and multi-tenant cognitive operations.
+Thin wrapper around the canonical somabrain.memory.client.MemoryClient.
+Preserves direct-mode and degradation-manager integration.
 """
 
 from __future__ import annotations
@@ -13,9 +13,9 @@ import time
 from importlib import import_module
 from typing import Any, Dict, List, Protocol, cast
 
-import httpx
 from django.conf import settings
 
+from somabrain.memory.client import MemoryClient as CanonicalMemoryClient
 from .degradation import HealthStatus, degradation_manager
 
 logger = logging.getLogger("somabrain.memory")
@@ -54,6 +54,8 @@ class MemoryClient:
         self.token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None)
 
         self._direct_service: _DirectMemoryService | None = None
+        self._canonical: CanonicalMemoryClient | None = None
+
         if self.mode == "direct":
             self._init_direct_mode()
 
@@ -72,6 +74,12 @@ class MemoryClient:
             )
             self.mode = "http"
 
+    def _canonical_client(self) -> CanonicalMemoryClient:
+        """Lazy initializer for the canonical HTTP-backed MemoryClient."""
+        if self._canonical is None:
+            self._canonical = CanonicalMemoryClient(cfg=settings)
+        return self._canonical
+
     async def store(
         self, coordinate: List[float], payload: Dict[str, Any], tenant: str = "default"
     ) -> bool:
@@ -79,23 +87,12 @@ class MemoryClient:
         start_time = time.time()
         try:
             if self.mode == "direct" and self._direct_service:
-                # Direct call (Zero-Latency)
                 self._direct_service.store(tuple(coordinate), payload, tenant=tenant)
                 result = True
             else:
-                # HTTP call (Network Latency)
-                async with httpx.AsyncClient() as client:
-                    headers = (
-                        {"Authorization": f"Bearer {self.token}"} if self.token else {}
-                    )
-                    resp = await client.post(
-                        f"{self.endpoint}/memories",
-                        json={"coordinate": coordinate, "payload": payload},
-                        params={"tenant": tenant},
-                        headers=headers,
-                        timeout=1.0,
-                    )
-                    result = resp.status_code == 200
+                result = await self._canonical_client().store(
+                    coordinate, payload, tenant=tenant
+                )
 
             latency = time.time() - start_time
             degradation_manager.report_latency(latency, "memory", tenant)
@@ -103,7 +100,6 @@ class MemoryClient:
 
         except Exception as exc:
             degradation_manager.report_error("memory", exc, tenant)
-            # FALLBACK: If degraded, we could log to a local 'outbox' or 'degraded_buffer'
             return False
 
     async def search(
@@ -112,10 +108,10 @@ class MemoryClient:
         """Search memories with automated degradation fallbacks."""
         status = degradation_manager.get_status(tenant)
 
-        # If in FAILSAFE mode, restrict search to limited local WM cache or tiny local vector store
         if status == HealthStatus.FAILSAFE:
             logger.warning(
-                f"Cognitive system is in FAILSAFE mode for tenant {tenant}. Returning empty search."
+                "Cognitive system is in FAILSAFE mode for tenant %s. Returning empty search.",
+                tenant,
             )
             return []
 
@@ -123,14 +119,9 @@ class MemoryClient:
             if self.mode == "direct" and self._direct_service:
                 return self._direct_service.search(query, top_k=top_k, tenant=tenant)
             else:
-                async with httpx.AsyncClient() as client:
-                    resp = await client.post(
-                        f"{self.endpoint}/memories/search",
-                        json={"query": query, "top_k": top_k},
-                        params={"tenant": tenant},
-                        timeout=2.0,
-                    )
-                    return resp.json().get("results", [])
+                return await self._canonical_client().search(
+                    query, top_k, tenant=tenant
+                )
         except Exception as e:
             degradation_manager.report_error("memory", e, tenant)
             return []

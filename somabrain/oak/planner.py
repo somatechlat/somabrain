@@ -59,7 +59,11 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
     # Uses Django ORM for database access.
     try:
         # Django ORM replacement
-        thread = CognitiveThread.objects.filter(pk=tenant_id).first()
+        thread = (
+            CognitiveThread.objects.filter(tenant_id=tenant_id, status="active")
+            .order_by("-updated_at")
+            .first()
+        )
         if thread:
             nxt = thread.next_option()
             if nxt:

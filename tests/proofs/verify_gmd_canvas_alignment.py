@@ -1,6 +1,7 @@
 import numpy as np
 import somabrain_rs as rs
 
+
 def test_variance_of_similarity(D: int = 8192, N: int = 1000):
     """Measure Var(sim(x,y)) and confirm it is ~ 1/D."""
     similarities = []
@@ -25,6 +26,7 @@ def test_variance_of_similarity(D: int = 8192, N: int = 1000):
     print(f"Ratio: {ratio:.4f} (Ideal: 1.0)")
     return ratio
 
+
 def test_snr_decay(D: int = 2048, L_max: int = 50, eta: float = 0.08):
     """Measure SNR(L) vs L and confirm power law decay (1-eta)^{2L}."""
     # We use BayesianMemory from Rust
@@ -33,8 +35,16 @@ def test_snr_decay(D: int = 2048, L_max: int = 50, eta: float = 0.08):
     mem = rs.BayesianMemory(D, eta=eta, lambda_reg=lambda_reg)
 
     # Generate items to store
-    keys = [np.array(rs.BHDCEncoder(dim=D, sparsity=0.1, base_seed=i).random_vector()) for i in range(L_max)]
-    values = [np.array(rs.BHDCEncoder(dim=D, sparsity=0.1, base_seed=i+1000).random_vector()) for i in range(L_max)]
+    keys = [
+        np.array(rs.BHDCEncoder(dim=D, sparsity=0.1, base_seed=i).random_vector())
+        for i in range(L_max)
+    ]
+    values = [
+        np.array(
+            rs.BHDCEncoder(dim=D, sparsity=0.1, base_seed=i + 1000).random_vector()
+        )
+        for i in range(L_max)
+    ]
 
     # Store items
     for k, v in zip(keys, values):
@@ -55,18 +65,20 @@ def test_snr_decay(D: int = 2048, L_max: int = 50, eta: float = 0.08):
         recalled = np.array(mem.recall(key.tolist()))
 
         # Signal = similarity with target
-        sim = np.dot(recalled, expected_v) / (np.linalg.norm(recalled) * np.linalg.norm(expected_v))
+        sim = np.dot(recalled, expected_v) / (
+            np.linalg.norm(recalled) * np.linalg.norm(expected_v)
+        )
 
         # SNR Calculation: (Signal^2) / (1 - Signal^2) * D
         if sim >= 1.0:
-            snr = float('inf')
+            snr = float("inf")
         else:
             snr = (sim**2) / (1.0 - sim**2 + 1e-9) * D
 
         snrs.append(snr)
         # Power law: w_L^2 / (W2 - w_L^2) where w_L = eta(1-eta)^L
         # Simplified ratio check: SNR(L) / SNR(0) should be ~ (1-eta)^{2L}
-        theoretical_decays.append((1.0 - eta)**(2 * L))
+        theoretical_decays.append((1.0 - eta) ** (2 * L))
 
     # Log linear regression on SNR ratios
     snr_ratios = [s / snrs[0] for s in snrs]
@@ -81,6 +93,7 @@ def test_snr_decay(D: int = 2048, L_max: int = 50, eta: float = 0.08):
     corr = np.corrcoef(snr_ratios, theoretical_decays)[0, 1]
     print(f"Correlation with power law: {corr:.6f}")
     return corr
+
 
 def test_quantization_lambda_optimality(D: int = 1024, samples: int = 100):
     """Find optimal lambda for 8-bit quantization noise."""
@@ -106,7 +119,7 @@ def test_quantization_lambda_optimality(D: int = 1024, samples: int = 100):
             # total_mse += np.mean((recovered - v)**2)
             # Actually measure Reconstruction Error: 1 - Similarity
             sim = np.dot(recovered, v) / (np.linalg.norm(recovered) * np.linalg.norm(v))
-            total_mse += (1.0 - sim)
+            total_mse += 1.0 - sim
 
         mses.append(total_mse / samples)
 
@@ -116,8 +129,8 @@ def test_quantization_lambda_optimality(D: int = 1024, samples: int = 100):
     # For sparse pm_one vectors with sparsity p: average energy per element is p.
     # p = 0.1
     p = 0.1
-    sigma_v_sq = p # Energy is p
-    theoretical_lambda = ( (2.0/255.0)**2 / 12.0 ) / sigma_v_sq
+    sigma_v_sq = p  # Energy is p
+    theoretical_lambda = ((2.0 / 255.0) ** 2 / 12.0) / sigma_v_sq
 
     experimental_min_lambda = lambdas[np.argmin(mses)]
 
@@ -126,6 +139,7 @@ def test_quantization_lambda_optimality(D: int = 1024, samples: int = 100):
     print(f"Experimental optimal lambda: {experimental_min_lambda:.2e}")
 
     return experimental_min_lambda / theoretical_lambda
+
 
 if __name__ == "__main__":
     test_variance_of_similarity()
