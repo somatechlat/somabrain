@@ -8,6 +8,8 @@
 | Status | APPROVED |
 | Classification | Internal - Engineering |
 
+> **Note**: This is a composite document assembled from multiple SRS sections. Each section may have been authored independently and merged into this single file for convenience.
+
 ---
 
 # TABLE OF CONTENTS
@@ -543,7 +545,7 @@ sequenceDiagram
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `SOMA_API_PORT` | int | `9595` | API server port |
+| `SOMA_API_PORT` | int | `10101` | API server port |
 | `SOMA_API_TOKEN` | str | - | API authentication token |
 | `SOMA_LOG_LEVEL` | enum | `INFO` | Log verbosity |
 | `SOMA_DEBUG` | bool | `false` | Debug mode |
@@ -768,7 +770,7 @@ SomaFractalMemory uses Django settings with environment variables prefixed with 
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `SOMA_API_PORT` | int | 9595 | API port |
+| `SOMA_API_PORT` | int | 10101 | API port |
 | `SOMA_LOG_LEVEL` | str | INFO | Log level |
 | `SOMA_MAX_REQUEST_BODY_MB` | float | 5.0 | Max request body |
 | `SOMA_RATE_LIMIT_MAX` | int | 60 | Rate limit max |
@@ -1193,7 +1195,7 @@ The SomaBrain AAAS Platform consists of **two microservices** that work together
 | Service | Port | Purpose |
 |---------|------|---------|
 | **SomaBrain** | 9696 | Short-term cache, API gateway, tenant management |
-| **SomaFractalMemory** | 9595 | Long-term storage, graph database, vector search |
+| **SomaFractalMemory** | 10101 | Long-term storage, graph database, vector search |
 
 ---
 
@@ -1216,7 +1218,7 @@ flowchart TB
         Auth[JWT Auth]
     end
     
-    subgraph SomaFractalMemory["SomaFractalMemory (Port 9595)"]
+    subgraph SomaFractalMemory["SomaFractalMemory (Port 10101)"]
         FAPI[Django Ninja API]
         LTS[Memory Model]
         Graph[GraphLink Model]
@@ -1297,7 +1299,7 @@ sequenceDiagram
     participant Agent as AI Agent
     participant SB as SomaBrain:9696
     participant STC as ShortTermCache
-    participant SFM as SomaFractalMemory:9595
+    participant SFM as SomaFractalMemory:10101
     participant PG as PostgreSQL
     participant MV as Milvus
     
@@ -1340,7 +1342,7 @@ flowchart LR
     subgraph Network["docker network: soma-network"]
         subgraph Apps["Application Services"]
             SB[somabrain<br/>:9696]
-            SFM[somafractalmemory<br/>:9595]
+            SFM[somafractalmemory<br/>:10101]
         end
         
         subgraph Data["Data Services"]
@@ -1380,7 +1382,7 @@ flowchart LR
 | `/api/admin/tenants` | CRUD | Tenant management |
 | `/api/admin/settings` | GET/PATCH | Platform settings |
 
-### 6.2 SomaFractalMemory Endpoints (Port 9595)
+### 6.2 SomaFractalMemory Endpoints (Port 10101)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -2294,7 +2296,7 @@ SomaBrain uses Django settings with django-environ for configuration. All settin
 
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
-| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | str | http://localhost:9595 | SomaFractalMemory URL |
+| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | str | http://localhost:10101 | SomaFractalMemory URL |
 | `SOMABRAIN_MEMORY_MAX` | str | 10GB | Max memory usage |
 | `SOMABRAIN_EMBED_DIM` | int | 256 | Embedding dimension |
 | `SOMABRAIN_WM_SIZE` | int | 64 | Working memory size |
@@ -3114,7 +3116,7 @@ This document explains the recent changes that enable automatic recovery of the 
 | `memory_degrade_queue`, `memory_degrade_readonly` | `/health` JSON | Runtime policy flags resolved from settings. |
 | `OUTBOX_PENDING`, `OUTBOX_PENDING_BY_TENANT` | `somabrain/metrics.py` | Gauge of queued events (alerts when >0 for prolonged periods). |
 | `MEMORY_OUTBOX_SYNC_TOTAL{status}` | `somabrain/metrics.py` | Success/failure counters for replay attempts. |
-| `somabrain_memory_http_requests_total` | Prometheus metric (`somabrain/metrics.py`) | Operation/tenant/status tagged counter for live HTTP calls to port 9595. |
+| `somabrain_memory_http_requests_total` | Prometheus metric (`somabrain/metrics.py`) | Operation/tenant/status tagged counter for live HTTP calls to port 10101. |
 | `somabrain_memory_http_latency_seconds` | Prometheus metric (`somabrain/metrics.py`) | Histogram tracking end-to-end latency per operation/tenant. |
 | `tests/integration/test_recall_quality.py` | CI coverage | Verifies the `degraded` flag is surfaced end‑to‑end. |
 
@@ -3140,7 +3142,7 @@ Set these through `common/config/settings.py` or environment variables (`SOMABRA
 
 1. **Detection**: Alert fires on `memory_circuit_open`. Confirm `/health` shows `memory_degraded=true`.
 2. **Containment**: Verify outbox queue depth is increasing (expected).
-3. **Resolution**: Restore the external memory backend (port 9595). Watch `/diagnostics` until `memory_endpoint` responds.
+3. **Resolution**: Restore the external memory backend (port 10101). Watch `/diagnostics` until `memory_endpoint` responds.
 4. **Verification**: Confirm outbox depth returns to zero and `/recall` responses flip `degraded` back to `false`.
 
 ## 7. End‑to‑End Verification Recipe
@@ -3872,7 +3874,7 @@ flowchart LR
         Scorer[SalienceScorer]
     end
     
-    subgraph SomaFractalMemory["SomaFractalMemory (Port 9595)"]
+    subgraph SomaFractalMemory["SomaFractalMemory (Port 10101)"]
         Graph[Graph Store]
         Vector[Vector Index]
     end
@@ -4998,7 +5000,7 @@ flowchart TB
     
     subgraph Services["Microservices"]
         SB[SomaBrain :9696]
-        SFM[SomaFractalMemory :9595]
+        SFM[SomaFractalMemory :10101]
     end
     
     subgraph External["External Services"]
@@ -5024,7 +5026,7 @@ flowchart TB
 
 | Component | Technology | Port |
 |-----------|------------|------|
-| Backend API | Django 5.x + Django Ninja | 9696, 9595 |
+| Backend API | Django 5.x + Django Ninja | 9696, 10101 |
 | Frontend | Lit (Web Components) | 5173 |
 | Database | PostgreSQL 15 | 5432 |
 | Cache | Redis 7 | 6379 |
@@ -5249,7 +5251,7 @@ flowchart TB
      ▼                               │ │                              ▼
 ┌─────────────────────────────────┐  │ │  ┌──────────────────────────────┐
 │        SOMABRAIN                │  │ │  │     SOMAFRACTALMEMORY        │
-│        Port: 9696               │  │ │  │     Port: 9595               │
+│        Port: 9696               │  │ │  │     Port: 10101               │
 ├─────────────────────────────────┤  │ │  ├──────────────────────────────┤
 │ Django + Django Ninja           │  │ │  │ Django + Django Ninja        │
 │                                 │  │ │  │                              │
@@ -5394,7 +5396,7 @@ flowchart TB
 │  │ SERVICE HEALTH                  │  │ RECENT ACTIVITY        │  │
 │  │                                 │  │                        │  │
 │  │ ● SomaBrain:9696        ✅ UP  │  │ • Tenant "Acme" created│  │
-│  │ ● SomaFractalMemory:9595 ✅ UP │  │ • Tier upgrade: Pro    │  │
+│  │ ● SomaFractalMemory:10101 ✅ UP │  │ • Tier upgrade: Pro    │  │
 │  │ ● PostgreSQL:5432       ✅ UP  │  │ • API key rotated      │  │
 │  │ ● Redis:6379            ✅ UP  │  │ • Invoice #1234 paid   │  │
 │  │ ● Milvus:19530          ✅ UP  │  │                        │  │
@@ -5497,7 +5499,7 @@ flowchart TB
 │ │ SERVICE          │ PORT  │ STATUS │ LATENCY │ LAST CHECK    │   │
 │ ├──────────────────┼───────┼────────┼─────────┼───────────────┤   │
 │ │ SomaBrain API    │ 9696  │ ✅ UP  │ 12ms    │ 30s ago       │   │
-│ │ SomaFractalMem   │ 9595  │ ✅ UP  │ 8ms     │ 30s ago       │   │
+│ │ SomaFractalMem   │ 10101  │ ✅ UP  │ 8ms     │ 30s ago       │   │
 │ │ PostgreSQL       │ 5432  │ ✅ UP  │ 2ms     │ 30s ago       │   │
 │ │ Redis            │ 6379  │ ✅ UP  │ 1ms     │ 30s ago       │   │
 │ │ Milvus           │ 19530 │ ✅ UP  │ 15ms    │ 30s ago       │   │
@@ -5894,7 +5896,7 @@ flowchart TB
 │  │    Service Status             │ │    Memory Distribution    ││
 │  ├───────────────────────────────┤ ├───────────────────────────┤│
 │  │ ✓ SomaBrain      :9696   OK  │ │  [Pie Chart]              ││
-│  │ ✓ FractalMemory  :9595   OK  │ │  ● Episodic: 65%          ││
+│  │ ✓ FractalMemory  :10101   OK  │ │  ● Episodic: 65%          ││
 │  │ ✓ PostgreSQL     :5432   OK  │ │  ● Semantic: 35%          ││
 │  │ ✓ Redis          :6379   OK  │ │                           ││
 │  │ ✓ Milvus         :19530  OK  │ │                           ││
@@ -5986,7 +5988,7 @@ flowchart TB
 │                                                                 │
 │  FractalMemory URL                           Runtime: ✗        │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ http://somafractalmemory:9595                           │   │
+│  │ http://somafractalmemory:10101                           │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
@@ -6045,7 +6047,7 @@ flowchart TB
     
     subgraph Services["Protected Services"]
         SB[SomaBrain :9696]
-        SFM[SomaFractalMemory :9595]
+        SFM[SomaFractalMemory :10101]
         KC[Keycloak :20880]
         Lago[Lago :3000]
     end
@@ -6129,7 +6131,7 @@ flowchart TD
 | `GET /api/admin/tenants` | API Key + JWT | `admin:tenants` |
 | `GET /health` | None | - |
 
-### 5.2 SomaFractalMemory (Port 9595)
+### 5.2 SomaFractalMemory (Port 10101)
 
 | Endpoint | Auth Method | Required Scope |
 |----------|-------------|----------------|
@@ -6338,7 +6340,7 @@ flowchart TB
 │ │ SERVICE STATUS                    │ RECENT ACTIVITY                   │  │
 │ ├───────────────────────────────────┼───────────────────────────────────┤  │
 │ │ ● SomaBrain         :9696   ✓ UP │ 14:45 Tenant created: Acme Corp   │  │
-│ │ ● SomaFractalMemory :9595   ✓ UP │ 14:30 Subscription upgrade: Beta  │  │
+│ │ ● SomaFractalMemory :10101   ✓ UP │ 14:30 Subscription upgrade: Beta  │  │
 │ │ ● PostgreSQL        :5432   ✓ UP │ 14:15 API key rotated: Gamma LLC  │  │
 │ │ ● Redis             :6379   ✓ UP │ 14:00 Invoice paid: Delta Inc     │  │
 │ │ ● Milvus            :19530  ✓ UP │                                   │  │
@@ -6864,7 +6866,7 @@ flowchart TD
     
     L --> M{Priority >= promotion_threshold?}
     M -->|No| N[Remain in cache only]
-    M -->|Yes| O[POST to SomaFractalMemory :9595]
+    M -->|Yes| O[POST to SomaFractalMemory :10101]
     
     O --> P[SFM: Generate coordinate]
     P --> Q[SFM: INSERT Memory]
@@ -7077,7 +7079,7 @@ flowchart LR
         SB_Quota[Quota Stats]
     end
     
-    subgraph SFM["SomaFractalMemory :9595"]
+    subgraph SFM["SomaFractalMemory :10101"]
         SFM_API[GET /stats]
         SFM_Memory[Memory Count]
         SFM_Graph[Graph Stats]
@@ -7864,12 +7866,12 @@ flowchart TB
 
 | Endpoint | Service | Purpose |
 |----------|---------|---------|
-| `GET /stats` | SFM :9595 | Memory statistics |
-| `GET /memories/{coord}` | SFM :9595 | Retrieve memory |
-| `DELETE /memories/{coord}` | SFM :9595 | Delete memory |
-| `GET /graph/neighbors` | SFM :9595 | Graph exploration |
-| `GET /graph/path` | SFM :9595 | Path finding |
-| `GET /health` | SFM :9595 | Per-tenant stats |
+| `GET /stats` | SFM :10101 | Memory statistics |
+| `GET /memories/{coord}` | SFM :10101 | Retrieve memory |
+| `DELETE /memories/{coord}` | SFM :10101 | Delete memory |
+| `GET /graph/neighbors` | SFM :10101 | Graph exploration |
+| `GET /graph/path` | SFM :10101 | Path finding |
+| `GET /health` | SFM :10101 | Per-tenant stats |
 | `GET /api/admin/memory/stats` | SB :9696 | Cross-tenant stats |
 | `DELETE /api/admin/tenants/{id}/data` | SB :9696 | Purge tenant |
 
@@ -9854,7 +9856,7 @@ sequenceDiagram
     participant User
     participant SB as SomaBrain:9696
     participant Cache as ShortTermCache
-    participant SFM as SomaFractalMemory:9595
+    participant SFM as SomaFractalMemory:10101
     participant PG as PostgreSQL
     participant MV as Milvus
     
@@ -10328,7 +10330,7 @@ Based on SomaFractalMemory docs:
 │  │                              │                                        │ │
 │  │  ┌───────────────────────────▼─────────────────────────────────────┐ │ │
 │  │  │              SomaFractalMemory API                              │ │ │
-│  │  │              Port: 9595 (Django Ninja)                          │ │ │
+│  │  │              Port: 10101 (Django Ninja)                          │ │ │
 │  │  │                                                                   │ │ │
 │  │  │  API Routers:                                                    │ │ │
 │  │  │  • /healthz, /health, /readyz, /ping - Health checks            │ │ │
@@ -10379,7 +10381,7 @@ Based on SomaFractalMemory docs:
 │ │ SERVICE                 │ PORT   │ STATUS │ LATENCY │ UPTIME   │ DETAIL││
 │ ├─────────────────────────┼────────┼────────┼─────────┼──────────┼───────┤│
 │ │ SomaBrain API           │  9696  │ ✅ UP  │   12ms  │ 99.99%   │  [→]  ││
-│ │ SomaFractalMemory API   │  9595  │ ✅ UP  │    8ms  │ 99.99%   │  [→]  ││
+│ │ SomaFractalMemory API   │  10101  │ ✅ UP  │    8ms  │ 99.99%   │  [→]  ││
 │ │ PostgreSQL              │  5432  │ ✅ UP  │    2ms  │ 99.99%   │  [→]  ││
 │ │ Redis                   │  6379  │ ✅ UP  │    1ms  │ 99.99%   │  [→]  ││
 │ │ Milvus Vector DB        │ 19530  │ ✅ UP  │  247ms  │ 99.95%   │  [→]  ││
@@ -10411,7 +10413,7 @@ Based on SomaFractalMemory docs:
 │ 🧠 SomaFractalMemory - Health Details                            [← Back] │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│ Endpoint: http://somafractalmemory:9595                   Status: ✅ UP    │
+│ Endpoint: http://somafractalmemory:10101                   Status: ✅ UP    │
 │                                                                             │
 │ TABS: [Health] [Config] [Metrics] [Logs]                                    │
 │                                                                             │
@@ -11654,7 +11656,7 @@ flowchart TB
 │ ✓ milvus:19530         Started                                     │
 │ ✓ keycloak:8080        Started                                     │
 │ ✓ lago:3000            Started                                     │
-│ ✓ somafractalmemory:9595 Started                                   │
+│ ✓ somafractalmemory:10101 Started                                   │
 │ ✓ somabrain:9696       Started                                     │
 │                                                                    │
 │ All services healthy ✓                                             │
@@ -11834,7 +11836,7 @@ flowchart TB
 │ Service Health:                                                    │
 │                                                                    │
 │ ✓ SomaBrain API          :9696   Healthy                           │
-│ ✓ SomaFractalMemory      :9595   Healthy                           │
+│ ✓ SomaFractalMemory      :10101   Healthy                           │
 │ ✓ PostgreSQL             :5432   Connected (15 tables)             │
 │ ✓ Redis                  :6379   Connected                         │
 │ ✓ Milvus                 :19530  Connected (1 collection)          │

@@ -11,10 +11,6 @@
 
 <br/>
 
-<img src="docs/assets/somabrain-hyperdimensional-memory.jpg" alt="SomaBrain: The Governed Trace Algorithm" width="900"/>
-
-<br/>
-
 **Persistent memory for AI agents that need to remember**
 
 [Website](https://www.somatech.dev) · [Features](#-features) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [API](#-api-reference) · [Documentation](#-documentation)
@@ -50,7 +46,7 @@ At the heart of SomaBrain lies a mathematically elegant memory update mechanism 
 
 This enables high-capacity associative memory with constant-time $O(1)$ retrieval.
 
-📖 **[Read the full Mathematical Foundations →](docs/technical/mathematical-foundations.md)**
+📖 **[Read the current mathematical notes →](docs/SomabrainGMD.md)**
 
 ---
 
@@ -225,7 +221,7 @@ services:
 ### Store Memory
 
 ```bash
-curl -X POST http://localhost:9696/api/v2/memory/store \
+curl -X POST http://localhost:9696/api/v1/memory/store \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -251,7 +247,7 @@ curl -X POST http://localhost:9696/api/v2/memory/store \
 ### Recall Memory
 
 ```bash
-curl -X POST http://localhost:9696/api/v2/memory/recall \
+curl -X POST http://localhost:9696/api/v1/memory/recall \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What produces energy in cells?",
@@ -278,7 +274,7 @@ curl -X POST http://localhost:9696/api/v2/memory/recall \
 ### Working Memory Status
 
 ```bash
-curl http://localhost:9696/api/v2/memory/wm/status
+curl http://localhost:9696/api/v1/memory/wm/status
 ```
 
 ```json
@@ -318,7 +314,7 @@ curl http://localhost:9696/api/v2/memory/wm/status
 
 ## ⚙️ Configuration
 
-SomaBrain supports **312 configuration options** via environment variables. Key settings:
+SomaBrain exposes a large set of environment-driven settings. Key examples:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -330,7 +326,7 @@ SomaBrain supports **312 configuration options** via environment variables. Key 
 | `SOMABRAIN_NEURO_DOPAMINE_BASE` | 0.4 | Base dopamine level |
 | `SOMABRAIN_RATE_RPS` | 1000 | Rate limit (req/sec) |
 
-📖 **Full reference:** [`docs/srs/SRS-SOMABRAIN-SETTINGS.md`](docs/srs/SRS-SOMABRAIN-SETTINGS.md)
+📖 **Current reference set:** [`docs/README.md`](docs/README.md)
 
 ---
 
@@ -338,10 +334,10 @@ SomaBrain supports **312 configuration options** via environment variables. Key 
 
 | Document | Description |
 |----------|-------------|
-| [Overview](docs/overview.md) | High-level system architecture |
-| [API Reference](docs/api/) | Complete REST API documentation |
-| [Settings SRS](docs/srs/SRS-SOMABRAIN-SETTINGS.md) | All 312 configuration options |
-| [Deployment Guide](docs/deployment/) | Production deployment |
+| [Docs Index](docs/README.md) | Current documentation map |
+| [Onboarding](docs/ONBOARDING.md) | Project context and orientation |
+| [User Guide](docs/USER_GUIDE.md) | Usage guide |
+| [Standalone Deployment](infra/standalone/DEPLOYMENT_GUIDE.md) | Current Docker standalone deployment |
 | [SOMA Covenant](docs/THE-SOMA-COVENANT.md) | Governance principles |
 
 ---
