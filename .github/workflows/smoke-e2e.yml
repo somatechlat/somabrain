@@ -21,7 +21,7 @@ jobs:
       - name: Bring up compose stack
         uses: docker/compose-action@v2
         with:
-          files: docker-compose.yml
+          files: infra/standalone/docker-compose.yml
           run: up -d --build
 
       - name: Wait for containers to initialize
@@ -47,5 +47,5 @@ jobs:
         if: always()
         uses: docker/compose-action@v2
         with:
-          files: docker-compose.yml
+          files: infra/standalone/docker-compose.yml
           run: down --remove-orphans -v

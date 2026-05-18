@@ -29,13 +29,12 @@ except Exception:
 
 from django.conf import settings
 
-
 # ---------------------------------------------------------------------------
 # Configuration from centralized Settings
 # ---------------------------------------------------------------------------
 
 SOMABRAIN_APP_URL = settings.SOMABRAIN_API_URL or "http://localhost:30101/api"
-MEMORY_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
+MEMORY_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:10101"
 MEMORY_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
 
 # Docker service ports (from docker-compose.yml)
@@ -281,7 +280,6 @@ def multi_tenant_ids() -> List[str]:
     return [f"tenant_{i:03d}_{uuid.uuid4().hex[:6]}" for i in range(100)]
 
 
-
 def make_test_jwt(tenant_id: str = "default") -> str:
     """Generate a dummy JWT for testing in DEBUG mode."""
     import jwt
@@ -299,6 +297,7 @@ def make_test_jwt(tenant_id: str = "default") -> str:
     # Unsigned JWT (using 'none' algorithm or just dummy key if we accept unverified)
     # However, PyJWT verify_signature=False still handles this.
     return jwt.encode(payload, "secret", algorithm="HS256")
+
 
 def get_tenant_headers(tenant_id: str, namespace: str = "test") -> Dict[str, str]:
     """Get HTTP headers for a specific tenant."""

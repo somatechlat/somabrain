@@ -46,11 +46,11 @@ except Exception as e:
     sys.exit(4)
 
 print(
-    f"Checking Memory service at {getattr(settings, 'SOMABRAIN_MEMORY_HTTP_ENDPOINT', 'http://localhost:9595')}/health"
+    f"Checking Memory service at {getattr(settings, 'SOMABRAIN_MEMORY_HTTP_ENDPOINT', 'http://localhost:10101')}/health"
 )
 try:
     resp = requests.get(
-        f"{getattr(settings, 'SOMABRAIN_MEMORY_HTTP_ENDPOINT', 'http://localhost:9595')}/health",
+        f"{getattr(settings, 'SOMABRAIN_MEMORY_HTTP_ENDPOINT', 'http://localhost:10101')}/health",
         timeout=3,
     )
     if resp.status_code != 200:

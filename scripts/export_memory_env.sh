@@ -21,7 +21,7 @@ MEM_ENDPOINT=$(grep -E '^SOMABRAIN_MEMORY_HTTP_ENDPOINT=' "$ENVFILE" | tail -n1 
 MEM_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN:-$(grep -E '^SOMABRAIN_MEMORY_HTTP_TOKEN=' "$ENVFILE" | tail -n1 | cut -d= -f2- || true)}
 
 # Fallbacks if not present
-MEM_ENDPOINT=${MEM_ENDPOINT:-http://127.0.0.1:9595}
+MEM_ENDPOINT=${MEM_ENDPOINT:-http://127.0.0.1:10101}
 
 # For host use, prefer 127.0.0.1 over host.docker.internal
 MEM_ENDPOINT_HOST=$MEM_ENDPOINT
@@ -56,7 +56,7 @@ case "$STATUS" in
     echo "[export_memory_env] Auth probe FAILED (status $STATUS). Token may be missing or invalid for $MEM_ENDPOINT_HOST." >&2
     ;;
   000)
-    echo "[export_memory_env] Unable to reach $MEM_ENDPOINT_HOST. Is the memory service listening on port 9595?" >&2
+    echo "[export_memory_env] Unable to reach $MEM_ENDPOINT_HOST. Is the memory service listening on port 10101?" >&2
     ;;
   *)
     echo "[export_memory_env] Probe returned status $STATUS (informational).";

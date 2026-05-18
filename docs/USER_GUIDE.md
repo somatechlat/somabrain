@@ -1257,7 +1257,7 @@ Update this page when new features are promoted from development or when code ch
 
 `somabrain.app.health` pings the external memory HTTP service using `SOMABRAIN_MEMORY_HTTP_ENDPOINT`. If the service is offline or misconfigured, the check fails and `/remember` will either queue writes (when `SOMABRAIN_REQUIRE_MEMORY=0`) or return HTTP 503.
 
-Common local pitfall (Docker on macOS/Windows): using `http://127.0.0.1:9595` inside a container. Inside containers, `127.0.0.1` is the container itself, not your host. Use `http://host.docker.internal:9595` instead and verify via `GET /diagnostics` (check `memory_endpoint`).
+Common local pitfall (Docker on macOS/Windows): using `http://127.0.0.1:10101` inside a container. Inside containers, `127.0.0.1` is the container itself, not your host. Use `http://host.docker.internal:10101` instead and verify via `GET /diagnostics` (check `memory_endpoint`).
 
 ### Q2. Can I run the API without Docker?
 
@@ -1272,7 +1272,7 @@ Call `GET /diagnostics`. It returns a sanitized snapshot including:
 - `memory_endpoint`: the effective endpoint the API will call
 - `external_backends_required` and `require_memory`: enforcement flags
 
-If `memory_endpoint` shows `localhost` while `in_container` is `true`, switch to `http://host.docker.internal:9595` and restart the API container.
+If `memory_endpoint` shows `localhost` while `in_container` is `true`, switch to `http://host.docker.internal:10101` and restart the API container.
 
 Use development mode to relax authentication for local testing. Outside dev, authentication is required and enforced.
 
@@ -1407,9 +1407,9 @@ Each page includes prerequisites, verification steps, and references so you can 
 
 **Prerequisites**
 - Followed the [Installation Guide](installation.md) and confirmed `/health` returns HTTP 200.
-- A memory backend listening on port 9595.
-  - For host runs (Django on your machine): `http://localhost:9595`.
-  - For Docker containers (macOS/Windows): `http://host.docker.internal:9595`.
+- A memory backend listening on port 10101.
+  - For host runs (Django on your machine): `http://localhost:10101`.
+  - For Docker containers (macOS/Windows): `http://host.docker.internal:10101`.
   - Verify wiring at `GET /diagnostics` and check `memory_endpoint`.
 - A valid bearer token. In dev mode auth may be relaxed; otherwise add `-H "Authorization: Bearer <token>"` to the examples.
 
@@ -1521,11 +1521,11 @@ The retrieval and utility weights are now updated and persisted to Redis. Inspec
 
 | Symptom | Likely Cause | Fix |
 |---------|--------------|-----|
-| `503 memory backend unavailable` when calling `/remember` | HTTP memory service not reachable | Start the backend on port 9595 or disable the requirement for dev testing |
+| `503 memory backend unavailable` when calling `/remember` | HTTP memory service not reachable | Start the backend on port 10101 or disable the requirement for dev testing |
 | `/recall` returns empty lists | Write queued or memory backend empty | Check `/remember` response flags and the memory service logs |
 | `401 missing bearer token` | Auth enabled | Provide the correct API token; dev mode may relax auth for local testing |
 | High latency (>1 s) | Kafka/Redis not ready | Wait for health probes, then retry |
-| `/healthz` shows `"memory_ok": false` in Docker | Using `127.0.0.1` inside the container | Set `SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595` and verify via `GET /diagnostics` |
+| `/healthz` shows `"memory_ok": false` in Docker | Using `127.0.0.1` inside the container | Set `SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:10101` and verify via `GET /diagnostics` |
 
 If problems persist, consult the [FAQ](faq.md) and the [Technical Manual](../technical/index.md) for deeper diagnostics.
 # Installation Guide
@@ -1537,10 +1537,10 @@ If problems persist, consult the [FAQ](faq.md) and the [Technical Manual](../tec
 **Prerequisites**
 - Docker Desktop **or** a host with Docker Engine + Compose Plugin.
 - Python 3.11 (optional, for running the API directly).
-- An HTTP memory backend listening on port 9595.
+- An HTTP memory backend listening on port 10101.
 
 Important when using Docker Desktop:
-- Inside containers, `127.0.0.1` refers to the container itself. Point the API to the host memory service using `http://host.docker.internal:9595`.
+- Inside containers, `127.0.0.1` refers to the container itself. Point the API to the host memory service using `http://host.docker.internal:10101`.
 - The provided Dockerfile and dev scripts default to this safe value; you can verify wiring at `GET /diagnostics`.
 
 ---
@@ -1574,7 +1574,7 @@ Alternatively, use the helper script that writes a complete `.env`, builds the i
 ./scripts/dev_up.sh
 ```
 
-On Linux hosts where `host.docker.internal` doesn’t resolve inside containers, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to the host IP explicitly (e.g., `http://192.168.1.10:9595`).
+On Linux hosts where `host.docker.internal` doesn’t resolve inside containers, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to the host IP explicitly (e.g., `http://192.168.1.10:10101`).
 
 Verify the stack:
 
@@ -1597,7 +1597,7 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -U pip && pip install -e .[dev]
 
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595   # For direct host runs (Django)
+export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:10101   # For direct host runs (Django)
 export SOMABRAIN_MODE=development          # dev only (auth relaxed via mode)
 export SOMABRAIN_REQUIRE_MEMORY=0          # unless you have a live backend
 
@@ -1637,7 +1637,7 @@ If any check fails, consult [FAQ](faq.md) and `docker compose logs`.
 
 **Common Issues**
 
-- `503 memory backend unavailable` – the memory HTTP service on port 9595 was not reachable; either point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at a working endpoint or set `SOMABRAIN_REQUIRE_MEMORY=0` for non-production testing.
+- `503 memory backend unavailable` – the memory HTTP service on port 10101 was not reachable; either point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at a working endpoint or set `SOMABRAIN_REQUIRE_MEMORY=0` for non-production testing.
 - Port clashes on 9696 / 20001‑20007 – adjust exported ports in `.env`.
 - Kafka slow to start – wait for the broker healthcheck (`somabrain_standalone_kafka` container) before sending recall requests.
 - Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`). In dev mode, auth may be relaxed by policy.

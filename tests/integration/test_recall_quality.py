@@ -18,9 +18,8 @@ except Exception:
 from django.conf import settings
 from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
-
 # Use centralized Settings for test configuration
-MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
+MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:10101"
 MEM_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
 API_URL = settings.SOMABRAIN_API_URL or "http://localhost:30101"
 
@@ -35,7 +34,7 @@ def _memory_available() -> bool:
             r = httpx.get(f"{url}/health", timeout=2.0, headers=headers)
         except Exception:
             # Fallback to localhost if host.docker.internal is unreachable.
-            r = httpx.get("http://localhost:9595/health", timeout=2.0, headers=headers)
+            r = httpx.get("http://localhost:10101/health", timeout=2.0, headers=headers)
         return r.status_code < 500
     except Exception:
         return False

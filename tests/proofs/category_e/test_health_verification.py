@@ -419,7 +419,7 @@ class TestSFMIntegrationHealth:
         )
 
         # Get SFM endpoint from environment or use default
-        sfm_endpoint = os.environ.get("SFM_ENDPOINT", "http://localhost:9595")
+        sfm_endpoint = os.environ.get("SFM_ENDPOINT", "http://localhost:10101")
 
         # Call the health check function
         health: SFMIntegrationHealth = check_sfm_integration_health(
@@ -548,7 +548,7 @@ class TestSFMIntegrationHealth:
         async def run_async_check():
             """Execute run async check."""
 
-            sfm_endpoint = os.environ.get("SFM_ENDPOINT", "http://localhost:9595")
+            sfm_endpoint = os.environ.get("SFM_ENDPOINT", "http://localhost:10101")
             return await check_sfm_integration_health_async(
                 sfm_endpoint=sfm_endpoint,
                 timeout_s=2.0,

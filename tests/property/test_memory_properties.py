@@ -54,7 +54,7 @@ def test_memory_round_trip(key: str, payload: dict) -> None:
     client = MemoryClient(settings)
 
     mem_url = getattr(
-        settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595"
+        settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101"
     )
     if not _memory_service_available(mem_url):
         pytest.skip("Memory service not reachable; skipping round-trip property test")

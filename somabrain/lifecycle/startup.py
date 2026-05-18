@@ -15,7 +15,6 @@ import logging
 import time
 from typing import Any, Optional
 
-
 _logger = logging.getLogger("somabrain.lifecycle")
 """Module-level fallback logger used by startup handlers that accept an optional logger arg."""
 
@@ -339,7 +338,7 @@ async def startup_diagnostics(cfg: Any) -> None:
             )
         ):
             _log.warning(
-                "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
+                "Memory endpoint is localhost inside container; use host.docker.internal:10101 for Docker Desktop or a service DNS name."
             )
     except Exception:
         # never fail startup on diagnostics

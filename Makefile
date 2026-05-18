@@ -65,7 +65,7 @@ invariants:
 
 .PHONY: test-live
 test-live:
-	SOMABRAIN_TEST_LIVE_STACK=1 SOMA_API_URL=$${SOMA_API_URL:-http://127.0.0.1:9696} PYTHONPATH=. $(PYTEST) -q
+	SOMABRAIN_TEST_LIVE_STACK=1 SOMA_API_URL=$${SOMA_API_URL:-http://127.0.0.1:30101} PYTHONPATH=. $(PYTEST) -q
 
 lint:
 	$(RUFF) check .
@@ -83,13 +83,13 @@ docker-build:
 	docker build -f infra/standalone/Dockerfile -t $(IMAGE):$(TAG) .
 
 docker-run:
-	docker run --rm -p 9696:9696 -e SOMABRAIN_PORT=9696 $(IMAGE):$(TAG)
+	docker run --rm -p 30101:30101 -e SOMABRAIN_PORT=30101 $(IMAGE):$(TAG)
 
 docker-build-prod:
 	docker build -f infra/standalone/Dockerfile -t $(IMAGE):prod .
 
 docker-run-prod:
-	docker run --rm -p 9696:9696 -e SOMABRAIN_PORT=9696 $(IMAGE):prod
+	docker run --rm -p 30101:30101 -e SOMABRAIN_PORT=30101 $(IMAGE):prod
 
 docker-push:
 	@echo "Use: make docker-build-prod IMAGE=your/repo && docker push your/repo:prod"
@@ -136,7 +136,7 @@ clean:
 	rm -rf $(VENV) .pytest_cache .mypy_cache **/__pycache__
 
 # ---------------------------------------------------------------------------
-# Docker Compose (single API service on 9696; external memory on 9595)
+# Docker Compose (single API service on 30101; external memory on 10101)
 # ---------------------------------------------------------------------------
 PROJECT?=somabrain
 COMPOSE?=docker compose -f infra/standalone/docker-compose.yml -p $(PROJECT)
@@ -151,8 +151,8 @@ compose-up:
 	$(COMPOSE) up -d somabrain_standalone_app
 	@echo "Waiting for API health..."
 	@for i in $$(seq 1 20); do \
-		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
-			echo "API healthy on http://127.0.0.1:9696"; \
+		if curl -fsS http://127.0.0.1:30101/health >/dev/null; then \
+			echo "API healthy on http://127.0.0.1:30101"; \
 			exit 0; \
 		fi; \
 		sleep 1; \
@@ -172,7 +172,7 @@ compose-ps:
 	$(COMPOSE) ps
 
 compose-health:
-	curl -fsS http://127.0.0.1:9696/health | jq . || curl -fsS http://127.0.0.1:9696/health || true
+	curl -fsS http://127.0.0.1:30101/health | jq . || curl -fsS http://127.0.0.1:30101/health || true
 
 compose-clean:
 	$(COMPOSE) down --remove-orphans
@@ -196,7 +196,7 @@ start-servers:
 	@$(PORT_OVERRIDES) $(COMPOSE_CMD) up -d
 	@echo "Waiting for API health..."
 	@for i in $$(seq 1 40); do \
-		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
+		if curl -fsS http://127.0.0.1:30101/health >/dev/null; then \
 			echo "API healthy"; \
 			break; \
 		fi; \
@@ -219,7 +219,7 @@ full-setup: ## Build, migrate, start services and run memory e2e test
 	$(COMPOSE_CMD) up -d somabrain_standalone_app somabrain_standalone_postgres somabrain_standalone_kafka somabrain_standalone_redis
 	@echo "Waiting for API health..."
 	@for i in $$(seq 1 30); do \
-		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
+		if curl -fsS http://127.0.0.1:30101/health >/dev/null; then \
 			echo "API healthy"; \
 			break; \
 		fi; \
@@ -231,8 +231,8 @@ full-setup: ## Build, migrate, start services and run memory e2e test
 # Two canonical modes: dev (embedded small services) and prod-like (full stack)
 # ---------------------------------------------------------------------------
 
-# Force port normalization regardless of host env noise (standardize on 9696)
-PORT_OVERRIDES=REDIS_HOST_PORT=30100 KAFKA_EXPORTER_HOST_PORT=30103 PROMETHEUS_HOST_PORT=30105 POSTGRES_EXPORTER_HOST_PORT=30107 SOMABRAIN_HOST_PORT=9696
+# Force port normalization regardless of host env noise (standardize on 30101)
+PORT_OVERRIDES=REDIS_HOST_PORT=30100 KAFKA_EXPORTER_HOST_PORT=30103 PROMETHEUS_HOST_PORT=30105 POSTGRES_EXPORTER_HOST_PORT=30107 SOMABRAIN_HOST_PORT=30101
 
 # Use a stable compose project name without port suffix
 COMPOSE_CMD=docker compose -f infra/standalone/docker-compose.yml --env-file ./.env -p somabrain
@@ -242,7 +242,7 @@ up-prod-like:
 	@$(PORT_OVERRIDES) $(COMPOSE_CMD) up -d
 	@echo ""
 	@echo "Prod-like URLs:"
-	@echo "- API:            http://127.0.0.1:9696/health"
+	@echo "- API:            http://127.0.0.1:30101/health"
 	@echo "- Redis:          redis://127.0.0.1:30100"
 	@echo "- Kafka broker:   127.0.0.1:30102 (internal clients should use somabrain_standalone_kafka:9092)"
 	@echo "- OPA:            http://127.0.0.1:30104/health"
@@ -266,8 +266,8 @@ up-dev:
 	@echo "Starting simplified dev mode (embed reward+learner under main API)..."
 	@SOMABRAIN_MODE=dev SOMABRAIN_EMBED_DEV_SERVICES=1 $(PORT_OVERRIDES) $(COMPOSE_CMD) up -d --remove-orphans somabrain_standalone_redis somabrain_standalone_kafka somabrain_standalone_opa somabrain_standalone_postgres somabrain_standalone_app
 	@echo "Dev URLs:"
-	@echo "- API:            http://127.0.0.1:9696/health"
-	@echo "- Reward:         http://127.0.0.1:9696/reward/health"
-	@echo "- Learner:        http://127.0.0.1:9696/learner/health"
+	@echo "- API:            http://127.0.0.1:30101/health"
+	@echo "- Reward:         http://127.0.0.1:30101/reward/health"
+	@echo "- Learner:        http://127.0.0.1:30101/learner/health"
 
 # (Removed) cognition overlay and Linux host-gateway helpers to keep a single compose entrypoint

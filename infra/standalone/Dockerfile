@@ -174,14 +174,14 @@ RUN set -eux; \
 USER 1000:1000
 
 # Expose default API port (can be overridden)
-EXPOSE 9696
+EXPOSE 30101
 
 # Environment defaults (production-like for development parity)
 # Override at runtime with -e VAR=value as needed.
 # Default memory endpoint for Docker Desktop on macOS/Windows; override in compose/k8s as needed
-ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595 \
+ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:10101 \
     SOMABRAIN_HOST=0.0.0.0 \
-    SOMABRAIN_PORT=9696 \
+    SOMABRAIN_PORT=30101 \
     SOMABRAIN_WORKERS=1 \
     SOMABRAIN_FORCE_FULL_STACK=1 \
     SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1 \
@@ -193,6 +193,6 @@ COPY --chown=appuser:appuser --chmod=0755 infra/standalone/docker-entrypoint.sh 
 
 # Healthcheck against unified /health endpoint (matches compose and docs)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:-9696}/health" || exit 1
+    CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:-30101}/health" || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]
