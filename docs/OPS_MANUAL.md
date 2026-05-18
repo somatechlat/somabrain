@@ -159,7 +159,7 @@ Strict realism mandates authentic failure exposure; treat empty results as truth
 
 - Redis / Postgres / OPA
   - Redis URL (`SOMABRAIN_REDIS_URL`) reachable; minimal latency and maxmemory policy set
-  - Postgres reachable with migrations applied (`alembic upgrade head`)
+  - Postgres reachable with Django migrations applied (`python manage.py migrate`)
   - OPA URL/policy configured when enabled; enforce fail-closed posture
 
 - Environment
@@ -192,7 +192,7 @@ Strict realism mandates authentic failure exposure; treat empty results as truth
 
 ```sh
 # Apply DB migrations
-alembic upgrade head
+python manage.py migrate
 
 # Start core services (compose)
 docker compose -f docker-compose.yml up -d integrator calibration drift
@@ -474,7 +474,7 @@ References: `segmentation_service.py`, evaluator metrics `somabrain_segmentation
 
 ## 1. Overview
 
-SomaBrain implements a sophisticated degradation mode that ensures system resilience when the external memory service (port 9595) becomes unavailable. This document describes the degradation architecture, behavior, and recovery mechanisms.
+SomaBrain implements a sophisticated degradation mode that ensures system resilience when the external memory service (port 10101) becomes unavailable. This document describes the degradation architecture, behavior, and recovery mechanisms.
 
 ### 1.1 Design Principles
 
@@ -505,7 +505,7 @@ Per VIBE Coding Rules, the degradation system:
 │  └──────────────┘    └──────────────┘    └──────────────┘      │
 ├─────────────────────────────────────────────────────────────────┤
 │                    External Memory Service                       │
-│                    (http://localhost:9595)                       │
+│                    (http://localhost:10101)                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -766,7 +766,7 @@ Recall responses include degradation flag:
 **Symptoms**: Memory operations fail even after service recovery
 
 **Resolution**:
-1. Check memory service health: `curl http://localhost:9595/health`
+1. Check memory service health: `curl http://localhost:10101/health`
 2. Verify network connectivity from container
 3. Manually reset circuit if needed
 

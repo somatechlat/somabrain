@@ -1,7 +1,7 @@
 # SomaBrain - Agent Context
 
 > Purpose: Provide a single, accurate reference for agents working on the SomaBrain repo.
-> Last updated: 2026-01-01
+> Last updated: 2026-05-18
 
 ---
 
@@ -34,26 +34,27 @@ somabrain/
 │   ├── api/                   # API endpoints
 │   ├── services/              # Retrieval, integrator, predictors
 │   ├── memory/                # Memory logic and transport
-│   ├── settings.py            # Env-backed settings
-│   └── mode.py                # Deployment posture profiles
+│   ├── settings/              # Env-backed settings (django_core.py, infra.py, etc.)
+│   ├── core/mode.py           # Deployment posture profiles
+│   └── runtime/modes.py       # Runtime mode definitions
 ├── services/                  # Non-Django service processes
 ├── config/                    # Runtime config files
-├── docs/                      # Documentation
+├── docs/                      # Documentation (flat structure)
 │   ├── README.md              # Docs index
-│   ├── overview.md            # Product overview
-│   ├── development/           # Dev manual + VIBE rules
-│   ├── technical/             # Technical manual
-│   ├── user/                  # User manual
-│   ├── onboarding/            # Onboarding
-│   ├── operations/            # Ops + runbooks
-│   └── srs/                    # Requirements
+│   ├── ONBOARDING.md          # Project orientation
+│   ├── USER_GUIDE.md          # Usage guide
+│   ├── OPS_MANUAL.md          # Ops + runbooks
+│   ├── SRS_FULL.md            # Requirements
+│   ├── CONTRIBUTING.md        # Contribution guidelines
+│   ├── VIBE_RULES.md          # VIBE coding rules
+│   └── SomabrainGMD.md        # Mathematical notes
 ├── tests/                     # Test suites
 │   ├── unit/
 │   ├── integration/
 │   ├── smoke/                 # Manual smoke scripts (not pytest-collected)
 │   ├── benchmarks/
 │   └── support/
-└── docker-compose.yml          # Local stack
+└── infra/standalone/docker-compose.yml  # Local stack
 ```
 
 ---
@@ -61,8 +62,8 @@ somabrain/
 ## Key Runtime Entry Points
 
 - API router: `somabrain/api/v1.py`
-- Settings/env: `somabrain/settings.py`
-- Mode profiles: `somabrain/mode.py`
+- Settings/env: `somabrain/settings/django_core.py`, `somabrain/settings/infra.py`
+- Mode profiles: `somabrain/core/mode.py`, `somabrain/runtime/modes.py`
 - Retrieval pipeline: `somabrain/services/retrieval_pipeline.py`
 - Integrator hub: `somabrain/services/integrator_hub_triplet.py`
 - Predictors: `somabrain/predictors/base.py`
@@ -91,7 +92,7 @@ From `somabrain/settings.py`:
 
 ## Ports (Docker Compose Defaults)
 
-- API: host 30101 -> container 9696
+- API: 30101 (host and container)
 - Redis: 30100
 - Kafka: 30102
 - OPA: 30104
@@ -142,12 +143,12 @@ open http://localhost:10351
 
 ## Key Documentation
 
-- VIBE Coding Rules: `docs/development/VIBE_CODING_RULES.md`
+- VIBE Coding Rules: `docs/VIBE_RULES.md`
 - Docs index: `docs/README.md`
-- Overview: `docs/overview.md`
-- Deployment: `docs/deployment/`
-- Technical manual: `docs/technical/`
-- Runbooks: `docs/operations/`
+- Onboarding: `docs/ONBOARDING.md`
+- User Guide: `docs/USER_GUIDE.md`
+- OPS Manual: `docs/OPS_MANUAL.md`
+- SRS: `docs/SRS_FULL.md`
 
 ---
 
