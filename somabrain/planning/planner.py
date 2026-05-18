@@ -1,7 +1,7 @@
 """Graph-Informed Planner Module - REAL IMPLEMENTATION.
 
-This module provides BFS graph traversal planning using the EXISTING GraphClient.
-The GraphClient connects to SomaFractalMemory's /graph/neighbors endpoint.
+This module provides BFS graph traversal planning using the EXISTING MemoryClient.
+The MemoryClient connects to SomaFractalMemory's /graph/neighbors endpoint.
 
 NO STUBS. NO MOCKS. NO HARDCODED RETURNS.
 
@@ -14,7 +14,7 @@ import logging
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient, GraphNeighbor
+    from somabrain.memory.client import MemoryClient, GraphNeighbor
 
 from somabrain.metrics.planning import PLAN_GRAPH_UNAVAILABLE
 from somabrain.planning import coord_to_str, get_graph_client, task_key_to_coord
@@ -28,12 +28,12 @@ def plan_from_graph(
     max_steps: int = 5,
     rel_types: Optional[List[str]] = None,
     universe: Optional[str] = None,
-    graph_client: Optional["GraphClient"] = None,
+    graph_client: Optional["MemoryClient"] = None,
 ) -> List[str]:
     """
-    BFS graph traversal for planning using EXISTING GraphClient.
+    BFS graph traversal for planning using EXISTING MemoryClient.
 
-    This function uses the fully-implemented GraphClient which connects
+    This function uses the fully-implemented MemoryClient which connects
     to SFM's /graph/neighbors endpoint.
 
     Args:
@@ -42,16 +42,16 @@ def plan_from_graph(
         max_steps: Maximum number of planning steps to return
         rel_types: Optional list of relation types to filter by
         universe: Optional namespace/universe filter
-        graph_client: Optional GraphClient instance (extracted from mem if not provided)
+        graph_client: Optional MemoryClient instance (extracted from mem if not provided)
 
     Returns:
         List of task strings representing the plan
     """
-    # Get GraphClient from memory client if not provided directly
+    # Get MemoryClient from memory client if not provided directly
     graph = graph_client or get_graph_client(mem)
     if graph is None:
         PLAN_GRAPH_UNAVAILABLE.inc()
-        logger.warning("GraphClient not available for planning")
+        logger.warning("MemoryClient not available for planning")
         return []
 
     # Get starting coordinate from task_key
@@ -74,7 +74,7 @@ def plan_from_graph(
             continue
         visited.add(coord_str)
 
-        # Use EXISTING GraphClient.get_neighbors()
+        # Use EXISTING MemoryClient.get_neighbors()
         try:
             neighbors = graph.get_neighbors(
                 coord=current_coord,
@@ -83,7 +83,7 @@ def plan_from_graph(
                 link_type=rel_types[0] if rel_types else None,
             )
         except Exception as exc:
-            logger.warning("GraphClient.get_neighbors failed", error=str(exc))
+            logger.warning("MemoryClient.get_neighbors failed", error=str(exc))
             continue
 
         # Filter by rel_types if specified and multiple types given

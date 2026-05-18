@@ -7,10 +7,11 @@ from .transport import TransportMixin
 from .write import WriteMixin
 from .read import ReadMixin
 from .search import SearchMixin
+from .graph_ops import GraphOpsMixin
 from .serialization import _stable_coord
 
 
-class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin):
+class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsMixin):
     """Single gateway to the external memory service."""
 
     def __init__(

@@ -241,14 +241,14 @@ class TestGraphAugmentedRecall:
         from somabrain.memory.types import RecallHit
 
         # Create a minimal graph client that queries real SFM
-        from somabrain.memory.graph_client import GraphClient
+        from somabrain.memory.client import MemoryClient
         from somabrain.memory.transport import MemoryHTTPTransport
 
         transport = MemoryHTTPTransport(
             base_url=sfm_url,
             api_token=api_token,
         )
-        graph_client = GraphClient(transport, tenant=tenant_id)
+        graph_client = MemoryClient(transport, tenant=tenant_id)
 
         # Initial recall hits - A has high score, B has lower score
         initial_hits = [

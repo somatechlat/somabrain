@@ -16,14 +16,14 @@ import logging
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.client import MemoryClient
 
 logger = logging.getLogger(__name__)
 
 
-def get_graph_client(mem) -> Optional["GraphClient"]:
+def get_graph_client(mem) -> Optional["MemoryClient"]:
     """
-    Extract GraphClient from memory client.
+    Extract MemoryClient from memory client.
 
     The memory client may have a graph_client attribute or we can
     construct one from its transport.
@@ -32,7 +32,7 @@ def get_graph_client(mem) -> Optional["GraphClient"]:
         mem: Memory client instance
 
     Returns:
-        GraphClient instance or None if not available
+        MemoryClient instance or None if not available
     """
     if mem is None:
         return None
@@ -48,13 +48,13 @@ def get_graph_client(mem) -> Optional["GraphClient"]:
     # Try to construct from transport
     if hasattr(mem, "_transport") and mem._transport is not None:
         try:
-            from somabrain.memory.graph_client import GraphClient
+            from somabrain.memory.client import MemoryClient
 
             tenant = getattr(mem, "_tenant", "default")
-            return GraphClient(mem._transport, tenant=tenant)
+            return MemoryClient(mem._transport, tenant=tenant)
         except Exception as exc:
             logger.debug(
-                "Could not construct GraphClient from transport", error=str(exc)
+                "Could not construct MemoryClient from transport", error=str(exc)
             )
 
     return None

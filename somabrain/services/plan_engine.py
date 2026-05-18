@@ -1,7 +1,7 @@
 """Unified Plan Engine - Single entrypoint for all planning.
 
 This module provides PlanEngine as the single planning entrypoint,
-using the REAL BFS and RWR implementations that connect to GraphClient.
+using the REAL BFS and RWR implementations that connect to MemoryClient.
 
 NO STUBS. NO MOCKS. Uses EXISTING infrastructure.
 
@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 import numpy as np
 
 if TYPE_CHECKING:
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.client import MemoryClient
 
 from somabrain.metrics.planning import PLAN_EMPTY, PLAN_LATENCY
 from somabrain.planning.planner import plan_from_graph
@@ -93,7 +93,7 @@ class PlanEngine:
     """Single planning entrypoint using EXISTING infrastructure.
 
     This engine uses the REAL BFS and RWR implementations that
-    connect to GraphClient for graph traversal.
+    connect to MemoryClient for graph traversal.
 
     Requirements: 6.1-6.5
     """
@@ -102,14 +102,14 @@ class PlanEngine:
         self,
         cfg: Any,
         mem_client: Any = None,
-        graph_client: Optional["GraphClient"] = None,
+        graph_client: Optional["MemoryClient"] = None,
     ):
         """Initialize PlanEngine.
 
         Args:
             cfg: Configuration object with planner settings
             mem_client: Memory client for graph access
-            graph_client: Optional GraphClient instance
+            graph_client: Optional MemoryClient instance
         """
         self._cfg = cfg
         self._mem = mem_client

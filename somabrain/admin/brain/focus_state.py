@@ -21,7 +21,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from somabrain.context_hrr import HRRContext
-    from somabrain.memory.graph_client import GraphClient
+    from somabrain.memory.client import MemoryClient
 
 from somabrain.metrics.planning import FOCUS_PERSIST, FOCUS_UPDATE_LATENCY
 
@@ -212,14 +212,14 @@ class FocusState:
 
     def create_links(
         self,
-        graph_client: Optional["GraphClient"],
+        graph_client: Optional["MemoryClient"],
         used_memory_ids: List[str],
         selected_option_ids: Optional[List[str]] = None,
     ) -> None:
-        """Create focus chain links using EXISTING GraphClient.
+        """Create focus chain links using EXISTING MemoryClient.
 
         Args:
-            graph_client: GraphClient for link creation
+            graph_client: MemoryClient for link creation
             used_memory_ids: IDs of memories used in this step
             selected_option_ids: IDs of options selected
 
@@ -244,7 +244,7 @@ class FocusState:
                     strength=1.0,
                 )
             except Exception as exc:
-                # GraphClient queues to outbox on failure (Requirement 9.4)
+                # MemoryClient queues to outbox on failure (Requirement 9.4)
                 logger.debug(f"Focus next link failed: {exc}")
 
         # "attends_to" edges to used memories (Requirement 9.2)
