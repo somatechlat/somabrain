@@ -60,8 +60,8 @@ class TestCoRecalledLinks:
         """
         import httpx
 
-        sfm_url = os.environ.get("SFM_URL", "http://localhost:9595")
-        api_token = os.environ.get("SOMA_API_TOKEN", "devtoken")
+        sfm_url = os.environ.get("SFM_URL", "http://localhost:10101")
+        api_token = os.environ.get("SOMA_API_TOKEN", "")
         tenant_id = f"test_corecall_{uuid.uuid4().hex[:8]}"
 
         headers = {
@@ -177,8 +177,8 @@ class TestGraphAugmentedRecall:
         """
         import httpx
 
-        sfm_url = os.environ.get("SFM_URL", "http://localhost:9595")
-        api_token = os.environ.get("SOMA_API_TOKEN", "devtoken")
+        sfm_url = os.environ.get("SFM_URL", "http://localhost:10101")
+        api_token = os.environ.get("SOMA_API_TOKEN", "")
         tenant_id = f"test_boost_{uuid.uuid4().hex[:8]}"
 
         headers = {
@@ -356,8 +356,8 @@ class TestShortestPathQueries:
         """
         import httpx
 
-        sfm_url = os.environ.get("SFM_URL", "http://localhost:9595")
-        api_token = os.environ.get("SOMA_API_TOKEN", "devtoken")
+        sfm_url = os.environ.get("SFM_URL", "http://localhost:10101")
+        api_token = os.environ.get("SOMA_API_TOKEN", "")
         tenant_id = f"test_path_{uuid.uuid4().hex[:8]}"
 
         headers = {
@@ -425,8 +425,8 @@ class TestShortestPathQueries:
         """
         import httpx
 
-        sfm_url = os.environ.get("SFM_URL", "http://localhost:9595")
-        api_token = os.environ.get("SOMA_API_TOKEN", "devtoken")
+        sfm_url = os.environ.get("SFM_URL", "http://localhost:10101")
+        api_token = os.environ.get("SOMA_API_TOKEN", "")
         tenant_id = f"test_nopath_{uuid.uuid4().hex[:8]}"
 
         headers = {

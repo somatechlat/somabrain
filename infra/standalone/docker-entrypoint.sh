@@ -11,8 +11,10 @@ fi
 
 # Allow overriding host, port, workers, and extra args
 HOST="${SOMABRAIN_HOST:-0.0.0.0}"
-PORT="${SOMABRAIN_PORT:-9696}"
+PORT="${SOMABRAIN_PORT:-30101}"
 EXTRA_ARGS="${SOMABRAIN_EXTRA_ARGS}"
+TMPDIR="${TMPDIR:-/tmp}"
+export TMPDIR
 
 # Print config for debugging
 echo "Starting SomaBrain Django API on $HOST:$PORT"
@@ -67,26 +69,38 @@ fi
 echo "Running Django migrations..."
 python3 manage.py migrate --noinput 2>&1 || {
   echo "Standard migrate failed; trying --fake-initial for pre-existing tables"
-  python3 manage.py migrate --fake-initial --noinput 2>&1 || echo "Migration warning (continuing anyway)"
+  python3 manage.py migrate --fake-initial --noinput 2>&1 || {
+    echo "ERROR: Django migrations failed; refusing to start." >&2
+    exit 1
+  }
 }
 
-# Collect static files for Django admin
-python3 manage.py collectstatic --noinput 2>/dev/null || true
+# Collect static files only when explicitly requested.
+if [ "${SOMABRAIN_COLLECTSTATIC:-0}" = "1" ]; then
+  python3 manage.py collectstatic --noinput
+fi
 
-# Initialize runtime singletons (idempotent). Important when backend enforcement is enabled.
-if [ -x "/app/scripts/initialize_runtime.py" ] || [ -f "/app/scripts/initialize_runtime.py" ]; then
+# Optional eager runtime bootstrap. Default off because Django startup should
+# remain fast and non-blocking; runtime singletons are otherwise lazy.
+if [ "${SOMABRAIN_INIT_RUNTIME:-0}" = "1" ] && { [ -x "/app/scripts/initialize_runtime.py" ] || [ -f "/app/scripts/initialize_runtime.py" ]; }; then
   echo "Running initialize_runtime.py to prepare runtime singletons"
-  python3 /app/scripts/initialize_runtime.py || echo "initialize_runtime.py exited with non-zero status"
+  python3 /app/scripts/initialize_runtime.py || {
+    echo "ERROR: initialize_runtime.py failed; refusing to start." >&2
+    exit 1
+  }
 fi
 
 # Execute Django runserver (development) or gunicorn (production)
 # Pure Django - NO UVICORN per VIBE rules
-if [ "${SOMABRAIN_MODE:-}" = "production" ]; then
+SERVER_MODE="${SOMA_DEPLOY_MODE:-${SOMABRAIN_MODE:-}}"
+SERVER_MODE="$(printf '%s' "$SERVER_MODE" | tr '[:upper:]' '[:lower:]')"
+if [ "${RUNNING_IN_DOCKER:-}" = "true" ] || [ "$SERVER_MODE" = "production" ] || [ "$SERVER_MODE" = "prod" ] || [ "$SERVER_MODE" = "enterprise" ] || [ "$SERVER_MODE" = "full-local" ] || [ "$SERVER_MODE" = "standalone" ]; then
   echo "Starting gunicorn (production mode)"
   exec gunicorn somabrain.wsgi:application \
     --bind "$HOST:$PORT" \
     --workers "${SOMABRAIN_WORKERS:-2}" \
     --timeout 120 \
+    --worker-tmp-dir "$TMPDIR" \
     --access-logfile - \
     --error-logfile -
 else

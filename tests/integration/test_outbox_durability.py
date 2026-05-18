@@ -14,7 +14,7 @@ from somabrain.services.outbox_sync import _send_event
 from somabrain.admin.core.models import OutboxEvent
 
 # Use centralized Settings for test configuration
-MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
+MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:10101"
 MEM_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
 
 
@@ -27,7 +27,7 @@ def _memory_available() -> bool:
         try:
             r = httpx.get(f"{url}/health", timeout=2.0, headers=headers)
         except Exception:
-            r = httpx.get("http://localhost:9595/health", timeout=2.0, headers=headers)
+            r = httpx.get("http://localhost:10101/health", timeout=2.0, headers=headers)
         return r.status_code < 500
     except Exception:
         return False

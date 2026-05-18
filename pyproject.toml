@@ -72,9 +72,14 @@ dev = [
   "pytest",
   "pytest-django",
   "pytest-asyncio",
+  "pytest-benchmark",
   "black",
   "ruff",
   "mypy",
+  "django-stubs[compatible-mypy]",
+  "types-hvac",
+  "types-requests",
+  "types-jsonschema",
   "maturin",
 ]
 
@@ -86,7 +91,7 @@ packages = { find = { where = ["."], include = ["somabrain*"], exclude = ["tests
 
 [tool.black]
 line-length = 88
-target-version = ["py310"]
+target-version = ["py312"]
 skip-string-normalization = false
 
 [tool.isort]
@@ -120,6 +125,26 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".git", ".venv", "venv", "node_modules", "build", "dist"]
 filterwarnings = [
     "ignore::pytest.PytestRemovedIn9Warning",
+]
+markers = [
+  "integration: exercises real service integrations",
+  "property: property-based and invariant tests",
+  "degraded_mode: degraded-mode resilience checks",
+  "performance: performance-sensitive or latency tests",
+  "slow: longer-running tests",
+  "unit: unit-level tests",
+  "infrastructure: infrastructure integration checks",
+  "circuit_breaker: circuit breaker behavior checks",
+  "cognitive_proof: cognitive proof validations",
+  "isolation_proof: isolation proof validations",
+  "iso_interoperability: interoperability proof coverage",
+  "iso_reliability: reliability proof coverage",
+  "iso_security: security proof coverage",
+  "math_proof: mathematical proof coverage",
+  "memory_proof: memory-system proof coverage",
+  "tenant_isolation: tenant isolation validations",
 ]

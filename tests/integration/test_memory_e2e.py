@@ -16,7 +16,7 @@ its purpose is to verify end‑to‑end connectivity without mocking any part of
 the stack.
 
 The test expects the environment variable ``SOMABRAIN_MEMORY_HTTP_ENDPOINT``
-to point at a running memory service (default ``http://localhost:9595``). If the
+to point at a running memory service (default ``http://localhost:10101``). If the
 service is unavailable the test will be skipped.
 """
 
@@ -39,6 +39,7 @@ def _service_available() -> bool:
     )
     try:
         from tests.integration.infra_config import AUTH
+
         headers = {"Authorization": f"Bearer {AUTH['api_token']}"}
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.get("/health", headers=headers)
@@ -74,7 +75,9 @@ def test_memory_remember_and_recall() -> None:
         )
 
     if not _service_available():
-        endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")
+        endpoint = getattr(
+            settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101"
+        )
         pytest.fail(f"Memory service not reachable at {endpoint} - test failed")
 
     from tests.integration.infra_config import AUTH

@@ -32,9 +32,9 @@ fi
 # 2. Export OpenAPI JSON (machine‑readable).
 # ---------------------------------------------------------------------------
 # The FastAPI app exposes its OpenAPI schema at /openapi.json. We assume the
-# service is already running on the canonical port (default 9696). If the
+# service is already running on the canonical port (default 30101). If the
 # endpoint is unavailable we log the failure but do not abort the script.
-OPENAPI_URL="http://127.0.0.1:9696/openapi.json"
+OPENAPI_URL="http://127.0.0.1:30101/openapi.json"
 OPENAPI_DEST="docs/openapi.json"
 
 if curl -sSf "$OPENAPI_URL" -o "$OPENAPI_DEST"; then

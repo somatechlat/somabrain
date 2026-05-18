@@ -868,7 +868,7 @@ SOMA_DB_PASSWORD=somastack2024
 REDIS_URL=redis://:somastack2024@localhost:20379/1
 
 # Memory Service
-SOMA_MEMORY_URL=http://localhost:9595
+SOMA_MEMORY_URL=http://localhost:10101
 SOMA_MEMORY_API_TOKEN=your-token
 
 # Milvus (Vector DB)
@@ -1285,7 +1285,7 @@ audit.log_admin_action(request, "neuromodulators_set", {
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- External memory service running at `http://localhost:9595`
+- External memory service running at `http://localhost:10101`
 - 2GB RAM available
 
 ## Quick Start (Code-Verified Steps)
@@ -1406,7 +1406,7 @@ curl -X POST http://localhost:9696/recall \
 **Required**:
 
 ```bash
-SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:9595"
+SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:10101"
 SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"  # Required - set your actual token
 ```
 
@@ -1447,7 +1447,7 @@ rate_rps: 50.0
 
 ```bash
 # Check memory service is running
-curl http://localhost:9595/health
+curl http://localhost:10101/health
 
 # Verify endpoint in config
 echo $SOMABRAIN_MEMORY_HTTP_ENDPOINT
@@ -1606,7 +1606,7 @@ You're ready to build when:
 
 ```bash
 # Memory Backend (REQUIRED)
-SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:9595"
+SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:10101"
 SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"  # Required - set your actual token
 
 # Redis
@@ -1804,7 +1804,7 @@ score = w_cosine * cosine(q, c) + w_fd * fd_sim(q, c) + w_recency * exp(-age/tau
 
 **Required Config**:
 ```python
-http.endpoint = "http://localhost:9595"  # SOMABRAIN_MEMORY_HTTP_ENDPOINT
+http.endpoint = "http://localhost:10101"  # SOMABRAIN_MEMORY_HTTP_ENDPOINT
 http.token = "<YOUR_TOKEN_HERE>"          # SOMABRAIN_MEMORY_HTTP_TOKEN (required)
 ```
 

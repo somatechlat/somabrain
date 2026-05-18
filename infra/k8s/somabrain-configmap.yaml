@@ -2,8 +2,8 @@
 # SOMABRAIN KUBERNETES CONFIGMAP
 # Centralized Configuration for All Services
 # ============================================
-# WARNING: DEVELOPMENT CREDENTIALS - CHANGE IN PRODUCTION!
-# All passwords, secrets, and tokens MUST be changed before production deployment
+# Keep secrets out of tracked manifests. Inject them at deploy time via
+# Secret resources, sealed-secrets, or an external secrets operator.
 # ============================================
 
 apiVersion: v1
@@ -15,7 +15,7 @@ metadata:
     app: somabrain
   annotations:
     description: "Centralized configuration for SomaBrain cluster"
-    warning: "DEVELOPMENT CREDENTIALS - CHANGE ALL SECRETS IN PRODUCTION"
+    warning: "Secrets must be injected at deploy time"
 data:
   # --- API Configuration ---
   SOMABRAIN_HOST: "0.0.0.0"
@@ -43,8 +43,8 @@ data:
   SOMABRAIN_REDIS_URL: "redis://somabrain-redis.somabrain.svc.cluster.local:6379/0"
   SOMABRAIN_KAFKA_URL: "kafka://somabrain-kafka.somabrain.svc.cluster.local:9092"
   SOMABRAIN_OPA_URL: "http://somabrain-opa.somabrain.svc.cluster.local:8181"
-  SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_dev_pass@somabrain-postgres.somabrain.svc.cluster.local:5432/somabrain"
-  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+  SOMABRAIN_POSTGRES_DSN: ""
+  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:10101"
   
   # --- External Access URLs (LoadBalancer) ---
   K8S_SOMABRAIN_API_URL: "http://localhost:20020"
@@ -52,7 +52,7 @@ data:
   K8S_SOMABRAIN_KAFKA_URL: "kafka://localhost:20022"
   K8S_SOMABRAIN_OPA_URL: "http://localhost:20024"
   K8S_SOMABRAIN_PROMETHEUS_URL: "http://localhost:20025"
-  K8S_SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_dev_pass@localhost:20026/somabrain"
+  K8S_SOMABRAIN_POSTGRES_DSN: ""
   
   # --- Redis Configuration ---
   REDIS_HOST: "somabrain-redis.somabrain.svc.cluster.local"
@@ -98,17 +98,16 @@ data:
   SOMABRAIN_OPA_SCHEME: "http"
   
   # --- PostgreSQL Configuration ---
-  # WARNING: DEVELOPMENT CREDENTIALS - CHANGE IN PRODUCTION!
   POSTGRES_HOST: "somabrain-postgres.somabrain.svc.cluster.local"
   POSTGRES_PORT: "5432"
   POSTGRES_DB: "somabrain"
   
   # --- Memory Service Configuration ---
   SOMABRAIN_MEMORY_HTTP_HOST: "host.docker.internal"
-  SOMABRAIN_MEMORY_HTTP_PORT: "9595"
+  SOMABRAIN_MEMORY_HTTP_PORT: "10101"
   SOMABRAIN_MEMORY_HTTP_SCHEME: "http"
-  SOMABRAIN_HTTP_ENDPOINT: "http://host.docker.internal:9595"
-  MEMORY_SERVICE_URL: "http://host.docker.internal:9595"
+  SOMABRAIN_HTTP_ENDPOINT: "http://host.docker.internal:10101"
+  MEMORY_SERVICE_URL: "http://host.docker.internal:10101"
   
   # --- SomaBrain Feature Flags ---
   SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
@@ -161,20 +160,16 @@ metadata:
     app: somabrain
   annotations:
     description: "Sensitive credentials for SomaBrain"
-    warning: "DEVELOPMENT CREDENTIALS - CHANGE ALL VALUES IN PRODUCTION!"
+    warning: "Inject secrets at deploy time"
 type: Opaque
 stringData:
-  # WARNING: DEVELOPMENT CREDENTIALS ONLY - CHANGE IN PRODUCTION!
-  # These are placeholder development credentials
-  # MUST be replaced with secure values before production deployment
-  
   POSTGRES_USER: "soma"
-  POSTGRES_PASSWORD: "soma_dev_pass_CHANGE_IN_PRODUCTION"
+  POSTGRES_PASSWORD: ""
   
-  SOMABRAIN_MEMORY_HTTP_TOKEN: "dev-token-CHANGE_IN_PRODUCTION"
+  SOMABRAIN_MEMORY_HTTP_TOKEN: ""
   
   # JWT Configuration (if needed)
-  SOMABRAIN_JWT_SECRET: "dev-jwt-secret-CHANGE_IN_PRODUCTION"
+  SOMABRAIN_JWT_SECRET: ""
   
   # API Token (if needed)
-  SOMABRAIN_API_TOKEN: "dev-api-token-CHANGE_IN_PRODUCTION"
+  SOMABRAIN_API_TOKEN: ""

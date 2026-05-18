@@ -65,6 +65,6 @@ env:
   SOMABRAIN_HOST: "0.0.0.0"
   SOMABRAIN_PORT: "30101"
   SOMABRAIN_MODE: "full-local"
-  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:10101"
 
 secretName: somabrain-secrets

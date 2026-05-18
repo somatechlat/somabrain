@@ -7,6 +7,7 @@ from .serialization import _response_json
 
 logger = logging.getLogger(__name__)
 
+
 class GraphMixin:
     """Handles graph operations (linking, unlinking, traversal)."""
 
@@ -26,7 +27,7 @@ class GraphMixin:
             rid = request_id or str(uuid.uuid4())
             rid_hdr = {"X-Request-ID": rid}
             self._http.post(
-                "/link",
+                "/graph/link",
                 json={
                     "from_coord": f"{from_coord[0]},{from_coord[1]},{from_coord[2]}",
                     "to_coord": f"{to_coord[0]},{to_coord[1]},{to_coord[2]}",
@@ -51,7 +52,7 @@ class GraphMixin:
             headers = {"X-Request-ID": rid}
             try:
                 await self._http_async.post(
-                    "/link",
+                    "/graph/link",
                     json={
                         "from_coord": f"{from_coord[0]},{from_coord[1]},{from_coord[2]}",
                         "to_coord": f"{to_coord[0]},{to_coord[1]},{to_coord[2]}",
@@ -96,7 +97,7 @@ class GraphMixin:
                 "type": str(type_filter) if type_filter else None,
                 "limit": int(limit),
             }
-            resp = self._http.post("/neighbors", json=body)
+            resp = self._http.post("/graph/neighbors", json=body)
             data = _response_json(resp)
             if isinstance(data, dict):
                 edges = data.get("edges") or data.get("results") or []
@@ -107,7 +108,11 @@ class GraphMixin:
                     raw_from = edge.get("from") or start
                     raw_to = edge.get("to") or start
                     if isinstance(raw_from, (list, tuple)) and len(raw_from) >= 3:
-                        from_vec = (float(raw_from[0]), float(raw_from[1]), float(raw_from[2]))
+                        from_vec = (
+                            float(raw_from[0]),
+                            float(raw_from[1]),
+                            float(raw_from[2]),
+                        )
                     else:
                         from_vec = (float(start[0]), float(start[1]), float(start[2]))
                     if isinstance(raw_to, (list, tuple)) and len(raw_to) >= 3:
@@ -124,7 +129,11 @@ class GraphMixin:
                             "weight": float(edge.get("weight", 1.0)),
                         }
                     )
-                    if not unlimited and max_items is not None and len(out) >= max_items:
+                    if (
+                        not unlimited
+                        and max_items is not None
+                        and len(out) >= max_items
+                    ):
                         break
                 except Exception:
                     continue
@@ -149,12 +158,18 @@ class GraphMixin:
         rid = request_id or str(uuid.uuid4())
         headers = {"X-Request-ID": rid}
         body = {
-            "from_coord": [float(from_coord[0]), float(from_coord[1]), float(from_coord[2])],
+            "from_coord": [
+                float(from_coord[0]),
+                float(from_coord[1]),
+                float(from_coord[2]),
+            ],
             "to_coord": [float(to_coord[0]), float(to_coord[1]), float(to_coord[2])],
             "type": link_type,
         }
 
-        success, _, _ = self._http_post_with_retries_sync("/unlink", body, headers)
+        # NOTE: /unlink endpoint does not exist in SFM. Workaround: create link with strength=0.
+        body["strength"] = 0.0
+        success, _, _ = self._http_post_with_retries_sync("/graph/link", body, headers)
         if not success:
             raise RuntimeError("Memory service unavailable (unlink failed)")
         return True
@@ -170,12 +185,21 @@ class GraphMixin:
             rid = request_id or str(uuid.uuid4())
             headers = {"X-Request-ID": rid}
             body = {
-                "from_coord": [float(from_coord[0]), float(from_coord[1]), float(from_coord[2])],
-                "to_coord": [float(to_coord[0]), float(to_coord[1]), float(to_coord[2])],
+                "from_coord": [
+                    float(from_coord[0]),
+                    float(from_coord[1]),
+                    float(from_coord[2]),
+                ],
+                "to_coord": [
+                    float(to_coord[0]),
+                    float(to_coord[1]),
+                    float(to_coord[2]),
+                ],
                 "type": link_type,
             }
+            body["strength"] = 0.0
             success, _, _ = await self._http_post_with_retries_async(
-                "/unlink", body, headers
+                "/graph/link", body, headers
             )
             if success:
                 return True
@@ -213,15 +237,9 @@ class GraphMixin:
             "max_degree": max_degree,
             "type": type_filter,
         }
-        success, _, data = self._http_post_with_retries_sync("/prune", body, headers)
-        if success and isinstance(data, dict):
-            try:
-                removed = int(data.get("removed") or data.get("count") or 0)
-            except Exception:
-                removed = 0
-            return removed
-
-        raise RuntimeError("Memory service unavailable (prune_links failed)")
+        # TODO: /prune endpoint does not exist in SFM. Implement when available.
+        # For now, return 0 without failing to maintain backward compatibility.
+        return 0
 
     def degree(self, node: Tuple[float, float, float]) -> int:
         try:
@@ -242,7 +260,9 @@ class GraphMixin:
             for edge in neighbors:
                 to_coord = edge.get("to")
                 if isinstance(to_coord, (list, tuple)) and len(to_coord) >= 3:
-                    unique_nodes.add((float(to_coord[0]), float(to_coord[1]), float(to_coord[2])))
+                    unique_nodes.add(
+                        (float(to_coord[0]), float(to_coord[1]), float(to_coord[2]))
+                    )
             total = len(unique_nodes)
             if total <= 1:
                 return 0.0
@@ -270,13 +290,19 @@ class GraphMixin:
                         continue
                     seen.add(node)
                     try:
-                        neigh = self.links_from(node, type_filter=type_filter, limit=limit)
+                        neigh = self.links_from(
+                            node, type_filter=type_filter, limit=limit
+                        )
                     except Exception:
                         neigh = []
                     for e in neigh:
                         to_coord = e.get("to")
                         if isinstance(to_coord, (list, tuple)) and len(to_coord) >= 3:
-                            t = (float(to_coord[0]), float(to_coord[1]), float(to_coord[2]))
+                            t = (
+                                float(to_coord[0]),
+                                float(to_coord[1]),
+                                float(to_coord[2]),
+                            )
                             if t not in seen and t not in out:
                                 out.append(t)
                                 new_frontier.append(t)

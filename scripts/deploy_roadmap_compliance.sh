@@ -18,18 +18,18 @@ function check_services() {
     echo "🔍 Checking service health..."
     
     # Check main API
-    if curl -s -f http://localhost:9696/health > /dev/null; then
-        echo "${GREEN}✅ Main API (9696) is healthy${NC}"
+    if curl -s -f http://localhost:30101/health > /dev/null; then
+        echo "${GREEN}✅ Main API (30101) is healthy${NC}"
     else
-        echo "${RED}❌ Main API (9696) is not responding${NC}"
+        echo "${RED}❌ Main API (30101) is not responding${NC}"
         return 1
     fi
     
     # Check memory service
-    if curl -s -f http://localhost:9595/health > /dev/null; then
-        echo "${GREEN}✅ Memory service (9595) is healthy${NC}"
+    if curl -s -f http://localhost:10101/health > /dev/null; then
+        echo "${GREEN}✅ Memory service (10101) is healthy${NC}"
     else
-        echo "${RED}❌ Memory service (9595) is not responding${NC}"
+        echo "${RED}❌ Memory service (10101) is not responding${NC}"
         return 1
     fi
     
@@ -131,14 +131,14 @@ function verify_features() {
     sleep 5
     
     # Check features endpoint
-    if curl -s http://localhost:9696/features | grep -q "fusion_normalization.*true"; then
+    if curl -s http://localhost:30101/features | grep -q "fusion_normalization.*true"; then
         echo "${GREEN}✅ Fusion normalization enabled${NC}"
     else
         echo "${YELLOW}⚠️  Fusion normalization might not be enabled${NC}"
     fi
     
     # Check metrics for calibration
-    if curl -s http://localhost:9696/metrics | grep -q "calibration"; then
+    if curl -s http://localhost:30101/metrics | grep -q "calibration"; then
         echo "${GREEN}✅ Calibration metrics detected${NC}"
     else
         echo "${YELLOW}⚠️  Calibration metrics not detected${NC}"

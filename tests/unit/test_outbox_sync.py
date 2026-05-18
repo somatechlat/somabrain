@@ -26,7 +26,7 @@ def _memory_available(url: str) -> bool:
 
 
 # Use centralized Settings for test configuration
-MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
+MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:10101"
 
 
 @pytest.fixture
