@@ -31,7 +31,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, TextIO
 
 # NOTE: The journal configuration pulls values from the global ``settings``
 # object defined in ``common.config.settings``. The original implementation
@@ -81,13 +81,19 @@ class JournalConfig:
         for consistent environment variable handling.
         """
         return cls(
-            journal_dir=str(settings.SOMABRAIN_JOURNAL_DIR),
-            max_file_size=int(settings.SOMABRAIN_JOURNAL_MAX_FILE_SIZE),
-            max_files=int(settings.journal_max_files),
-            rotation_interval=int(settings.journal_rotation_interval),
-            retention_days=int(settings.journal_retention_days),
-            compression=bool(settings.journal_compression),
-            sync_writes=bool(settings.journal_sync_writes),
+            journal_dir=str(
+                getattr(settings, "SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal")
+            ),
+            max_file_size=int(
+                getattr(settings, "SOMABRAIN_JOURNAL_MAX_FILE_SIZE", 104857600)
+            ),
+            max_files=int(getattr(settings, "journal_max_files", 10)),
+            rotation_interval=int(
+                getattr(settings, "journal_rotation_interval", 86400)
+            ),
+            retention_days=int(getattr(settings, "journal_retention_days", 7)),
+            compression=bool(getattr(settings, "journal_compression", True)),
+            sync_writes=bool(getattr(settings, "journal_sync_writes", True)),
         )
 
 
@@ -95,17 +101,17 @@ class JournalConfig:
 class JournalEvent:
     """Journal event data structure."""
 
-    id: str
+    id: str | int
     topic: str
     payload: Dict[str, Any]
     tenant_id: Optional[str] = None
     dedupe_key: Optional[str] = None
-    timestamp: datetime = None
+    timestamp: datetime | None = None
     status: str = "pending"  # pending, sent, failed
     retries: int = 0
     last_error: Optional[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Execute post init  ."""
 
         if self.timestamp is None:
@@ -113,6 +119,10 @@ class JournalEvent:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert event to dictionary for JSON serialization."""
+        if self.timestamp is None:
+            raise RuntimeError(
+                "JournalEvent timestamp must be set before serialization"
+            )
         data = asdict(self)
         data["timestamp"] = self.timestamp.isoformat()
         return data
@@ -143,13 +153,13 @@ class LocalJournal:
         Concurrent writes from multiple threads are serialized through the lock.
     """
 
-    def __init__(self, config: JournalConfig):
+    def __init__(self, config: JournalConfig) -> None:
         """Initialize the instance."""
 
         self.config = config
         self.journal_dir = Path(config.journal_dir)
         self.current_file: Optional[Path] = None
-        self.current_file_handle = None
+        self.current_file_handle: TextIO | None = None
         self.current_file_size = 0
         self.last_rotation = time.time()
         self._lock = threading.RLock()  # Reentrant lock for nested method calls
@@ -324,7 +334,11 @@ class LocalJournal:
                                     continue
                                 if topic and event.topic != topic:
                                     continue
-                                if since and event.timestamp < since:
+                                if (
+                                    since
+                                    and event.timestamp
+                                    and event.timestamp < since
+                                ):
                                     continue
 
                                 events.append(event)
@@ -346,7 +360,7 @@ class LocalJournal:
 
         return events
 
-    def mark_events_sent(self, event_ids: Sequence[str]) -> int:
+    def mark_events_sent(self, event_ids: Sequence[str | int]) -> int:
         """Mark events as sent in the journal."""
 
         # For file-based journal, we need to rewrite the files
@@ -398,7 +412,7 @@ class LocalJournal:
         self.last_rotation = time.time()
 
         # Write events in chronological order
-        events.sort(key=lambda x: x.timestamp)
+        events.sort(key=lambda event: event.timestamp or datetime.min)
         for event in events:
             self._write_event(event)
 
@@ -499,7 +513,12 @@ def init_journal(config: Optional[JournalConfig] = None) -> LocalJournal:
         config = JournalConfig.from_env()
 
     # Register factory that returns journal with custom config
-    container.register("journal", lambda c=config: LocalJournal(c))
+    resolved_config = config
+
+    def _journal_factory() -> LocalJournal:
+        return LocalJournal(resolved_config)
+
+    container.register("journal", _journal_factory)
     return container.get("journal")
 
 

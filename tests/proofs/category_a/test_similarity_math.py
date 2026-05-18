@@ -27,7 +27,6 @@ from somabrain.math.similarity import (
 )
 from somabrain.admin.core.numerics import normalize_array
 
-
 # ---------------------------------------------------------------------------
 # Hypothesis Strategies
 # ---------------------------------------------------------------------------

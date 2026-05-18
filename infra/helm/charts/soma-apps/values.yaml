@@ -101,7 +101,7 @@ envCommon:
   SOMABRAIN_MEMORY_HTTP_ENDPOINT: ""
   SOMABRAIN_REDIS_URL: "redis://soma-infra-redis-master.soma.svc.cluster.local:6379/0"
   SOMABRAIN_KAFKA_URL: "kafka://soma-infra-kafka:9092"
-  SOMABRAIN_POSTGRES_DSN: "postgresql://postgres:postgres@soma-postgres.svc.cluster.local:5432/somabrain"
+  SOMABRAIN_POSTGRES_DSN: ""
   SOMABRAIN_OPA_URL: "http://soma-infra-opa.soma.svc.cluster.local:8181"
 
 ## Cognitive Threads (mono-container)

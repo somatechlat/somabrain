@@ -29,7 +29,7 @@ from somabrain.admin.core.learning.prediction import LLMPredictor, PredictionRes
 
 try:
     from confluent_kafka import Consumer as CKConsumer
-    from confluent_kafka import KafkaException
+    from confluent_kafka import KafkaError
 except ImportError as e:
     raise RuntimeError(f"Action predictor requires confluent-kafka: {e}")
 
@@ -73,7 +73,9 @@ class ActionPredictorService:
         """
         # Use LLM predictor for action prediction (more suitable for action sequences)
         # Use centralized Settings for LLM endpoint; Settings provides default handling
-        llm_endpoint = getattr(settings, "llm_endpoint", None)
+        llm_endpoint = getattr(settings, "SOMABRAIN_LLM_ENDPOINT", None) or getattr(
+            settings, "llm_endpoint", None
+        )
         if not llm_endpoint:
             raise RuntimeError(
                 "LLM endpoint required for action predictor (set SOMABRAIN_LLM_ENDPOINT)"
@@ -221,7 +223,7 @@ class ActionPredictorService:
                         continue
 
                     if msg.error():
-                        if msg.error().code() == KafkaException._PARTITION_EOF:
+                        if msg.error().code() == KafkaError._PARTITION_EOF:
                             continue
                         else:
                             raise RuntimeError(f"Kafka consumer error: {msg.error()}")

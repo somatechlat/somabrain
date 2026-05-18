@@ -31,6 +31,7 @@ from somabrain.learning.tenant_cache import get_tenant_override
 
 try:
     import somabrain_rs as _rs
+
     RUST_ANNEALING_AVAILABLE = True
     logger.debug("✅ Rust annealing functions loaded")
 except ImportError:
@@ -62,7 +63,6 @@ def _rust_compute_entropy(probs: list[float]) -> float:
         return _rs.compute_entropy(probs)
     # Python fallback
     return -sum(p * math.log(p) for p in probs if p > 0)
-
 
 
 def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) -> dict:
@@ -336,6 +336,7 @@ def check_entropy_cap(
     # NO MAGIC NUMBERS: use brain_settings for sharpening rates
     try:
         from somabrain.brain_settings.models import BrainSetting
+
         sharpen_rate = BrainSetting.get("entropy_sharpen_rate", tenant_id)
         final_sharpen = BrainSetting.get("entropy_final_sharpen", tenant_id)
     except Exception:
@@ -393,7 +394,6 @@ def check_entropy_cap(
     return vec[0], vec[1], vec[2], vec[3], True
 
 
-
 # Utility functions for manual tau annealing calculations
 
 
@@ -428,4 +428,3 @@ def exponential_decay(tau_0: float, gamma: float, t: int) -> float:
     if RUST_ANNEALING_AVAILABLE and _rs is not None:
         return _rs.exponential_tau_decay(tau_0, gamma, t)
     return float(tau_0) * (float(gamma) ** (int(t) + 1))
-

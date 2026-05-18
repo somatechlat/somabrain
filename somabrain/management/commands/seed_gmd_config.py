@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from somabrain.brain_settings.models import BrainSetting
 
+
 class Command(BaseCommand):
     help = "Seed Governing Memory Dynamics (GMD) parameters into BrainSetting"
 

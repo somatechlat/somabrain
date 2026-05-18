@@ -13,7 +13,7 @@ registry usage and avoid duplicate metric registration.
 from __future__ import annotations
 
 import builtins as _builtins
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 try:
     from prometheus_client import (
@@ -83,6 +83,9 @@ class _MetricProtocol(Protocol):
         ...
 
 
+MetricT = _PromCounter | _PromGauge | _PromHistogram | _PromSummary
+
+
 # ---------------------------------------------------------------------------
 # Shared Registry
 # ---------------------------------------------------------------------------
@@ -117,24 +120,22 @@ def _get_existing(name: str) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _counter(
-    name: str, documentation: str, *args: Any, **kwargs: Any
-) -> _MetricProtocol:
+def _counter(name: str, documentation: str, *args: Any, **kwargs: Any) -> _PromCounter:
     """Create or retrieve a Counter metric."""
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromCounter, existing)
 
     if "registry" not in kwargs:
         kwargs["registry"] = registry
     return _PromCounter(name, documentation, *args, **kwargs)
 
 
-def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _PromGauge:
     """Create or retrieve a Gauge metric."""
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromGauge, existing)
 
     if "registry" not in kwargs:
         kwargs["registry"] = registry
@@ -143,24 +144,22 @@ def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricP
 
 def _histogram(
     name: str, documentation: str, *args: Any, **kwargs: Any
-) -> _MetricProtocol:
+) -> _PromHistogram:
     """Create or retrieve a Histogram metric."""
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromHistogram, existing)
 
     if "registry" not in kwargs:
         kwargs["registry"] = registry
     return _PromHistogram(name, documentation, *args, **kwargs)
 
 
-def _summary(
-    name: str, documentation: str, *args: Any, **kwargs: Any
-) -> _MetricProtocol:
+def _summary(name: str, documentation: str, *args: Any, **kwargs: Any) -> _PromSummary:
     """Create or retrieve a Summary metric."""
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromSummary, existing)
     if "registry" not in kwargs:
         kwargs["registry"] = registry
     return _PromSummary(name, documentation, *args, **kwargs)
@@ -180,7 +179,7 @@ Summary = _summary
 
 def get_counter(
     name: str, documentation: str, labelnames: list[str] | None = None
-) -> _MetricProtocol:
+) -> _PromCounter:
     """Get or create a Counter in the central registry.
 
     Returns an existing collector if already registered, otherwise creates and
@@ -188,7 +187,7 @@ def get_counter(
     """
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromCounter, existing)
 
     if labelnames:
         return _counter(name, documentation, labelnames, registry=registry)
@@ -197,11 +196,11 @@ def get_counter(
 
 def get_gauge(
     name: str, documentation: str, labelnames: list[str] | None = None
-) -> _MetricProtocol:
+) -> _PromGauge:
     """Get or create a Gauge in the central registry."""
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromGauge, existing)
 
     if labelnames:
         return _gauge(name, documentation, labelnames, registry=registry)
@@ -213,11 +212,11 @@ def get_histogram(
     documentation: str,
     labelnames: list[str] | None = None,
     **kwargs: Any,
-) -> _MetricProtocol:
+) -> _PromHistogram:
     """Get or create a Histogram in the central registry."""
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromHistogram, existing)
 
     if labelnames:
         return _histogram(name, documentation, labelnames, registry=registry, **kwargs)
@@ -229,11 +228,11 @@ def get_summary(
     documentation: str,
     labelnames: list[str] | None = None,
     **kwargs: Any,
-) -> _MetricProtocol:
+) -> _PromSummary:
     """Get or create a Summary in the central registry."""
     existing = _get_existing(name)
     if existing is not None:
-        return existing
+        return cast(_PromSummary, existing)
 
     if labelnames:
         return _summary(name, documentation, labelnames, registry=registry, **kwargs)
@@ -263,7 +262,9 @@ HTTP_LATENCY = Histogram(
 # ---------------------------------------------------------------------------
 
 if "soma_context_builder_tau" in REGISTRY._names_to_collectors:
-    tau_gauge = REGISTRY._names_to_collectors["soma_context_builder_tau"]
+    tau_gauge = cast(
+        _PromGauge, REGISTRY._names_to_collectors["soma_context_builder_tau"]
+    )
 else:
     tau_gauge = Gauge(
         "soma_context_builder_tau",

@@ -11,6 +11,8 @@ Test Categories:
 ALL 10 PERSONAS - VIBE Coding Rules applied.
 """
 
+import importlib
+
 import pytest
 
 
@@ -23,39 +25,38 @@ class TestStandaloneConfig:
 
     def test_standalone_settings_module_loads(self):
         """Verify Django settings module can be imported."""
-        from django.conf import settings
+        settings_module = importlib.import_module("somabrain.settings.standalone")
 
-        # Settings should be importable
-        assert settings is not None
+        assert settings_module is not None
+        assert "somabrain.aaas" not in settings_module.INSTALLED_APPS
 
     def test_somabrain_mode_setting_exists(self):
         """Verify SOMABRAIN_MODE setting is available."""
-        from django.conf import settings
+        settings_module = importlib.import_module("somabrain.settings.standalone")
 
-        mode = getattr(settings, 'SOMABRAIN_MODE', None)
-        # Mode should have a value (default is 'full-local')
-        assert mode is not None or True  # Existence check
+        mode = getattr(settings_module, "SOMABRAIN_MODE", None)
+        assert mode is not None
 
     def test_default_tenant_setting_exists(self):
         """Verify default tenant setting is available."""
-        from django.conf import settings
+        settings_module = importlib.import_module("somabrain.settings.standalone")
 
-        default_tenant = getattr(settings, 'SOMABRAIN_DEFAULT_TENANT', 'public')
-        assert default_tenant is not None
+        default_tenant = getattr(settings_module, "SOMABRAIN_DEFAULT_TENANT", None)
+        assert default_tenant == "standalone"
 
     def test_core_django_settings_available(self):
         """Verify core Django settings are available."""
-        from django.conf import settings
+        settings_module = importlib.import_module("somabrain.settings.standalone")
 
-        assert hasattr(settings, 'DEBUG')
-        assert hasattr(settings, 'ALLOWED_HOSTS')
+        assert hasattr(settings_module, "DEBUG")
+        assert hasattr(settings_module, "ALLOWED_HOSTS")
 
     def test_logging_settings_available(self):
         """Verify logging settings are configured."""
-        from django.conf import settings
+        settings_module = importlib.import_module("somabrain.settings.standalone")
 
-        log_level = getattr(settings, 'SOMABRAIN_LOG_LEVEL', 'INFO')
-        assert log_level in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        log_level = getattr(settings_module, "SOMABRAIN_LOG_LEVEL", "INFO")
+        assert log_level in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 
 @pytest.mark.django_db(transaction=True)
@@ -95,6 +96,7 @@ class TestStandaloneImports:
         """Verify memory client can be imported."""
         try:
             from somabrain.memory.client import MemoryClient
+
             assert MemoryClient is not None
         except ImportError as e:
             pytest.fail(f"Failed to import MemoryClient: {e}")
@@ -103,6 +105,7 @@ class TestStandaloneImports:
         """Verify schemas package can be imported."""
         try:
             from somabrain.schemas import RecallRequest, MemoryPayload
+
             assert RecallRequest is not None
             assert MemoryPayload is not None
         except ImportError as e:
@@ -111,8 +114,8 @@ class TestStandaloneImports:
     def test_api_router_importable(self):
         """Verify API router can be imported."""
         try:
-            from somabrain.api.router import api
+            from somabrain.api.v1 import api
+
             assert api is not None
-        except ImportError:
-            # Router may be at different location
-            pass
+        except ImportError as e:
+            pytest.fail(f"Failed to import API router: {e}")

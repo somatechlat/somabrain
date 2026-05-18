@@ -8,26 +8,34 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('somabrain', '0002_tenantsleepstate'),
+        ("somabrain", "0002_tenantsleepstate"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='OAKOption',
+            name="OAKOption",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('tenant_id', models.CharField(db_index=True, max_length=255)),
-                ('option_id', models.CharField(db_index=True, max_length=255)),
-                ('payload', models.JSONField(default=dict)),
-                ('utility', models.FloatField(db_index=True, default=0.0)),
-                ('created_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('is_active', models.BooleanField(db_index=True, default=True)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("tenant_id", models.CharField(db_index=True, max_length=255)),
+                ("option_id", models.CharField(db_index=True, max_length=255)),
+                ("payload", models.JSONField(default=dict)),
+                ("utility", models.FloatField(db_index=True, default=0.0)),
+                ("created_at", models.DateTimeField(default=django.utils.timezone.now)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("is_active", models.BooleanField(db_index=True, default=True)),
             ],
             options={
-                'db_table': 'oak_options',
-                'ordering': ['-utility', '-created_at'],
-                'managed': False,
+                "db_table": "oak_options",
+                "ordering": ["-utility", "-created_at"],
+                "managed": False,
             },
         ),
     ]

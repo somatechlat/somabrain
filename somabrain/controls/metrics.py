@@ -35,10 +35,12 @@ Functions:
 
 from __future__ import annotations
 
+from typing import Any
+
 import somabrain.metrics as metrics
 
 
-def use_registry(r):
+def use_registry(r: Any) -> None:
     # kept for compatibility; main code should use central somabrain.metrics
     """Execute use registry.
 

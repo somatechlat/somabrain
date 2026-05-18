@@ -1,10 +1,10 @@
-"""Module avro_schemas."""
+"""Strict Avro schema loader for service-local Kafka code."""
 
 from __future__ import annotations
+
 import json
 from pathlib import Path
 from typing import Any, Dict
-from common.logging import logger
 
 
 def _repo_root() -> Path:
@@ -30,16 +30,10 @@ def load_schema(name: str) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Avro schema not found: {path}")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
-    except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
-    raise RuntimeError(f"Failed to read schema '{stem}': {e}") from e
+    except Exception as exc:
+        raise RuntimeError(f"Failed to read schema '{stem}': {exc}") from exc
     if not isinstance(data, dict):
         raise RuntimeError(f"Invalid schema format for '{stem}' (expected object)")
     return data

@@ -19,7 +19,6 @@ from somabrain.admin.core.quantum import QuantumLayer, HRRConfig
 from somabrain.admin.core.numerics import compute_tiny_floor
 from somabrain.math.bhdc_encoder import BHDCEncoder
 
-
 # ---------------------------------------------------------------------------
 # Strategies for generating test data
 # ---------------------------------------------------------------------------

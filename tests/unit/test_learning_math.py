@@ -132,9 +132,9 @@ class TestSoftmaxTemperature:
         weights /= weights.sum()
 
         # All weights should be nearly equal
-        assert np.std(weights) < 0.05, (
-            f"High τ should give uniform distribution, got std={np.std(weights):.4f}"
-        )
+        assert (
+            np.std(weights) < 0.05
+        ), f"High τ should give uniform distribution, got std={np.std(weights):.4f}"
 
     def test_low_tau_peaked_distribution(self):
         """Low τ → peaked distribution (exploitation)."""
@@ -148,9 +148,9 @@ class TestSoftmaxTemperature:
 
         # Max score should dominate
         assert weights.argmax() == 2, "Low τ should select highest score"
-        assert weights[2] > 0.99, (
-            f"Low τ should give peaked distribution, got max weight={weights[2]:.4f}"
-        )
+        assert (
+            weights[2] > 0.99
+        ), f"Low τ should give peaked distribution, got max weight={weights[2]:.4f}"
 
     def test_medium_tau_proportional_distribution(self):
         """Medium τ should give proportional softmax weights."""
@@ -162,9 +162,9 @@ class TestSoftmaxTemperature:
         weights /= weights.sum()
 
         # Weights should be monotonically increasing with score
-        assert weights[0] < weights[1] < weights[2], (
-            "Medium τ should give proportional weights"
-        )
+        assert (
+            weights[0] < weights[1] < weights[2]
+        ), "Medium τ should give proportional weights"
         # But not completely dominated by max
         assert weights[0] > 0.01, "Should still allocate some probability to lowest"
 
@@ -205,7 +205,9 @@ class TestEntropyCapEnforcement:
             probs = [v / s for v in vec]
             entropy = -sum(p * math.log(p) for p in probs if p > 0)
             # Should be reduced
-            assert entropy < 1.4, f"Entropy {entropy} should be reduced after sharpening"
+            assert (
+                entropy < 1.4
+            ), f"Entropy {entropy} should be reduced after sharpening"
 
     def test_no_crash_on_high_entropy(self):
         """check_entropy_cap should NEVER raise RuntimeError (INTEGRAL behavior)."""
@@ -316,6 +318,6 @@ class TestTauAnnealing:
 
         values = [exponential_decay(tau_0=1.0, gamma=0.9, t=t) for t in range(10)]
         for i in range(1, len(values)):
-            assert values[i] < values[i - 1], (
-                f"Exponential decay should be monotonic: {values}"
-            )
+            assert (
+                values[i] < values[i - 1]
+            ), f"Exponential decay should be monotonic: {values}"

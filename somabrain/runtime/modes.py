@@ -25,7 +25,7 @@ from django.conf import settings
 
 @dataclass(frozen=True)
 class ModeConfig:
-    """Modeconfig class implementation."""
+    """Canonical feature matrix for a resolved runtime mode."""
 
     name: str
     enable_integrator: bool
@@ -52,16 +52,17 @@ class ModeConfig:
     enable_cog_threads: bool
 
     def as_dict(self) -> Dict[str, bool]:  # convenience for logging/metrics
-        """Execute as dict."""
+        """Return the boolean feature flags without the mode name."""
 
         return {k: getattr(self, k) for k in self.__dataclass_fields__ if k != "name"}
+
 
 # Alias for backward compatibility
 SomaBrainMode = ModeConfig
 
 
 def _resolve_mode() -> str:
-    """Execute resolve mode.
+    """Resolve deployment mode to the internal canonical mode name.
 
     Standardized resolution logic:
     SOMA_DEPLOY_MODE (Unified) > SOMABRAIN_MODE (Legacy)
@@ -80,7 +81,10 @@ def _resolve_mode() -> str:
         raw = (settings.SOMABRAIN_MODE or "").strip().upper()
 
     if not raw:
-        return "full-local" if settings.home_dir else "prod"
+        home_dir = getattr(settings, "HOME_DIR", "") or getattr(
+            settings, "home_dir", ""
+        )
+        return "full-local" if home_dir else "prod"
 
     # Map to internal canonical names
     if raw in {"FULL_LOCAL", "FULL-LOCAL", "FULL", "LOCAL", "DEV", "STANDALONE"}:
@@ -101,7 +105,11 @@ def _load_overrides() -> List[str]:
     In full-local mode these are applied; ignored in prod.
     """
     # Use the Settings attribute that holds the overrides file path.
-    path = settings.feature_overrides_path or "./data/feature_overrides.json"
+    path = (
+        getattr(settings, "feature_overrides_path", None)
+        or getattr(settings, "SOMABRAIN_FEATURE_OVERRIDES", None)
+        or "./data/feature_overrides.json"
+    )
     try:
         p = Path(path)
         if not p.exists():
@@ -116,7 +124,7 @@ def _load_overrides() -> List[str]:
 
 
 def get_mode_config() -> ModeConfig:
-    """Retrieve mode config."""
+    """Build the current feature matrix for the active deployment mode."""
 
     name = _resolve_mode()
     if name == "ci":

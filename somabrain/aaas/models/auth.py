@@ -201,7 +201,9 @@ class FieldPermission(models.Model):
             perms.append("view")
         if self.can_edit:
             perms.append("edit")
-        return f"{self.role.name}: {self.model_name}.{self.field_name} [{','.join(perms)}]"
+        return (
+            f"{self.role.name}: {self.model_name}.{self.field_name} [{','.join(perms)}]"
+        )
 
 
 class TenantUserRole(models.Model):

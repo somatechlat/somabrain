@@ -15,15 +15,48 @@ Required environment variables (or use defaults):
 
 from __future__ import annotations
 
+import os
+
 import pytest
 import httpx
 
 from common.logging import logger
 
-
 # ---------------------------------------------------------------------------
 # Infrastructure availability checks
 # ---------------------------------------------------------------------------
+
+
+def _postgres_connect_kwargs(timeout: int = 3) -> dict[str, object]:
+    """Build PostgreSQL connection kwargs from the active test environment."""
+    kwargs: dict[str, object] = {
+        "host": os.environ.get(
+            "TEST_PG_HOST", os.environ.get("SOMA_DB_HOST", "localhost")
+        ),
+        "port": int(
+            os.environ.get("TEST_PG_PORT", os.environ.get("SOMA_DB_PORT", "30106"))
+        ),
+        "user": os.environ.get(
+            "TEST_PG_USER",
+            os.environ.get(
+                "POSTGRES_USER", os.environ.get("SOMA_DB_USER", "somabrain")
+            ),
+        ),
+        "dbname": os.environ.get(
+            "TEST_PG_DB",
+            os.environ.get("POSTGRES_DB", os.environ.get("SOMA_DB_NAME", "somabrain")),
+        ),
+        "connect_timeout": timeout,
+    }
+    password = (
+        os.environ.get("TEST_PG_PASSWORD")
+        or os.environ.get("POSTGRES_PASSWORD")
+        or os.environ.get("SOMA_DB_PASSWORD")
+        or ""
+    )
+    if password:
+        kwargs["password"] = password
+    return kwargs
 
 
 def _redis_available() -> bool:
@@ -50,7 +83,7 @@ def _kafka_available() -> bool:
         import os
 
         host = os.environ.get("SOMA_KAFKA_HOST", "localhost")
-        port = int(os.environ.get("SOMA_KAFKA_PORT", "63992")) # Standard Kafka Port
+        port = int(os.environ.get("SOMA_KAFKA_PORT", "63992"))  # Standard Kafka Port
 
         admin = KafkaAdminClient(
             bootstrap_servers=f"{host}:{port}",
@@ -66,22 +99,8 @@ def _postgres_available() -> bool:
     """Check if PostgreSQL is reachable on SomaBrain cluster."""
     try:
         import psycopg2
-        import os
 
-        host = os.environ.get("SOMA_DB_HOST", "localhost")
-        port = int(os.environ.get("SOMA_DB_PORT", "63932"))
-        user = os.environ.get("SOMA_DB_USER", "soma")
-        password = os.environ.get("SOMA_DB_PASSWORD", "soma")
-        dbname = os.environ.get("SOMA_DB_NAME", "somabrain")
-
-        conn = psycopg2.connect(
-            host=host,
-            port=port,
-            user=user,
-            password=password,
-            dbname=dbname,
-            connect_timeout=3,
-        )
+        conn = psycopg2.connect(**_postgres_connect_kwargs())
         cur = conn.cursor()
         cur.execute("SELECT 1")
         cur.close()
@@ -96,8 +115,11 @@ def _opa_available() -> bool:
     """Check if OPA is reachable on SomaBrain cluster."""
     try:
         import os
+
         os.environ.get("SOMA_OPA_HOST", "localhost")
-        int(os.environ.get("SOMA_OPA_PORT", "63999")) # Assumption for OPA? No, Agent used one.
+        int(
+            os.environ.get("SOMA_OPA_PORT", "63999")
+        )  # Assumption for OPA? No, Agent used one.
         # Agent used SA01_OPA_URL. Let's use env var or skip if not sure.
         # But for valid verification, we need OPA.
         # Checking Agent env config (Step 1234): AAAS_ENV didn't list OPA explicitly?
@@ -255,14 +277,7 @@ class TestPostgresIntegration:
 
         import psycopg2
 
-        conn = psycopg2.connect(
-            host="localhost",
-            port=20432,
-            user="soma",
-            password="soma_pass",
-            dbname="somabrain",
-            connect_timeout=5,
-        )
+        conn = psycopg2.connect(**_postgres_connect_kwargs(timeout=5))
         cur = conn.cursor()
         cur.execute("SELECT 1")
         result = cur.fetchone()
@@ -277,14 +292,7 @@ class TestPostgresIntegration:
 
         import psycopg2
 
-        conn = psycopg2.connect(
-            host="localhost",
-            port=20432,
-            user="soma",
-            password="soma_pass",
-            dbname="somabrain",
-            connect_timeout=5,
-        )
+        conn = psycopg2.connect(**_postgres_connect_kwargs(timeout=5))
         cur = conn.cursor()
         cur.execute("SELECT version()")
         result = cur.fetchone()

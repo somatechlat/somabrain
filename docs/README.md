@@ -1,86 +1,41 @@
-# SomaBrain AAAS - Documentation Index
+# SomaBrain Documentation Index
 
-**Version:** 3.0.0  
-**Date:** 2025-12-24
+Last updated: 2026-04-01
 
----
+This index reflects the Markdown files that currently exist in `docs/` and the
+deployment guides that live beside the infrastructure manifests.
 
-## Quick Links
+## Core docs
 
-| Document | Description |
-|----------|-------------|
-| [Overview](./overview.md) | High-level product and runtime overview |
-| [Master SRS](./srs/SOMABRAIN_AAAS_SRS.md) | High-level requirements |
-| [User Journeys](./srs/user-journey-screens.md) | 12 use cases, 41 screens |
-| [API Key Auth](./srs/api-key-authentication.md) | Authentication layer |
+| Document | Purpose |
+|----------|---------|
+| [ONBOARDING.md](./ONBOARDING.md) | Project context and engineering orientation |
+| [USER_GUIDE.md](./USER_GUIDE.md) | End-user usage guide |
+| [OPS_MANUAL.md](./OPS_MANUAL.md) | Operational runbook and maintenance guidance |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Contributor workflow and repo conventions |
+| [SRS_FULL.md](./SRS_FULL.md) | Consolidated requirements document |
+| [SomabrainGMD.md](./SomabrainGMD.md) | Governed trace / GMD mathematical notes |
+| [THE-SOMA-COVENANT.md](./THE-SOMA-COVENANT.md) | Project governance principles |
+| [VIBE_RULES.md](./VIBE_RULES.md) | Code and architecture rules |
 
----
+## Deployment docs
 
-## SRS Documents
+| Document | Purpose |
+|----------|---------|
+| [infra/standalone/DEPLOYMENT_GUIDE.md](../infra/standalone/DEPLOYMENT_GUIDE.md) | Standalone Docker stack with Vault-first bootstrap |
+| [infra/k8s/DEPLOYMENT_GUIDE.md](../infra/k8s/DEPLOYMENT_GUIDE.md) | Kubernetes deployment notes |
+| [infra/k8s/README.md](../infra/k8s/README.md) | Kubernetes manifest overview |
 
-| # | Document | Content |
-|---|----------|---------|
-| 01 | [Multi-Tenancy](./srs/01-multi-tenancy.md) | Tenant lifecycle |
-| 02 | [Subscription & Billing](./srs/02-subscription-billing.md) | Lago integration |
-| 03 | [Authentication & SSO](./srs/03-authentication-sso.md) | Keycloak, OAuth |
-| 04 | [God Mode Admin](./srs/04-god-mode-admin.md) | Platform admin |
-| 05 | [Memory Management](./srs/05-memory-cognitive.md) | Cache, Store |
-| 06 | [API Gateway](./srs/06-api-gateway.md) | Rate limiting |
-| 07 | [Observability](./srs/07-observability.md) | Health, metrics |
-| 08 | [Platform Admin](./srs/08-platform-administration-complete.md) | All settings |
-| 09 | [Unified Platform](./srs/09-unified-memory-platform.md) | SomaBrain + SFM |
-| 10 | [SomaFractalMemory](./srs/10-somafractalmemory-complete.md) | LTM system |
-| 11 | [Docker Deployment](./srs/11-docker-deployment.md) | Containers |
+## Repo reports
 
----
+| Document | Purpose |
+|----------|---------|
+| [ARCHITECTURE_AUDIT_STANDALONE_2026-02-03.md](../ARCHITECTURE_AUDIT_STANDALONE_2026-02-03.md) | Standalone architecture audit, updated with current stack notes |
+| [AUDIT_REPORT_2026-02-03.md](../AUDIT_REPORT_2026-02-03.md) | Broader audit report snapshot |
+| [FINAL_VERIFICATION_REPORT.md](../FINAL_VERIFICATION_REPORT.md) | Verification summary |
 
-## UI Documentation
+## Note
 
-| Document | Description |
-|----------|-------------|
-| [Screen Map](./srs/god-mode-screen-map.md) | 18 admin screens |
-| [User Flows](./srs/flows/) | Journey documentation |
-
----
-
-## Architecture
-
-| Document | Description |
-|----------|-------------|
-| [Roadmap](./architecture/canonical_roadmap_oak.md) | Platform roadmap |
-
----
-
-## Deployment
-
-| Document | Description |
-|----------|-------------|
-| [Docker Guide](./deployment/docker_deployment.md) | Docker setup |
-| [Production](./deployment/production_deployment.md) | Production deploy |
-
----
-
-## Directory Structure
-
-```
-docs/
-├── README.md                    # This file
-├── overview.md                  # Product overview
-├── srs/                         # Requirements (13 docs)
-│   ├── flows/                   # User journeys (10 docs)
-│   └── ...
-├── api/                         # API documentation
-├── architecture/                # Architecture docs
-├── deployment/                  # Deployment guides
-├── development/                 # Contributor and dev manuals
-├── technical/                   # Technical manual
-├── user/                        # User manual
-├── onboarding/                  # Onboarding (incl. agents)
-├── operations/                  # Operational guides + runbooks
-├── governance/                  # VIBE rules and violations
-└── reference/                   # Glossary + changelog
-```
-
----
-
-*SomaBrain AAAS Platform - ISO/IEC/IEEE 29148:2018*
+Older references to `docs/overview.md`, `docs/srs/...`, `docs/api/`, and
+similar AAAS-era paths were stale and have been removed from this index because
+those files are not present in the repository.

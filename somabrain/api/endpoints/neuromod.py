@@ -18,11 +18,13 @@ from somabrain.api.auth import api_key_auth
 from somabrain.core.security.legacy_auth import require_auth
 from somabrain.tenant import get_tenant
 
+
 class NeuromodAdjustRequest(BaseModel):
     dopamine: Optional[float] = None
     serotonin: Optional[float] = None
     noradrenaline: Optional[float] = None
     acetylcholine: Optional[float] = None
+
 
 logger = logging.getLogger("somabrain.api.endpoints.neuromod")
 

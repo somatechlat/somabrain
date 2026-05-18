@@ -188,7 +188,9 @@ class OptionManager:
         import json
 
         try:
-            payload_dict = json.loads(payload) if isinstance(payload, bytes) else payload
+            payload_dict = (
+                json.loads(payload) if isinstance(payload, bytes) else payload
+            )
         except (json.JSONDecodeError, TypeError):
             payload_dict = {"raw": str(payload)}
 
@@ -251,7 +253,9 @@ class OptionManager:
         import json
 
         try:
-            payload_dict = json.loads(payload) if isinstance(payload, bytes) else payload
+            payload_dict = (
+                json.loads(payload) if isinstance(payload, bytes) else payload
+            )
         except (json.JSONDecodeError, TypeError):
             payload_dict = {"raw": str(payload)}
 
@@ -367,9 +371,7 @@ class OptionManager:
 
         return [Option.from_model(opt) for opt in qs]
 
-    def update_utility(
-        self, tenant_id: str, option_id: str, utility: float
-    ) -> bool:
+    def update_utility(self, tenant_id: str, option_id: str, utility: float) -> bool:
         """
         Update the utility score for an option.
 

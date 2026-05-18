@@ -1,16 +1,20 @@
 """Module diagnose_memory_write."""
 
+import os
+
 import httpx
 
-ENDPOINT = "http://localhost:10101"
-TOKEN = "dev-token-somastack2024"
+ENDPOINT = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")
+TOKEN = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
 
 
 def try_store():
     """Execute try store."""
 
     url = f"{ENDPOINT}/memories"
-    headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json"}
+    if TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
     payload = {
         "content": "Diagnostics Test Memory",
         "key": "diag-001",

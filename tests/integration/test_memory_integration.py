@@ -5,13 +5,12 @@ import sys
 
 # Configuration
 SFM_ENDPOINT = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")
-SFM_TOKEN = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "sfm-api-token-123")
+SFM_TOKEN = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
 TENANT_ID = "integration-test-tenant"
-HEADERS = {
-    "Authorization": f"Bearer {SFM_TOKEN}",
-    "X-Soma-Tenant": TENANT_ID,
-    "Content-Type": "application/json"
-}
+HEADERS = {"X-Soma-Tenant": TENANT_ID, "Content-Type": "application/json"}
+if SFM_TOKEN:
+    HEADERS["Authorization"] = f"Bearer {SFM_TOKEN}"
+
 
 def check_sfm_health():
     """Verify SFM is reachable and healthy."""
@@ -45,6 +44,7 @@ def check_sfm_health():
         print(f"SFM Health check error: {e}")
         return False
 
+
 def test_memory_lifecycle():
     """Test full memory lifecycle: Store -> Retrieve."""
     if not check_sfm_health():
@@ -61,9 +61,12 @@ def test_memory_lifecycle():
         "coord": f"{timestamp}, 0.0, 0.0",  # Use timestamp as unique coord dimension
         "payload": {
             "content": memory_content,
-            "metadata": {"source": "somabrain-integration-test", "timestamp": timestamp}
+            "metadata": {
+                "source": "somabrain-integration-test",
+                "timestamp": timestamp,
+            },
         },
-        "memory_type": "episodic"
+        "memory_type": "episodic",
     }
 
     print(f"Storing memory to: {store_url}")
@@ -113,16 +116,18 @@ def test_memory_lifecycle():
         # The previous store response gave us an ID. Let's see if retrieved matches.
 
         # Validate coord matches
-        retrieved_coord = retrieved_memory.get("coord") or retrieved_payload.get("coord")
+        retrieved_coord = retrieved_memory.get("coord") or retrieved_payload.get(
+            "coord"
+        )
 
         # If not in payload, strict check on memory object
         if not retrieved_coord and "coord" in retrieved_memory:
-             retrieved_coord = retrieved_memory["coord"]
+            retrieved_coord = retrieved_memory["coord"]
 
         if retrieved_coord and retrieved_coord != memory_id:
-             print(f"Coord mismatch: got {retrieved_coord}, expected {memory_id}")
-             # check if it's just formatting (spaces)
-             # return False # strict check?
+            print(f"Coord mismatch: got {retrieved_coord}, expected {memory_id}")
+            # check if it's just formatting (spaces)
+            # return False # strict check?
 
         content = retrieved_payload.get("content")
         if content != memory_content:
@@ -134,6 +139,7 @@ def test_memory_lifecycle():
     except Exception as e:
         print(f"Retrieve memory error: {e}")
         return False
+
 
 if __name__ == "__main__":
     print("Starting SFM Integration Test...")

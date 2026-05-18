@@ -1,8 +1,11 @@
 import sys
+
 sys.path.insert(0, "/app")
 import os
+
 os.environ["DJANGO_SETTINGS_MODULE"] = "somabrain.settings.standalone"
 import django
+
 django.setup()
 
 from somabrain.admin.core.embeddings import make_embedder

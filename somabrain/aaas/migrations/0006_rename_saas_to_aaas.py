@@ -15,7 +15,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-    """Rename all saas_* tables to aaas_*."""
+    """Keep legacy rename migration as a no-op for current installs.
+
+    The checked-in migration history already creates AAAS tables with their
+    ``aaas_*`` names from the initial migrations onward. Running table renames
+    here causes fresh databases to collide with already-created tables such as
+    ``aaas_subscriptions``. Preserve the migration number for compatibility, but
+    make its database effect explicit no-op for modern installs.
+    """
 
     dependencies = [
         # This should be the last migration before this one
@@ -23,51 +30,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Core tenant tables
-        migrations.AlterModelTable(
-            name="tenant",
-            table="aaas_tenants",
-        ),
-        migrations.AlterModelTable(
-            name="tenantuser",
-            table="aaas_tenant_users",
-        ),
-        migrations.AlterModelTable(
-            name="tenantsubscription",
-            table="aaas_subscriptions",
-        ),
-        migrations.AlterModelTable(
-            name="subscriptiontier",
-            table="aaas_subscription_tiers",
-        ),
-        # Auth and RBAC tables
-        migrations.AlterModelTable(
-            name="identityprovider",
-            table="aaas_identity_providers",
-        ),
-        migrations.AlterModelTable(
-            name="tenantauthconfig",
-            table="aaas_tenant_auth_config",
-        ),
-        migrations.AlterModelTable(
-            name="role",
-            table="aaas_roles",
-        ),
-        migrations.AlterModelTable(
-            name="fieldpermission",
-            table="aaas_field_permissions",
-        ),
-        migrations.AlterModelTable(
-            name="tenantuserrole",
-            table="aaas_tenant_user_roles",
-        ),
-        # API and Audit tables
-        migrations.AlterModelTable(
-            name="apikey",
-            table="aaas_api_keys",
-        ),
-        migrations.AlterModelTable(
-            name="auditlog",
-            table="aaas_audit_log",
-        ),
+        migrations.RunPython(migrations.RunPython.noop, migrations.RunPython.noop),
     ]

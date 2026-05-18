@@ -8,7 +8,6 @@ from django.conf import settings
 from somabrain.admin.core.models import CognitiveThread
 from somabrain.oak import planner as oak_planner
 
-
 """
 Integration tests for the Cognitive Thread implementation.
 

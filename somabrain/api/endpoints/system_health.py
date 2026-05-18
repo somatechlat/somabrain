@@ -602,14 +602,12 @@ def get_database_health(request):
     try:
         with connection.cursor() as cursor:
             # Table counts
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT schemaname, relname, n_live_tup 
                 FROM pg_stat_user_tables 
                 ORDER BY n_live_tup DESC 
                 LIMIT 10
-            """
-            )
+            """)
             tables = [
                 {"schema": r[0], "table": r[1], "rows": r[2]} for r in cursor.fetchall()
             ]

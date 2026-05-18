@@ -19,11 +19,13 @@ class TestMemoryModeSettings:
 
         # Clear cached modules
         import sys
+
         for mod in list(sys.modules.keys()):
-            if 'somabrain.settings' in mod:
+            if "somabrain.settings" in mod:
                 del sys.modules[mod]
 
         from somabrain.memory.backends import get_memory_mode
+
         assert get_memory_mode() == "http"
 
     def test_direct_mode_detected(self, monkeypatch):
@@ -32,11 +34,13 @@ class TestMemoryModeSettings:
 
         # Clear cached modules
         import sys
+
         for mod in list(sys.modules.keys()):
-            if 'somabrain.settings' in mod:
+            if "somabrain.settings" in mod:
                 del sys.modules[mod]
 
         from somabrain.memory.backends import get_memory_mode, is_aaas_mode
+
         assert get_memory_mode() == "direct"
         assert is_aaas_mode() is True
 
@@ -46,11 +50,13 @@ class TestMemoryModeSettings:
 
         # Clear cached modules
         import sys
+
         for mod in list(sys.modules.keys()):
-            if 'somabrain.settings' in mod:
+            if "somabrain.settings" in mod:
                 del sys.modules[mod]
 
         from somabrain.memory.backends import is_aaas_mode
+
         assert is_aaas_mode() is False
 
 
@@ -93,6 +99,7 @@ class TestDirectMemoryBackendClass:
     def test_class_exists(self):
         """DirectMemoryBackend class should be importable."""
         from somabrain.memory.direct_backend import DirectMemoryBackend
+
         assert DirectMemoryBackend is not None
 
     def test_class_has_required_methods(self):
@@ -121,7 +128,9 @@ class TestDirectMemoryBackendClass:
         graph_methods = ["link", "alink", "links_from", "k_hop", "payloads_for_coords"]
 
         for method in graph_methods:
-            assert hasattr(DirectMemoryBackend, method), f"Missing graph method: {method}"
+            assert hasattr(
+                DirectMemoryBackend, method
+            ), f"Missing graph method: {method}"
 
 
 class TestBackendFactory:
@@ -134,8 +143,9 @@ class TestBackendFactory:
 
         # Clear cached modules
         import sys
+
         for mod in list(sys.modules.keys()):
-            if 'somabrain.settings' in mod:
+            if "somabrain.settings" in mod:
                 del sys.modules[mod]
 
         from somabrain.memory.backends import get_memory_backend
@@ -151,14 +161,18 @@ class TestBackendFactory:
 
         # Clear cached modules
         import sys
+
         for mod in list(sys.modules.keys()):
-            if 'somabrain.settings' in mod:
+            if "somabrain.settings" in mod:
                 del sys.modules[mod]
 
         from somabrain.memory.backends import get_memory_backend
 
         # Mock sys.modules to simulate missing somafractalmemory
-        with patch.dict("sys.modules", {"somafractalmemory": None, "somafractalmemory.services": None}):
+        with patch.dict(
+            "sys.modules",
+            {"somafractalmemory": None, "somafractalmemory.services": None},
+        ):
             # This should raise ImportError because somafractalmemory is not properly installed
             with pytest.raises(ImportError) as exc_info:
                 get_memory_backend(namespace="test")
@@ -172,14 +186,17 @@ class TestLazyImports:
     def test_lazy_get_memory_backend(self):
         """get_memory_backend should be available from main module."""
         from somabrain.memory import get_memory_backend
+
         assert callable(get_memory_backend)
 
     def test_lazy_is_aaas_mode(self):
         """is_aaas_mode should be available from main module."""
         from somabrain.memory import is_aaas_mode
+
         assert callable(is_aaas_mode)
 
     def test_lazy_get_memory_mode(self):
         """get_memory_mode should be available from main module."""
         from somabrain.memory import get_memory_mode
+
         assert callable(get_memory_mode)

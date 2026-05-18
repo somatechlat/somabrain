@@ -63,8 +63,13 @@ class UserOut(Schema):
         """Get role details for user."""
         from somabrain.aaas.models import TenantUserRole
 
-        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
-        return [{"id": str(a.role.id), "name": a.role.name, "slug": a.role.slug} for a in assignments]
+        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
+            "role"
+        )
+        return [
+            {"id": str(a.role.id), "name": a.role.name, "slug": a.role.slug}
+            for a in assignments
+        ]
 
 
 class UserListOut(Schema):
@@ -88,7 +93,9 @@ class UserListOut(Schema):
         """Get role slugs for user."""
         from somabrain.aaas.models import TenantUserRole
 
-        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related("role")
+        assignments = TenantUserRole.objects.filter(tenant_user=obj).select_related(
+            "role"
+        )
         return [a.role.slug for a in assignments]
 
 

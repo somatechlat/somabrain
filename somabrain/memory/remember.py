@@ -353,9 +353,7 @@ async def aremember_single(
     coord = _stable_coord(f"{universe}::{coord_key}")
     enriched = dict(enriched)
     enriched.setdefault("coordinate", coord)
-    memory_type = str(
-        enriched.get("memory_type") or enriched.get("type") or "episodic"
-    )
+    memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
     body = {
         "coord": f"{coord[0]},{coord[1]},{coord[2]}",
         "payload": enriched,

@@ -1,3 +1,5 @@
+# ruff: noqa: F403,F405
+
 
 """
 Django settings for somabrain project.

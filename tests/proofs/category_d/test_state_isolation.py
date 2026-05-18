@@ -50,7 +50,10 @@ class TestStateIsolation:
         WHEN tenant A modifies neuromodulators
         THEN tenant B's neuromodulators SHALL be unchanged.
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+        from somabrain.admin.brain.neuromodulators import (
+            NeuromodState,
+            PerTenantNeuromodulators,
+        )
 
         per_tenant = PerTenantNeuromodulators()
 
@@ -159,11 +162,11 @@ class TestStateIsolation:
         # Configure Tenant A with low quota (10)
         # We must create/update the tenant to persist this config in Redis
         # so QuotaManager picks it up.
-        loop.run_until_complete(tenant_mgr.create_tenant(
-            "Tenant A",
-            "public",
-            config={"quota": {"daily_quota": 10}}
-        ))
+        loop.run_until_complete(
+            tenant_mgr.create_tenant(
+                "Tenant A", "public", config={"quota": {"daily_quota": 10}}
+            )
+        )
 
         # Ensure we use the proper ID (TenantManager might normalize "Tenant A" to something else,
         # but create_tenant uses an ID generation logic or we can assume it returns the ID)
@@ -176,17 +179,17 @@ class TestStateIsolation:
         # BUT QuotaManager uses whatever string we pass to allow_write.
         # So we should use the ID returned by create_tenant.
 
-        tenant_a_id = loop.run_until_complete(tenant_mgr.create_tenant(
-            "Tenant A Test",
-            "public",
-            config={"quota": {"daily_quota": 10}}
-        ))
+        tenant_a_id = loop.run_until_complete(
+            tenant_mgr.create_tenant(
+                "Tenant A Test", "public", config={"quota": {"daily_quota": 10}}
+            )
+        )
 
-        tenant_b_id = loop.run_until_complete(tenant_mgr.create_tenant(
-            "Tenant B Test",
-            "public",
-            config={"quota": {"daily_quota": 10}}
-        ))
+        tenant_b_id = loop.run_until_complete(
+            tenant_mgr.create_tenant(
+                "Tenant B Test", "public", config={"quota": {"daily_quota": 10}}
+            )
+        )
 
         cfg = QuotaConfig(daily_writes=10)
         qm = QuotaManager(cfg)
@@ -200,7 +203,9 @@ class TestStateIsolation:
         assert not qm.allow_write(tenant_a_id, 1), "Tenant A should be over quota"
 
         # Tenant B should still be allowed (independent counters)
-        assert qm.allow_write(tenant_b_id, 1), "Tenant B should be unaffected by Tenant A"
+        assert qm.allow_write(
+            tenant_b_id, 1
+        ), "Tenant B should be unaffected by Tenant A"
 
     def test_adaptation_isolation(self) -> None:
         """D2.4: Adaptation isolation.
@@ -212,7 +217,9 @@ class TestStateIsolation:
         THEN tenant B's adaptive parameters SHALL be unchanged.
         """
         from somabrain.adaptive.core import PerformanceMetrics
-        from somabrain.admin.brain.neuromodulators import AdaptivePerTenantNeuromodulators
+        from somabrain.admin.brain.neuromodulators import (
+            AdaptivePerTenantNeuromodulators,
+        )
 
         adaptive = AdaptivePerTenantNeuromodulators()
 
@@ -292,7 +299,9 @@ class TestAdaptivePerTenantNeuromodulators:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.4**
         """
-        from somabrain.admin.brain.neuromodulators import AdaptivePerTenantNeuromodulators
+        from somabrain.admin.brain.neuromodulators import (
+            AdaptivePerTenantNeuromodulators,
+        )
 
         adaptive = AdaptivePerTenantNeuromodulators()
 
@@ -312,7 +321,9 @@ class TestAdaptivePerTenantNeuromodulators:
         **Validates: Requirements D2.4**
         """
         from somabrain.adaptive.core import PerformanceMetrics
-        from somabrain.admin.brain.neuromodulators import AdaptivePerTenantNeuromodulators
+        from somabrain.admin.brain.neuromodulators import (
+            AdaptivePerTenantNeuromodulators,
+        )
 
         adaptive = AdaptivePerTenantNeuromodulators()
 

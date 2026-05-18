@@ -21,7 +21,6 @@ from hypothesis import given, settings, strategies as st
 
 from somabrain.memory.wm.core import WorkingMemory
 
-
 # ---------------------------------------------------------------------------
 # Test Fixtures
 # ---------------------------------------------------------------------------

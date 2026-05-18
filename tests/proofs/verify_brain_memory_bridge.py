@@ -1,4 +1,3 @@
-
 import os
 import sys
 import time
@@ -9,9 +8,7 @@ import uuid
 BRAIN_HOST = os.getenv("SOMABRAIN_HOST", "localhost")
 BRAIN_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
 ENDPOINT = f"http://{BRAIN_HOST}:{BRAIN_PORT}/api/memory"
-
-# Use the token we configured in .env
-TOKEN = "sfm-api-token-123"
+TOKEN = os.getenv("SOMABRAIN_API_TOKEN", os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", ""))
 
 # Test Data
 TEST_NAMESPACE = "bridge_verification"
@@ -24,6 +21,9 @@ headers = {
     "X-Tenant-ID": "public",
     "Content-Type": "application/json",
 }
+if TOKEN:
+    headers["Authorization"] = f"Bearer {TOKEN}"
+
 
 def verify_bridge():
     print(f"--- SOMA BRAIN -> SFM BRIDGE VERIFICATION | {time.ctime()} ---")
@@ -34,10 +34,7 @@ def verify_bridge():
     store_payload = {
         "content": TEST_CONTENT,
         "memory_type": "episodic",
-        "metadata": {
-            "origin": "bridge_verification",
-            "vibe": "sovereign"
-        }
+        "metadata": {"origin": "bridge_verification", "vibe": "sovereign"},
     }
 
     try:
@@ -54,11 +51,7 @@ def verify_bridge():
 
     # 2. Recall Memory via Brain
     print("Recalling memory via Brain...")
-    recall_payload = {
-        "query": "Bridge verification",
-        "k": 1,
-        "memory_type": "episodic"
-    }
+    recall_payload = {"query": "Bridge verification", "k": 1, "memory_type": "episodic"}
 
     try:
         # endpoint might be /recall
@@ -104,6 +97,7 @@ def verify_bridge():
     except Exception as e:
         print(f"RECALL FAILED: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     # Wait for service to be healthy first

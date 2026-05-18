@@ -17,6 +17,11 @@ import numpy as np
 import pytest
 
 
+def _benchmark_mean(benchmark) -> float:
+    """Return the measured mean in seconds from pytest-benchmark metadata."""
+    return float(benchmark.stats["mean"])
+
+
 class TestEntropyLatency:
     """Benchmark entropy computation latency."""
 
@@ -30,10 +35,10 @@ class TestEntropyLatency:
             return -sum(p * math.log(p) for p in probs if p > 0)
 
         benchmark(compute_entropy)
+        mean = _benchmark_mean(benchmark)
         # SLO: < 100μs for entropy computation
-        assert benchmark.stats.mean < 0.0001, (
-            f"Entropy computation took {benchmark.stats.mean * 1e6:.2f}μs, "
-            "should be < 100μs"
+        assert mean < 0.0001, (
+            f"Entropy computation took {mean * 1e6:.2f}μs, " "should be < 100μs"
         )
 
     def test_entropy_rust_fallback(self, benchmark):
@@ -47,11 +52,10 @@ class TestEntropyLatency:
 
         probs = [0.25, 0.25, 0.25, 0.25]
         benchmark(lambda: _rust_compute_entropy(probs))
+        mean = _benchmark_mean(benchmark)
 
         # SLO: < 100μs with Rust acceleration
-        assert benchmark.stats.mean < 0.0001, (
-            f"Rust entropy took {benchmark.stats.mean * 1e6:.2f}μs, should be < 100μs"
-        )
+        assert mean < 0.0001, f"Rust entropy took {mean * 1e6:.2f}μs, should be < 100μs"
 
 
 class TestSoftmaxLatency:
@@ -68,11 +72,10 @@ class TestSoftmaxLatency:
             return w / w.sum()
 
         benchmark(compute_softmax)
+        mean = _benchmark_mean(benchmark)
 
         # SLO: < 1ms for 100-memory softmax
-        assert benchmark.stats.mean < 0.001, (
-            f"Softmax took {benchmark.stats.mean * 1000:.3f}ms, should be < 1ms"
-        )
+        assert mean < 0.001, f"Softmax took {mean * 1000:.3f}ms, should be < 1ms"
 
     def test_softmax_1000_memories(self, benchmark):
         """Softmax with 1000 memories for stress testing."""
@@ -85,11 +88,10 @@ class TestSoftmaxLatency:
             return w / w.sum()
 
         benchmark(compute_softmax)
+        mean = _benchmark_mean(benchmark)
 
         # SLO: < 5ms for 1000-memory softmax
-        assert benchmark.stats.mean < 0.005, (
-            f"Large softmax took {benchmark.stats.mean * 1000:.3f}ms, should be < 5ms"
-        )
+        assert mean < 0.005, f"Large softmax took {mean * 1000:.3f}ms, should be < 5ms"
 
 
 class TestTauAnnealingLatency:
@@ -105,11 +107,10 @@ class TestTauAnnealingLatency:
         from somabrain.learning.annealing import linear_decay
 
         benchmark(lambda: linear_decay(tau_0=1.0, tau_min=0.1, alpha=0.01, t=50))
+        mean = _benchmark_mean(benchmark)
 
         # SLO: < 50μs
-        assert benchmark.stats.mean < 0.00005, (
-            f"Linear decay took {benchmark.stats.mean * 1e6:.2f}μs, should be < 50μs"
-        )
+        assert mean < 0.00005, f"Linear decay took {mean * 1e6:.2f}μs, should be < 50μs"
 
     def test_exponential_decay(self, benchmark):
         """Exponential decay should be extremely fast."""
@@ -121,11 +122,12 @@ class TestTauAnnealingLatency:
         from somabrain.learning.annealing import exponential_decay
 
         benchmark(lambda: exponential_decay(tau_0=1.0, gamma=0.95, t=50))
+        mean = _benchmark_mean(benchmark)
 
         # SLO: < 50μs
-        assert benchmark.stats.mean < 0.00005, (
-            f"Exponential decay took {benchmark.stats.mean * 1e6:.2f}μs, should be < 50μs"
-        )
+        assert (
+            mean < 0.00005
+        ), f"Exponential decay took {mean * 1e6:.2f}μs, should be < 50μs"
 
     def test_apply_tau_annealing(self, benchmark):
         """Full tau annealing with config lookup."""
@@ -146,11 +148,12 @@ class TestTauAnnealingLatency:
                 tenant_override=tenant_override,
             )
         )
+        mean = _benchmark_mean(benchmark)
 
         # SLO: < 200μs for full annealing with config
-        assert benchmark.stats.mean < 0.0002, (
-            f"Full annealing took {benchmark.stats.mean * 1e6:.2f}μs, should be < 200μs"
-        )
+        assert (
+            mean < 0.0002
+        ), f"Full annealing took {mean * 1e6:.2f}μs, should be < 200μs"
 
 
 class TestEntropyCapLatency:
@@ -175,9 +178,9 @@ class TestEntropyCapLatency:
                 tenant_id="benchmark_no_sharpen",
             )
         )
+        mean = _benchmark_mean(benchmark)
 
         # SLO: < 100μs for non-sharpening case
-        assert benchmark.stats.mean < 0.0001, (
-            f"No-sharpen cap check took {benchmark.stats.mean * 1e6:.2f}μs, "
-            "should be < 100μs"
+        assert mean < 0.0001, (
+            f"No-sharpen cap check took {mean * 1e6:.2f}μs, " "should be < 100μs"
         )

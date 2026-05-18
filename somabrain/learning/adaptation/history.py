@@ -1,5 +1,6 @@
 from typing import List, Tuple, Dict, Any
 
+
 class HistoryManager:
     """Manages history of weight updates for rollback support."""
 

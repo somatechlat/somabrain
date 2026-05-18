@@ -21,6 +21,7 @@ def get_constitution_engine() -> ConstitutionEngine:
             _engine.load()
         except Exception as exc:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(f"Failed to load constitution engine: {exc}")
     return _engine

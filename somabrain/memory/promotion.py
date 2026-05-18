@@ -87,8 +87,8 @@ class PromotionTracker:
         tenant_id: str = "default",
     ):
         """Initialize PromotionTracker.
-...
-            tenant_id: Tenant ID for metrics labeling.
+        ...
+                    tenant_id: Tenant ID for metrics labeling.
         """
         from somabrain.brain_settings.models import BrainSetting
 

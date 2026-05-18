@@ -174,7 +174,15 @@ class TenantAdmin(admin.ModelAdmin):
         )
         for t in queryset:
             writer.writerow(
-                [t.id, t.name, t.slug, t.status, t.tier, t.admin_email, t.created_at.isoformat()]
+                [
+                    t.id,
+                    t.name,
+                    t.slug,
+                    t.status,
+                    t.tier,
+                    t.admin_email,
+                    t.created_at.isoformat(),
+                ]
             )
         return response
 

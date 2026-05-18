@@ -29,7 +29,11 @@ import numpy as np
 from django.conf import settings
 
 from somabrain.math import cosine_similarity, normalize_vector
-from somabrain.memory.wm.wm_eviction import evict_item, find_duplicate, find_lowest_salience_idx
+from somabrain.memory.wm.wm_eviction import (
+    evict_item,
+    find_duplicate,
+    find_lowest_salience_idx,
+)
 from somabrain.memory.wm.wm_promotion import check_promotion
 from somabrain.memory.wm.wm_salience import (
     compute_item_salience,
@@ -251,6 +255,7 @@ class WorkingMemory:
         # Handle both dict and numpy arrays for shape access - MUST be outside if/else
         # to ensure shape_val, dim_val, vector_np are always defined
         from typing import Any
+
         vector_np: Any = vector if hasattr(vector, "shape") else np.array(vector)
         shape_val = (
             (vector_np.shape[-1] if hasattr(vector_np, "shape") else len(vector_np))

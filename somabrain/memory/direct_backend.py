@@ -301,7 +301,8 @@ class DirectMemoryBackend:
             mem_health = self._memory_service.health_check()
             graph_health = self._graph_service.health_check()
             return {
-                "healthy": mem_health.get("healthy", True) and graph_health.get("healthy", True),
+                "healthy": mem_health.get("healthy", True)
+                and graph_health.get("healthy", True),
                 "mode": "direct",
                 "memory": mem_health,
                 "graph": graph_health,

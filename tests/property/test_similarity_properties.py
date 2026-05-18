@@ -16,7 +16,6 @@ from somabrain.math.similarity import (
     batch_cosine_similarity,
 )
 
-
 dim_strategy = st.integers(min_value=2, max_value=2048)
 
 

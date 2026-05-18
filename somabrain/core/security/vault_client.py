@@ -11,8 +11,8 @@ Usage:
 """
 
 import logging
-from typing import Any, Optional
 from functools import lru_cache
+from typing import Any, Optional
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -21,29 +21,62 @@ logger = logging.getLogger(__name__)
 
 class VaultNotConfigured(ImproperlyConfigured):
     """Vault not configured - secrets cannot be fetched."""
+
     pass
 
 
 class SecretNotFound(ImproperlyConfigured):
     """Secret not found in Vault."""
+
     pass
 
 
+def _split_secret_path(path: str) -> tuple[str, str]:
+    """Split a logical secret path into KV mount point and relative path."""
+    import os
+
+    normalized = path.strip("/")
+    if not normalized:
+        raise SecretNotFound("Vault secret path cannot be empty")
+
+    explicit_mount = (
+        os.environ.get("SOMABRAIN_VAULT_KV_MOUNT")
+        or os.environ.get("SOMABRAIN_VAULT_MOUNT_POINT")
+        or ""
+    ).strip("/")
+    if explicit_mount:
+        prefix = f"{explicit_mount}/"
+        if normalized.startswith(prefix):
+            return explicit_mount, normalized[len(prefix) :]
+        return explicit_mount, normalized
+
+    if "/" not in normalized:
+        return "secret", normalized
+
+    mount_point, relative_path = normalized.split("/", 1)
+    return mount_point, relative_path
+
+
 @lru_cache(maxsize=1)
-def _get_vault_client():
+def _get_vault_client() -> Any | None:
     """Get Vault client singleton. FAILS if not configured.
 
     Reads directly from os.environ to allow usage within settings.py.
     """
     import os
+
     vault_addr = os.environ.get("SOMABRAIN_VAULT_ADDR") or os.environ.get("VAULT_ADDR")
-    vault_token = os.environ.get("SOMABRAIN_VAULT_TOKEN") or os.environ.get("VAULT_TOKEN")
+    vault_token = os.environ.get("SOMABRAIN_VAULT_TOKEN") or os.environ.get(
+        "VAULT_TOKEN"
+    )
 
     if not vault_addr or not vault_token:
         # Fallback: check if we are in a test environment where we might mock this
-        if os.environ.get("DJANGO_SETTINGS_MODULE") and "test" in str(os.environ.get("DJANGO_SETTINGS_MODULE")):
-             logger.warning("Vault not configured in test environment.")
-             return None
+        if os.environ.get("DJANGO_SETTINGS_MODULE") and "test" in str(
+            os.environ.get("DJANGO_SETTINGS_MODULE")
+        ):
+            logger.warning("Vault not configured in test environment.")
+            return None
 
         raise VaultNotConfigured(
             "Vault not configured. Set VAULT_ADDR and VAULT_TOKEN environment variables."
@@ -51,6 +84,7 @@ def _get_vault_client():
 
     try:
         import hvac
+
         client = hvac.Client(url=vault_addr, token=vault_token)
         if not client.is_authenticated():
             raise VaultNotConfigured("Vault authentication failed.")
@@ -77,10 +111,16 @@ def get_secret(path: str, key: Optional[str] = None) -> Any:
         VaultNotConfigured: If Vault not set up
     """
     client = _get_vault_client()
+    if client is None:
+        raise VaultNotConfigured("Vault not configured for this environment.")
 
     try:
         # Read from KV v2 secrets engine
-        secret = client.secrets.kv.v2.read_secret_version(path=path)
+        mount_point, relative_path = _split_secret_path(path)
+        secret = client.secrets.kv.v2.read_secret_version(
+            path=relative_path,
+            mount_point=mount_point,
+        )
         data = secret["data"]["data"]
 
         if key:
@@ -110,6 +150,16 @@ def get_db_credentials() -> dict:
     return get_secret("somabrain/database")
 
 
+def get_runtime_secrets() -> dict:
+    """Get runtime service secrets from Vault."""
+    return get_secret("somabrain/runtime")
+
+
+def get_runtime_secret(key: str) -> Any:
+    """Get a specific runtime service secret from Vault."""
+    return get_secret("somabrain/runtime", key)
+
+
 def get_private_key(name: str) -> str:
     """Get private key PEM from Vault."""
     return get_secret(f"somabrain/keys/{name}", "private_key")
@@ -127,6 +177,7 @@ VAULT_PATHS = {
     "constitution_keys": "somabrain/constitution",
     "api_keys": "somabrain/api-keys",
     "database": "somabrain/database",
+    "runtime": "somabrain/runtime",
     "oauth": "somabrain/oauth",
     "email": "somabrain/email",
 }

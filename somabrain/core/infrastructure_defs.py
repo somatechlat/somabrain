@@ -3,15 +3,21 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
+
+_settings: Any | None
 
 try:
     # Shared settings loader; optional in some runtimes.
-    from django.conf import settings
+    from django.conf import settings as django_settings
 
     # The Settings singleton is imported above; no need for a redundant alias.
 except Exception:  # pragma: no cover - optional dependency in lean environments
-    settings = None
+    _settings = None
+else:
+    _settings = django_settings
+
+settings = _settings
 
 
 def _clean(value: Optional[str]) -> Optional[str]:
@@ -104,16 +110,20 @@ def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
         scheme, host, port = _parse_url(clean)
         return MemoryEndpoint(scheme=scheme, host=host, port=port, url=clean)
 
-    host = _from_settings("SOMABRAIN_MEMORY_HTTP_HOST")
-    port = _from_settings("SOMABRAIN_MEMORY_HTTP_PORT")
-    scheme = _from_settings("SOMABRAIN_MEMORY_HTTP_SCHEME") or "http"
+    configured_host = _from_settings("SOMABRAIN_MEMORY_HTTP_HOST")
+    configured_port = _from_settings("SOMABRAIN_MEMORY_HTTP_PORT")
+    configured_scheme = _from_settings("SOMABRAIN_MEMORY_HTTP_SCHEME") or "http"
 
-    if host:
-        built = f"{scheme}://{host}:{port}" if port else f"{scheme}://{host}"
+    if configured_host:
+        built = (
+            f"{configured_scheme}://{configured_host}:{configured_port}"
+            if configured_port
+            else f"{configured_scheme}://{configured_host}"
+        )
         return MemoryEndpoint(
-            scheme=scheme,
-            host=host,
-            port=int(port) if port else None,
+            scheme=configured_scheme,
+            host=configured_host,
+            port=int(configured_port) if configured_port else None,
             url=built.rstrip("/"),
         )
 

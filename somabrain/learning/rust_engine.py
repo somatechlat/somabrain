@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 
 try:
     from somabrain_rs import AdaptationEngine as RustAdaptationEngine
-    from somabrain_rs import RetrievalWeights as RustRetrievalWeights
-    from somabrain_rs import UtilityWeights as RustUtilityWeights
 
     RUST_ADAPTATION_AVAILABLE = True
     logger.info("✅ Rust AdaptationEngine loaded - using high-performance backend")
@@ -46,7 +44,9 @@ class AdaptationEngineBridge:
             learning_rate = BrainSetting.get("adapt_lr", tenant_id)
 
         if not RUST_ADAPTATION_AVAILABLE:
-            raise RuntimeError("Rust AdaptationEngine is required and must be installed.")
+            raise RuntimeError(
+                "Rust AdaptationEngine is required and must be installed."
+            )
 
         self._tenant_id = tenant_id
         self._rust_engine = RustAdaptationEngine(learning_rate)

@@ -53,7 +53,9 @@ router = Router(tags=["AAAS Admin"])
 
 @router.get("/tenants", response=TenantListSchema, auth=APIKeyAuth())
 @require_scope("admin:tenants")
-def list_tenants(request, page: int = 1, page_size: int = 20, status: Optional[str] = None):
+def list_tenants(
+    request, page: int = 1, page_size: int = 20, status: Optional[str] = None
+):
     """List all tenants (paginated)."""
     queryset = Tenant.objects.select_related("tier").all()
     if status:
@@ -64,14 +66,20 @@ def list_tenants(request, page: int = 1, page_size: int = 20, status: Optional[s
     return {
         "tenants": [
             {
-                "id": t.id, "name": t.name, "slug": t.slug, "status": t.status,
+                "id": t.id,
+                "name": t.name,
+                "slug": t.slug,
+                "status": t.status,
                 "tier_name": t.tier.name if t.tier else "None",
                 "tier_slug": t.tier.slug if t.tier else "none",
-                "admin_email": t.admin_email, "created_at": t.created_at,
+                "admin_email": t.admin_email,
+                "created_at": t.created_at,
             }
             for t in tenants
         ],
-        "total": total, "page": page, "page_size": page_size,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
     }
 
 
@@ -88,16 +96,28 @@ def create_tenant(request, data: TenantCreateSchema):
 
     with transaction.atomic():
         tenant = Tenant.objects.create(
-            name=data.name, slug=data.slug, tier=tier, status=TenantStatus.ACTIVE,
-            admin_email=data.admin_email, billing_email=data.billing_email or data.admin_email,
-            config=data.config or {}, created_by=str(request.auth.get("api_key_id")),
+            name=data.name,
+            slug=data.slug,
+            tier=tier,
+            status=TenantStatus.ACTIVE,
+            admin_email=data.admin_email,
+            billing_email=data.billing_email or data.admin_email,
+            config=data.config or {},
+            created_by=str(request.auth.get("api_key_id")),
         )
         Subscription.objects.create(
-            tenant=tenant, tier=tier, status=SubscriptionStatus.ACTIVE,
+            tenant=tenant,
+            tier=tier,
+            status=SubscriptionStatus.ACTIVE,
             current_period_start=datetime.now(timezone.utc),
         )
-        log_api_action(request, action="tenant.created", resource_type="tenant",
-            resource_id=tenant.id, details={"name": data.name, "tier": data.tier_slug})
+        log_api_action(
+            request,
+            action="tenant.created",
+            resource_type="tenant",
+            resource_id=tenant.id,
+            details={"name": data.name, "tier": data.tier_slug},
+        )
 
     try:
         lago = get_lago_client()
@@ -107,8 +127,13 @@ def create_tenant(request, data: TenantCreateSchema):
         logger.warning(f"Lago sync failed for tenant {tenant.slug}: {e}")
 
     return {
-        "id": tenant.id, "name": tenant.name, "slug": tenant.slug, "status": tenant.status,
-        "tier_name": tier.name, "tier_slug": tier.slug, "admin_email": tenant.admin_email,
+        "id": tenant.id,
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "status": tenant.status,
+        "tier_name": tier.name,
+        "tier_slug": tier.slug,
+        "admin_email": tenant.admin_email,
         "created_at": tenant.created_at,
     }
 
@@ -119,10 +144,14 @@ def get_tenant(request, tenant_id: UUID):
     """Get tenant by ID."""
     tenant = get_object_or_404(Tenant.objects.select_related("tier"), id=tenant_id)
     return {
-        "id": tenant.id, "name": tenant.name, "slug": tenant.slug, "status": tenant.status,
+        "id": tenant.id,
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "status": tenant.status,
         "tier_name": tenant.tier.name if tenant.tier else "None",
         "tier_slug": tenant.tier.slug if tenant.tier else "none",
-        "admin_email": tenant.admin_email, "created_at": tenant.created_at,
+        "admin_email": tenant.admin_email,
+        "created_at": tenant.created_at,
     }
 
 
@@ -142,12 +171,18 @@ def update_tenant(request, tenant_id: UUID, data: TenantUpdateSchema):
     if data.quota_overrides:
         tenant.quota_overrides.update(data.quota_overrides)
     tenant.save()
-    log_api_action(request, action="tenant.updated", resource_type="tenant", resource_id=tenant.id)
+    log_api_action(
+        request, action="tenant.updated", resource_type="tenant", resource_id=tenant.id
+    )
     return {
-        "id": tenant.id, "name": tenant.name, "slug": tenant.slug, "status": tenant.status,
+        "id": tenant.id,
+        "name": tenant.name,
+        "slug": tenant.slug,
+        "status": tenant.status,
         "tier_name": tenant.tier.name if tenant.tier else "None",
         "tier_slug": tenant.tier.slug if tenant.tier else "none",
-        "admin_email": tenant.admin_email, "created_at": tenant.created_at,
+        "admin_email": tenant.admin_email,
+        "created_at": tenant.created_at,
     }
 
 
@@ -157,8 +192,13 @@ def suspend_tenant(request, tenant_id: UUID, reason: str = "Administrative actio
     """Suspend a tenant."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
     tenant.suspend(reason=reason)
-    log_api_action(request, action="tenant.suspended", resource_type="tenant",
-        resource_id=tenant.id, details={"reason": reason})
+    log_api_action(
+        request,
+        action="tenant.suspended",
+        resource_type="tenant",
+        resource_id=tenant.id,
+        details={"reason": reason},
+    )
     return {"status": "suspended", "tenant_id": str(tenant_id)}
 
 
@@ -168,7 +208,12 @@ def activate_tenant(request, tenant_id: UUID):
     """Activate a suspended tenant."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
     tenant.activate()
-    log_api_action(request, action="tenant.activated", resource_type="tenant", resource_id=tenant.id)
+    log_api_action(
+        request,
+        action="tenant.activated",
+        resource_type="tenant",
+        resource_id=tenant.id,
+    )
     return {"status": "active", "tenant_id": str(tenant_id)}
 
 
@@ -180,13 +225,23 @@ def delete_tenant(request, tenant_id: UUID, hard_delete: bool = False):
     if hard_delete:
         tenant_slug = tenant.slug
         tenant.delete()
-        log_api_action(request, action="tenant.deleted.hard", resource_type="tenant",
-            resource_id=tenant_id, details={"slug": tenant_slug})
+        log_api_action(
+            request,
+            action="tenant.deleted.hard",
+            resource_type="tenant",
+            resource_id=tenant_id,
+            details={"slug": tenant_slug},
+        )
         return {"status": "deleted", "tenant_id": str(tenant_id)}
     else:
         tenant.status = TenantStatus.DISABLED
         tenant.save()
-        log_api_action(request, action="tenant.deleted.soft", resource_type="tenant", resource_id=tenant_id)
+        log_api_action(
+            request,
+            action="tenant.deleted.soft",
+            resource_type="tenant",
+            resource_id=tenant_id,
+        )
         return {"status": "disabled", "tenant_id": str(tenant_id)}
 
 
@@ -195,21 +250,34 @@ def delete_tenant(request, tenant_id: UUID, hard_delete: bool = False):
 # =============================================================================
 
 
-@router.get("/tenants/{tenant_id}/api-keys", response=List[APIKeyResponseSchema], auth=APIKeyAuth())
+@router.get(
+    "/tenants/{tenant_id}/api-keys",
+    response=List[APIKeyResponseSchema],
+    auth=APIKeyAuth(),
+)
 @require_scope("admin:tenants")
 def list_api_keys(request, tenant_id: UUID):
     """List API keys for a tenant."""
     tenant = get_object_or_404(Tenant, id=tenant_id)
     keys = APIKey.objects.filter(tenant=tenant).order_by("-created_at")
     return [
-        {"id": k.id, "name": k.name, "key_prefix": k.key_prefix, "scopes": k.scopes,
-         "is_active": k.is_active, "is_test": k.is_test, "last_used_at": k.last_used_at,
-         "created_at": k.created_at}
+        {
+            "id": k.id,
+            "name": k.name,
+            "key_prefix": k.key_prefix,
+            "scopes": k.scopes,
+            "is_active": k.is_active,
+            "is_test": k.is_test,
+            "last_used_at": k.last_used_at,
+            "created_at": k.created_at,
+        }
         for k in keys
     ]
 
 
-@router.post("/tenants/{tenant_id}/api-keys", response=APIKeyCreatedSchema, auth=APIKeyAuth())
+@router.post(
+    "/tenants/{tenant_id}/api-keys", response=APIKeyCreatedSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:tenants")
 def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
     """Create a new API key. Full key returned ONCE."""
@@ -218,14 +286,32 @@ def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
     expires_at = None
     if data.expires_days:
         from datetime import timedelta
+
         expires_at = datetime.now(timezone.utc) + timedelta(days=data.expires_days)
     api_key = APIKey.objects.create(
-        tenant=tenant, name=data.name, key_prefix=prefix, key_hash=key_hash,
-        scopes=data.scopes, is_test=data.is_test, expires_at=expires_at,
+        tenant=tenant,
+        name=data.name,
+        key_prefix=prefix,
+        key_hash=key_hash,
+        scopes=data.scopes,
+        is_test=data.is_test,
+        expires_at=expires_at,
     )
-    log_api_action(request, action="api_key.created", resource_type="api_key",
-        resource_id=api_key.id, tenant=tenant, details={"name": data.name, "scopes": data.scopes})
-    return {"id": api_key.id, "name": api_key.name, "key": full_key, "key_prefix": prefix, "scopes": api_key.scopes}
+    log_api_action(
+        request,
+        action="api_key.created",
+        resource_type="api_key",
+        resource_id=api_key.id,
+        tenant=tenant,
+        details={"name": data.name, "scopes": data.scopes},
+    )
+    return {
+        "id": api_key.id,
+        "name": api_key.name,
+        "key": full_key,
+        "key_prefix": prefix,
+        "scopes": api_key.scopes,
+    }
 
 
 @router.delete("/tenants/{tenant_id}/api-keys/{key_id}", auth=APIKeyAuth())
@@ -234,8 +320,13 @@ def revoke_api_key(request, tenant_id: UUID, key_id: UUID):
     """Revoke an API key."""
     api_key = get_object_or_404(APIKey, id=key_id, tenant_id=tenant_id)
     api_key.revoke()
-    log_api_action(request, action="api_key.revoked", resource_type="api_key",
-        resource_id=key_id, tenant=api_key.tenant)
+    log_api_action(
+        request,
+        action="api_key.revoked",
+        resource_type="api_key",
+        resource_id=key_id,
+        tenant=api_key.tenant,
+    )
     return {"status": "revoked", "key_id": str(key_id)}
 
 
@@ -244,7 +335,11 @@ def revoke_api_key(request, tenant_id: UUID, key_id: UUID):
 # =============================================================================
 
 
-@router.get("/tenants/{tenant_id}/subscription", response=SubscriptionResponseSchema, auth=APIKeyAuth())
+@router.get(
+    "/tenants/{tenant_id}/subscription",
+    response=SubscriptionResponseSchema,
+    auth=APIKeyAuth(),
+)
 @require_scope("admin:tenants")
 def get_subscription(request, tenant_id: UUID):
     """Get tenant subscription."""
@@ -252,15 +347,22 @@ def get_subscription(request, tenant_id: UUID):
     try:
         sub = tenant.subscription
         return {
-            "id": sub.id, "tier_name": sub.tier.name, "tier_slug": sub.tier.slug,
-            "status": sub.status, "current_period_start": sub.current_period_start,
+            "id": sub.id,
+            "tier_name": sub.tier.name,
+            "tier_slug": sub.tier.slug,
+            "status": sub.status,
+            "current_period_start": sub.current_period_start,
             "current_period_end": sub.current_period_end,
         }
     except Subscription.DoesNotExist:
         raise HttpError(404, "No subscription found")
 
 
-@router.post("/tenants/{tenant_id}/subscription/change", response=SubscriptionResponseSchema, auth=APIKeyAuth())
+@router.post(
+    "/tenants/{tenant_id}/subscription/change",
+    response=SubscriptionResponseSchema,
+    auth=APIKeyAuth(),
+)
 @require_scope("admin:tenants")
 def change_subscription(request, tenant_id: UUID, data: SubscriptionChangeSchema):
     """Change tenant subscription tier."""
@@ -275,11 +377,20 @@ def change_subscription(request, tenant_id: UUID, data: SubscriptionChangeSchema
         tenant.save()
         lago = get_lago_client()
         lago.change_subscription_plan(str(tenant.id), new_tier.slug)
-        log_api_action(request, action="subscription.changed", resource_type="subscription",
-            resource_id=sub.id, tenant=tenant, details={"from": old_tier, "to": data.tier_slug})
+        log_api_action(
+            request,
+            action="subscription.changed",
+            resource_type="subscription",
+            resource_id=sub.id,
+            tenant=tenant,
+            details={"from": old_tier, "to": data.tier_slug},
+        )
         return {
-            "id": sub.id, "tier_name": sub.tier.name, "tier_slug": sub.tier.slug,
-            "status": sub.status, "current_period_start": sub.current_period_start,
+            "id": sub.id,
+            "tier_name": sub.tier.name,
+            "tier_slug": sub.tier.slug,
+            "status": sub.status,
+            "current_period_start": sub.current_period_start,
             "current_period_end": sub.current_period_end,
         }
     except Subscription.DoesNotExist:
@@ -296,8 +407,15 @@ def list_tiers(request):
     """List available subscription tiers (public)."""
     tiers = SubscriptionTier.objects.filter(is_active=True).order_by("display_order")
     return [
-        {"id": t.id, "name": t.name, "slug": t.slug, "price_monthly": float(t.price_monthly),
-         "features": t.features, "is_active": t.is_active, "created_at": t.created_at}
+        {
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "price_monthly": float(t.price_monthly),
+            "features": t.features,
+            "is_active": t.is_active,
+            "created_at": t.created_at,
+        }
         for t in tiers
     ]
 
@@ -309,30 +427,51 @@ def create_tier(request, data: SubscriptionTierCreateSchema):
     if SubscriptionTier.objects.filter(slug=data.slug).exists():
         raise HttpError(400, f"Tier slug already exists: {data.slug}")
     tier = SubscriptionTier.objects.create(
-        name=data.name, slug=data.slug, price_monthly=data.price_monthly,
-        price_yearly=data.price_yearly or 0, features=data.features or {},
-        api_calls_limit=data.api_calls_limit or 1000, memory_ops_limit=data.memory_ops_limit or 500,
-        storage_limit_mb=data.storage_limit_mb or 100, is_active=data.is_active,
+        name=data.name,
+        slug=data.slug,
+        price_monthly=data.price_monthly,
+        price_yearly=data.price_yearly or 0,
+        features=data.features or {},
+        api_calls_limit=data.api_calls_limit or 1000,
+        memory_ops_limit=data.memory_ops_limit or 500,
+        storage_limit_mb=data.storage_limit_mb or 100,
+        is_active=data.is_active,
     )
-    log_api_action(request, "tier.created", "tier", tier.id, details={"slug": tier.slug})
+    log_api_action(
+        request, "tier.created", "tier", tier.id, details={"slug": tier.slug}
+    )
     return {
-        "id": tier.id, "name": tier.name, "slug": tier.slug, "price_monthly": float(tier.price_monthly),
-        "features": tier.features, "is_active": tier.is_active, "created_at": tier.created_at,
+        "id": tier.id,
+        "name": tier.name,
+        "slug": tier.slug,
+        "price_monthly": float(tier.price_monthly),
+        "features": tier.features,
+        "is_active": tier.is_active,
+        "created_at": tier.created_at,
     }
 
 
-@router.get("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@router.get(
+    "/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:billing")
 def get_tier(request, tier_id: UUID):
     """Get subscription tier details."""
     tier = get_object_or_404(SubscriptionTier, id=tier_id)
     return {
-        "id": tier.id, "name": tier.name, "slug": tier.slug, "price_monthly": float(tier.price_monthly),
-        "features": tier.features, "is_active": tier.is_active, "created_at": tier.created_at,
+        "id": tier.id,
+        "name": tier.name,
+        "slug": tier.slug,
+        "price_monthly": float(tier.price_monthly),
+        "features": tier.features,
+        "is_active": tier.is_active,
+        "created_at": tier.created_at,
     }
 
 
-@router.patch("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@router.patch(
+    "/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth()
+)
 @require_scope("admin:billing")
 def update_tier(request, tier_id: UUID, data: SubscriptionTierUpdateSchema):
     """Update subscription tier."""
@@ -350,8 +489,13 @@ def update_tier(request, tier_id: UUID, data: SubscriptionTierUpdateSchema):
     tier.save()
     log_api_action(request, "tier.updated", "tier", tier.id)
     return {
-        "id": tier.id, "name": tier.name, "slug": tier.slug, "price_monthly": float(tier.price_monthly),
-        "features": tier.features, "is_active": tier.is_active, "created_at": tier.created_at,
+        "id": tier.id,
+        "name": tier.name,
+        "slug": tier.slug,
+        "price_monthly": float(tier.price_monthly),
+        "features": tier.features,
+        "is_active": tier.is_active,
+        "created_at": tier.created_at,
     }
 
 
@@ -371,10 +515,27 @@ def report_usage(request, data: UsageReportSchema):
     lago = get_lago_client()
     success_count = 0
     for event in data.events:
-        if lago.report_usage(tenant=tenant, event_type=f"{data.source}_{event.code}", properties=event.properties):
+        if lago.report_usage(
+            tenant=tenant,
+            event_type=f"{data.source}_{event.code}",
+            properties=event.properties,
+        ):
             success_count += 1
-    log_api_action(request, action="usage.reported", resource_type="usage",
-        resource_id=data.tenant_id, tenant=tenant,
-        details={"source": data.source, "events_count": len(data.events), "success_count": success_count})
-    return {"status": "processed", "tenant_id": data.tenant_id,
-            "events_received": len(data.events), "events_forwarded": success_count}
+    log_api_action(
+        request,
+        action="usage.reported",
+        resource_type="usage",
+        resource_id=data.tenant_id,
+        tenant=tenant,
+        details={
+            "source": data.source,
+            "events_count": len(data.events),
+            "success_count": success_count,
+        },
+    )
+    return {
+        "status": "processed",
+        "tenant_id": data.tenant_id,
+        "events_received": len(data.events),
+        "events_forwarded": success_count,
+    }

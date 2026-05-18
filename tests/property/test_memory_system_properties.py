@@ -19,7 +19,6 @@ from hypothesis import given, settings as hyp_settings, strategies as st
 from somabrain.memory.superposed_trace import SuperposedTrace, TraceConfig
 from somabrain.memory.wm.core import WorkingMemory
 
-
 # ---------------------------------------------------------------------------
 # Strategies for generating test data
 # ---------------------------------------------------------------------------

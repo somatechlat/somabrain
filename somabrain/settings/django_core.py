@@ -1,6 +1,14 @@
+"""Core Django settings shared by every SomaBrain deployment profile.
 
-import environ
+This module owns the framework-level settings that are common across local,
+standalone, and production-style deployments. Deployment-specific modules
+import this file first, then layer infrastructure and feature settings on top.
+"""
+
+import os
 from pathlib import Path
+
+import environ  # type: ignore[import-untyped]
 
 env = environ.Env()
 
@@ -23,10 +31,10 @@ env = environ.Env(
     SOMABRAIN_API_URL=(str, "http://127.0.0.1:30101"),
     # Deployment Mode Standardization
     SOMA_DEPLOY_MODE=(str, "FULL_LOCAL"),
-    SOMABRAIN_MODE=(str, "full-local"), # Legacy fallback
+    SOMABRAIN_MODE=(str, "full-local"),  # Legacy fallback
     # Memory endpoint moved to infra.py
     # SOMABRAIN_MEMORY_HTTP_ENDPOINT=(str, "http://127.0.0.1:10101"),
-    # SOMABRAIN_MEMORY_HTTP_TOKEN=(str, "test-token-123"),
+    # SOMABRAIN_MEMORY_HTTP_TOKEN=(str, "<runtime supplied>"),
     SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD=(int, 5),
     SOMABRAIN_CIRCUIT_RESET_INTERVAL=(float, 30.0),
     SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL=(float, 60.0),
@@ -41,14 +49,15 @@ env = environ.Env(
 
 SOMABRAIN_API_URL = env("SOMABRAIN_API_URL")
 SOMA_DEPLOY_MODE = env("SOMA_DEPLOY_MODE", default=env("SOMABRAIN_MODE"))
-SOMABRAIN_MODE = SOMA_DEPLOY_MODE # Backward compatibility
-SOMABRAIN_MODE = SOMA_DEPLOY_MODE # Backward compatibility
+SOMABRAIN_MODE = SOMA_DEPLOY_MODE  # Backward compatibility alias
 # Memory endpoint moved to infra.py for centralized connection management
 # SOMABRAIN_MEMORY_HTTP_ENDPOINT = env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
 # SOMABRAIN_MEMORY_HTTP_TOKEN = env("SOMABRAIN_MEMORY_HTTP_TOKEN")
 SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD = env("SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD")
 SOMABRAIN_CIRCUIT_RESET_INTERVAL = env("SOMABRAIN_CIRCUIT_RESET_INTERVAL")
-SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL = env("SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL", default=60.0)
+SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL = env(
+    "SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL", default=60.0
+)
 SOMABRAIN_BHDC_SPARSITY = env("SOMABRAIN_BHDC_SPARSITY", default=0.1)
 
 # Working Memory Settings - Vibe Tuneable
@@ -64,19 +73,60 @@ SOMABRAIN_WM_SALIENCE_THRESHOLD = env("SOMABRAIN_WM_SALIENCE_THRESHOLD")
 SOMA_API_TOKEN = env.str("SOMA_API_TOKEN", default=None)
 SOMA_API_TOKEN_FILE = env.str("SOMA_API_TOKEN_FILE", default=None)
 
-# Vault Integration for Secrets
-try:
-    from somabrain.core.security.vault_client import get_jwt_secret, VaultNotConfigured
+
+def _apply_vault_bootstrap() -> None:
+    """Load bootstrap secrets before Django resolves derived settings.
+
+    Standalone Docker boots with Vault enabled, but the same settings module is
+    also imported in CI and local development where Vault may be absent. This
+    helper therefore treats Vault as an early source of truth when available and
+    otherwise leaves the normal environment-based defaults intact.
+    """
     try:
-        # Prioritize Vault for the Critical Secret
-        _vault_secret = get_jwt_secret()
-        if _vault_secret:
-            os.environ["SOMABRAIN_JWT_SECRET"] = _vault_secret
-            os.environ["SECRET_KEY"] = _vault_secret
-    except (VaultNotConfigured, ImportError):
+        from somabrain.core.security.vault_client import (
+            SecretNotFound,
+            VaultNotConfigured,
+            get_db_credentials,
+            get_jwt_secret,
+            get_runtime_secret,
+        )
+    except ImportError:
+        return
+
+    try:
+        db_creds = get_db_credentials()
+        if db_creds:
+            user = db_creds.get("username")
+            password = db_creds.get("password")
+            host = db_creds.get("host", "127.0.0.1")
+            port = db_creds.get("port", 5432)
+            name = db_creds.get("dbname", "somabrain")
+            if user and password and host and name:
+                os.environ["SOMABRAIN_POSTGRES_DSN"] = (
+                    f"postgresql://{user}:{password}@{host}:{port}/{name}"
+                )
+    except (SecretNotFound, VaultNotConfigured):
         pass
-except ImportError:
-    pass
+
+    try:
+        vault_secret = get_jwt_secret()
+        if vault_secret:
+            os.environ["SOMABRAIN_JWT_SECRET"] = vault_secret
+            os.environ["SECRET_KEY"] = vault_secret
+    except (SecretNotFound, VaultNotConfigured):
+        pass
+
+    try:
+        api_token = get_runtime_secret("api_token")
+    except (SecretNotFound, VaultNotConfigured):
+        api_token = None
+
+    if api_token:
+        os.environ["SOMA_API_TOKEN"] = api_token
+        os.environ["SOMABRAIN_API_TOKEN"] = api_token
+
+
+_apply_vault_bootstrap()
 
 SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
 DEBUG = env("SOMABRAIN_LOG_LEVEL") == "DEBUG"
@@ -155,6 +205,7 @@ STATIC_URL = "static/"
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+
 # -----------------------------------------------------------------------------
 # Helper function to load API token (matches existing logic)
 # -----------------------------------------------------------------------------
@@ -172,6 +223,9 @@ def get_api_token() -> str | None:
             pass
 
     return None
+
+
+SOMABRAIN_API_TOKEN = get_api_token()
 
 # ============================================================================
 # DJANGO LOGGING CONFIGURATION

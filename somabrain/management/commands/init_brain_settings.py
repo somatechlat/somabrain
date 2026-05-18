@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from somabrain.brain_settings.models import BrainSetting
 
+
 class Command(BaseCommand):
     help = "Initialize default brain settings for a tenant"
 
@@ -11,4 +12,6 @@ class Command(BaseCommand):
         tenant = options["tenant"]
         self.stdout.write(f"Initializing defaults for tenant: {tenant}...")
         created = BrainSetting.initialize_defaults(tenant=tenant)
-        self.stdout.write(self.style.SUCCESS(f"Successfully initialized {created} settings."))
+        self.stdout.write(
+            self.style.SUCCESS(f"Successfully initialized {created} settings.")
+        )

@@ -60,6 +60,7 @@ def _apply_env(env_dict: dict) -> None:
 # PYTEST CONFIGURATION
 # ===========================================================================
 
+
 def pytest_configure(config):
     """Register custom markers."""
     config.addinivalue_line("markers", "aaas: AAAS mode tests (requires Docker infra)")
@@ -72,19 +73,22 @@ def pytest_configure(config):
 @pytest.fixture(scope="session", autouse=True)
 def configure_test_environment(request):
     """Auto-configure environment based on test markers."""
-    # Default to AAAS mode for integration tests
-    _apply_env(AAAS_ENV)
-
-    # Setup Django
+    # Setup Django once so imports during collection can resolve settings.
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
     import django
+
     django.setup()
 
 
 @pytest.fixture(autouse=True)
-def init_brain_settings(db):
-    """Initialize brain settings for every test that uses the database."""
+def init_brain_settings(request):
+    """Initialize brain settings only for tests that explicitly use the database."""
+    if request.node.get_closest_marker("django_db") is None:
+        return
+
+    request.getfixturevalue("db")
     from somabrain.brain_settings.models import BrainSetting
+
     BrainSetting.initialize_defaults()
 
 
@@ -106,10 +110,12 @@ def standalone_mode():
 # INFRASTRUCTURE HEALTH CHECKS
 # ===========================================================================
 
+
 @pytest.fixture(scope="session")
 def postgres_available():
     """Check if PostgreSQL is available."""
     import socket
+
     host = os.environ.get("SOMA_DB_HOST", "127.0.0.1")
     port = int(os.environ.get("SOMA_DB_PORT", "63932"))
     try:
@@ -123,6 +129,7 @@ def postgres_available():
 def milvus_available():
     """Check if Milvus is available."""
     import socket
+
     host = os.environ.get("SOMA_MILVUS_HOST", "127.0.0.1")
     port = int(os.environ.get("SOMA_MILVUS_PORT", "63953"))
     try:
@@ -136,6 +143,7 @@ def milvus_available():
 def redis_available():
     """Check if Redis is available."""
     import socket
+
     host = os.environ.get("SOMA_REDIS_HOST", "127.0.0.1")
     port = int(os.environ.get("SOMA_REDIS_PORT", "63979"))
     try:
@@ -149,6 +157,7 @@ def redis_available():
 def kafka_available():
     """Check if Kafka is available."""
     import socket
+
     try:
         with socket.create_connection(("127.0.0.1", 63992), timeout=2):
             return True

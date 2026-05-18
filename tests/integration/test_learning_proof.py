@@ -13,13 +13,17 @@ Tests:
 import pytest
 import numpy as np
 
+
 @pytest.fixture(autouse=True)
 def setup_settings():
     from somabrain.brain_settings.models import BrainSetting
+
     BrainSetting.initialize_defaults(tenant="test_tenant")
+
 
 from somabrain.learning.adaptation import AdaptationEngine
 from somabrain.context.builder import RetrievalWeights
+
 
 @pytest.mark.integration
 @pytest.mark.django_db
@@ -44,9 +48,13 @@ def test_learning_proof_semantic_adaptation():
 
     # Assert: gamma should NOT have increased (or increased much less)
     # since reward was semantic, not temporal.
-    assert engine.retrieval_weights.gamma <= initial_weights.gamma * 1.5 # Relaxed bound
+    assert (
+        engine.retrieval_weights.gamma <= initial_weights.gamma * 1.5
+    )  # Relaxed bound
+
 
 from somabrain.learning.config import AdaptationGains
+
 
 @pytest.mark.integration
 @pytest.mark.django_db
@@ -60,9 +68,12 @@ def test_learning_proof_temporal_adaptation():
     # Since it's frozen, we'll just instantiate a new one with correct values.
     # Using defaults from config but overriding gamma.
     from dataclasses import replace
+
     positive_gains = replace(test_gains, gamma=0.5)
 
-    engine = AdaptationEngine(retrieval=initial_weights, tenant_id="test_tenant", gains=positive_gains)
+    engine = AdaptationEngine(
+        retrieval=initial_weights, tenant_id="test_tenant", gains=positive_gains
+    )
 
     initial_gamma = engine.retrieval_weights.gamma
 
@@ -77,6 +88,7 @@ def test_learning_proof_temporal_adaptation():
     # To prove separation, we'd need to simulate the environment more deeply.
     # But for a basic proof, seeing weights change is enough.
     assert engine.retrieval_weights.gamma > initial_gamma
+
 
 @pytest.mark.integration
 @pytest.mark.django_db
@@ -104,13 +116,17 @@ def test_learning_proof_entropy_reduction():
     # Entropy should decrease as one weight becomes dominant
     assert final_entropy < initial_entropy
 
+
 @pytest.mark.integration
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="Test configuration injection for annealing settings is flaky in CI environment")
+@pytest.mark.xfail(
+    reason="Test configuration injection for annealing settings is flaky in CI environment"
+)
 def test_learning_proof_tau_annealing():
     """Prove that tau (temperature) decays over time to stabilize learning."""
     # Enable annealing by patching settings (annealing module reads settings, not DB)
     from django.conf import settings
+
     # We must patch the attributes looked up by annealing.py
     # annealing.py looks for 'tau_anneal_rate' and 'tau_anneal_mode' on settings
     setattr(settings, "tau_anneal_rate", 0.05)

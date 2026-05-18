@@ -13,6 +13,7 @@ import logging
 from typing import TYPE_CHECKING, Any, Optional
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 if TYPE_CHECKING:
     from somabrain.admin.core.quantum import QuantumLayer
@@ -373,12 +374,14 @@ def create_fnom_memory(cfg, embedder):
 
     # Reuse valid connection parameters for shared persistence layer
     # Segregate data via explicit namespacing
+    postgres_dsn = getattr(settings, "SOMABRAIN_POSTGRES_DSN", "")
+    if not postgres_dsn:
+        raise ImproperlyConfigured(
+            "SOMABRAIN_POSTGRES_DSN must be configured before creating PersistentFNOM"
+        )
+
     kv_store = PostgresKeyValueStore(
-        dsn=getattr(
-            settings,
-            "SOMABRAIN_POSTGRES_DSN",
-            "postgresql://vibe:vibe@localhost/somabrain",
-        ),
+        dsn=postgres_dsn,
         table_name="fnom_kv",
     )
 

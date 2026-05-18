@@ -1,13 +1,12 @@
 from __future__ import annotations
-import asyncio
-import random
-import time
 import logging
 from typing import Any, List
 from django.conf import settings
 from somabrain.core.infrastructure_defs import get_memory_http_endpoint
+from somabrain.memory.transport import MemoryHTTPTransport
 
 logger = logging.getLogger(__name__)
+
 
 def _http_setting(attr: str, default_val: int) -> int:
     """Fetch HTTP client tuning knobs from shared settings with default."""
@@ -18,6 +17,7 @@ def _http_setting(attr: str, default_val: int) -> int:
         except Exception:
             pass
     return default_val
+
 
 class TransportMixin:
     """Handles HTTP transport for the Memory Client."""
@@ -101,45 +101,24 @@ class TransportMixin:
             raise RuntimeError("Memory HTTP endpoint required but not configured")
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
-        # Fail-fast: do not auto-default inside Docker; require explicit endpoint
-        client_kwargs: dict[str, Any] = {
-            "base_url": base_url,
-            "headers": headers,
-            "timeout": 10.0,
-        }
+
         # Diagnostic: record chosen endpoint for debugging in tests
         try:
             logger.debug("MemoryClient HTTP base_url=%r", base_url)
         except Exception:
             pass
-        if limits is not None:
-            client_kwargs["limits"] = limits
 
-        # Create sync client
-        try:
-            self._http = httpx.Client(**client_kwargs)
-        except Exception:
-            self._http = None
+        # Delegate client creation to the canonical MemoryHTTPTransport
+        self._transport = MemoryHTTPTransport(
+            base_url=base_url,
+            headers=headers,
+            limits=limits,
+            retries=retries,
+            logger=logger,
+        )
+        self._http = self._transport.client
+        self._http_async = self._transport.async_client
 
-        # Create async client with configurable transport retries
-        try:
-            transport = httpx.AsyncHTTPTransport(retries=retries)
-            async_kwargs = dict(client_kwargs)
-            async_kwargs["transport"] = transport
-            self._http_async = httpx.AsyncClient(**async_kwargs)
-        except Exception:
-            try:
-                self._http_async = httpx.AsyncClient(**client_kwargs)
-            except Exception:
-                self._http_async = None
-
-        # If endpoint is empty, treat HTTP client as unavailable
-        try:
-            if not base_url:
-                self._http = None
-                self._http_async = None
-        except Exception:
-            pass
         # Strict mode: memory is always required
         if self._http is None:
             raise RuntimeError(
@@ -189,27 +168,10 @@ class TransportMixin:
         *,
         max_retries: int = 2,
     ) -> tuple[bool, int, Any]:
-        if self._http is None:
+        transport = getattr(self, "_transport", None)
+        if transport is None:
             return False, 0, None
-        status = 0
-        data: Any = None
-        for attempt in range(max_retries + 1):
-            try:
-                resp = self._http.post(endpoint, json=body, headers=headers)
-            except Exception:
-                if attempt < max_retries:
-                    time.sleep(0.01 + random.random() * 0.02)
-                continue
-            status = int(getattr(resp, "status_code", 0) or 0)
-            if status in (429, 503) and attempt < max_retries:
-                time.sleep(0.01 + random.random() * 0.02)
-                continue
-            if status >= 500 and attempt < max_retries:
-                time.sleep(0.05 + random.random() * 0.05)
-                continue
-            data = self._response_json(resp)
-            return status < 300, status, data
-        return False, status, data
+        return transport.post_with_retries_sync(endpoint, body, headers, max_retries=max_retries)
 
     async def _http_post_with_retries_async(
         self,
@@ -219,27 +181,10 @@ class TransportMixin:
         *,
         max_retries: int = 2,
     ) -> tuple[bool, int, Any]:
-        if self._http_async is None:
+        transport = getattr(self, "_transport", None)
+        if transport is None:
             return False, 0, None
-        status = 0
-        data: Any = None
-        for attempt in range(max_retries + 1):
-            try:
-                resp = await self._http_async.post(endpoint, json=body, headers=headers)
-            except Exception:
-                if attempt < max_retries:
-                    await asyncio.sleep(0.01 + random.random() * 0.02)
-                continue
-            status = int(getattr(resp, "status_code", 0) or 0)
-            if status in (429, 503) and attempt < max_retries:
-                await asyncio.sleep(0.01 + random.random() * 0.02)
-                continue
-            if status >= 500 and attempt < max_retries:
-                await asyncio.sleep(0.05 + random.random() * 0.05)
-                continue
-            data = self._response_json(resp)
-            return status < 300, status, data
-        return False, status, data
+        return await transport.post_with_retries_async(endpoint, body, headers, max_retries=max_retries)
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         if self._http is None:

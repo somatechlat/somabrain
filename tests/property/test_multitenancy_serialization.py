@@ -18,7 +18,6 @@ from typing import Any, Dict, Optional, Tuple
 import pytest
 from hypothesis import given, settings as hyp_settings, strategies as st, assume
 
-
 # ---------------------------------------------------------------------------
 # Strategies for generating test data
 # ---------------------------------------------------------------------------
@@ -75,7 +74,10 @@ coordinate_strategy = st.tuples(
 # Import real implementations
 # ---------------------------------------------------------------------------
 
-from somabrain.admin.brain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+from somabrain.admin.brain.neuromodulators import (
+    NeuromodState,
+    PerTenantNeuromodulators,
+)
 from somabrain.datetime_utils import coerce_to_epoch_seconds
 from somabrain.memory.client import RecallHit
 

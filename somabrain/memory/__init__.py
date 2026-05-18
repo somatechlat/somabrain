@@ -9,7 +9,7 @@ This module provides:
 - get_memory_backend: Factory for HTTP or Direct backend (AAAS mode)
 """
 
-from .client import MemoryClient, RecallHit as ClientRecallHit
+from .client import MemoryClient
 
 from .filtering import _filter_payloads_by_keyword
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
@@ -71,23 +71,29 @@ from .utils import (
     get_tenant_namespace,
     store_from_payload,
 )
+
+
 # AAAS Mode support - lazy imports to avoid circular dependencies
 def get_memory_backend(*args, **kwargs):
     """Lazy import of get_memory_backend to avoid circular imports."""
     from .backends import get_memory_backend as _get_memory_backend
+
     return _get_memory_backend(*args, **kwargs)
 
 
 def is_aaas_mode():
     """Lazy import of is_aaas_mode to avoid circular imports."""
     from .backends import is_aaas_mode as _is_aaas_mode
+
     return _is_aaas_mode()
 
 
 def get_memory_mode():
     """Lazy import of get_memory_mode to avoid circular imports."""
     from .backends import get_memory_mode as _get_memory_mode
+
     return _get_memory_mode()
+
 
 __all__ = [
     # Hierarchical memory
@@ -171,4 +177,3 @@ def get_memory_client():
 def get_memory_http_transport():
     """Return MemoryHTTPTransport class (now directly imported)."""
     return MemoryHTTPTransport
-

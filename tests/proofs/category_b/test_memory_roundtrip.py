@@ -16,7 +16,6 @@ from typing import Dict
 import httpx
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
@@ -25,6 +24,7 @@ import os
 
 APP_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
 APP_URL = f"http://localhost:{APP_PORT}/api"
+
 
 def get_tenant_headers(tenant_id: str) -> Dict[str, str]:
     """Get HTTP headers for a specific tenant."""
@@ -454,7 +454,9 @@ class TestTenantMemoryIsolation:
                 headers=headers,
                 json=test_payload,
             )
-            assert response2.status_code == 200, f"Second store failed: {response2.text}"
+            assert (
+                response2.status_code == 200
+            ), f"Second store failed: {response2.text}"
 
         data2 = response2.json()
         coord2 = data2.get("coordinate") or data2.get("id") or data2.get("key")

@@ -18,11 +18,13 @@ from somabrain.api.auth import api_key_auth
 from somabrain.core.security.legacy_auth import require_auth
 from somabrain.tenant import get_tenant
 
+
 class ConfigResponse(BaseModel):
     tenant_id: str
     namespace: str
     features: Dict[str, Any]
     limits: Dict[str, Any]
+
 
 logger = logging.getLogger("somabrain.api.endpoints.config")
 

@@ -52,7 +52,7 @@ class OutboxBackpressureError(Exception):
 
     def __init__(
         self, pending_count: int, threshold: int = OUTBOX_BACKPRESSURE_THRESHOLD
-    ):
+    ) -> None:
         """Initialize the instance."""
 
         self.pending_count = pending_count
@@ -271,14 +271,14 @@ def get_pending_events_by_tenant_batch(
     Enables per-tenant batch processing for the outbox worker.
     """
     # Get distinct tenant IDs with pending events
-    tenant_ids = (
+    tenant_ids = list(
         OutboxEvent.objects.filter(status="pending")
         .values_list("tenant_id", flat=True)
         .distinct()
     )
 
     if max_tenants:
-        tenant_ids = list(tenant_ids)[:max_tenants]
+        tenant_ids = tenant_ids[:max_tenants]
 
     # If no tenants found, check for NULL tenant_id events
     if not tenant_ids:

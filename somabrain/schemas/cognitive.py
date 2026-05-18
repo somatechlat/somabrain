@@ -109,16 +109,19 @@ class Feedback(BaseModel):
 
     class Observation(BaseModel):
         """Nested observation for feedback."""
+
         data: dict
         timestamp: float
 
     class Thought(BaseModel):
         """Nested thought for feedback."""
+
         query: str
         context: dict = {}
 
     class Memory(BaseModel):
         """Nested memory for feedback."""
+
         data: dict
         timestamp: float
 

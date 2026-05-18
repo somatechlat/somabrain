@@ -193,7 +193,6 @@ async def store_memory_item(content: str, **kwargs) -> dict:
             "Check quantum layer or embedder configuration."
         ) from e
 
-
     obs = Observation(
         type="text",
         content=content,
@@ -220,4 +219,3 @@ async def store_memory_item(content: str, **kwargs) -> dict:
 def clear_memory_store() -> None:
     """Clear the in-memory store (for tests)."""
     MEMORY_STORE.clear()
-

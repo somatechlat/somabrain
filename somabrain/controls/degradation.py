@@ -13,11 +13,13 @@ from django.core.cache import cache
 
 logger = logging.getLogger("somabrain.degradation")
 
+
 class HealthStatus(Enum):
     NORMAL = "NORMAL"
     LATENCY_WARN = "LATENCY_WARN"
     DEGRADED = "DEGRADED"
     FAILSAFE = "FAILSAFE"
+
 
 class DegradationManager:
     """Manages cognitive degradation states based on infra health."""
@@ -26,24 +28,35 @@ class DegradationManager:
     HEALTH_KEY = "brain:health:status"
     LATENCY_KEY = "brain:health:latency"
 
-    def __init__(self):
-        self.latency_threshold = getattr(settings, "SOMABRAIN_LATENCY_THRESHOLD", 0.050) # 50ms
+    def __init__(self) -> None:
+        self.latency_threshold = getattr(
+            settings, "SOMABRAIN_LATENCY_THRESHOLD", 0.050
+        )  # 50ms
         self.last_check = 0
-        self.check_interval = 5.0 # Check every 5s
+        self.check_interval = 5.0  # Check every 5s
 
     def get_status(self, tenant: str = "default") -> HealthStatus:
         """Get current health status for a tenant."""
         status_val = cache.get(f"{self.HEALTH_KEY}:{tenant}", HealthStatus.NORMAL.value)
         return HealthStatus(status_val)
 
-    def report_latency(self, latency: float, service: str, tenant: str = "default"):
-         """Report observed latency from a specific service client."""
-         if latency > self.latency_threshold:
-             logger.warning(f"High latency detected for service {service}: {latency:.4f}s")
-             cache.set(f"{self.LATENCY_KEY}:{tenant}:{service}", latency, 60)
-             self._reevaluate_health(tenant)
+    def report_latency(
+        self,
+        latency: float,
+        service: str,
+        tenant: str = "default",
+    ) -> None:
+        """Report observed latency from a specific service client."""
+        if latency > self.latency_threshold:
+            logger.warning(
+                f"High latency detected for service {service}: {latency:.4f}s"
+            )
+            cache.set(f"{self.LATENCY_KEY}:{tenant}:{service}", latency, 60)
+            self._reevaluate_health(tenant)
 
-    def report_error(self, service: str, error: Exception, tenant: str = "default") -> None:
+    def report_error(
+        self, service: str, error: Exception, tenant: str = "default"
+    ) -> None:
         """Report a service error and promote health to DEGRADED immediately.
 
         Writes the DEGRADED status to Redis (300s TTL) and, if Kafka publishing
@@ -87,15 +100,16 @@ class DegradationManager:
                 # Race condition: another process wrote the same dedupe_key — safe to ignore.
                 logger.debug(
                     "Outbox dedupe hit for degradation event (tenant=%s, service=%s) — skipping.",
-                    tenant, service,
+                    tenant,
+                    service,
                 )
             except Exception as outbox_exc:
                 # Fail-loud: outbox write failure is a configuration or DB error.
                 logger.error(
                     "Failed to write degradation event to outbox (topic=%s): %s",
-                    kafka_topic, outbox_exc,
+                    kafka_topic,
+                    outbox_exc,
                 )
-
 
     def _reevaluate_health(self, tenant: str) -> None:
         """Analyze recent latency/error signals and escalate or recover health state.
@@ -112,7 +126,9 @@ class DegradationManager:
         # Read monitored service names from settings — never hardcode infrastructure names.
         # Default covers the four standard SomaBrain dependencies; override via env:
         #   SOMABRAIN_MONITORED_SERVICES=postgresql,redis,milvus,sfm_http,my_custom_svc
-        raw = getattr(settings, "SOMABRAIN_MONITORED_SERVICES", "postgresql,redis,milvus,sfm_http")
+        raw = getattr(
+            settings, "SOMABRAIN_MONITORED_SERVICES", "postgresql,redis,milvus,sfm_http"
+        )
         known_services = [s.strip() for s in raw.split(",") if s.strip()]
 
         for svc in known_services:
@@ -137,11 +153,15 @@ class DegradationManager:
             cache.set(f"{self.HEALTH_KEY}:{tenant}", new_status.value, 300)
             logger.warning(
                 "Health escalated to %s for tenant %s — slow services: %s",
-                new_status.value, tenant, ", ".join(high_latency_services),
+                new_status.value,
+                tenant,
+                ", ".join(high_latency_services),
             )
 
     @property
     def is_degraded(self) -> bool:
+        """Return whether the default tenant is operating above NORMAL."""
         return self.get_status() != HealthStatus.NORMAL
+
 
 degradation_manager = DegradationManager()

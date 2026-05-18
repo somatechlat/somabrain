@@ -23,12 +23,15 @@ import redis.asyncio as redis
 from redis.exceptions import RedisError
 
 from somabrain.aaas.logic.tenant_types import TenantMetadata, TenantStatus, TenantTier
-from somabrain.aaas.logic.tenant_validation import normalize_tenant_id, validate_tenant_id
+from somabrain.aaas.logic.tenant_validation import (
+    normalize_tenant_id,
+    validate_tenant_id,
+)
 
 logger = logging.getLogger(__name__)
 
-
 import asyncio
+
 
 class TenantRegistry:
     """Centralized tenant management service with perfect architecture."""
@@ -400,35 +403,6 @@ class TenantRegistry:
         """Validate tenant ID format and security."""
         return validate_tenant_id(tenant_id)
 
-    async def _store_tenant_metadata(self, metadata: TenantMetadata) -> None:
-        """Store tenant metadata in Redis."""
-        if not self._redis:
-            raise RuntimeError("Tenant registry not initialized")
-
-        try:
-            key = f"tenant:{metadata.tenant_id}"
-            data = metadata.to_dict()
-
-            # Convert datetime objects to ISO strings
-            data["created_at"] = metadata.created_at.isoformat()
-            data["last_activity"] = metadata.last_activity.isoformat()
-            if metadata.expires_at:
-                data["expires_at"] = metadata.expires_at.isoformat()
-
-            # Store with TTL for temporary tenants
-            if metadata.expires_at:
-                ttl = int((metadata.expires_at - datetime.utcnow()).total_seconds())
-                if ttl > 0:
-                    await self._redis.setex(key, ttl, json.dumps(data))
-                else:
-                    await self._redis.set(key, json.dumps(data))
-            else:
-                await self._redis.set(key, json.dumps(data))
-
-        except RedisError as e:
-            logger.error("Failed to store tenant metadata: %s", e)
-            raise
-
     async def _load_all_tenants(self) -> None:
         """Load all tenants from Redis into cache."""
         redis_conn = await self._ensure_redis_connection()
@@ -542,4 +516,3 @@ class TenantRegistry:
         self._initialized = False
 
         logger.info("Tenant registry closed")
-

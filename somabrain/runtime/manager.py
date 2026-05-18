@@ -26,6 +26,39 @@ mt_memory: Optional[Any] = None
 cfg: Optional[Any] = None
 
 
+class _SettingsAdapter:
+    """Bridge Django settings to the lowercase config shape used by runtime code."""
+
+    _ALIASES = {
+        "default_tenant": "SOMABRAIN_DEFAULT_TENANT",
+        "embed_dim": "SOMABRAIN_EMBED_DIM",
+        "embed_provider": "SOMABRAIN_EMBED_PROVIDER",
+        "embed_model": "SOMABRAIN_EMBED_MODEL",
+        "embed_cache_size": "SOMABRAIN_EMBED_CACHE_SIZE",
+        "embed_dim_target_k": "SOMABRAIN_EMBED_DIM_TARGET_K",
+        "use_hrr": "SOMABRAIN_USE_HRR",
+        "hrr_dim": "SOMABRAIN_HRR_DIM",
+        "hrr_seed": "SOMABRAIN_HRR_SEED",
+        "fde_enabled": "SOMABRAIN_FDE_ENABLED",
+    }
+
+    def __init__(self, settings_obj: Any):
+        self._settings = settings_obj
+        self.http = settings_obj
+
+    def __getattr__(self, name: str) -> Any:
+        candidates = [
+            name,
+            self._ALIASES.get(name),
+            f"SOMABRAIN_{name.upper()}",
+            name.upper(),
+        ]
+        for candidate in candidates:
+            if candidate and hasattr(self._settings, candidate):
+                return getattr(self._settings, candidate)
+        raise AttributeError(name)
+
+
 def _initialize_embedder() -> Any:
     """Initialize the embedder singleton.
 
@@ -39,7 +72,7 @@ def _initialize_embedder() -> Any:
     try:
         from somabrain.admin.core.embeddings import make_embedder
 
-        embedder = make_embedder(settings)
+        embedder = make_embedder(_SettingsAdapter(settings))
         logger.info("Embedder initialized successfully")
         return embedder
     except Exception as e:
@@ -62,7 +95,7 @@ def _initialize_working_memory() -> Any:
         return mt_wm
 
     try:
-        from somabrain.mt_wm import MultiTenantWM
+        from somabrain.memory.wm.mt_wm import MultiTenantWM
 
         # Use configured embedding dimension from settings
         mt_wm = MultiTenantWM(dim=settings.SOMABRAIN_EMBED_DIM)

@@ -101,6 +101,7 @@ def _get_embedder():
     """
     try:
         from somabrain.runtime.manager import get_embedder
+
         embedder = get_embedder()
         if embedder is None:
             raise HttpError(503, "embedder unavailable")
@@ -120,6 +121,7 @@ def _get_wm():
     """
     try:
         from somabrain.runtime.manager import get_working_memory
+
         wm = get_working_memory()
         if wm is None:
             raise HttpError(503, "working memory unavailable")
@@ -139,6 +141,7 @@ def _get_memory_pool():
     """
     try:
         from somabrain.runtime.manager import get_memory_pool
+
         pool = get_memory_pool()
         if pool is None:
             raise HttpError(503, "memory pool unavailable")

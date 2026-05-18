@@ -99,7 +99,9 @@ class WebhookAdmin(admin.ModelAdmin):
 
     def url_truncated(self, obj):
         """Display truncated URL."""
-        return format_html('<code>{}</code>', obj.url[:40] + "..." if len(obj.url) > 40 else obj.url)
+        return format_html(
+            "<code>{}</code>", obj.url[:40] + "..." if len(obj.url) > 40 else obj.url
+        )
 
     url_truncated.short_description = "URL"
 
