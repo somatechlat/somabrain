@@ -1,0 +1,81 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# SomaBrain — Shared Network Override
+# Use this file to attach the standalone stack to an external soma-stack-net.
+# ═══════════════════════════════════════════════════════════════════════════════
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.shared-network.yml up -d
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  somabrain_standalone_redis:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_kafka:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_kafka_exporter:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_schema_registry:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_opa:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_prometheus:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_jaeger:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_postgres:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_vault:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_vault_init:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_db_migrate:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_postgres_exporter:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_app:
+    networks:
+      - soma-stack-net
+    extra_hosts: []  # Remove host-gateway mapping; shared network provides DNS
+
+  somabrain_standalone_cog:
+    networks:
+      - soma-stack-net
+    extra_hosts: []  # Remove host-gateway mapping; shared network provides DNS
+
+  somabrain_standalone_outbox_publisher:
+    networks:
+      - soma-stack-net
+
+  somabrain_standalone_integrator_triplet:
+    networks:
+      - soma-stack-net
+
+networks:
+  somabrain_standalone_net:
+    external: false
+  soma-stack-net:
+    external: true
+    name: soma-stack-net
