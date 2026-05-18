@@ -122,7 +122,7 @@ export class EogPlatformConfig extends LitElement {
                         key: 'fractalmemory_url',
                         label: 'SomaFractalMemory URL',
                         type: 'url',
-                        placeholder: 'http://somafractalmemory:9595',
+                        placeholder: 'http://somafractalmemory:10101',
                         description: 'URL for long-term memory service',
                         runtime: 'static',
                         hint: '⚠️ Requires restart to take effect',
