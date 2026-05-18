@@ -28,7 +28,7 @@ jobs:
         run: |
           # Wait for docker-compose services to appear and give them time to boot
           for i in {1..60}; do
-            if docker compose ps --services | wc -l | grep -q '[1-9]'; then
+            if docker compose -f infra/standalone/docker-compose.yml ps --services | wc -l | grep -q '[1-9]'; then
               break
             fi
             sleep 2

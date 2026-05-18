@@ -327,9 +327,9 @@ PY
 
       - name: Spin up services with Docker Compose
         run: |
-          docker compose up -d
+          docker compose -f infra/standalone/docker-compose.yml up -d
           # Wait for all services to become healthy (max 120 seconds)
-          timeout 120 bash -c "while ! docker compose ps | grep -q 'healthy'; do sleep 5; done"
+          timeout 120 bash -c "while ! docker compose -f infra/standalone/docker-compose.yml ps | grep -q 'healthy'; do sleep 5; done"
 
       - name: Run deployment verification script
         run: |
@@ -338,7 +338,7 @@ PY
       - name: Tear down Docker Compose services
         if: always()
         run: |
-          docker compose down
+          docker compose -f infra/standalone/docker-compose.yml down
 
   # ---------------------------------------------------------------------------
   # Performance testing harness (k6) – runs after deployment verification
