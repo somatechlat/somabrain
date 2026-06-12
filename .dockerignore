@@ -1,0 +1,50 @@
+# Build context exclusions for SomaBrain standalone image
+# Context root is the repo root; Dockerfile is at infra/standalone/Dockerfile
+
+# Secrets and local config
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# Python virtual environments
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+
+# Rust build artifacts
+rust_core/target
+*.lock
+
+# Node / TypeScript
+node_modules
+dist
+
+# IDE / OS
+.idea
+.vscode
+.DS_Store
+
+# CI/build caches
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.benchmarks
+.hypothesis
+
+# Documentation and misc files not needed at runtime
+docs
+*.md
+!README.md
+!rust_core/README.md
+
+# Data and logs
+data
+data/drift
+*.log

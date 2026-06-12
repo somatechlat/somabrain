@@ -7,10 +7,13 @@ delegates circuit‑breaker logic to the shared :class:`~somabrain.core.infrastr
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Any, Iterable, List
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 # Local imports – placed after the standard library imports to avoid circular
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
@@ -289,9 +292,7 @@ class MemoryService:
         try:
             health = self.client().health()
         except Exception as exc:
-            import logging
-
-            logging.getLogger(__name__).debug(
+            logger.debug(
                 "Health check failed for namespace=%s: %s", self.namespace, exc
             )
             return False
@@ -452,10 +453,8 @@ class MemoryService:
             gauge = getattr(metrics, "OUTBOX_PENDING", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception as exc:
-            import logging
-
-            logging.getLogger(__name__).debug(
+        except (ImportError, AttributeError) as exc:
+            logger.debug(
                 "Failed to update OUTBOX_PENDING metric for tenant=%s: %s", tenant, exc
             )
 
@@ -474,10 +473,8 @@ class MemoryService:
             gauge = getattr(metrics, "OUTBOX_PENDING_BY_TENANT", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception as exc:
-            import logging
-
-            logging.getLogger(__name__).debug(
+        except (ImportError, AttributeError) as exc:
+            logger.debug(
                 "Failed to update OUTBOX_PENDING_BY_TENANT metric for tenant=%s: %s",
                 tenant,
                 exc,

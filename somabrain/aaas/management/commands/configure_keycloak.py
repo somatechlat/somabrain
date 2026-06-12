@@ -67,7 +67,9 @@ class Command(BaseCommand):
             os.environ.get("KEYCLOAK_URL", "http://localhost:8080"),
         )
         admin_user = os.environ.get("KEYCLOAK_ADMIN", "admin")
-        admin_password = os.environ.get("KEYCLOAK_ADMIN_PASSWORD", "admin")
+        admin_password = os.environ.get("KEYCLOAK_ADMIN_PASSWORD")
+        if not admin_password:
+            raise CommandError("KEYCLOAK_ADMIN_PASSWORD must be set via environment.")
 
         self.stdout.write("\n🔐 Keycloak Realm Configuration")
         self.stdout.write("=" * 50)

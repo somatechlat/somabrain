@@ -5,6 +5,7 @@ All API routers are registered in somabrain/api/v1.py
 """
 
 from django.contrib import admin
+from django.db import DatabaseError, OperationalError
 from django.http import JsonResponse
 from django.urls import path
 from django.utils import timezone
@@ -49,10 +50,12 @@ def readyz_view(request):
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
         checks["database"] = "healthy"
-    except Exception as e:
-        checks["database"] = f"unhealthy: {str(e)[:50]}"
+    except (OperationalError, DatabaseError) as e:
+        checks["database"] = f"unhealthy: {type(e).__name__}: {str(e)[:50]}"
 
     # Cache check
+    # Broad catch is intentional: cache backends do not share a single exception
+    # hierarchy, and a readiness probe must report status rather than crash.
     try:
         cache.set("readyz_check", "ok", 10)
         if cache.get("readyz_check") == "ok":
@@ -98,6 +101,8 @@ def health_view(request):
         """
 
         start = time.time()
+        # Broad catch is intentional for the health-check aggregator: every
+        # sub-check must report unhealthy rather than crashing the endpoint.
         try:
             result = check_func()
             elapsed = int((time.time() - start) * 1000)
@@ -113,7 +118,7 @@ def health_view(request):
                 "name": name,
                 "status": "unhealthy",
                 "response_time_ms": elapsed,
-                "error": str(e)[:100],
+                "error": f"{type(e).__name__}: {str(e)[:80]}",
             }
 
     health = {

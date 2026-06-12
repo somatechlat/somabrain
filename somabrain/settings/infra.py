@@ -170,6 +170,9 @@ SOMABRAIN_OPA_SCHEME = env.str(
 SOMABRAIN_OPA_URL = env.str("SOMABRAIN_OPA_URL", default="http://opa:8181")
 SOMABRAIN_OPA_TIMEOUT = env.float("SOMABRAIN_OPA_TIMEOUT", default=2.0)
 OPA_BUNDLE_PATH = env.str("OPA_BUNDLE_PATH", default="./opa")
+# Fail-closed OPA is enforced in somabrain/opa/client.py. The legacy allow-on-error
+# flag is intentionally unsupported; keep the variable only for backwards-compatible
+# settings attribute migration.
 SOMABRAIN_OPA_ALLOW_ON_ERROR = env.bool("SOMABRAIN_OPA_ALLOW_ON_ERROR", default=False)
 SOMABRAIN_OPA_POLICY_KEY = env.str(
     "SOMABRAIN_OPA_POLICY_KEY", default="soma:opa:policy"
@@ -257,7 +260,6 @@ SOMABRAIN_OPA_SCHEME = env.str(
 )
 SOMABRAIN_OPA_TIMEOUT = env.float("SOMABRAIN_OPA_TIMEOUT", default=2.0)
 OPA_BUNDLE_PATH = env.str("OPA_BUNDLE_PATH", default="./opa")
-SOMABRAIN_OPA_ALLOW_ON_ERROR = env.bool("SOMABRAIN_OPA_ALLOW_ON_ERROR", default=False)
 SOMABRAIN_OPA_POLICY_KEY = env.str(
     "SOMABRAIN_OPA_POLICY_KEY", default="soma:opa:policy"
 )
@@ -271,6 +273,10 @@ SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(
     "SOMABRAIN_MEMORY_HTTP_ENDPOINT", default=_MEMORY_DEFAULT
 )
 SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="")
+if REQUIRE_MEMORY and not SOMABRAIN_MEMORY_HTTP_TOKEN:
+    raise environ.ImproperlyConfigured(
+        "SOMABRAIN_MEMORY_HTTP_TOKEN must be set when REQUIRE_MEMORY is enabled."
+    )
 SOMABRAIN_HTTP_KEEPALIVE = env.int("SOMABRAIN_HTTP_KEEPALIVE", default=32)
 SOMABRAIN_HTTP_RETRIES = env.int("SOMABRAIN_HTTP_RETRIES", default=1)
 

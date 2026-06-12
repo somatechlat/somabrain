@@ -414,7 +414,7 @@ class WMLTMPromoter:
 
         Per Requirement A2.4: Failed promotions queue to outbox.
 
-        Note: enqueue_event is synchronous (uses SQLAlchemy session).
+        Note: enqueue_event is synchronous (uses Django ORM).
         """
         from somabrain.db.outbox import enqueue_event
 
