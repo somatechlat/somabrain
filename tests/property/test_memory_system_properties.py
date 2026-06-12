@@ -58,7 +58,9 @@ class TestSuperposedTraceDecayFormula:
     @hyp_settings(max_examples=100, deadline=10000)
     def test_decay_formula_single_upsert(self, dim: int, eta: float, seed: int) -> None:
         """Verify decay formula: M_{t+1} = (1-η)M_t + η·bind(Rk, v), normalized."""
-        cfg = TraceConfig(dim=dim, eta=eta, rotation_enabled=False, rotation_seed=seed)
+        cfg = TraceConfig(
+            dim=dim, eta=eta, rotation_enabled=False, rotation_seed=seed, cleanup_topk=5
+        )
         trace = SuperposedTrace(cfg)
 
         # Get initial state (should be zeros)
@@ -104,7 +106,9 @@ class TestSuperposedTraceDecayFormula:
         self, dim: int, eta: float, seed: int
     ) -> None:
         """Verify decay accumulates correctly over multiple upserts."""
-        cfg = TraceConfig(dim=dim, eta=eta, rotation_enabled=False, rotation_seed=seed)
+        cfg = TraceConfig(
+            dim=dim, eta=eta, rotation_enabled=False, rotation_seed=seed, cleanup_topk=5
+        )
         trace = SuperposedTrace(cfg)
 
         # Perform multiple upserts
@@ -246,7 +250,9 @@ class TestSuperposedTraceCleanup:
     @hyp_settings(max_examples=50, deadline=10000)
     def test_recall_finds_stored_anchor(self, dim: int, seed: int) -> None:
         """Verify recall can find a stored anchor."""
-        cfg = TraceConfig(dim=dim, eta=0.5, rotation_enabled=False, rotation_seed=seed)
+        cfg = TraceConfig(
+            dim=dim, eta=0.5, rotation_enabled=False, rotation_seed=seed, cleanup_topk=5
+        )
         trace = SuperposedTrace(cfg)
 
         # Store a key-value pair
@@ -268,7 +274,9 @@ class TestSuperposedTraceCleanup:
     @hyp_settings(max_examples=50, deadline=10000)
     def test_anchors_are_registered(self, dim: int, seed: int) -> None:
         """Verify anchors are properly registered after upsert."""
-        cfg = TraceConfig(dim=dim, eta=0.5, rotation_enabled=False, rotation_seed=seed)
+        cfg = TraceConfig(
+            dim=dim, eta=0.5, rotation_enabled=False, rotation_seed=seed, cleanup_topk=5
+        )
         trace = SuperposedTrace(cfg)
 
         # Store multiple anchors

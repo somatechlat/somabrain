@@ -267,6 +267,15 @@ SOMABRAIN_OPA_POLICY_SIG_KEY = env.str(
     "SOMABRAIN_OPA_POLICY_SIG_KEY", default="soma:opa:policy:sig"
 )
 
+# URLs used by the legacy /health aggregator in somabrain/config/urls.py.
+# These are intentionally separate from the canonical SOMABRAIN_*_URL settings
+# so existing health checks keep working without touching every call site.
+OPA_URL = env.str("OPA_URL", default=SOMABRAIN_OPA_URL)
+MINIO_ENDPOINT = env.str("MINIO_ENDPOINT", default="http://minio:9000")
+SCHEMA_REGISTRY_URL = env.str(
+    "SCHEMA_REGISTRY_URL", default="http://somabrain_standalone_schema_registry:8081"
+)
+
 # External Memory (SFM)
 # ----------------------------------------------------------------------------
 SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(

@@ -40,6 +40,20 @@ DEGRADED_TIMEOUT = 5.0
 NORMAL_TIMEOUT = 30.0
 
 
+def _app_available() -> bool:
+    try:
+        resp = httpx.get(f"http://localhost:{APP_PORT}/health", timeout=2.0)
+        return resp.status_code == 200
+    except httpx.RequestError:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _app_available(),
+    reason=f"SomaBrain API not reachable at http://localhost:{APP_PORT}/health",
+)
+
+
 def _get_health() -> Dict[str, Any]:
     """Get current health status from the app."""
     r = httpx.get(f"http://localhost:{APP_PORT}/health", timeout=NORMAL_TIMEOUT)

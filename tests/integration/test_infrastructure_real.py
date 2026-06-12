@@ -65,14 +65,12 @@ def _redis_available() -> bool:
         import redis
         import os
 
-        # Default to AAAS port 63979, allow override
-        host = os.environ.get("SOMA_REDIS_HOST", "localhost")
-        port = int(os.environ.get("SOMA_REDIS_PORT", "63979"))
-
-        r = redis.Redis(host=host, port=port, socket_timeout=2)
+        # Default to standalone stack port 30100, allow override via REDIS_URL
+        redis_url = os.environ.get("SOMABRAIN_REDIS_URL", "redis://localhost:30100/0")
+        r = redis.from_url(redis_url, socket_timeout=2)
         r.ping()
         return True
-    except Exception:
+    except redis.exceptions.RedisError:
         return False
 
 
@@ -82,11 +80,13 @@ def _kafka_available() -> bool:
         from kafka import KafkaAdminClient
         import os
 
-        host = os.environ.get("SOMA_KAFKA_HOST", "localhost")
-        port = int(os.environ.get("SOMA_KAFKA_PORT", "63992"))  # Standard Kafka Port
+        bootstrap = os.environ.get(
+            "KAFKA_BOOTSTRAP_SERVERS",
+            os.environ.get("SOMABRAIN_KAFKA_URL", "localhost:30102"),
+        ).replace("kafka://", "")
 
         admin = KafkaAdminClient(
-            bootstrap_servers=f"{host}:{port}",
+            bootstrap_servers=bootstrap,
             request_timeout_ms=2000,
         )
         admin.close()
@@ -116,24 +116,14 @@ def _opa_available() -> bool:
     try:
         import os
 
-        os.environ.get("SOMA_OPA_HOST", "localhost")
-        int(
-            os.environ.get("SOMA_OPA_PORT", "63999")
-        )  # Assumption for OPA? No, Agent used one.
-        # Agent used SA01_OPA_URL. Let's use env var or skip if not sure.
-        # But for valid verification, we need OPA.
-        # Checking Agent env config (Step 1234): AAAS_ENV didn't list OPA explicitly?
-        # Step 1210: "Missing required environment variable: SA01_OPA_URL".
-        # I'll default to localhost:8181 (OPA default) or read URL.
-
-        opa_url = os.environ.get("SOMA_OPA_URL", "http://localhost:8181")
+        opa_url = os.environ.get("SOMABRAIN_OPA_URL", "http://localhost:30104")
 
         with httpx.Client(timeout=2.0) as client:
             resp = client.get(f"{opa_url}/health")
             if resp.status_code == 200:
                 return True
         return False
-    except Exception as exc:
+    except httpx.RequestError as exc:
         logger.warning("OPA not reachable: %s", exc)
         return False
 
@@ -151,24 +141,30 @@ class TestRedisIntegration:
     """
 
     def test_redis_ping(self) -> None:
-        """Verify Redis responds to PING on SomaBrain cluster (port 30100)."""
+        """Verify Redis responds to PING on SomaBrain cluster."""
         if not _redis_available():
             pytest.skip("Redis not reachable; skipping integration test")
 
         import redis
 
-        r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
+        r = redis.from_url(
+            os.environ.get("SOMABRAIN_REDIS_URL", "redis://localhost:30100/0"),
+            socket_timeout=2,
+        )
         result = r.ping()
         assert result is True, "Redis PING should return True"
 
     def test_redis_set_get(self) -> None:
-        """Verify Redis SET/GET operations work on SomaBrain cluster (port 30100)."""
+        """Verify Redis SET/GET operations work on SomaBrain cluster."""
         if not _redis_available():
             pytest.skip("Redis not reachable; skipping integration test")
 
         import redis
 
-        r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
+        r = redis.from_url(
+            os.environ.get("SOMABRAIN_REDIS_URL", "redis://localhost:30100/0"),
+            socket_timeout=2,
+        )
         test_key = "somabrain:test:integration"
         test_value = "test_value_12345"
 
@@ -184,13 +180,16 @@ class TestRedisIntegration:
         r.delete(test_key)
 
     def test_redis_hash_operations(self) -> None:
-        """Verify Redis HASH operations for state persistence on SomaBrain cluster (port 30100)."""
+        """Verify Redis HASH operations for state persistence on SomaBrain cluster."""
         if not _redis_available():
             pytest.skip("Redis not reachable; skipping integration test")
 
         import redis
 
-        r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
+        r = redis.from_url(
+            os.environ.get("SOMABRAIN_REDIS_URL", "redis://localhost:30100/0"),
+            socket_timeout=2,
+        )
         hash_key = "somabrain:test:adaptation_state"
 
         # HSET multiple fields
@@ -227,14 +226,18 @@ class TestKafkaIntegration:
     """
 
     def test_kafka_list_topics(self) -> None:
-        """Verify Kafka broker responds to metadata requests on SomaBrain cluster (port 30102)."""
+        """Verify Kafka broker responds to metadata requests on SomaBrain cluster."""
         if not _kafka_available():
             pytest.skip("Kafka not reachable; skipping integration test")
 
         from kafka import KafkaAdminClient
 
+        bootstrap = os.environ.get(
+            "KAFKA_BOOTSTRAP_SERVERS",
+            os.environ.get("SOMABRAIN_KAFKA_URL", "localhost:30102"),
+        ).replace("kafka://", "")
         admin = KafkaAdminClient(
-            bootstrap_servers="localhost:20092",
+            bootstrap_servers=bootstrap,
             request_timeout_ms=10000,
         )
         topics = admin.list_topics()
@@ -242,14 +245,18 @@ class TestKafkaIntegration:
         admin.close()
 
     def test_kafka_cluster_metadata(self) -> None:
-        """Verify Kafka cluster metadata is accessible on SomaBrain cluster (port 30102)."""
+        """Verify Kafka cluster metadata is accessible on SomaBrain cluster."""
         if not _kafka_available():
             pytest.skip("Kafka not reachable; skipping integration test")
 
         from kafka import KafkaAdminClient
 
+        bootstrap = os.environ.get(
+            "KAFKA_BOOTSTRAP_SERVERS",
+            os.environ.get("SOMABRAIN_KAFKA_URL", "localhost:30102"),
+        ).replace("kafka://", "")
         admin = KafkaAdminClient(
-            bootstrap_servers="localhost:20092",
+            bootstrap_servers=bootstrap,
             request_timeout_ms=10000,
         )
         # Get cluster metadata
@@ -315,24 +322,26 @@ class TestOPAIntegration:
     """
 
     def test_opa_health(self) -> None:
-        """Verify OPA health endpoint responds on SomaBrain cluster (port 30104)."""
+        """Verify OPA health endpoint responds on SomaBrain cluster."""
         if not _opa_available():
             pytest.skip("OPA not reachable; skipping integration test")
 
+        opa_url = os.environ.get("SOMABRAIN_OPA_URL", "http://localhost:30104")
         with httpx.Client(timeout=5.0) as client:
-            resp = client.get("http://localhost:30104/health")
+            resp = client.get(f"{opa_url}/health")
             # OPA health returns empty JSON {}
             assert resp.status_code == 200
 
     def test_opa_policy_query(self) -> None:
-        """Verify OPA can evaluate a simple policy query on SomaBrain cluster (port 30104)."""
+        """Verify OPA can evaluate a simple policy query on SomaBrain cluster."""
         if not _opa_available():
             pytest.skip("OPA not reachable; skipping integration test")
 
+        opa_url = os.environ.get("SOMABRAIN_OPA_URL", "http://localhost:30104")
         with httpx.Client(timeout=5.0) as client:
             # Query a simple data path (may return empty if no policies loaded)
             resp = client.post(
-                "http://localhost:30104/v1/data",
+                f"{opa_url}/v1/data",
                 json={"input": {"test": True}},
             )
             # OPA should respond with 200 even if no matching policy

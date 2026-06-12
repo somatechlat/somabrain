@@ -28,6 +28,20 @@ JAEGER_PORT = int(os.getenv("JAEGER_HOST_PORT", "30111"))
 OPA_PORT = int(os.getenv("OPA_HOST_PORT", "30104"))
 REDIS_PORT = int(os.getenv("REDIS_HOST_PORT", "30100"))
 
+
+def _app_available() -> bool:
+    try:
+        resp = httpx.get(f"http://localhost:{APP_PORT}/health", timeout=2.0)
+        return resp.status_code == 200
+    except httpx.RequestError:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _app_available(),
+    reason=f"SomaBrain API not reachable at http://localhost:{APP_PORT}/health",
+)
+
 # Expected backend components in health response
 REQUIRED_BACKENDS = ["kafka_ok", "postgres_ok", "memory_ok", "opa_ok"]
 

@@ -12,6 +12,22 @@ from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
 ENDPOINT = "http://127.0.0.1:10101"
 
 
+def _sfm_available() -> bool:
+    """Return True if the SomaFractalMemory HTTP API appears reachable."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"{ENDPOINT}/health", timeout=1) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _sfm_available(), reason="SomaFractalMemory not reachable"
+)
+
+
 @pytest.fixture
 def http_client():
     """Execute http client."""
