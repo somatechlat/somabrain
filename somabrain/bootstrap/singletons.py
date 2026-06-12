@@ -58,7 +58,7 @@ def make_predictor(cfg) -> "BudgetedPredictor":
     ).lower()
 
     if provider in ("stub", "baseline"):
-        # Always disallow placeholder providers — this enforces the real-backend policy.
+        # Always reject synthetic providers — this enforces the real-backend policy.
         raise RuntimeError(
             f"Predictor provider '{provider}' is not permitted. "
             "Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."

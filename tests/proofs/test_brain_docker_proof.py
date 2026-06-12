@@ -6,10 +6,29 @@ Verifies:
 2. Connection to SomaFractalMemory (via explicit recall)
 """
 
-import requests
 import os
 
+import pytest
+import requests
+
 BRAIN_URL = os.environ.get("BRAIN_URL", "http://localhost:30101")
+MEMORY_URL = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:10101")
+
+
+def _sfm_available() -> bool:
+    """Return True if the SomaFractalMemory HTTP API appears reachable."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(f"{MEMORY_URL}/health", timeout=1) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _sfm_available(), reason="SomaFractalMemory not reachable"
+)
 
 
 def test_brain_health_check():

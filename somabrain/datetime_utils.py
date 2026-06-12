@@ -1,5 +1,4 @@
-"""
-Datetime utilities for SomaBrain.
+"""Datetime utilities for SomaBrain.
 
 Provides standardized functions for handling timestamps and conversions.
 """
@@ -7,40 +6,48 @@ Provides standardized functions for handling timestamps and conversions.
 from __future__ import annotations
 
 import datetime
-from typing import Union
+from typing import Any
 
 
-def coerce_to_epoch_seconds(
-    value: Union[datetime.datetime, float, int, str, None],
-) -> float:
-    """
-    Coerce a value to epoch seconds (float).
+def coerce_to_epoch_seconds(value: Any) -> float:
+    """Convert a client-supplied timestamp into Unix epoch seconds.
 
-    Handles:
-    - datetime objects (converted using .timestamp())
-    - int/float (assumed to be already seconds)
-    - None (returns 0.0)
-    - str (tries to parse ISO format if possible, else 0.0)
+    Accepts floats/ints (assumed seconds), ISO 8601 strings, numeric strings,
+    and :class:`datetime.datetime` objects. Raises ``ValueError`` for
+    unsupported types or malformed values so callers can surface a 400 error
+    to API clients.
     """
     if value is None:
-        return 0.0
+        raise ValueError("timestamp cannot be null")
 
     if isinstance(value, (int, float)):
         return float(value)
 
-    if isinstance(value, datetime.datetime):
-        # Ensure we have timezone info if possible, usually assume UTC if naive
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=datetime.timezone.utc)
-        return value.timestamp()
-
     if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("timestamp string cannot be empty")
+        # Fast-path numeric parsing (seconds since epoch).
         try:
-            dt = datetime.datetime.fromisoformat(value)
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=datetime.timezone.utc)
-            return dt.timestamp()
+            return float(stripped)
         except ValueError:
             pass
+        try:
+            dt = datetime.datetime.fromisoformat(stripped.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError(
+                "Unsupported timestamp format; expected seconds since epoch or ISO 8601"
+            ) from exc
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.timestamp()
 
-    return 0.0
+    if isinstance(value, datetime.datetime):
+        dt = value
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.timestamp()
+
+    raise ValueError(
+        f"Unsupported timestamp type {type(value)!r}; expected float, int, str, or datetime"
+    )

@@ -26,6 +26,23 @@ APP_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
 APP_URL = f"http://localhost:{APP_PORT}/api"
 
 
+def _sfm_available() -> bool:
+    """Return True if the SomaFractalMemory HTTP API appears reachable."""
+    import urllib.request
+
+    url = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:10101")
+    try:
+        with urllib.request.urlopen(f"{url}/health", timeout=1) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _sfm_available(), reason="SomaFractalMemory not reachable"
+)
+
+
 def get_tenant_headers(tenant_id: str) -> Dict[str, str]:
     """Get HTTP headers for a specific tenant."""
     return {

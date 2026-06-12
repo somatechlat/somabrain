@@ -527,6 +527,8 @@ services:
       # Django settings MUST be set for standalone scripts like initialize_runtime.py
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
+      # Host headers seen by the app container (healthchecks, host-bound curl, Docker Desktop proxy)
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,host.docker.internal,somabrain_standalone_app}"
 
       # VAULT BOOTSTRAP ONLY
       VAULT_ADDR: "http://somabrain_standalone_vault:8200"
@@ -539,9 +541,9 @@ services:
       SOMABRAIN_OPA_URL: "http://somabrain_standalone_opa:8181"
       SOMABRAIN_KAFKA_URL: "kafka://somabrain_standalone_kafka:9092"
       # Default memory endpoint:
-      #   - Standalone on macOS/Windows Docker Desktop: override to http://host.docker.internal:10101
-      #   - Shared network / Linux: http://somafractalmemory-standalone-api:10101
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://somafractalmemory-standalone-api:10101}"
+      #   - Standalone on macOS/Windows Docker Desktop: http://host.docker.internal:10101
+      #   - Shared network / Linux: override to http://somafractalmemory-standalone-api:10101
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
 
       # Feature Flags
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"

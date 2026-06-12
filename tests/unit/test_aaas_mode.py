@@ -30,14 +30,9 @@ class TestMemoryModeSettings:
 
     def test_direct_mode_detected(self, monkeypatch):
         """Setting SOMABRAIN_MEMORY_MODE=direct should enable AAAS mode."""
-        monkeypatch.setenv("SOMABRAIN_MEMORY_MODE", "direct")
+        from django.conf import settings
 
-        # Clear cached modules
-        import sys
-
-        for mod in list(sys.modules.keys()):
-            if "somabrain.settings" in mod:
-                del sys.modules[mod]
+        monkeypatch.setattr(settings, "SOMABRAIN_MEMORY_MODE", "direct")
 
         from somabrain.memory.backends import get_memory_mode, is_aaas_mode
 
@@ -136,17 +131,12 @@ class TestDirectMemoryBackendClass:
 class TestBackendFactory:
     """Test get_memory_backend factory function."""
 
-    @patch("somabrain.memory.backends.MemoryClient")
+    @patch("somabrain.memory.client.MemoryClient")
     def test_http_mode_returns_memory_client(self, mock_client, monkeypatch):
         """HTTP mode should return MemoryClient."""
-        monkeypatch.setenv("SOMABRAIN_MEMORY_MODE", "http")
+        from django.conf import settings
 
-        # Clear cached modules
-        import sys
-
-        for mod in list(sys.modules.keys()):
-            if "somabrain.settings" in mod:
-                del sys.modules[mod]
+        monkeypatch.setattr(settings, "SOMABRAIN_MEMORY_MODE", "http")
 
         from somabrain.memory.backends import get_memory_backend
 
@@ -155,25 +145,18 @@ class TestBackendFactory:
 
         mock_client.assert_called_once()
 
-    def test_direct_mode_import_error_without_sfm(self, monkeypatch):
-        """Direct mode without somafractalmemory should raise ImportError."""
-        monkeypatch.setenv("SOMABRAIN_MEMORY_MODE", "direct")
+    def test_direct_mode_import_error_without_backend(self, monkeypatch):
+        """Direct mode should propagate an ImportError from the backend factory."""
+        from django.conf import settings
 
-        # Clear cached modules
-        import sys
-
-        for mod in list(sys.modules.keys()):
-            if "somabrain.settings" in mod:
-                del sys.modules[mod]
+        monkeypatch.setattr(settings, "SOMABRAIN_MEMORY_MODE", "direct")
 
         from somabrain.memory.backends import get_memory_backend
 
-        # Mock sys.modules to simulate missing somafractalmemory
-        with patch.dict(
-            "sys.modules",
-            {"somafractalmemory": None, "somafractalmemory.services": None},
+        with patch(
+            "somabrain.memory.direct_backend.DirectMemoryBackend",
+            side_effect=ImportError("missing dependency"),
         ):
-            # This should raise ImportError because somafractalmemory is not properly installed
             with pytest.raises(ImportError) as exc_info:
                 get_memory_backend(namespace="test")
 

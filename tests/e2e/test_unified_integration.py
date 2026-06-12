@@ -17,6 +17,24 @@ from somabrain.controls.degradation import degradation_manager, HealthStatus
 from somabrain.brain_settings.models import BrainSetting
 
 
+def _sfm_available() -> bool:
+    """Return True if the SomaFractalMemory HTTP API appears reachable."""
+    import os
+    import urllib.request
+
+    url = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:10101")
+    try:
+        with urllib.request.urlopen(f"{url}/health", timeout=1) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not _sfm_available(), reason="SomaFractalMemory not reachable"
+)
+
+
 @pytest.mark.asyncio
 async def test_unified_cognitive_flow():
     tenant = "test_e2e_tenant"

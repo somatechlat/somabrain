@@ -71,7 +71,7 @@ def _get_vault_client() -> Any | None:
     )
 
     if not vault_addr or not vault_token:
-        # Fallback: check if we are in a test environment where we might mock this
+        # Fallback: allow test environments to bypass Vault safely.
         if os.environ.get("DJANGO_SETTINGS_MODULE") and "test" in str(
             os.environ.get("DJANGO_SETTINGS_MODULE")
         ):

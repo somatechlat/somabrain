@@ -34,9 +34,13 @@ Start from [`infra/standalone/.env.example`](./.env.example) and set at least:
 - `SOMABRAIN_JWT_SECRET`
 - `SOMABRAIN_MEMORY_HTTP_TOKEN`
 - `SUPERVISOR_HTTP_PASS`
+- `MINIO_ACCESS_KEY`
+- `MINIO_SECRET_KEY`
 
 Optional but commonly overridden:
 
+- `ALLOWED_HOSTS` defaults to `localhost,127.0.0.1,host.docker.internal,somabrain_standalone_app`.
+  Add any external hostname or load-balancer DNS name that will forward requests to the app.
 - `SOMABRAIN_MEMORY_HTTP_ENDPOINT` if your external memory service is not on
   `host.docker.internal:10101`
 - `SOMABRAIN_WORKERS`

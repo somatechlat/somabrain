@@ -54,6 +54,24 @@ def _app_available() -> bool:
         return False
 
 
+def _sfm_available() -> bool:
+    """Check if SomaFractalMemory is reachable."""
+    import urllib.request
+
+    url = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")
+    try:
+        with urllib.request.urlopen(f"{url}/health", timeout=1) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+pytestmark = pytest.mark.skipif(
+    not (_app_available() and _sfm_available()),
+    reason="Full-stack E2E tests require both the SomaBrain app and SomaFractalMemory",
+)
+
+
 def _get_test_headers(tenant_id: str = TEST_TENANT_ID) -> Dict[str, str]:
     """Get headers for test requests."""
     return {
