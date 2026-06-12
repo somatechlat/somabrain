@@ -8,12 +8,11 @@ external memory endpoint unless you override `SOMABRAIN_MEMORY_HTTP_ENDPOINT`.
 
 ## What the stack actually contains
 
-The compose file currently defines 19 services:
+The compose file currently defines 16 default services (17 with the `dev` profile):
 
 - Always-on infrastructure and app services: Redis, Kafka, Kafka exporter,
   Schema Registry, OPA, Prometheus, Jaeger, Postgres, Vault, Vault init,
-  Postgres exporter, API app, `cog`, outbox publisher, etcd, MinIO, Milvus,
-  integrator triplet.
+  Postgres exporter, API app, `cog`, outbox publisher, MinIO, integrator triplet.
 - One optional one-shot job under the `dev` profile:
   `somabrain_standalone_db_migrate`.
 
@@ -91,8 +90,6 @@ Useful service endpoints exposed to the host:
 | Vault | `30200` | Secret management |
 | Integrator health | `30115` | Integrator worker probe |
 | Segmentation health | `30116` | Segmentation worker probe |
-| Milvus gRPC | `30119` | Vector store |
-| Milvus HTTP | `30120` | Vector store health/admin |
 
 ## Secrets flow
 

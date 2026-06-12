@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚨 ARCHITECTURE: COLIMA + TILT + MINIKUBE 🚨
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -26,9 +27,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain=1.83.0
 
-# Add Rust to PATH and install maturin
+# Add Rust to PATH and install maturin (pinned to match rust_core/pyproject.toml)
 ENV PATH="/root/.cargo/bin:${PATH}"
-RUN pip install maturin
+RUN pip install "maturin>=1.11,<2.0"
 
 # Copy Rust source
 COPY rust_core /rust/rust_core
@@ -135,8 +136,8 @@ COPY tests/smoke/kafka_smoke_test.py /app/tests/smoke/kafka_smoke_test.py
 # Runtime initialization script for setting up singletons before app start
 COPY scripts/initialize_runtime.py /app/scripts/initialize_runtime.py
 
-# Belt-and-suspenders: write the hippocampus module directly to the image to
-# avoid any context filtering issues. This mirrors the in-repo file exactly.
+# Runtime configuration files (tenant overrides, feature flags, etc.)
+COPY config /app/config
 
 # Development requirements are optional and not required for the runtime image.
 # Uncomment the line below if you need to install dev extras inside the container.
@@ -145,8 +146,6 @@ COPY scripts/initialize_runtime.py /app/scripts/initialize_runtime.py
 # Also copy source tree to ensure latest local code is importable at runtime (overrides wheel)
 COPY somabrain /app/somabrain
 
-# Add memory package back for runtime imports
-# COPY memory /app/memory
 # Copy shared `common` helpers so imports like `from common...` work at runtime
 COPY common /app/common
 

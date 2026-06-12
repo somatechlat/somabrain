@@ -146,7 +146,7 @@ def _vocab_and_vectors(texts: List[str]) -> Tuple[Dict[str, int], np.ndarray]:
         for w in counts:
             if w not in vocab:
                 vocab[w] = len(vocab)
-        # temporary row; fill later once vocab finalized
+        # Store raw counts now; project into the final vocabulary matrix below.
         rows.append(counts)
     from somabrain.math import normalize_batch
 

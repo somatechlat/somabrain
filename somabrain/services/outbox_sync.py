@@ -20,6 +20,7 @@ import asyncio
 import logging
 
 from django.conf import settings
+from django.db import DatabaseError, OperationalError
 
 from somabrain.memory.client import MemoryClient
 from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL, report_outbox_pending
@@ -108,7 +109,7 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
                     per_tenant[tid] = per_tenant.get(tid, 0) + 1
                 for tid, cnt in per_tenant.items():
                     report_outbox_pending(tid, cnt)
-            except Exception as exc:
+            except (ImportError, AttributeError) as exc:
                 logger.debug("Failed to update outbox pending metrics: %s", exc)
 
             success_cnt = 0
@@ -139,8 +140,10 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
             else:
                 MEMORY_OUTBOX_SYNC_TOTAL.labels(status="failure").inc()
 
-        except Exception as exc:  # pragma: no cover – keep loop alive on any error
-            logger.error("Outbox sync loop unexpected error: %s", exc, exc_info=True)
+        except asyncio.CancelledError:
+            raise
+        except (DatabaseError, OperationalError) as exc:
+            logger.error("Outbox sync loop database error: %s", exc, exc_info=True)
             backoff = min(backoff * 2, 60.0)
 
         # Respect adaptive backoff before the next iteration.

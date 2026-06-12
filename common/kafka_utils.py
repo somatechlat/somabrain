@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 try:  # Strict mode: use confluent-kafka only
     from confluent_kafka import Producer as CKProducer
@@ -55,7 +58,7 @@ class _KafkaProducerAdapter:
         if isinstance(value, (bytes, bytearray)):
             payload = value
         else:
-            # Allow dict payloads for non-Avro topics (temporary until schemas exist)
+            # JSON fallback for topics that do not yet use Avro serialization.
             payload = json.dumps(value).encode("utf-8")
         self._ck.produce(topic, value=payload)
 
@@ -92,8 +95,8 @@ class _KafkaProducerAdapter:
 
         try:
             self._ck.flush(5)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Kafka producer flush on close failed: %s", exc)
 
 
 def make_producer() -> _KafkaProducerAdapter:  # pragma: no cover - integration path

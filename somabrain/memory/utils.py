@@ -32,7 +32,7 @@ def get_tenant_namespace(
     """
     from django.conf import settings
 
-    # First try explicit tenant field from config object/mock
+    # First try explicit tenant field from the supplied config object.
     tenant = getattr(cfg, "tenant", None)
     if tenant:
         tenant = str(tenant).strip()

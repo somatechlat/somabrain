@@ -221,7 +221,7 @@ services:
       - --log-format=json
       - --set=decision_logs.console=true
       - --set=status.console=true
-      - --set=default_decision=somabrain/authz/allow
+      - --set=default_decision=somabrain/auth/allow
       - /policies
     networks:
       - somabrain_standalone_net
@@ -253,7 +253,7 @@ services:
     ports:
       - "${PROMETHEUS_HOST_PORT:-30105}:${PROMETHEUS_CONTAINER_PORT:-9090}"
     volumes:
-      #      - ../../ops/prometheus/etc/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../infra/ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     # Production-like Prometheus configuration
     command:
@@ -560,7 +560,7 @@ services:
     ports:
       - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-30101}"
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:30101/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT:-30101}/health || exit 1" ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -731,8 +731,8 @@ services:
         reservations:
           memory: 256M
     environment:
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?set MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?set MINIO_SECRET_KEY}
     volumes:
       - minio_data:/minio_data
     ports:

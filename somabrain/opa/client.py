@@ -43,9 +43,8 @@ class OPAClient:
     """Strict OPA HTTP client (fail-closed by default).
 
     POSTs ``/v1/data/<policy_path>`` with JSON ``input`` and expects a ``result``
-    containing an ``allow`` boolean. Transport or server errors deny by default.
-    A permissive allow-on-error alternative is only enabled if environment variable
-    ``SOMABRAIN_OPA_ALLOW_ON_ERROR=1`` is explicitly set (temporary escape hatch).
+    containing an ``allow`` boolean. Transport or server errors always deny.
+    There is no allow-on-error override; fail-closed is mandatory per VIBE rules.
     """
 
     def __init__(self, policy_path: str | None = None) -> None:
@@ -82,8 +81,8 @@ class OPAClient:
     def evaluate(self, input_data: Dict[str, Any]) -> bool:
         """Evaluate policy with ``input_data``.
 
-        Returns True if allowed, False otherwise. Failure denies unless
-        explicit override ``SOMABRAIN_OPA_ALLOW_ON_ERROR=1`` present.
+        Returns True if allowed, False otherwise. Any transport, server, or
+        parsing failure denies the request (fail-closed).
         """
         url = f"{self.base_url}/v1/data/{self.policy_path}"
         payload = {"input": input_data}

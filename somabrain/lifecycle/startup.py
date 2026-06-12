@@ -31,7 +31,7 @@ async def startup_mode_banner(app: Any) -> None:
     """
     try:
         from django.conf import settings as _shared
-    except Exception:  # pragma: no cover
+    except ImportError:  # pragma: no cover
         _shared = None
 
     lg = logging.getLogger("somabrain")
@@ -69,7 +69,7 @@ async def startup_mode_banner(app: Any) -> None:
         if _shared is not None:
             for note in getattr(_shared, "deprecation_notices", []) or []:
                 lg.warning("DEPRECATION: %s", note)
-    except Exception:
+    except AttributeError:
         try:
             lg.debug("Failed to emit startup mode banner", exc_info=True)
         except Exception:
@@ -86,13 +86,13 @@ async def init_constitution(app: Any) -> None:
 
     try:
         from somabrain.constitution import ConstitutionEngine
-    except Exception:
+    except ImportError:
         ConstitutionEngine = None
 
     app.state.constitution_engine = None
     try:
         M.CONSTITUTION_VERIFIED.set(0.0)
-    except Exception:
+    except AttributeError:
         pass
 
     if ConstitutionEngine is None:
@@ -105,11 +105,11 @@ async def init_constitution(app: Any) -> None:
         try:
             engine.load()
             verified = bool(engine.verify_signature())
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             _logger.warning("ConstitutionEngine load failed: %s", exc)
             verified = False
         app.state.constitution_engine = engine
-    except Exception:
+    except (OSError, ValueError):
         app.state.constitution_engine = None
         verified = False
 
@@ -117,7 +117,7 @@ async def init_constitution(app: Any) -> None:
     try:
         M.CONSTITUTION_VERIFIED.set(1.0 if verified else 0.0)
         M.CONSTITUTION_VERIFY_LATENCY.observe(duration)
-    except Exception:
+    except AttributeError:
         pass
 
 
@@ -143,7 +143,7 @@ async def enforce_kafka_required() -> None:
             raise RuntimeError(
                 "Kafka broker unavailable – aborting startup as required by coding rules"
             )
-    except Exception as exc:
+    except (OSError, TimeoutError) as exc:
         raise RuntimeError(f"Kafka health check failed during startup: {exc}")
 
 
@@ -164,9 +164,9 @@ async def enforce_opa_postgres_required() -> None:
 
         # OPA and Postgres are required; Kafka is already handled separately.
         assert_ready(require_kafka=False, require_opa=True, require_postgres=True)
-    except Exception as exc:
+    except (OSError, TimeoutError, RuntimeError) as exc:
         logging.getLogger("somabrain").error(
-            f"Mandatory backend check failed (OPA/Postgres): {exc}"
+            "Mandatory backend check failed (OPA/Postgres): %s", exc
         )
         raise RuntimeError(f"OPA or Postgres not ready: {exc}")
 
@@ -210,8 +210,10 @@ async def init_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
 
         await get_tenant_manager()
         log.info("Tenant manager initialized successfully")
-    except Exception as e:
-        log.error(f"Failed to initialize tenant manager: {e}")
+    except ImportError:
+        log.info("Tenant manager not available — skipped")
+    except (OSError, TimeoutError) as e:
+        log.error("Failed to initialize tenant manager: %s", e)
         # Don't fail startup - tenant management can be initialized lazily
 
 
@@ -235,7 +237,7 @@ async def start_outbox_sync(logger: Optional[logging.Logger] = None) -> None:
         # fire-and-forget – Django Ninja will keep the task alive as long as the app runs.
         asyncio.create_task(outbox_sync_loop(settings, poll_interval=interval))
         log.info("Outbox sync background task started (interval=%s s)", interval)
-    except Exception as exc:  # pragma: no cover – startup failures are logged
+    except (ImportError, AttributeError, ValueError) as exc:  # pragma: no cover
         log.error("Failed to start outbox sync task: %s", exc, exc_info=True)
 
 
@@ -263,7 +265,7 @@ async def start_milvus_reconciliation_task() -> None:
         while True:
             try:
                 await asyncio.to_thread(milvus_reconcile)
-            except Exception as exc:
+            except (OSError, TimeoutError) as exc:
                 log.error("Milvus reconciliation run failed: %s", exc)
             await asyncio.sleep(interval)
 
@@ -299,7 +301,7 @@ async def startup_diagnostics(cfg: Any) -> None:
         # Prefer shared settings for mode and policy flags
         try:
             from django.conf import settings as _shared
-        except Exception:
+        except ImportError:
             _shared = None
 
         mode = ""
@@ -316,7 +318,7 @@ async def startup_diagnostics(cfg: Any) -> None:
                 mode = settings.SOMABRAIN_MODE.strip()
                 ext_req = settings.SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS
                 require_memory = settings.REQUIRE_MEMORY
-        except Exception:
+        except AttributeError:
             pass
 
         _log.info(
@@ -340,17 +342,17 @@ async def startup_diagnostics(cfg: Any) -> None:
             _log.warning(
                 "Memory endpoint is localhost inside container; use host.docker.internal:10101 for Docker Desktop or a service DNS name."
             )
-    except Exception:
+    except (ImportError, AttributeError):
         # never fail startup on diagnostics
         pass
 
 
 async def init_observability() -> None:
     """Initialize observability/tracing when available. Fail-open so the API still starts."""
+    # Broad catch is intentional: tracing is optional and must not block startup.
     try:
         from somabrain.observability.provider import init_tracing
 
         init_tracing()
     except Exception:
-        # Tracing is optional; log at debug level and continue.
         _logger.debug("Tracing initialization failed", exc_info=True)

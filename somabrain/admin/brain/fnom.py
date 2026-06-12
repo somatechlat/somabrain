@@ -95,26 +95,22 @@ class PersistentFNOM:
 
         # If we have an embedder, store vector for retrieval
         if self.embedder:
-            try:
-                # Assuming 'text' or 'content' field exists, or dumping JSON
-                text = content.get("text") or content.get("content") or content_str
-                vector = self.embedder.embed(text)
+            # Assuming 'text' or 'content' field exists, or dumping JSON
+            text = content.get("text") or content.get("content") or content_str
+            vector = self.embedder.embed(text)
 
-                # Use hash as coordinate-like ID for vector store
-                # Vector store expects tuple coord; we fake one from hash pieces
-                # VIBE: This is a robust mapping, not random.
-                h_vals = [
-                    int(content_hash[i : i + 4], 16) / 65535.0 for i in range(0, 16, 4)
-                ]
-                coord = tuple(h_vals[:3])  # 3D coord for basic stores
+            # Use hash as coordinate-like ID for vector store.
+            # Vector store expects tuple coord; derive one deterministically from hash pieces.
+            h_vals = [
+                int(content_hash[i : i + 4], 16) / 65535.0 for i in range(0, 16, 4)
+            ]
+            coord = tuple(h_vals[:3])  # 3D coord for basic stores
 
-                self.vector_store.add(
-                    coordinate=coord,
-                    vector=vector,
-                    payload={"id": key, "importance": importance},
-                )
-            except Exception as e:
-                logger.error(f"Failed to persist FNOM vector: {e}")
+            self.vector_store.add(
+                coordinate=coord,
+                vector=vector,
+                payload={"id": key, "importance": importance},
+            )
 
         return FNOMResult(frequency_spectrum=spectrum)
 

@@ -23,10 +23,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env(
     # Django core settings
     DEBUG=(bool, False),
-    SECRET_KEY=(str, "django-insecure-change-me-locally-somabrain"),
-    ALLOWED_HOSTS=(list, ["*"]),
+    # No default secrets per VIBE rules. Vault bootstrap or env must supply them.
+    SECRET_KEY=(str, ""),
+    ALLOWED_HOSTS=(list, []),
     # SomaBrain core settings with defaults
     SOMABRAIN_LOG_LEVEL=(str, "INFO"),
+    # No default DSN per VIBE rules. Vault bootstrap or env must supply it.
     SOMABRAIN_POSTGRES_DSN=(str, ""),
     SOMABRAIN_API_URL=(str, "http://127.0.0.1:30101"),
     # Deployment Mode Standardization
@@ -129,8 +131,13 @@ def _apply_vault_bootstrap() -> None:
 _apply_vault_bootstrap()
 
 SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
+if not SECRET_KEY:
+    raise environ.ImproperlyConfigured(
+        "SOMABRAIN_JWT_SECRET or SECRET_KEY must be set via environment or Vault."
+    )
+
 DEBUG = env("SOMABRAIN_LOG_LEVEL") == "DEBUG"
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["*"])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -177,11 +184,8 @@ WSGI_APPLICATION = "somabrain.config.wsgi.application"
 ASGI_APPLICATION = "somabrain.config.asgi.application"
 
 # Database - PostgreSQL only
-DATABASES = {
-    "default": env.db(
-        "SOMABRAIN_POSTGRES_DSN", default="postgresql://localhost/somabrain"
-    )
-}
+# No default DSN per VIBE rules. Vault bootstrap or SOMABRAIN_POSTGRES_DSN must supply it.
+DATABASES = {"default": env.db("SOMABRAIN_POSTGRES_DSN")}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
