@@ -1,29 +1,19 @@
 """SomaBrain Runtime Module.
 
-VIBE COMPLIANT: Initializes memory, embedder, and working memory singletons.
-
-This module provides the runtime singletons required by the memory API:
-- embedder: Text-to-vector embedding service
-- mt_wm: Multi-tenant working memory
-- mt_memory: Multi-tenant memory pool
-
-These are lazily initialized on first access to avoid startup overhead.
+Encapsulates memory, embedder, and working-memory singletons in a thread-safe
+RuntimeManager. Module-level names are retained as lazy proxies for backward
+compatibility, but the actual state lives inside the RuntimeManager instance.
 """
 
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any, Optional
 
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
-
-# Runtime singletons - initialized lazily
-embedder: Optional[Any] = None
-mt_wm: Optional[Any] = None
-mt_memory: Optional[Any] = None
-cfg: Optional[Any] = None
 
 
 class _SettingsAdapter:
@@ -59,137 +49,174 @@ class _SettingsAdapter:
         raise AttributeError(name)
 
 
-def _initialize_embedder() -> Any:
-    """Initialize the embedder singleton.
+class RuntimeManager:
+    """Thread-safe container for runtime singletons.
 
-    VIBE COMPLIANT: Fails loudly if embedder cannot be initialized.
-    Per Vibe Coding Rules: NO STUBS, NO FAKE RETURNS, NO HARDCODED VALUES.
+    All heavy initialization is deferred until first access and guarded by a
+    lock so concurrent callers cannot create duplicate singletons.
     """
-    global embedder
-    if embedder is not None:
-        return embedder
 
-    try:
-        from somabrain.admin.core.embeddings import make_embedder
+    def __init__(self):
+        self._embedder: Optional[Any] = None
+        self._mt_wm: Optional[Any] = None
+        self._mt_memory: Optional[Any] = None
+        self._cfg: Optional[Any] = None
+        self._lock = threading.Lock()
+        self._initialized = False
+        self._last_status: dict = {
+            "embedder": False,
+            "working_memory": False,
+            "memory_pool": False,
+        }
 
-        embedder = make_embedder(_SettingsAdapter(settings))
-        logger.info("Embedder initialized successfully")
-        return embedder
-    except Exception as e:
-        # VIBE: Fail loudly - do not silently return fake embeddings
-        logger.error(f"CRITICAL: Failed to initialize Embedder: {e}")
-        logger.error("Embedder is REQUIRED for SomaBrain operation.")
-        logger.error("Please check your ML backend configuration.")
+    def initialize_runtime(self) -> dict:
+        """Initialize all runtime singletons.
 
-        # VIBE: Raise error to ensure system fails loudly (no silent fallbacks)
-        raise RuntimeError(
-            f"Embedder initialization failed: {e}. "
-            "SomaBrain requires a working embedder. Check SOMABRAIN_EMBEDDER_PROVIDER setting."
-        ) from e
+        Returns:
+            Dict with initialization status for each component.
+        """
+        with self._lock:
+            if self._initialized:
+                return self._last_status
+
+            self._cfg = settings
+            self._last_status = {
+                "embedder": self._initialize_embedder() is not None,
+                "working_memory": self._initialize_working_memory() is not None,
+                "memory_pool": self._initialize_memory_pool() is not None,
+            }
+            self._initialized = True
+            logger.info("Runtime initialized: %s", self._last_status)
+            return self._last_status
+
+    def _initialize_embedder(self) -> Any:
+        if self._embedder is not None:
+            return self._embedder
+
+        try:
+            from somabrain.admin.core.embeddings import make_embedder
+
+            self._embedder = make_embedder(_SettingsAdapter(settings))
+            logger.info("Embedder initialized successfully")
+            return self._embedder
+        except Exception as e:
+            # VIBE: Fail loudly - do not silently return fake embeddings
+            logger.error("CRITICAL: Failed to initialize Embedder: %s", e)
+            logger.error("Embedder is REQUIRED for SomaBrain operation.")
+            logger.error("Please check your ML backend configuration.")
+            raise RuntimeError(
+                f"Embedder initialization failed: {e}. "
+                "SomaBrain requires a working embedder. Check SOMABRAIN_EMBEDDER_PROVIDER setting."
+            ) from e
+
+    def _initialize_working_memory(self) -> Any:
+        if self._mt_wm is not None:
+            return self._mt_wm
+
+        try:
+            from somabrain.memory.wm.mt_wm import MultiTenantWM
+
+            # Use configured embedding dimension from settings
+            self._mt_wm = MultiTenantWM(dim=settings.SOMABRAIN_EMBED_DIM)
+            logger.info("Working memory initialized successfully")
+            return self._mt_wm
+        except Exception as e:
+            logger.warning("Failed to initialize WorkingMemory: %s", e)
+            return None
+
+    def _initialize_memory_pool(self) -> Any:
+        if self._mt_memory is not None:
+            return self._mt_memory
+
+        try:
+            from somabrain.memory.pool import MultiTenantMemory
+
+            self._mt_memory = MultiTenantMemory(cfg=settings)
+            logger.info("Memory pool initialized successfully")
+            return self._mt_memory
+        except Exception as e:
+            logger.warning("Failed to initialize memory pool: %s", e)
+            return None
+
+    @property
+    def embedder(self) -> Optional[Any]:
+        """Get or initialize the embedder singleton."""
+        if self._embedder is None:
+            self.initialize_runtime()
+        return self._embedder
+
+    @property
+    def mt_wm(self) -> Optional[Any]:
+        """Get or initialize the working memory singleton."""
+        if self._mt_wm is None:
+            self.initialize_runtime()
+        return self._mt_wm
+
+    @property
+    def mt_memory(self) -> Optional[Any]:
+        """Get or initialize the memory pool singleton."""
+        if self._mt_memory is None:
+            self.initialize_runtime()
+        return self._mt_memory
+
+    @property
+    def cfg(self) -> Optional[Any]:
+        """Get the runtime configuration object."""
+        if self._cfg is None:
+            self.initialize_runtime()
+        return self._cfg
 
 
-def _initialize_working_memory() -> Any:
-    """Initialize the multi-tenant working memory singleton."""
-    global mt_wm
-    if mt_wm is not None:
-        return mt_wm
-
-    try:
-        from somabrain.memory.wm.mt_wm import MultiTenantWM
-
-        # Use configured embedding dimension from settings
-        mt_wm = MultiTenantWM(dim=settings.SOMABRAIN_EMBED_DIM)
-        logger.info("Working memory initialized successfully")
-        return mt_wm
-    except Exception as e:
-        logger.warning(f"Failed to initialize WorkingMemory: {e}")
-        return None
+# Singleton instance backing the module-level helpers and legacy attributes.
+_runtime_manager = RuntimeManager()
 
 
-def _initialize_memory_pool() -> Any:
-    """Initialize the multi-tenant memory pool singleton."""
-    global mt_memory
-    if mt_memory is not None:
-        return mt_memory
-
-    try:
-        from somabrain.memory.pool import MultiTenantMemory
-
-        mt_memory = MultiTenantMemory(cfg=settings)
-        logger.info("Memory pool initialized successfully")
-        return mt_memory
-    except Exception as e:
-        logger.warning(f"Failed to initialize memory pool: {e}")
-        return None
+def __getattr__(name: str) -> Any:
+    """Backward-compatible lazy access to legacy module-level singletons."""
+    if name in ("embedder", "mt_wm", "mt_memory", "cfg"):
+        return getattr(_runtime_manager, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def initialize_runtime() -> dict:
-    """Initialize all runtime singletons.
-
-    Returns:
-        Dict with initialization status for each component.
-    """
-    global cfg
-    cfg = settings
-
-    status = {
-        "embedder": _initialize_embedder() is not None,
-        "working_memory": _initialize_working_memory() is not None,
-        "memory_pool": _initialize_memory_pool() is not None,
-    }
-
-    logger.info(f"Runtime initialized: {status}")
-    return status
+    """Initialize all runtime singletons."""
+    return _runtime_manager.initialize_runtime()
 
 
 def get_embedder() -> Any:
     """Get or initialize the embedder singleton."""
-    global embedder
-    if embedder is None:
-        _initialize_embedder()
-    return embedder
+    return _runtime_manager.embedder
 
 
 def get_working_memory() -> Any:
     """Get or initialize the working memory singleton."""
-    global mt_wm
-    if mt_wm is None:
-        _initialize_working_memory()
-    return mt_wm
+    return _runtime_manager.mt_wm
 
 
 def get_memory_pool() -> Any:
     """Get or initialize the memory pool singleton."""
-    global mt_memory
-    if mt_memory is None:
-        _initialize_memory_pool()
-    return mt_memory
+    return _runtime_manager.mt_memory
 
 
 class Runtime:
-    """
-    Facade for runtime singletons.
-
-    Provides static access to core services to satisfy import requirements
-    and provide a centralized access point.
-    """
+    """Facade for runtime singletons."""
 
     @staticmethod
     def initialize() -> dict:
         """Initialize all runtime singletons."""
-        return initialize_runtime()
+        return _runtime_manager.initialize_runtime()
 
     @staticmethod
     def get_embedder() -> Any:
         """Get the embedder singleton."""
-        return get_embedder()
+        return _runtime_manager.embedder
 
     @staticmethod
     def get_working_memory() -> Any:
         """Get the working memory singleton."""
-        return get_working_memory()
+        return _runtime_manager.mt_wm
 
     @staticmethod
     def get_memory_pool() -> Any:
         """Get the memory pool singleton."""
-        return get_memory_pool()
+        return _runtime_manager.mt_memory
