@@ -158,6 +158,29 @@ class AgentPredictorService:
             "ts": datetime.now(timezone.utc).isoformat(),
         }
 
+    def _extract_actual_agent_vector(
+        self, message_data: Dict[str, Any]
+    ) -> Optional[np.ndarray]:
+        """Extract the observed agent behavior vector from an integrator message."""
+        try:
+            context = message_data.get("context", {})
+            agent_data = (
+                context.get("actual_agent_behavior")
+                or context.get("next_agent_behavior")
+                or context.get("agent_behavior")
+            )
+            if agent_data is None:
+                return None
+            if isinstance(agent_data, list):
+                return np.array(agent_data, dtype=np.float32)
+            if isinstance(agent_data, dict):
+                values = agent_data.get("values", [])
+                return np.array(values, dtype=np.float32)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to extract actual agent vector: {e}")
+            return None
+
     async def process_message(self, message_data: Dict[str, Any]) -> None:
         """Process a single agent context message and publish prediction update."""
         agent_vector = self._extract_agent_vector(message_data)
@@ -165,12 +188,18 @@ class AgentPredictorService:
             logger.warning("No valid agent vector found in message")
             return
 
+        actual_agent_vector = self._extract_actual_agent_vector(message_data)
+        if actual_agent_vector is None:
+            logger.warning(
+                "No observed actual_agent_behavior found in message; skipping agent prediction update"
+            )
+            return
+
         # Make prediction with timing
         start_time = time.perf_counter()
         try:
-            # For agent prediction, we predict agent behavior based on context
             prediction_result = self.predictor.predict_and_compare(
-                expected_vec=agent_vector, actual_vec=agent_vector
+                expected_vec=agent_vector, actual_vec=actual_agent_vector
             )
         except Exception as e:
             logger.error(f"Agent prediction failed: {e}")

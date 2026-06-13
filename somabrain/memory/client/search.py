@@ -25,7 +25,12 @@ class SearchMixin:
         headers = {"X-Request-ID": request_id}
         headers.update(compat_headers)
 
-        fetch_limit = max(int(top_k) * 3, 10)
+        # Fetch a larger candidate set from the backend so that post-processing
+        # (keyword filtering, re-ranking, deduplication) has enough material to
+        # surface semantically or lexically relevant hits even when the backend's
+        # raw score ordering is not query-aligned. The multiplier is a compromise
+        # between recall coverage and latency for the common top_k=1 case.
+        fetch_limit = max(int(top_k) * 5, 50)
         query_text = str(query or "")
         body = {
             "query": query_text,
@@ -89,7 +94,12 @@ class SearchMixin:
         headers = {"X-Request-ID": request_id}
         headers.update(compat_headers)
 
-        fetch_limit = max(int(top_k) * 3, 10)
+        # Fetch a larger candidate set from the backend so that post-processing
+        # (keyword filtering, re-ranking, deduplication) has enough material to
+        # surface semantically or lexically relevant hits even when the backend's
+        # raw score ordering is not query-aligned. The multiplier is a compromise
+        # between recall coverage and latency for the common top_k=1 case.
+        fetch_limit = max(int(top_k) * 5, 50)
         query_text = str(query or "")
         body = {
             "query": query_text,

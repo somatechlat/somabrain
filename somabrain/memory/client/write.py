@@ -225,7 +225,13 @@ class WriteMixin:
     async def aremember(
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> Tuple[float, float, float]:
-        p2: dict[str, Any] | None = None
+        """Store a memory asynchronously, waiting for real backend confirmation.
+
+        The previous implementation scheduled a background task from sync
+        ``remember`` and returned immediately, which silently reported success
+        even when the backend rejected the write. This version awaits the
+        persistence call and propagates failures so callers can react honestly.
+        """
         if self._http_async is not None:
             try:
                 enriched, universe, compat_hdr = _compat_enrich_payload(
@@ -253,22 +259,16 @@ class WriteMixin:
                         response_data, idempotency_key=rid
                     )
                     if server_coord:
-                        try:
-                            enriched["coordinate"] = server_coord
-                        except Exception:
-                            pass
-                        if p2 is not None:
-                            try:
-                                p2["coordinate"] = server_coord
-                            except Exception:
-                                pass
-                        # prefer server coords for links logic omitted for brevity/compatibility
                         return server_coord
                 return coord
             except Exception:
                 pass
+
+        # Fall back to the synchronous persistence helper and *await* the result.
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.remember, coord_key, payload)
+        return await loop.run_in_executor(
+            None, self._remember_sync_persist, coord_key, payload, request_id
+        )
 
     async def aremember_bulk(
         self,

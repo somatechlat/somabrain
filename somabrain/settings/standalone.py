@@ -20,10 +20,8 @@ env = environ.Env()
 # STANDALONE ISOLATION - STRIP AAAS
 # =============================================================================
 
-# Remove AAAS Application
-INSTALLED_APPS = [
-    app for app in INSTALLED_APPS if "aaas" not in app and app != "somabrain.aaas"
-]
+# Keep AAAS Application in standalone so auth migrations and API keys work.
+# Only the AAAS middleware (billing, rate limiting) is removed.
 
 # Remove AAAS Middleware (Billing, Rate Limiting, etc)
 MIDDLEWARE = [

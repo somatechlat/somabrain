@@ -160,6 +160,14 @@ def set_tenant_override(tenant_id: str, flag_key: str, enabled: bool):
     cache.set(f"feature_flags:tenant:{tenant_id}", overrides, timeout=3600)
 
 
+def _feature_flags_read_only() -> None:
+    """Reject mutating feature-flag operations until a persistent store exists."""
+    raise HttpError(
+        501,
+        "Feature flag mutations require a persistent store and are not implemented",
+    )
+
+
 # =============================================================================
 # FLAG EVALUATION
 # =============================================================================
@@ -229,36 +237,11 @@ def get_feature_flag(request: AuthenticatedRequest, flag_key: str):
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def create_feature_flag(request: AuthenticatedRequest, data: FeatureFlagCreate):
-    """Create a new feature flag (super admin only)."""
-    existing = get_flag(data.key)
-    if existing:
-        from ninja.errors import HttpError
+    """Create a new feature flag (super admin only).
 
-        raise HttpError(400, f"Flag '{data.key}' already exists")
-
-    now = timezone.now().isoformat()
-    flag_data = {
-        "key": data.key,
-        "name": data.name,
-        "description": data.description,
-        "enabled": data.enabled,
-        "rollout_percentage": data.rollout_percentage,
-        "created_at": now,
-        "updated_at": now,
-    }
-    set_flag(data.key, flag_data)
-
-    # Audit log
-    AuditLog.log(
-        action="feature_flag.created",
-        resource_type="FeatureFlag",
-        resource_id=data.key,
-        actor_id=str(request.user_id),
-        actor_type=ActorType.ADMIN,
-        details={"name": data.name, "enabled": data.enabled},
-    )
-
-    return FeatureFlagOut(**flag_data)
+    Currently disabled: feature flags require a persistent store.
+    """
+    _feature_flags_read_only()
 
 
 @router.patch("/flags/{flag_key}", response=FeatureFlagOut)
@@ -267,54 +250,22 @@ def create_feature_flag(request: AuthenticatedRequest, data: FeatureFlagCreate):
 def update_feature_flag(
     request: AuthenticatedRequest, flag_key: str, data: FeatureFlagUpdate
 ):
-    """Update a feature flag (super admin only)."""
-    flag = get_flag(flag_key)
-    if not flag:
-        from ninja.errors import HttpError
+    """Update a feature flag (super admin only).
 
-        raise HttpError(404, f"Flag '{flag_key}' not found")
-
-    if data.name is not None:
-        flag["name"] = data.name
-    if data.description is not None:
-        flag["description"] = data.description
-    if data.enabled is not None:
-        flag["enabled"] = data.enabled
-    if data.rollout_percentage is not None:
-        flag["rollout_percentage"] = data.rollout_percentage
-
-    flag["updated_at"] = timezone.now().isoformat()
-    set_flag(flag_key, flag)
-
-    # Audit log
-    AuditLog.log(
-        action="feature_flag.updated",
-        resource_type="FeatureFlag",
-        resource_id=flag_key,
-        actor_id=str(request.user_id),
-        actor_type=ActorType.ADMIN,
-        details={"enabled": flag["enabled"], "rollout": flag["rollout_percentage"]},
-    )
-
-    return FeatureFlagOut(**flag)
+    Currently disabled: feature flags require a persistent store.
+    """
+    _feature_flags_read_only()
 
 
 @router.delete("/flags/{flag_key}")
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def delete_feature_flag(request: AuthenticatedRequest, flag_key: str):
-    """Delete a feature flag (super admin only)."""
-    flag = get_flag(flag_key)
-    if not flag:
-        from ninja.errors import HttpError
+    """Delete a feature flag (super admin only).
 
-        raise HttpError(404, f"Flag '{flag_key}' not found")
-
-    flags = get_all_flags()
-    del flags[flag_key]
-    cache.set("feature_flags", flags, timeout=3600)
-
-    return {"success": True}
+    Currently disabled: feature flags require a persistent store.
+    """
+    _feature_flags_read_only()
 
 
 # =============================================================================
@@ -330,15 +281,11 @@ def set_tenant_flag_override(
     tenant_id: UUID,
     data: TenantFlagOverride,
 ):
-    """Set a tenant-specific flag override."""
-    # Tenant isolation
-    if not request.is_super_admin:
-        if str(request.tenant_id) != str(tenant_id):
-            from ninja.errors import HttpError
+    """Set a tenant-specific flag override.
 
-            raise HttpError(403, "Access denied")
-
-    set_tenant_override(str(tenant_id), data.flag_key, data.enabled)
+    Currently disabled: tenant flag overrides require a persistent store.
+    """
+    _feature_flags_read_only()
 
     # Audit log
     from django.shortcuts import get_object_or_404

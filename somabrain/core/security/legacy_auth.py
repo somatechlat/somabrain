@@ -130,56 +130,81 @@ def _jwt_algorithms() -> list[str]:
     return ["HS256", "HS384", "HS512"]
 
 
+def _extract_bearer(request: HttpRequest) -> str:
+    """Return the bearer token from the Authorization header, or raise 401."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise HttpError(401, "missing bearer token")
+    token = auth.split(" ", 1)[1].strip()
+    if not token:
+        raise HttpError(401, "missing bearer token")
+    return token
+
+
+def _validate_jwt(token: str) -> None:
+    """Validate a JWT token against the configured key."""
+    jwt_key = _get_jwt_key()
+    if not jwt_key:
+        raise HttpError(503, "authentication is not configured on this instance")
+
+    audience = getattr(settings, "SOMABRAIN_JWT_AUDIENCE", None)
+    issuer = getattr(settings, "SOMABRAIN_JWT_ISSUER", None)
+
+    options = {"verify_aud": bool(audience)}
+    kwargs = {}
+    if audience:
+        kwargs["audience"] = audience
+    if issuer:
+        kwargs["issuer"] = issuer
+
+    try:
+        jwt.decode(
+            token,
+            jwt_key,
+            algorithms=_jwt_algorithms(),
+            options=options,
+            **kwargs,
+        )
+    except PyJWTError as exc:
+        raise HttpError(403, "invalid token") from exc
+
+
+def _validate_api_or_memory_token(token: str) -> bool:
+    """Validate token against configured API or memory HTTP tokens.
+
+    Returns True if the token matches a configured static token. Raises HttpError
+    503 if no static token is configured, or 403 if a token is configured but
+    does not match.
+    """
+    for setting_name in ("SOMABRAIN_API_TOKEN", "SOMABRAIN_MEMORY_HTTP_TOKEN"):
+        expected = getattr(settings, setting_name, None)
+        if expected:
+            if token == expected:
+                return True
+            # A token is configured but this request did not match it; reject.
+            raise HttpError(403, "invalid token")
+    return False
+
+
 def require_auth(request: HttpRequest, cfg: Any = None) -> None:
     """Validate authentication for API requests.
 
-    Args:
-        request: The incoming Django request
-        cfg: Legacy configuration object (ignored in favor of settings)
+    Defense-in-depth check used by endpoints after Ninja auth has run. In
+    standalone mode the Ninja auth layer already validated the bearer token, so
+    this function additionally ensures at least one backend credential is
+    configured and the request presented a token.
     """
-    # Auth always enforced; no early return.
-    auth = request.headers.get("Authorization", "")
+    token = _extract_bearer(request)
 
     jwt_key = _get_jwt_key()
     if jwt_key:
-        if not auth.startswith("Bearer "):
-            raise HttpError(401, "missing bearer token")
-        token = auth.split(" ", 1)[1].strip()
-
-        audience = getattr(settings, "SOMABRAIN_JWT_AUDIENCE", None)
-        issuer = getattr(settings, "SOMABRAIN_JWT_ISSUER", None)
-
-        options = {"verify_aud": bool(audience)}
-        kwargs = {}
-        if audience:
-            kwargs["audience"] = audience
-        if issuer:
-            kwargs["issuer"] = issuer
-
-        try:
-            jwt.decode(
-                token,
-                jwt_key,
-                algorithms=_jwt_algorithms(),
-                options=options,
-                **kwargs,
-            )
-        except PyJWTError as exc:
-            raise HttpError(403, "invalid token") from exc
+        _validate_jwt(token)
         return
 
-    api_token = getattr(settings, "SOMABRAIN_API_TOKEN", None)
-    if api_token:
-        if not auth.startswith("Bearer "):
-            raise HttpError(401, "missing bearer token")
-        token = auth.split(" ", 1)[1].strip()
-        if token != api_token:
-            raise HttpError(403, "invalid token")
+    if _validate_api_or_memory_token(token):
         return
 
-    if getattr(settings, "SOMABRAIN_AUTH_REQUIRED", False):
-        if not auth.startswith("Bearer ") or not auth.split(" ", 1)[1].strip():
-            raise HttpError(401, "missing bearer token")
+    raise HttpError(503, "authentication is not configured on this instance")
 
 
 def require_admin_auth(request: HttpRequest, cfg: Any = None) -> None:
@@ -189,12 +214,14 @@ def require_admin_auth(request: HttpRequest, cfg: Any = None) -> None:
         request: Incoming request
         cfg: Legacy config (ignored)
     """
-    api_token = getattr(settings, "SOMABRAIN_API_TOKEN", None)
-    if not api_token:
+    token = _extract_bearer(request)
+
+    jwt_key = _get_jwt_key()
+    if jwt_key:
+        _validate_jwt(token)
         return
-    token_header = request.headers.get("Authorization", "")
-    if not token_header.startswith("Bearer "):
-        raise HttpError(401, "missing bearer token")
-    token = token_header.split(" ", 1)[1].strip()
-    if token != api_token:
-        raise HttpError(403, "invalid admin token")
+
+    if _validate_api_or_memory_token(token):
+        return
+
+    raise HttpError(403, "admin authentication required")

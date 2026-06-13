@@ -73,12 +73,36 @@ def compute_novelty(query_vec: np.ndarray, items: List["WMItem"]) -> float:
         Novelty score between 0.0 (not novel) and 1.0 (completely novel).
         Returns 1.0 if working memory is empty.
     """
-    if not items:
+    return _min_novelty_against(query_vec, items)
+
+
+_EPS = 1e-12
+
+
+def _min_novelty_against(query_vec: np.ndarray, others: List["WMItem"]) -> float:
+    """Vectorized novelty of ``query_vec`` against a list of WM items.
+
+    Novelty is defined as ``1 - max_similarity``. A vectorized implementation
+    keeps WM eviction O(n) instead of O(n^2) per comparison.
+    """
+    if not others:
         return 1.0
-    best = 0.0
-    for it in items:
-        best = max(best, cosine_similarity(query_vec, it.vector))
-    return max(0.0, 1.0 - best)
+
+    q = np.asarray(query_vec, dtype=np.float64).ravel()
+    qn = np.linalg.norm(q)
+    if qn <= _EPS:
+        return 1.0
+
+    arr = np.asarray([it.vector for it in others], dtype=np.float64)
+    norms = np.linalg.norm(arr, axis=1)
+    mask = norms > _EPS
+    if not np.any(mask):
+        return 1.0
+
+    dots = arr[mask].dot(q)
+    sims = dots / (norms[mask] * qn)
+    sims = np.clip(sims, -1.0, 1.0)
+    return float(max(0.0, min(1.0, 1.0 - float(sims.max()))))
 
 
 def compute_item_salience(
@@ -104,12 +128,9 @@ def compute_item_salience(
     Returns:
         Salience score between 0.0 and 1.0.
     """
-    # Compute novelty: how different is this item from others
-    novelty = 1.0
-    for other in items:
-        if other is not item:
-            sim = cosine_similarity(item.vector, other.vector)
-            novelty = min(novelty, max(0.0, 1.0 - sim))
+    # Compute novelty: how different is this item from others (vectorized)
+    others = [other for other in items if other is not item]
+    novelty = _min_novelty_against(item.vector, others)
 
     # B1.3: Use stored recency value (decays exponentially via decay_recency())
     recency = float(item.recency)
@@ -144,12 +165,9 @@ def compute_eviction_salience(
     Returns:
         Salience score between 0.0 and 1.0.
     """
-    # Compute novelty for this item relative to other items
-    novelty = 1.0
-    for other in items:
-        if other is not item:
-            sim = cosine_similarity(item.vector, other.vector)
-            novelty = min(novelty, max(0.0, 1.0 - sim))
+    # Compute novelty for this item relative to other items (vectorized)
+    others = [other for other in items if other is not item]
+    novelty = _min_novelty_against(item.vector, others)
 
     # Compute recency based on time since admission
     age = max(0.0, now - item.admitted_at)

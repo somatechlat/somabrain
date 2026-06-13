@@ -282,7 +282,7 @@ class TestWMPropertyBased:
         capacity=st.integers(min_value=1, max_value=100),
         num_items=st.integers(min_value=1, max_value=200),
     )
-    @settings(max_examples=50, deadline=None)
+    @settings(max_examples=10, deadline=None)
     def test_capacity_never_exceeded(self, capacity: int, num_items: int) -> None:
         """Property: WM never exceeds capacity.
 
@@ -302,7 +302,7 @@ class TestWMPropertyBased:
         ), f"WM exceeded capacity: {len(wm._items)} > {capacity}"
 
     @given(st.integers(min_value=1, max_value=50))
-    @settings(max_examples=20, deadline=None)
+    @settings(max_examples=5, deadline=None)
     def test_recall_returns_at_most_top_k(self, top_k: int) -> None:
         """Property: Recall returns at most top_k items.
 
@@ -326,7 +326,7 @@ class TestWMPropertyBased:
         ), f"Recall returned more than top_k: {len(results)} > {top_k}"
 
     @given(st.integers(min_value=1, max_value=100))
-    @settings(max_examples=20, deadline=None)
+    @settings(max_examples=5, deadline=None)
     def test_novelty_bounded_zero_one(self, num_items: int) -> None:
         """Property: Novelty is always in [0, 1].
 

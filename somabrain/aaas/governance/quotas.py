@@ -32,12 +32,15 @@ Functions:
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 from somabrain.aaas.logic.tenant_manager import get_tenant_manager
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -99,6 +102,10 @@ class QuotaManager:
         # key -> (date_key, count)
         self._counts: Dict[str, Tuple[int, int]] = {}
         self._tenant_manager = None  # Lazy initialization
+        logger.warning(
+            "QuotaManager uses in-memory counters; enable a Redis-backed quota store "
+            "for multi-replica deployments"
+        )
 
     @staticmethod
     def _day_key(ts: float | None = None) -> int:

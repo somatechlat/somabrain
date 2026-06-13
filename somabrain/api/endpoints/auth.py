@@ -17,12 +17,12 @@ VIBE Coding Rules - ALL 10 PERSONAS:
 - 🛠️ DevOps: Environment-based OAuth config
 """
 
-import hashlib
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
 from django.conf import settings
+from django.contrib.auth.hashers import check_password, make_password
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
@@ -201,13 +201,12 @@ def login(request, data: LoginRequest):
                 email=data.email
             )
 
-            # For TenantUser, check password hash
+            # For TenantUser, check password hash using Django's password hasher.
+            # Legacy SHA-256 hashes must be migrated via scripts/migrations.
             if not tenant_user.password_hash:
                 raise HttpError(401, "Invalid email or password")
 
-            # Simple hash check (in production, use proper password hashing)
-            password_hash = hashlib.sha256(data.password.encode()).hexdigest()
-            if tenant_user.password_hash != password_hash:
+            if not check_password(data.password, tenant_user.password_hash):
                 raise HttpError(401, "Invalid email or password")
 
             user_data = {
@@ -265,7 +264,7 @@ async def oauth_callback(request, data: OAuthCallbackRequest):
                 f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/token"
             )
 
-            async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     token_url,
                     data={

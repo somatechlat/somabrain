@@ -12,9 +12,16 @@ Verifies:
 import time
 import asyncio
 import pytest
+from asgiref.sync import sync_to_async
 from somabrain.controls.memory_client import memory_client
 from somabrain.controls.degradation import degradation_manager, HealthStatus
 from somabrain.brain_settings.models import BrainSetting
+
+
+# Async-safe wrappers for the synchronous BrainSetting API.
+_init_defaults = sync_to_async(BrainSetting.initialize_defaults)
+_set_setting = sync_to_async(BrainSetting.set)
+_get_setting = sync_to_async(BrainSetting.get)
 
 
 def _sfm_available() -> bool:
@@ -24,7 +31,7 @@ def _sfm_available() -> bool:
 
     url = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:10101")
     try:
-        with urllib.request.urlopen(f"{url}/health", timeout=1) as resp:
+        with urllib.request.urlopen(f"{url}/healthz", timeout=1) as resp:
             return resp.status == 200
     except Exception:
         return False
@@ -35,19 +42,26 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+# Async-safe wrappers for the synchronous BrainSetting API.
+_init_defaults = sync_to_async(BrainSetting.initialize_defaults)
+_set_setting = sync_to_async(BrainSetting.set)
+_get_setting = sync_to_async(BrainSetting.get)
+
+
+@pytest.mark.django_db
 @pytest.mark.asyncio
 async def test_unified_cognitive_flow():
     tenant = "test_e2e_tenant"
 
     # 1. Initialize Settings
-    BrainSetting.initialize_defaults(tenant=tenant)
+    await _init_defaults(tenant=tenant)
 
     # 2. Test TRAINING Mode (High Plasticity)
-    BrainSetting.set("active_brain_mode", "TRAINING", tenant=tenant)
-    assert BrainSetting.get("active_brain_mode", tenant=tenant) == "TRAINING"
+    await _set_setting("active_brain_mode", "TRAINING", tenant=tenant)
+    assert await _get_setting("active_brain_mode", tenant=tenant) == "TRAINING"
 
     # Check if overrides applied (eta should be 0.10)
-    assert BrainSetting.get("gmd_eta", tenant=tenant) == 0.10
+    assert await _get_setting("gmd_eta", tenant=tenant) == 0.10
 
     # 3. Store Memory via Unified Client
     coordinate = [0.1, 0.2, 0.3, 0.4]
@@ -57,8 +71,8 @@ async def test_unified_cognitive_flow():
     assert success is True, "Memory storage failed in TRAINING mode"
 
     # 4. Test RECALL Mode (Deterministic)
-    BrainSetting.set("active_brain_mode", "RECALL", tenant=tenant)
-    assert BrainSetting.get("gmd_eta", tenant=tenant) == 0.01  # Should be frozen
+    await _set_setting("active_brain_mode", "RECALL", tenant=tenant)
+    assert await _get_setting("gmd_eta", tenant=tenant) == 0.01  # Should be frozen
 
     # Search for the same memory
     results = await memory_client.search("Integration Test", top_k=1, tenant=tenant)

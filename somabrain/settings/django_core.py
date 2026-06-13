@@ -76,13 +76,16 @@ SOMA_API_TOKEN = env.str("SOMA_API_TOKEN", default=None)
 SOMA_API_TOKEN_FILE = env.str("SOMA_API_TOKEN_FILE", default=None)
 
 
-def _apply_vault_bootstrap() -> None:
-    """Load bootstrap secrets before Django resolves derived settings.
+def configure_vault_secrets() -> None:
+    """Load bootstrap secrets from Vault into the process environment.
 
     Standalone Docker boots with Vault enabled, but the same settings module is
     also imported in CI and local development where Vault may be absent. This
     helper therefore treats Vault as an early source of truth when available and
     otherwise leaves the normal environment-based defaults intact.
+
+    Call once during application startup (e.g. from ``wsgi.py`` or
+    ``AppConfig.ready()``) before Django resolves derived settings.
     """
     try:
         from somabrain.core.security.vault_client import (
@@ -126,9 +129,6 @@ def _apply_vault_bootstrap() -> None:
     if api_token:
         os.environ["SOMA_API_TOKEN"] = api_token
         os.environ["SOMABRAIN_API_TOKEN"] = api_token
-
-
-_apply_vault_bootstrap()
 
 SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
 if not SECRET_KEY:

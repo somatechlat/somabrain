@@ -19,11 +19,6 @@ env = environ.Env()
 # INFRASTRUCTURE SETTINGS
 # ============================================================================
 
-# TensorFlow/Metal can trigger device-handling crashes on some macOS hosts.
-# Pinning this before downstream imports keeps local diagnostics reproducible.
-os.environ["TF_METAL_DEVICE_HANDLING"] = "1"
-
-
 def _set_env_if_present(name: str, value: object | None) -> None:
     """Set an environment variable only when Vault returned a real value."""
     if value is None:
@@ -33,17 +28,31 @@ def _set_env_if_present(name: str, value: object | None) -> None:
         os.environ[name] = text
 
 
-# Preload secrets from Vault when the process was bootstrapped with Vault
-# coordinates. The rest of this module still supports plain environment-based
-# configuration when Vault is intentionally absent.
-try:
-    from somabrain.core.security.vault_client import (
-        SecretNotFound,
-        VaultNotConfigured,
-        get_db_credentials,
-        get_runtime_secrets,
-        get_secret,
-    )
+def configure_tf_metal() -> None:
+    """Pin TensorFlow/Metal device-handling behavior.
+
+    TensorFlow/Metal can trigger device-handling crashes on some macOS hosts.
+    Pinning this before downstream imports keeps local diagnostics reproducible.
+    """
+    os.environ.setdefault("TF_METAL_DEVICE_HANDLING", "1")
+
+
+def configure_infra_secrets() -> None:
+    """Preload infrastructure secrets from Vault into the environment.
+
+    The rest of this module still supports plain environment-based
+    configuration when Vault is intentionally absent. Call once during startup.
+    """
+    try:
+        from somabrain.core.security.vault_client import (
+            SecretNotFound,
+            VaultNotConfigured,
+            get_db_credentials,
+            get_runtime_secrets,
+            get_secret,
+        )
+    except ImportError:
+        return
 
     try:
         db_creds = get_db_credentials()
@@ -89,11 +98,9 @@ try:
                     runtime_secrets.get("api_token"),
                 )
 
-    except (SecretNotFound, VaultNotConfigured, ImportError):
+    except (SecretNotFound, VaultNotConfigured):
         # Fallback to pure Env if Vault not configured (e.g. CI without Vault)
         pass
-except ImportError:
-    pass
 
 SOMABRAIN_POSTGRES_DSN = env.str("SOMABRAIN_POSTGRES_DSN", default="")
 # Remove legacy DATABASE_URL fallback to avoid collisions
@@ -280,6 +287,11 @@ SCHEMA_REGISTRY_URL = env.str(
 # ----------------------------------------------------------------------------
 SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(
     "SOMABRAIN_MEMORY_HTTP_ENDPOINT", default=_MEMORY_DEFAULT
+)
+
+# Legacy alias used by somabrain/config/urls.py and system_health.py health checks.
+SOMA_FRACTAL_MEMORY_URL = env.str(
+    "SOMA_FRACTAL_MEMORY_URL", default=SOMABRAIN_MEMORY_HTTP_ENDPOINT
 )
 SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="")
 if REQUIRE_MEMORY and not SOMABRAIN_MEMORY_HTTP_TOKEN:

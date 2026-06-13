@@ -173,6 +173,36 @@ class ActionPredictorService:
             "ts": datetime.now(timezone.utc).isoformat(),
         }
 
+    def _extract_actual_action_vector(
+        self, message_data: Dict[str, Any]
+    ) -> Optional[np.ndarray]:
+        """Extract the observed/actual action vector from a next event message."""
+        try:
+            action_data = (
+                message_data.get("actual_action")
+                or message_data.get("executed_action")
+                or message_data.get("next_action")
+            )
+            if action_data is None:
+                return None
+            if isinstance(action_data, list):
+                return np.array(action_data, dtype=np.float32)
+            if isinstance(action_data, dict):
+                values = action_data.get("values", [])
+                return np.array(values, dtype=np.float32)
+            if isinstance(action_data, str):
+                import hashlib
+
+                action_bytes = action_data.encode("utf-8")
+                hash_obj = hashlib.md5(action_bytes)
+                hash_bytes = hash_obj.digest()
+                vector = np.frombuffer(hash_bytes, dtype=np.uint8).astype(np.float32)
+                return vector / 255.0
+            return None
+        except Exception as e:
+            logger.error(f"Failed to extract actual action vector: {e}")
+            return None
+
     async def process_message(self, message_data: Dict[str, Any]) -> None:
         """Process a single next event message and publish prediction update."""
         action_vector = self._extract_action_vector(message_data)
@@ -180,12 +210,18 @@ class ActionPredictorService:
             logger.warning("No valid action vector found in message")
             return
 
+        actual_action_vector = self._extract_actual_action_vector(message_data)
+        if actual_action_vector is None:
+            logger.warning(
+                "No observed actual_action found in message; skipping action prediction update"
+            )
+            return
+
         # Make prediction with timing
         start_time = time.perf_counter()
         try:
-            # For action prediction, we predict next actions based on current context
             prediction_result = self.predictor.predict_and_compare(
-                expected_vec=action_vector, actual_vec=action_vector
+                expected_vec=action_vector, actual_vec=actual_action_vector
             )
         except Exception as e:
             logger.error(f"Action prediction failed: {e}")

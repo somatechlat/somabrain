@@ -31,14 +31,20 @@ class TenantContext:
 
 
 async def get_tenant(request: HttpRequest, namespace: str) -> TenantContext:
-    """Resolve the tenant for the given request.
+    """Resolve the tenant for the given request (async path).
 
-    In Standalone mode, returns a fixed "standalone" tenant.
+    In Standalone mode, returns a fixed "standalone" tenant and allows the
+    caller's namespace to be overridden by the X-Namespace header.
     In AAAS mode, delegates to the full tenant manager.
     """
-    if not apps.is_installed("somabrain.aaas"):
-        from django.conf import settings
+    from django.conf import settings
 
+    if getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None) == "standalone":
+        tenant_id = request.headers.get("X-Tenant-ID") or "standalone"
+        ns = request.headers.get("X-Namespace") or namespace or "default"
+        return TenantContext(tenant_id=tenant_id, namespace=ns)
+
+    if not apps.is_installed("somabrain.aaas"):
         tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "standalone")
         return TenantContext(tenant_id=tenant_id, namespace=namespace)
 
@@ -47,4 +53,28 @@ async def get_tenant(request: HttpRequest, namespace: str) -> TenantContext:
     return await _aaas_get_tenant(request, namespace)
 
 
-__all__ = ["TenantContext", "get_tenant"]
+def get_tenant_sync(request: HttpRequest, namespace: str) -> TenantContext:
+    """Resolve the tenant for the given request (sync path).
+
+    Sync endpoints cannot await the async ``get_tenant`` facade. This helper
+    provides the same standalone/no-AAAS resolution synchronously. When AAAS is
+    installed and active, callers must use the async ``get_tenant`` path.
+    """
+    from django.conf import settings
+
+    if getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None) == "standalone":
+        tenant_id = request.headers.get("X-Tenant-ID") or "standalone"
+        ns = request.headers.get("X-Namespace") or namespace or "default"
+        return TenantContext(tenant_id=tenant_id, namespace=ns)
+
+    if not apps.is_installed("somabrain.aaas"):
+        tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "standalone")
+        return TenantContext(tenant_id=tenant_id, namespace=namespace)
+
+    raise RuntimeError(
+        "synchronous tenant resolution is not available in AAAS mode; "
+        "use get_tenant() from an async endpoint"
+    )
+
+
+__all__ = ["TenantContext", "get_tenant", "get_tenant_sync"]

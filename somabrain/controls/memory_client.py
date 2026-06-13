@@ -100,7 +100,7 @@ class MemoryClient:
 
         except Exception as exc:
             degradation_manager.report_error("memory", exc, tenant)
-            return False
+            raise
 
     async def search(
         self, query: str, top_k: int = 5, tenant: str = "default"
@@ -109,11 +109,10 @@ class MemoryClient:
         status = degradation_manager.get_status(tenant)
 
         if status == HealthStatus.FAILSAFE:
-            logger.warning(
-                "Cognitive system is in FAILSAFE mode for tenant %s. Returning empty search.",
-                tenant,
+            raise RuntimeError(
+                f"Cognitive system is in FAILSAFE mode for tenant {tenant}; "
+                "memory search unavailable"
             )
-            return []
 
         try:
             if self.mode == "direct" and self._direct_service:
@@ -124,7 +123,7 @@ class MemoryClient:
                 )
         except Exception as e:
             degradation_manager.report_error("memory", e, tenant)
-            return []
+            raise
 
 
 memory_client = MemoryClient()

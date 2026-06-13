@@ -42,10 +42,17 @@ URLS = {
 
 # Authentication
 # ---------------------------------------------------------------------------
+# Treat empty strings as unset so a deliberately empty SOMABRAIN_API_TOKEN
+# does not shadow a valid SOMABRAIN_MEMORY_HTTP_TOKEN.
+def _env_or_default(name: str, fallback: str = "") -> str:
+    value = os.getenv(name, "")
+    return value if value else fallback
+
+
 AUTH = {
-    "sfm_token": os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", ""),
-    "api_token": os.getenv(
+    "sfm_token": _env_or_default("SOMABRAIN_MEMORY_HTTP_TOKEN"),
+    "api_token": _env_or_default(
         "SOMABRAIN_API_TOKEN",
-        os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", ""),
+        _env_or_default("SOMABRAIN_MEMORY_HTTP_TOKEN"),
     ),
 }

@@ -16,7 +16,7 @@ from ninja.errors import HttpError
 
 from somabrain import metrics as M
 from somabrain.api.auth import api_key_auth
-from somabrain.core.security.legacy_auth import require_auth
+from somabrain.api.auth import require_auth
 from somabrain.admin.core.models import CognitiveThread
 
 logger = logging.getLogger("somabrain.api.endpoints.thread")

@@ -261,3 +261,17 @@ def admin_features_update(
         raise HttpError(403, "update forbidden")
 
     return FeatureFlagsUpdateResponse(overrides=FeatureFlags.get_overrides())
+
+
+@router.get("/diagnostics", auth=api_key_auth)
+def admin_diagnostics(request: HttpRequest):
+    """Return a concise diagnostics summary for the standalone deployment."""
+    from django.utils import timezone
+
+    return {
+        "status": "ok",
+        "timestamp": timezone.now().isoformat(),
+        "mode": getattr(settings, "SOMABRAIN_MODE", "unknown"),
+        "deploy_mode": getattr(settings, "SOMA_DEPLOY_MODE", "unknown"),
+        "tenant": getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "unknown"),
+    }
