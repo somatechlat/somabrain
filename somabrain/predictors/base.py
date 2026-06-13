@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Optional, Tuple
 
 import numpy as np
@@ -11,6 +12,7 @@ import numpy as np
 # Import the global Settings instance used throughout the project.
 # ``settings`` provides configuration such as ``heat_method``.
 from django.conf import settings  # noqa: E402
+from django.core.exceptions import ImproperlyConfigured
 
 from somabrain.math.graph_heat import graph_heat_chebyshev, graph_heat_lanczos
 
@@ -143,28 +145,6 @@ class HeatDiffusionPredictor(PredictorBase):
         return y, err, conf
 
 
-def make_line_graph_laplacian(n: int) -> np.ndarray:
-    """Simple n-node path graph Laplacian for demo/testing.
-
-    L = D - A where A has 1 on (i,i+1) and (i+1,i)
-    """
-    n = int(n)
-    L = np.zeros((n, n), dtype=float)
-    for i in range(n):
-        if i > 0:
-            L[i, i - 1] = -1.0
-        if i < n - 1:
-            L[i, i + 1] = -1.0
-    for i in range(n):
-        deg = 0
-        if i > 0:
-            deg += 1
-        if i < n - 1:
-            deg += 1
-        L[i, i] = float(deg)
-    return L
-
-
 def matvec_from_matrix(M: np.ndarray) -> ApplyOp:
     """Execute matvec from matrix.
 
@@ -195,7 +175,7 @@ def _to_ndarray(obj: object) -> Optional[np.ndarray]:
         arr = np.array(obj, dtype=float)
         if arr.ndim == 2 and arr.shape[0] == arr.shape[1]:
             return arr
-    except Exception:
+    except (ValueError, TypeError):
         return None
     return None
 
@@ -263,37 +243,26 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     Env vars consulted (domain-specific preferred):
     - SOMABRAIN_GRAPH_FILE_{DOMAIN}: path to JSON graph file
     - SOMABRAIN_GRAPH_FILE: default path if domain-specific not provided
-    - SOMABRAIN_PREDICTOR_DIM: used only when no graph file provided
     - SOMABRAIN_DIFFUSION_T, SOMABRAIN_CONF_ALPHA, SOMABRAIN_CHEB_K, SOMABRAIN_LANCZOS_M
     """
     dom = (domain or "").strip().upper()
-    # Graph source
     # Retrieve a domain‑specific graph file, falling back to the generic one.
-    # ``settings.getenv`` is removed; we use ``getattr`` which safely returns
-    # ``None`` when the attribute does not exist.
-    graph_path = getattr(settings, f"graph_file_{dom.lower()}", None) or getattr(
-        settings, "graph_file", None
+    graph_path = getattr(settings, f"SOMABRAIN_GRAPH_FILE_{dom}", None) or getattr(
+        settings, "SOMABRAIN_GRAPH_FILE", None
     )
-    if graph_path:
-        try:
-            apply_A, dim = load_operator_from_file(graph_path)
-        except Exception:
-            # Use line graph if load fails
-            dim = int(settings.SOMABRAIN_PREDICTOR_DIM or "16")
-            L = make_line_graph_laplacian(dim)
-            apply_A = matvec_from_matrix(L)
-    else:
-        dim = int(settings.SOMABRAIN_PREDICTOR_DIM or "16")
-        L = make_line_graph_laplacian(dim)
-        apply_A = matvec_from_matrix(L)
+    if not graph_path or not Path(graph_path).exists():
+        raise ImproperlyConfigured(
+            f"Predictor graph file not configured or missing: {graph_path!r}"
+        )
+    apply_A, dim = load_operator_from_file(graph_path)
     pred = HeatDiffusionPredictor(
         apply_A=apply_A,
         dim=dim,
         cfg=PredictorConfig(
-            diffusion_t=float(settings.diffusion_t or "0.5"),
-            alpha=float(settings.conf_alpha or "2.0"),
-            chebyshev_K=int(settings.cheb_k or "30"),
-            lanczos_m=int(getattr(settings, "lanczos_m", 20)),
+            diffusion_t=float(getattr(settings, "SOMABRAIN_DIFFUSION_T", 0.5)),
+            alpha=float(getattr(settings, "SOMABRAIN_CONF_ALPHA", 2.0)),
+            chebyshev_K=int(getattr(settings, "SOMABRAIN_CHEB_K", 30)),
+            lanczos_m=int(getattr(settings, "SOMABRAIN_LANCZOS_M", 20)),
         ),
     )
     return pred, dim
