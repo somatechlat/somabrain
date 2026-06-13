@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import time as _t
+import types
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -176,9 +177,9 @@ def eval_step(
             PREDICT_COMPARE_MISSING_PREV.inc()
         except Exception:
             pass
-        pred = type(
-            "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
-        )()
+        pred = types.SimpleNamespace(
+            predicted_vec=wm_vec, actual_vec=wm_vec, error=0.0
+        )
         result_extras["no_prev_focus"] = True
     else:
         try:
@@ -191,12 +192,7 @@ def eval_step(
                 logger.debug(
                     "Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc
                 )
-            pred = type(
-                "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
-            )()
-            logger.exception(
-                "Predictor failed, falling back to zero-error recovery path: %s", exc
-            )
+            raise RuntimeError(f"Predictor failed: {exc}") from exc
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
     base_nm = neuromods.get_state()
