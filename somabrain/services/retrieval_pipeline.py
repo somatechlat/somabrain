@@ -14,34 +14,24 @@ while allowing tests to run without external services.
 
 from __future__ import annotations
 
-import importlib.util
-import os
-import sys
+import logging
 from typing import Any, List, Optional
 
+import httpx
+
 from somabrain.admin.core.embeddings import make_embedder
-from somabrain.schemas import RetrievalCandidate, RetrievalRequest, RetrievalResponse
 from somabrain.admin.core.learning.scoring import UnifiedScorer
+from somabrain.schemas import RetrievalCandidate, RetrievalRequest, RetrievalResponse
 from somabrain.services.memory_service import MemoryService
 
-# The repository contains both a ``runtime`` package (exposing WorkingMemoryBuffer)
-# and a ``runtime.py`` module that defines the core singleton utilities
-# (embedder, mt_wm, mt_memory, set_singletons, etc.). Importing ``runtime`` would
-# resolve to the package, causing ``AttributeError: module 'somabrain.runtime' has
-# no attribute 'mt_memory'``. To reliably load the module file, we import it via
-# ``importlib.util``.
-_runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
-_spec = importlib.util.spec_from_file_location(
-    "somabrain.runtime_module", _runtime_path
-)
-if not _spec or not _spec.loader:
-    raise RuntimeError(f"Failed to load runtime.py module spec from {_runtime_path}")
-if _spec.name in sys.modules:
-    _rt = sys.modules[_spec.name]
-else:
-    _rt = importlib.util.module_from_spec(_spec)
-    sys.modules[_spec.name] = _rt
-    _spec.loader.exec_module(_rt)
+# Use the real runtime package. The package exports embedder, mt_wm, mt_memory,
+# cfg, and initialize_runtime() via its __init__.py.
+from somabrain import runtime as _rt
+
+if _rt.mt_memory is None:
+    _rt.initialize_runtime()
+
+logger = logging.getLogger(__name__)
 
 
 def _as_namespace(ctx: Any) -> str:
@@ -101,7 +91,7 @@ def _safe_coord_from_str(coord_str: str) -> Optional[str]:
         parts = [float(x) for x in coord_str.split(",") if x.strip()]
         if len(parts) >= 3:
             return ",".join(str(float(x)) for x in parts[:3])
-    except Exception:
+    except ValueError:
         return None
     return None
 
@@ -123,6 +113,8 @@ async def run_retrieval_pipeline(
     memsvc = MemoryService(_rt.mt_memory, namespace)
 
     candidates: List[RetrievalCandidate] = []
+    degraded = False
+    error_msg: Optional[str] = None
 
     # Prepare scorer/embedder if available (best-effort)
     scorer: UnifiedScorer | None = getattr(_rt, "unified_scorer", None)
@@ -136,8 +128,6 @@ async def run_retrieval_pipeline(
     if req.mode == "coord" and req.coord:
         coord = req.coord
 
-    # Try to fetch a stored payload when possible
-    payload: dict = {}
     if key:
         try:
             hits = memsvc.recall(key, top_k=1, universe=universe)
@@ -145,68 +135,69 @@ async def run_retrieval_pipeline(
                 hit = hits[0]
                 payload = hit.get("payload") or {}
                 score = float(hit.get("score", 1.0))
-            else:
-                score = 1.0
-        except Exception:
-            score = 1.0
-        if not payload:
-            payload = {"task": key}
-        candidates.append(
-            _candidate_from_payload(
-                payload,
-                retriever="exact",
-                key=key,
-                coord=_safe_coord_from_str(coord) or None,
-                score=score,
-            )
-        )
-    elif coord:
-        candidates.append(
-            _candidate_from_payload(
-                {"coord": coord, "query": req.query},
-                retriever="exact",
-                coord=_safe_coord_from_str(coord),
-                score=1.0,
-            )
-        )
+                candidates.append(
+                    _candidate_from_payload(
+                        payload,
+                        retriever="exact",
+                        key=key,
+                        coord=_safe_coord_from_str(coord) or None,
+                        score=score,
+                    )
+                )
+        except httpx.TimeoutException as exc:
+            degraded = True
+            error_msg = f"memory backend timeout during exact lookup: {exc}"
+            logger.warning(error_msg)
+        except httpx.ConnectError as exc:
+            degraded = True
+            error_msg = f"memory backend unreachable during exact lookup: {exc}"
+            logger.warning(error_msg)
+        except httpx.HTTPStatusError as exc:
+            degraded = True
+            error_msg = f"memory backend error during exact lookup: {exc.response.status_code}"
+            logger.warning(error_msg)
+        except Exception as exc:
+            degraded = True
+            error_msg = f"unexpected error during exact lookup: {exc}"
+            logger.exception(error_msg)
 
     # 2) Vector-ish candidate using embedder + scorer when available
     if not candidates:
-        score = 0.0
         if scorer and embedder:
             try:
                 q_vec = embedder.embed(req.query)
-                # Compare against any memory we can fetch
                 hits = memsvc.recall(req.query, top_k=req.top_k or 3, universe=universe)
                 for h in hits:
                     pvec = embedder.embed(str(h.get("payload", {})))
-                    score = max(score, float(scorer.score(q_vec, pvec)))
+                    score = float(scorer.score(q_vec, pvec))
                     candidates.append(
                         _candidate_from_payload(
                             h.get("payload") or {},
                             retriever="cosine",
                             coord=None,
-                            score=float(score),
+                            score=score,
                         )
                     )
-            except Exception:
-                candidates.append(
-                    _candidate_from_payload(
-                        {"task": req.query},
-                        retriever="cosine",
-                        score=0.3,
-                    )
-                )
-        else:
-            candidates.append(
-                _candidate_from_payload(
-                    {"task": req.query},
-                    retriever="cosine",
-                    score=0.3,
-                )
-            )
+            except httpx.TimeoutException as exc:
+                degraded = True
+                error_msg = f"memory backend timeout during vector lookup: {exc}"
+                logger.warning(error_msg)
+            except httpx.ConnectError as exc:
+                degraded = True
+                error_msg = f"memory backend unreachable during vector lookup: {exc}"
+                logger.warning(error_msg)
+            except httpx.HTTPStatusError as exc:
+                degraded = True
+                error_msg = f"memory backend error during vector lookup: {exc.response.status_code}"
+                logger.warning(error_msg)
+            except Exception as exc:
+                degraded = True
+                error_msg = f"unexpected error during vector lookup: {exc}"
+                logger.exception(error_msg)
 
     metrics = {"reranker_used": req.rerank or "auto"}
+    if degraded:
+        metrics["error"] = error_msg
 
     return RetrievalResponse(
         candidates=candidates[: req.top_k or 10],
@@ -214,4 +205,6 @@ async def run_retrieval_pipeline(
         namespace=namespace,
         trace_id=trace_id or "",
         metrics=metrics,
+        degraded=degraded,
+        error=error_msg,
     )

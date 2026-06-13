@@ -116,6 +116,8 @@ class RetrievalResponse(BaseModel):
     namespace: str
     trace_id: str
     metrics: Optional[Dict[str, Any]] = None
+    degraded: bool = False
+    error: Optional[str] = None
 
 
 class RememberResponse(BaseModel):
