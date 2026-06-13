@@ -19,6 +19,7 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 import time
 from typing import Any, Dict, Optional
 
+import django
 from django.conf import settings
 from django.utils import timezone
 from ninja import Router, Schema
@@ -439,19 +440,25 @@ def check_cognitive_service() -> Dict[str, Any]:
     """Check internal cognitive service status."""
 
     def _check():
-        # Check if cognitive middleware is loaded
-        """Execute check."""
+        """Query real runtime singletons; return None if nothing is loaded."""
+        from somabrain import runtime as rt
 
+        embedder = getattr(rt, "embedder", None)
+        mt_wm = getattr(rt, "mt_wm", None)
+        mt_memory = getattr(rt, "mt_memory", None)
+        if embedder is None and mt_wm is None and mt_memory is None:
+            return None
         return {
-            "planner_loaded": True,
-            "option_manager_loaded": True,
+            "embedder_initialized": embedder is not None,
+            "wm_initialized": mt_wm is not None,
+            "memory_initialized": mt_memory is not None,
         }
 
     result, time_ms, error = timed_check(_check)
 
     return {
         "name": "Cognitive Service",
-        "status": "healthy" if result else "degraded",
+        "status": "healthy" if result else "unavailable",
         "response_time_ms": time_ms,
         "details": result,
         "error": error,
@@ -530,7 +537,7 @@ def get_full_health(request):
     from django.db import connection
 
     django_info = {
-        "version": "6.0",
+        "version": django.get_version(),
         "debug": getattr(settings, "DEBUG", False),
         "database_vendor": connection.vendor,
         "cache_backend": getattr(settings, "CACHES", {})
