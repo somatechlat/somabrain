@@ -19,10 +19,6 @@ class JWTAuth(HttpBearer):
     VIBE COMPLIANT: Real signature verification enabled.
     """
 
-    _jwks_cache: dict = None
-    _jwks_fetched_at: float = 0
-    JWKS_CACHE_TTL = 300  # 5 minutes
-
     def authenticate(self, request: HttpRequest, token: str) -> Optional[dict]:
         """Authenticate JWT token from Keycloak."""
         try:
