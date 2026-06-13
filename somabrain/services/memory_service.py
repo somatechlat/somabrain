@@ -11,16 +11,34 @@ import logging
 import uuid
 from typing import Any, Iterable, List
 
+import httpx
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 # Local imports – placed after the standard library imports to avoid circular
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
+from somabrain.core.exceptions import (
+    CircuitBreakerOpen,
+    MemoryServiceError,
+    MemoryTimeoutError,
+)
 from somabrain.infrastructure.cb_registry import get_cb
 from somabrain.journal import JournalEvent, get_journal
 
 from ..infrastructure.tenant import resolve_namespace, tenant_label
+
+
+def _reraise_backend_error(exc: Exception, operation: str) -> None:
+    """Re-raise expected backend errors and log unexpected ones.
+
+    Expected error types are preserved so callers can map them to HTTP statuses.
+    Unexpected errors are logged and re-raised as MemoryServiceError.
+    """
+    if isinstance(exc, (httpx.HTTPError, MemoryServiceError, RuntimeError)):
+        raise
+    logger.exception("Unexpected memory backend error during %s: %s", operation, exc)
+    raise MemoryServiceError(f"unexpected memory error during {operation}: {exc}") from exc
 
 
 class MemoryService:
@@ -129,15 +147,18 @@ class MemoryService:
             self._queue_degraded("remember", {"key": key, "payload": payload})
             message = "Memory service unavailable (circuit open)"
             if self._degrade_readonly:
-                raise RuntimeError(message)
-            raise RuntimeError(f"{message}; queued locally for replay")
+                raise CircuitBreakerOpen(message)
+            raise CircuitBreakerOpen(f"{message}; queued locally for replay")
         try:
             result = self.client().remember(key, payload)
             self._mark_success()
             return result
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
         except Exception as e:
             self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            _reraise_backend_error(e, "remember")
 
     def recall(self, query: str, top_k: int = 3, universe: str | None = None):
         """Execute recall.
@@ -150,14 +171,17 @@ class MemoryService:
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            raise CircuitBreakerOpen("Memory service unavailable (circuit open)")
         try:
             hits = self.client().recall(query, top_k=top_k, universe=universe)
             self._mark_success()
             return hits
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
         except Exception as e:
             self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            _reraise_backend_error(e, "recall")
 
     def recall_with_scores(
         self, query: str, top_k: int = 3, universe: str | None = None
@@ -166,7 +190,7 @@ class MemoryService:
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            raise CircuitBreakerOpen("Memory service unavailable (circuit open)")
         client = self.client()
         try:
             if hasattr(client, "recall_with_scores"):
@@ -175,9 +199,12 @@ class MemoryService:
                 hits = client.recall(query, top_k=top_k, universe=universe)
             self._mark_success()
             return hits
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
         except Exception as e:
             self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            _reraise_backend_error(e, "recall_with_scores")
 
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         """Execute aremember.
@@ -195,15 +222,18 @@ class MemoryService:
             self._queue_degraded("remember", {"key": key, "payload": payload})
             message = "Memory service unavailable (circuit open)"
             if self._degrade_readonly:
-                raise RuntimeError(message)
-            raise RuntimeError(f"{message}; queued locally for replay")
+                raise CircuitBreakerOpen(message)
+            raise CircuitBreakerOpen(f"{message}; queued locally for replay")
         try:
             result = await self.client().aremember(key, payload)
             self._mark_success()
             return result
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
         except Exception as e:
             self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            _reraise_backend_error(e, "aremember")
 
     async def arecall(self, query: str, top_k: int = 3, universe: str | None = None):
         """Execute arecall.
@@ -216,14 +246,17 @@ class MemoryService:
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            raise CircuitBreakerOpen("Memory service unavailable (circuit open)")
         try:
             hits = await self.client().arecall(query, top_k=top_k, universe=universe)
             self._mark_success()
             return hits
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
         except Exception as e:
             self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            _reraise_backend_error(e, "arecall")
 
     async def arecall_with_scores(
         self, query: str, top_k: int = 3, universe: str | None = None
@@ -232,7 +265,7 @@ class MemoryService:
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            raise CircuitBreakerOpen("Memory service unavailable (circuit open)")
         client = self.client()
         try:
             if hasattr(client, "arecall_with_scores"):
@@ -243,9 +276,12 @@ class MemoryService:
                 hits = await client.arecall(query, top_k=top_k, universe=universe)
             self._mark_success()
             return list(hits)
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
         except Exception as e:
             self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            _reraise_backend_error(e, "arecall_with_scores")
 
     async def aremember_bulk(
         self,
@@ -273,15 +309,18 @@ class MemoryService:
                 self._queue_degraded("remember", {"key": key, "payload": body})
             message = "Memory service unavailable (circuit open)"
             if self._degrade_readonly:
-                raise RuntimeError(message)
-            raise RuntimeError(f"{message}; queued locally for replay")
+                raise CircuitBreakerOpen(message)
+            raise CircuitBreakerOpen(f"{message}; queued locally for replay")
         try:
             coords = await self.client().aremember_bulk(prepared)
             self._mark_success()
             return list(coords)
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
         except Exception as e:
             self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            _reraise_backend_error(e, "aremember_bulk")
 
     # ---------------------------------------------------------------------
     # Miscellaneous helper methods (mostly no‑ops for metrics)
@@ -291,9 +330,14 @@ class MemoryService:
 
         try:
             health = self.client().health()
-        except Exception as exc:
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
             logger.debug(
                 "Health check failed for namespace=%s: %s", self.namespace, exc
+            )
+            return False
+        except Exception as exc:
+            logger.exception(
+                "Unexpected health check error for namespace=%s: %s", self.namespace, exc
             )
             return False
         if isinstance(health, dict):
