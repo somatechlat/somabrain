@@ -6,11 +6,11 @@ Complex memory write logic (batch, signals, embedding).
 
 from __future__ import annotations
 
-import copy
 import logging
 import uuid
 from typing import List
 
+import httpx
 import numpy as np
 from django.conf import settings
 from django.http import HttpRequest
@@ -33,14 +33,31 @@ from somabrain.api.memory.models import (
     MemoryWriteRequest,
     MemoryWriteResponse,
 )
-from somabrain.core.security.legacy_auth import require_auth
+from somabrain.api.auth import require_auth
+from somabrain.core.exceptions import CircuitBreakerOpen, MemoryServiceError
 from somabrain.metrics import record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
-from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
 
 logger = logging.getLogger("somabrain.api.endpoints.memory_remember")
 
 router = Router(tags=["memory"])
+
+
+def _map_memory_error(exc: Exception) -> HttpError:
+    """Map a memory backend exception to an HTTP error response."""
+    if isinstance(exc, httpx.TimeoutException):
+        return HttpError(504, "memory backend timeout")
+    if isinstance(exc, httpx.ConnectError):
+        return HttpError(503, "memory backend unreachable")
+    if isinstance(exc, httpx.HTTPStatusError):
+        return HttpError(502, f"memory backend error: {exc.response.status_code}")
+    if isinstance(exc, CircuitBreakerOpen):
+        return HttpError(503, str(exc))
+    if isinstance(exc, MemoryServiceError):
+        return HttpError(502, str(exc))
+    if isinstance(exc, RuntimeError):
+        return HttpError(503, str(exc))
+    return HttpError(500, f"unexpected memory error: {exc}")
 
 
 def _ensure_runtime():
@@ -102,13 +119,16 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         try:
             coord = await memsvc.aremember(payload.key, stored_payload)
             persisted_to_ltm = True
-        except RuntimeError as exc:
+        except CircuitBreakerOpen as exc:
             memsvc._queue_degraded(
                 "remember", {"key": payload.key, "payload": stored_payload}
             )
-            degraded_warnings.append(f"memory-backend-failed:queued-for-replay:{exc}")
+            degraded_warnings.append(f"memory-backend-unavailable:queued-for-replay:{exc}")
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
+            raise _map_memory_error(exc) from exc
         except Exception as exc:
-            raise HttpError(502, f"store failed: {exc}")
+            logger.exception("Unexpected store failure: %s", exc)
+            raise HttpError(500, f"store failed: {exc}")
 
     coordinate_list = _serialize_coord(coord)
     if coordinate_list is not None:
@@ -146,22 +166,11 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         persisted_to_ltm=persisted_to_ltm,
     )
 
-    if tiered_vector is not None:
-        registry = TieredMemoryRegistry()
-        registry.remember(
-            payload.tenant,
-            payload.namespace,
-            anchor_id=payload.key or request_id,
-            key_vector=tiered_vector,
-            value_vector=tiered_vector,
-            payload=copy.deepcopy(stored_payload),
-            coordinate=coordinate_list,
-        )
-
     return {
         "ok": True,
         "tenant": payload.tenant,
         "namespace": payload.namespace,
+        "key": payload.key,
         "coordinate": coordinate_list,
         "promoted_to_wm": promoted_to_wm,
         "persisted_to_ltm": persisted_to_ltm,
@@ -246,13 +255,13 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
             [(ctx["key"], ctx["payload"]) for ctx in item_contexts], universe=None
         )
         persisted_to_ltm = True
-    except RuntimeError as exc:
-        raise HttpError(503, str(exc))
+    except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
+        raise _map_memory_error(exc) from exc
     except Exception as exc:
-        raise HttpError(502, f"store failed: {exc}")
+        logger.exception("Unexpected batch store failure: %s", exc)
+        raise HttpError(500, f"store failed: {exc}")
 
     results = []
-    registry = TieredMemoryRegistry()
 
     for idx, ctx in enumerate(item_contexts):
         raw_coord = coords[idx] if idx < len(coords) else None
@@ -267,16 +276,6 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
                 promoted_to_wm = True
             except Exception as exc:
                 ctx["warnings"].append(f"working-memory-admit-failed:{exc}")
-
-            registry.remember(
-                payload.tenant,
-                payload.namespace,
-                anchor_id=ctx["key"],
-                key_vector=ctx["vector"],
-                value_vector=ctx["vector"],
-                payload=copy.deepcopy(ctx["payload"]),
-                coordinate=coordinate,
-            )
 
         signal_feedback = MemorySignalFeedback(
             importance=ctx["signal_data"].get("importance"),
