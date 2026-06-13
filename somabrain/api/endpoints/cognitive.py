@@ -10,6 +10,7 @@ import logging
 from typing import Dict, List, Optional
 
 import numpy as np
+from cachetools import TTLCache
 from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router
@@ -38,8 +39,8 @@ _LOG_OP_FMT = "op=%s"
 
 router = Router(tags=["cognitive"])
 
-# Session-scoped FocusState cache
-_focus_state_cache: Dict[str, FocusState] = {}
+# Bounded FocusState cache: limits memory growth and evicts stale entries.
+_focus_state_cache: Dict[str, FocusState] = TTLCache(maxsize=10_000, ttl=3600)
 
 
 # Real runtime singleton access
