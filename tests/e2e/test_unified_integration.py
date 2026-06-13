@@ -13,7 +13,7 @@ import time
 import asyncio
 import pytest
 from asgiref.sync import sync_to_async
-from somabrain.controls.memory_client import memory_client
+from somabrain.controls.memory_client import MemoryClient
 from somabrain.controls.degradation import degradation_manager, HealthStatus
 from somabrain.brain_settings.models import BrainSetting
 
@@ -48,9 +48,15 @@ _set_setting = sync_to_async(BrainSetting.set)
 _get_setting = sync_to_async(BrainSetting.get)
 
 
+@pytest.fixture
+def memory_client():
+    """Provide a fresh MemoryClient instance for each test."""
+    return MemoryClient()
+
+
 @pytest.mark.django_db
 @pytest.mark.asyncio
-async def test_unified_cognitive_flow():
+async def test_unified_cognitive_flow(memory_client):
     tenant = "test_e2e_tenant"
 
     # 1. Initialize Settings
