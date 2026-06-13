@@ -39,9 +39,10 @@ Biological Inspiration:
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 from django.conf import settings
 
@@ -420,5 +421,28 @@ class AdaptivePerTenantNeuromodulators:
         return self.get_adaptive_system(tenant_id).get_adaptation_stats()
 
 
-# Global adaptive neuromodulator system
-adaptive_per_tenant_neuromods = AdaptivePerTenantNeuromodulators()
+# Lazy registry for the shared adaptive neuromodulator system.
+_neuromod_registry: Optional[AdaptivePerTenantNeuromodulators] = None
+_neuromod_lock = threading.Lock()
+
+
+def get_adaptive_per_tenant_neuromods() -> AdaptivePerTenantNeuromodulators:
+    """Return the shared AdaptivePerTenantNeuromodulators registry.
+
+    The registry is created lazily on first call and cached for the lifetime of
+    the process. This avoids module-level side effects and keeps import time
+    deterministic.
+    """
+    global _neuromod_registry
+    if _neuromod_registry is None:
+        with _neuromod_lock:
+            if _neuromod_registry is None:
+                _neuromod_registry = AdaptivePerTenantNeuromodulators()
+    return _neuromod_registry
+
+
+def __getattr__(name: str) -> Any:
+    """Backward-compatible lazy access to the neuromodulator registry."""
+    if name == "adaptive_per_tenant_neuromods":
+        return get_adaptive_per_tenant_neuromods()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
