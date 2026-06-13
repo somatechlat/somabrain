@@ -58,7 +58,8 @@ async def utility_guard(request: HttpRequest) -> None:
     dev_mode = False
     try:
         if settings is not None:
-            dev_mode = getattr(settings, "mode_normalized", "prod") == "dev"
+            mode = getattr(settings, "SOMABRAIN_MODE", "production").lower()
+            dev_mode = mode in ("dev", "development", "local")
     except Exception:
         dev_mode = False
 
