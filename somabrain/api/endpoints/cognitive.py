@@ -16,7 +16,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from somabrain.api.auth import api_key_auth
-from somabrain.core.security.legacy_auth import require_auth
+from somabrain.api.auth import require_auth
 from somabrain.admin.brain.focus_state import FocusState
 from somabrain.schemas import (
     ActRequest,
@@ -28,7 +28,7 @@ from somabrain.schemas import (
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.plan_engine import PlanEngine, PlanRequestContext
-from somabrain.tenant import get_tenant
+from somabrain.tenant import get_tenant_sync
 
 logger = logging.getLogger("somabrain.api.endpoints.cognitive")
 
@@ -42,45 +42,29 @@ router = Router(tags=["cognitive"])
 _focus_state_cache: Dict[str, FocusState] = {}
 
 
-# Helper functions
-def _get_runtime():
-    """Lazy import of runtime module to access singletons."""
-    import importlib.util
-    import os
-    import sys
-
-    _runtime_path = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "runtime.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "somabrain.runtime_module", _runtime_path
-    )
-    if _spec and _spec.name in sys.modules:
-        return sys.modules[_spec.name]
-    for m in list(sys.modules.values()):
-        try:
-            mf = getattr(m, "__file__", "") or ""
-            if mf.endswith(os.path.join("somabrain", "runtime.py")):
-                return m
-        except Exception:
-            continue
-    return None
+# Real runtime singleton access
+try:
+    from somabrain import runtime as _runtime
+except ImportError:  # pragma: no cover
+    _runtime = None  # type: ignore
 
 
 def _get_mt_memory():
     """Get multi-tenant memory singleton."""
-    rt = _get_runtime()
-    if rt:
-        return getattr(rt, "mt_memory", None)
-    return None
+    if _runtime is None:
+        return None
+    if _runtime.mt_memory is None:
+        _runtime.initialize_runtime()
+    return _runtime.mt_memory
 
 
 def _get_embedder():
     """Get embedder singleton."""
-    rt = _get_runtime()
-    if rt:
-        return getattr(rt, "embedder", None)
-    return None
+    if _runtime is None:
+        return None
+    if _runtime.embedder is None:
+        _runtime.initialize_runtime()
+    return _runtime.embedder
 
 
 def _get_app_singletons():
@@ -144,7 +128,7 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
     mt_memory = _get_mt_memory()
     embedder = _get_embedder()
 
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", "default"))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", "default"))
     require_auth(request, settings)
 
     task_key = str(getattr(body, "task_key", None) or "").strip()
@@ -208,7 +192,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     embedder = _get_embedder()
     singletons = _get_app_singletons()
 
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
 
     predictor_factory = singletons.get("predictor_factory")
@@ -324,14 +308,19 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
 
 @router.post("/personality", response=PersonalityState, auth=api_key_auth)
 def set_personality(request: HttpRequest, state: PersonalityState) -> PersonalityState:
-    """Set personality traits (reserved for future implementation)."""
-    raise HttpError(404, "Not Found")
+    """Set personality traits.
+
+    Personality configuration is not yet implemented in this release. The
+    endpoint is reserved and returns a honest 501 status instead of a
+    misleading 404.
+    """
+    raise HttpError(501, "Personality configuration not implemented")
 
 
 @router.get("/micro/diag", auth=api_key_auth)
 def micro_diag(request: HttpRequest):
     """Get microcircuit diagnostics for the current tenant."""
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
 
     trace_id = request.headers.get("X-Request-ID") or str(id(request))

@@ -263,7 +263,9 @@ def create_memory_transport(
     from somabrain.memory.utils import get_tenant_namespace
 
     headers = {}
-    token_value = getattr(cfg, "memory_http_token", None)
+    token_value = getattr(cfg, "memory_http_token", None) or getattr(
+        cfg, "SOMABRAIN_MEMORY_HTTP_TOKEN", None
+    )
     if token_value:
         headers["Authorization"] = f"Bearer {token_value}"
         headers["X-API-Key"] = token_value

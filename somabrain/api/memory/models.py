@@ -136,6 +136,7 @@ class MemoryWriteResponse(BaseModel):
     ok: bool
     tenant: str
     namespace: str
+    key: Optional[str] = None
     coordinate: Optional[List[float]] = None
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False

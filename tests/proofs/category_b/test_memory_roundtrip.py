@@ -32,7 +32,7 @@ def _sfm_available() -> bool:
 
     url = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:10101")
     try:
-        with urllib.request.urlopen(f"{url}/health", timeout=1) as resp:
+        with urllib.request.urlopen(f"{url}/healthz", timeout=1) as resp:
             return resp.status == 200
     except Exception:
         return False
@@ -43,13 +43,21 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def _api_token() -> str:
+    """Return the API token configured for this environment."""
+    token = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
+    if not token:
+        pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN is not set")
+    return token
+
+
 def get_tenant_headers(tenant_id: str) -> Dict[str, str]:
     """Get HTTP headers for a specific tenant."""
     return {
         "X-Tenant-ID": tenant_id,
         "X-Namespace": "test",
         "Content-Type": "application/json",
-        "Authorization": "Bearer sbk_test_integration_key_12345",
+        "Authorization": f"Bearer {_api_token()}",
     }
 
 

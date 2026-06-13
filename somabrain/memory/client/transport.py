@@ -27,7 +27,9 @@ class TransportMixin:
 
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
-        token_value = getattr(self.cfg, "memory_http_token", None)
+        token_value = getattr(self.cfg, "memory_http_token", None) or getattr(
+            self.cfg, "SOMABRAIN_MEMORY_HTTP_TOKEN", None
+        )
         if token_value:
             headers["Authorization"] = f"Bearer {token_value}"
             headers.setdefault("X-API-Key", token_value)

@@ -17,7 +17,7 @@ def _sfm_available() -> bool:
     import urllib.request
 
     try:
-        with urllib.request.urlopen(f"{ENDPOINT}/health", timeout=1) as resp:
+        with urllib.request.urlopen(f"{ENDPOINT}/healthz", timeout=1) as resp:
             return resp.status == 200
     except Exception:
         return False

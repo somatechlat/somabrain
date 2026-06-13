@@ -123,6 +123,28 @@ class StatePredictorService:
             "ts": datetime.now(timezone.utc).isoformat(),
         }
 
+    def _extract_next_state_vector(
+        self, message_data: Dict[str, Any]
+    ) -> Optional[np.ndarray]:
+        """Extract the observed next-state vector from a global frame message."""
+        try:
+            vector_data = (
+                message_data.get("next_state_vector")
+                or message_data.get("actual_state_vector")
+                or message_data.get("target_state_vector")
+            )
+            if vector_data is None:
+                return None
+            if isinstance(vector_data, list):
+                return np.array(vector_data, dtype=np.float32)
+            if isinstance(vector_data, dict):
+                values = vector_data.get("values", [])
+                return np.array(values, dtype=np.float32)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to extract next state vector: {e}")
+            return None
+
     async def process_message(self, message_data: Dict[str, Any]) -> None:
         """Process a single state message and publish prediction update."""
         state_vector = self._extract_state_vector(message_data)
@@ -130,13 +152,18 @@ class StatePredictorService:
             logger.warning("No valid state vector found in message")
             return
 
+        next_state_vector = self._extract_next_state_vector(message_data)
+        if next_state_vector is None:
+            logger.warning(
+                "No observed next_state_vector found in message; skipping state prediction update"
+            )
+            return
+
         # Make prediction with timing
         start_time = time.perf_counter()
         try:
-            # For state prediction, we predict the next state based on current state
-            # Using the same vector as both expected and actual for error calculation
             prediction_result = self.predictor.predict_and_compare(
-                expected_vec=state_vector, actual_vec=state_vector
+                expected_vec=state_vector, actual_vec=next_state_vector
             )
         except Exception as e:
             logger.error(f"Prediction failed: {e}")

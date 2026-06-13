@@ -15,7 +15,7 @@ from ninja import Router
 
 from somabrain.runtime.healthchecks import check_kafka, check_postgres
 from somabrain.schemas import HealthResponse
-from somabrain.tenant import get_tenant
+from somabrain.tenant import get_tenant_sync as get_tenant
 from somabrain.version import API_VERSION
 
 # Logging

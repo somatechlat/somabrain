@@ -20,7 +20,7 @@ def _sfm_available() -> bool:
     import urllib.request
 
     try:
-        with urllib.request.urlopen(f"{MEMORY_URL}/health", timeout=1) as resp:
+        with urllib.request.urlopen(f"{MEMORY_URL}/healthz", timeout=1) as resp:
             return resp.status == 200
     except Exception:
         return False
@@ -52,17 +52,18 @@ def test_brain_sfm_integration():
     assert resp.status_code == 200
     data = resp.json()
 
-    components = data.get("components", {})
-    services = {s["name"]: s for s in data.get("services", [])}
+    # The legacy /health aggregator exposes infrastructure and internal_services.
+    infrastructure = data.get("infrastructure", {})
+    internal_services = data.get("internal_services", {})
 
-    has_memory_component = "memory" in components
-    has_memory_service = any(name in {"memory", "soma_memory"} for name in services)
+    has_memory_infrastructure = "milvus" in infrastructure or "memory" in infrastructure
+    has_sfm_service = "soma_fractal_memory" in internal_services
 
-    print(f"Health Components: {list(components.keys())}")
-    print(f"Health Services: {list(services.keys())}")
+    print(f"Health infrastructure: {list(infrastructure.keys())}")
+    print(f"Health internal_services: {list(internal_services.keys())}")
 
     assert (
-        has_memory_component or has_memory_service
+        has_memory_infrastructure or has_sfm_service
     ), "Health payload does not expose memory integration state"
 
 

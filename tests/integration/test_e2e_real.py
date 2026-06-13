@@ -11,6 +11,7 @@ Required: SomaBrain cluster running via docker-compose with all services healthy
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
 from typing import Dict
@@ -29,13 +30,22 @@ from common.logging import logger
 from django.conf import settings
 
 # Use centralized Settings for test configuration
-SOMABRAIN_APP_URL = settings.SOMABRAIN_API_URL or "http://localhost:20020"
+SOMABRAIN_APP_URL = settings.SOMABRAIN_API_URL or "http://localhost:30101"
+SOMABRAIN_API_URL = f"{SOMABRAIN_APP_URL}/api"
 
 # Test tenant ID
 TEST_TENANT_ID = "e2e_test_tenant"
 
 # Test namespace
 TEST_NAMESPACE = "e2e_test"
+
+
+def _api_token() -> str:
+    """Load the standalone API token used by the running app."""
+    token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None) or os.environ.get(
+        "SOMABRAIN_MEMORY_HTTP_TOKEN", ""
+    )
+    return token or ""
 
 
 # ---------------------------------------------------------------------------
@@ -60,7 +70,7 @@ def _sfm_available() -> bool:
 
     url = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")
     try:
-        with urllib.request.urlopen(f"{url}/health", timeout=1) as resp:
+        with urllib.request.urlopen(f"{url}/healthz", timeout=1) as resp:
             return resp.status == 200
     except Exception:
         return False
@@ -74,11 +84,15 @@ pytestmark = pytest.mark.skipif(
 
 def _get_test_headers(tenant_id: str = TEST_TENANT_ID) -> Dict[str, str]:
     """Get headers for test requests."""
-    return {
+    headers: Dict[str, str] = {
         "X-Tenant-ID": tenant_id,
         "X-Namespace": TEST_NAMESPACE,
         "Content-Type": "application/json",
     }
+    token = _api_token()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +162,7 @@ class TestE2EHealth:
 
         with httpx.Client(timeout=10.0) as client:
             resp = client.get(
-                f"{SOMABRAIN_APP_URL}/health/memory",
+                f"{SOMABRAIN_API_URL}/health/full",
                 headers=_get_test_headers(),
             )
 
@@ -189,9 +203,14 @@ class TestE2EMemoryFlow:
         with httpx.Client(timeout=30.0) as client:
             # Step 1: Remember
             remember_resp = client.post(
-                f"{SOMABRAIN_APP_URL}/memory/remember",
+                f"{SOMABRAIN_API_URL}/memory/remember",
                 headers=_get_test_headers(),
-                json={"payload": test_payload},
+                json={
+                    "tenant": TEST_TENANT_ID,
+                    "namespace": TEST_NAMESPACE,
+                    "key": f"e2e_test_{test_id}",
+                    "value": test_payload,
+                },
             )
 
             # Remember may fail if memory service is unavailable
@@ -203,16 +222,18 @@ class TestE2EMemoryFlow:
 
             remember_data = remember_resp.json()
             assert (
-                "coord" in remember_data or "coordinate" in remember_data
+                "coordinate" in remember_data
             ), "Remember response missing coordinate"
 
             # Step 2: Recall
             recall_resp = client.post(
-                f"{SOMABRAIN_APP_URL}/memory/recall",
+                f"{SOMABRAIN_API_URL}/memory/recall",
                 headers=_get_test_headers(),
                 json={
+                    "tenant": TEST_TENANT_ID,
+                    "namespace": TEST_NAMESPACE,
                     "query": f"e2e_test_{test_id}",
-                    "k": 5,
+                    "top_k": 5,
                 },
             )
 
@@ -234,11 +255,13 @@ class TestE2EMemoryFlow:
 
         with httpx.Client(timeout=30.0) as client:
             resp = client.post(
-                f"{SOMABRAIN_APP_URL}/memory/recall",
+                f"{SOMABRAIN_API_URL}/memory/recall",
                 headers=_get_test_headers(),
                 json={
+                    "tenant": TEST_TENANT_ID,
+                    "namespace": TEST_NAMESPACE,
                     "query": "test",
-                    "k": 1,
+                    "top_k": 1,
                 },
             )
 
@@ -271,13 +294,13 @@ class TestE2ENeuromodulators:
     """
 
     def test_get_neuromodulators(self) -> None:
-        """Verify GET /neuromodulators returns current state."""
+        """Verify GET /neuromod/state returns current state."""
         if not _app_available():
             pytest.skip("SomaBrain app not reachable; skipping E2E test")
 
         with httpx.Client(timeout=10.0) as client:
             resp = client.get(
-                f"{SOMABRAIN_APP_URL}/neuromodulators",
+                f"{SOMABRAIN_API_URL}/neuromod/state",
                 headers=_get_test_headers(),
             )
 
@@ -313,28 +336,27 @@ class TestE2EAuthentication:
     """
 
     def test_protected_endpoint_without_auth(self) -> None:
-        """Verify protected endpoints handle missing auth gracefully."""
+        """Verify protected endpoints reject missing auth."""
         if not _app_available():
             pytest.skip("SomaBrain app not reachable; skipping E2E test")
 
         with httpx.Client(timeout=10.0) as client:
             # Try to access recall without proper headers
             resp = client.post(
-                f"{SOMABRAIN_APP_URL}/memory/recall",
-                json={"query": "test", "k": 1},
-                # No tenant headers
+                f"{SOMABRAIN_API_URL}/memory/recall",
+                json={
+                    "tenant": TEST_TENANT_ID,
+                    "namespace": TEST_NAMESPACE,
+                    "query": "test",
+                    "top_k": 1,
+                },
+                # No Authorization header
             )
 
-            # Should either require auth (401/403), use default tenant (200),
-            # return validation error (422), or internal error (500) if
-            # backend services are unavailable
+            # A protected endpoint must deny an unauthenticated request.
             assert resp.status_code in [
-                200,
                 401,
                 403,
-                422,
-                500,
-                503,
             ], f"Unexpected status: {resp.status_code}"
 
     def test_tenant_header_isolation(self) -> None:
@@ -348,13 +370,13 @@ class TestE2EAuthentication:
         with httpx.Client(timeout=10.0) as client:
             # Get neuromodulators for tenant A
             resp_a = client.get(
-                f"{SOMABRAIN_APP_URL}/neuromodulators",
+                f"{SOMABRAIN_API_URL}/neuromod/state",
                 headers=_get_test_headers(tenant_a),
             )
 
             # Get neuromodulators for tenant B
             resp_b = client.get(
-                f"{SOMABRAIN_APP_URL}/neuromodulators",
+                f"{SOMABRAIN_API_URL}/neuromod/state",
                 headers=_get_test_headers(tenant_b),
             )
 
@@ -411,13 +433,13 @@ class TestE2EDiagnostics:
     """E2E tests for diagnostics endpoint."""
 
     def test_diagnostics_endpoint(self) -> None:
-        """Verify /diagnostics endpoint returns system info."""
+        """Verify /admin/diagnostics endpoint returns system info."""
         if not _app_available():
             pytest.skip("SomaBrain app not reachable; skipping E2E test")
 
         with httpx.Client(timeout=10.0) as client:
             resp = client.get(
-                f"{SOMABRAIN_APP_URL}/diagnostics",
+                f"{SOMABRAIN_API_URL}/admin/diagnostics",
                 headers=_get_test_headers(),
             )
 

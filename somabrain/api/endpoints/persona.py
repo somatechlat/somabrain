@@ -11,7 +11,7 @@ from django.http import HttpRequest, HttpResponse
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.core.security.legacy_auth import require_auth
+from somabrain.api.auth import require_auth
 from somabrain.schemas import Persona
 from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 

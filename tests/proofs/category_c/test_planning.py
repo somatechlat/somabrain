@@ -25,7 +25,7 @@ def _sfm_available() -> bool:
 
     url = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:10101")
     try:
-        with urllib.request.urlopen(f"{url}/health", timeout=1) as resp:
+        with urllib.request.urlopen(f"{url}/healthz", timeout=1) as resp:
             return resp.status == 200
     except Exception:
         return False

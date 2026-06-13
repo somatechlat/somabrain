@@ -139,11 +139,11 @@ class TestInteroperabilityISO:
             pytest.skip(f"SFM Port {PORTS['somafractalmemory']} Unreachable")
 
         try:
-            resp = httpx.get(f"{URLS['sfm']}/health", timeout=3.0)
+            resp = httpx.get(f"{URLS['sfm']}/healthz", timeout=3.0)
             assert resp.status_code == 200
 
             data = resp.json()
-            if not data.get("healthy", False):
+            if not data.get("healthy", True):
                 print(f"WARNING: SFM Reported Degraded State: {data}")
                 # We assert True anyway if Status Code is 200,
                 # as partial functionality (DB) allows Testing.

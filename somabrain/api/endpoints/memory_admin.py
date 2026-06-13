@@ -19,7 +19,7 @@ from somabrain.api.memory.models import (
     OutboxEventSummary,
     OutboxReplayRequest,
 )
-from somabrain.core.security.legacy_auth import require_admin_auth
+from somabrain.api.auth import require_admin_auth
 from somabrain.db import outbox as outbox_db
 
 logger = logging.getLogger("somabrain.api.endpoints.memory_admin")
@@ -27,35 +27,21 @@ logger = logging.getLogger("somabrain.api.endpoints.memory_admin")
 router = Router(tags=["memory-admin"])
 
 
-def _get_tiered_registry():
-    """Get the tiered memory registry singleton (lazy)."""
-    # Import locally to avoid circular imports or early init
-    try:
-        from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
-
-        # We might need a global instance or create one.
-        # The original code imported _TIERED_REGISTRY from somabrain.api.memory_api
-        # We need to ensure we have access to it or instantiate it.
-        # Since we are migrating, let's instantiate if not available or assume a singleton pattern.
-        # However, TieredMemoryRegistry seems to be designed to be stateless/singleton-ish or rely on other singletons.
-        return TieredMemoryRegistry()
-    except ImportError:
-        return None
-
-
 @router.post("/rebuild-ann", auth=api_key_auth)
 def rebuild_ann_indexes(
     request: HttpRequest, payload: AnnRebuildRequest
 ) -> Dict[str, Any]:
-    """Admin: Rebuild ANN indexes."""
+    """Admin: Rebuild ANN indexes.
+
+    The external SFM service manages its own indexes; there is no exposed
+    admin rebuild endpoint. Reject the request honestly rather than running
+    a no-op.
+    """
     require_admin_auth(request, getattr(request, "cfg", None))
-
-    registry = _get_tiered_registry()
-    if not registry:
-        raise HttpError(503, "Tiered registry not available")
-
-    results = registry.rebuild(payload.tenant, namespace=payload.namespace)
-    return {"ok": True, "results": results}
+    raise HttpError(
+        501,
+        "ANN index rebuild is managed by the external memory service and is not exposed via this API",
+    )
 
 
 @router.get("/outbox", response=List[OutboxEventSummary], auth=api_key_auth)

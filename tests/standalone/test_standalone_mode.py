@@ -28,7 +28,10 @@ class TestStandaloneConfig:
         settings_module = importlib.import_module("somabrain.settings.standalone")
 
         assert settings_module is not None
-        assert "somabrain.aaas" not in settings_module.INSTALLED_APPS
+        # Standalone keeps the AAAS app installed for auth migrations/API-key
+        # compatibility, but removes the AAAS-specific middleware.
+        assert "somabrain.aaas" in settings_module.INSTALLED_APPS
+        assert not any("somabrain.aaas" in m for m in settings_module.MIDDLEWARE)
 
     def test_somabrain_mode_setting_exists(self):
         """Verify SOMABRAIN_MODE setting is available."""

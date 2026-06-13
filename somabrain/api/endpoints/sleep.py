@@ -22,13 +22,13 @@ from ninja.errors import HttpError
 
 from somabrain import metrics as M
 from somabrain.api.auth import api_key_auth
-from somabrain.core.security.legacy_auth import require_auth
+from somabrain.api.auth import require_auth
 from somabrain.infrastructure.cb_registry import get_cb
 from somabrain.opa.client import opa_client
 from somabrain.sleep import SleepState, SleepStateManager
 from somabrain.sleep.cb_adapter import map_cb_to_sleep
 from somabrain.sleep.models import TenantSleepState
-from somabrain.tenant import get_tenant
+from somabrain.tenant import get_tenant_sync as get_tenant
 
 logger = logging.getLogger("somabrain.api.endpoints.sleep")
 

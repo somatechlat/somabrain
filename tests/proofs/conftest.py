@@ -281,9 +281,15 @@ def multi_tenant_ids() -> List[str]:
 
 
 def make_test_jwt(tenant_id: str = "default") -> str:
-    """Generate a dummy JWT for testing in DEBUG mode."""
+    """Generate a test JWT signed with the configured JWT secret."""
+    import os
+
     import jwt
     import time
+
+    secret = os.environ.get("SOMABRAIN_JWT_SECRET")
+    if not secret:
+        pytest.skip("SOMABRAIN_JWT_SECRET is not set")
 
     payload = {
         "sub": f"test-user-{tenant_id}",
@@ -294,9 +300,7 @@ def make_test_jwt(tenant_id: str = "default") -> str:
         "tenant_id": tenant_id,
         "exp": int(time.time()) + 3600,
     }
-    # Unsigned JWT (using 'none' algorithm or just dummy key if we accept unverified)
-    # However, PyJWT verify_signature=False still handles this.
-    return jwt.encode(payload, "secret", algorithm="HS256")
+    return jwt.encode(payload, secret, algorithm="HS256")
 
 
 def get_tenant_headers(tenant_id: str, namespace: str = "test") -> Dict[str, str]:
