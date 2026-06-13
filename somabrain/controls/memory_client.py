@@ -124,6 +124,3 @@ class MemoryClient:
         except Exception as e:
             degradation_manager.report_error("memory", e, tenant)
             raise
-
-
-memory_client = MemoryClient()
