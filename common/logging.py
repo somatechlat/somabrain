@@ -20,7 +20,7 @@ _LEVEL = getattr(logging, settings.SOMABRAIN_LOG_LEVEL.upper(), logging.INFO)
 logging.basicConfig(
     level=_LEVEL,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    datefmt="%Y-%m-%m %H:%M:%S",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
 
 # Export a module‑level logger that can be imported everywhere.

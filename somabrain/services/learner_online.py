@@ -72,16 +72,20 @@ class LearnerService:
         behavior of earlier fallback implementations.
         """
         # Use centralized Settings for Kafka bootstrap; no env fallback needed.
-        bootstrap = getattr(self._settings, "kafka_bootstrap_servers", "")
+        bootstrap = getattr(
+            self._settings, "KAFKA_BOOTSTRAP_SERVERS", ""
+        ) or getattr(self._settings, "SOMA_KAFKA_BOOTSTRAP", "")
         if not bootstrap:
             raise RuntimeError(
                 "LearnerService requires Kafka bootstrap servers "
-                "(set SOMABRAIN_KAFKA_URL or kafka_bootstrap_servers)."
+                "(set KAFKA_BOOTSTRAP_SERVERS or SOMABRAIN_KAFKA_URL)."
             )
         # Use Settings for the next-event topic; fallback handled by Settings default.
-        topic_next = getattr(self._settings, "topic_next_event", None)
+        topic_next = getattr(
+            self._settings, "SOMABRAIN_TOPIC_NEXT_EVENT", "cog.next_event"
+        )
         topic_cfg = getattr(
-            self._settings, "topic_config_updates", "cog.config.updates"
+            self._settings, "SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates"
         )
         try:
             import confluent_kafka as ck
@@ -221,7 +225,9 @@ class LearnerService:
             payload_dict["event_id"] = event_id
         payload_bytes = json.dumps(payload_dict).encode("utf-8")
 
-        topic = getattr(self._settings, "topic_config_updates", "cog.config.updates")
+        topic = getattr(
+            self._settings, "SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates"
+        )
 
         def _delivery_report(err: Optional[Exception], msg: Any) -> None:
             """Execute delivery report.
@@ -259,3 +265,7 @@ class LearnerService:
         except Exception as exc:  # pragma: no cover – defensive
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="produce").inc()
             logger.exception("Error emitting config update: %s", exc)
+
+
+if __name__ == "__main__":  # pragma: no cover
+    LearnerService().run()

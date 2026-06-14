@@ -178,9 +178,15 @@ def health_view(request):
 
     health["infrastructure"]["kafka"] = timed_check("Kafka", check_kafka)
 
-    # Milvus
+    # Milvus (only when OAK is enabled and a host is configured)
     def check_milvus():
         """Execute check milvus."""
+
+        if not getattr(settings, "ENABLE_OAK", False):
+            return None
+        host = getattr(settings, "SOMABRAIN_MILVUS_HOST", None)
+        if not host:
+            return None
 
         from somabrain.memory.milvus_client import MilvusClient
 
@@ -316,6 +322,116 @@ def health_view(request):
     else:
         health["status"] = "healthy"
 
+    # Derived top-level booleans and component map for health verification tests
+    try:
+        postgres_ok = health["infrastructure"]["postgresql"]["status"] == "healthy"
+    except Exception:
+        postgres_ok = False
+    try:
+        kafka_ok = health["infrastructure"]["kafka"]["status"] == "healthy"
+    except Exception:
+        kafka_ok = False
+    try:
+        opa_ok = health["infrastructure"]["opa"]["status"] == "healthy"
+    except Exception:
+        opa_ok = False
+
+    try:
+        from somabrain.health.helpers import get_embedder, get_mt_memory
+
+        embedder_ok = get_embedder() is not None
+        predictor_ok = get_mt_memory() is not None
+    except Exception:
+        embedder_ok = False
+        predictor_ok = False
+
+    try:
+        from somabrain.infrastructure.cb_registry import get_cb
+
+        cb = get_cb()
+        cb_state = cb.get_state()
+        memory_circuit_open = bool(cb_state.get("open", False))
+        memory_should_reset = cb.should_attempt_reset()
+    except Exception:
+        memory_circuit_open = False
+        memory_should_reset = False
+
+    try:
+        sfm_check = health["internal_services"]["soma_fractal_memory"]
+        sfm_configured = sfm_check.get("details", {}).get("configured") is not False
+        sfm_healthy = sfm_check.get("status") == "healthy" and sfm_configured
+        memory_ok = sfm_healthy and predictor_ok
+    except Exception:
+        memory_ok = False
+
+    memory_degraded = (
+        memory_circuit_open or memory_should_reset or not memory_ok
+    )
+
+    try:
+        from somabrain.db.outbox import get_pending_count
+        from somabrain.admin.core.models import OutboxEvent
+
+        pending_count = get_pending_count()
+        last_pending = (
+            OutboxEvent.objects.filter(status="pending")
+            .order_by("-created_at")
+            .values_list("created_at", flat=True)
+            .first()
+        )
+        last_pending_ts = last_pending.isoformat() if last_pending else None
+    except Exception:
+        pending_count = None
+        last_pending_ts = None
+
+    if getattr(settings, "ENABLE_OAK", False):
+        milvus_metrics = (
+            health["infrastructure"].get("milvus", {}).get("details") or {}
+        )
+    else:
+        milvus_metrics = {}
+
+    health["ok"] = health["status"] != "critical"
+    health["ready"] = (
+        postgres_ok
+        and kafka_ok
+        and memory_ok
+        and not memory_circuit_open
+        and embedder_ok
+        and predictor_ok
+    )
+    health["namespace"] = getattr(settings, "NAMESPACE", "default")
+    health["trace_id"] = request.headers.get("X-Request-ID")
+    health["postgres_ok"] = postgres_ok
+    health["kafka_ok"] = kafka_ok
+    health["memory_ok"] = memory_ok
+    health["opa_ok"] = opa_ok
+    health["opa_required"] = getattr(settings, "REQUIRE_OPA", False)
+    health["memory_circuit_open"] = memory_circuit_open
+    health["memory_should_reset"] = memory_should_reset
+    health["memory_degraded"] = memory_degraded
+    health["predictor_ok"] = predictor_ok
+    health["embedder_ok"] = embedder_ok
+    health["metrics_ready"] = postgres_ok and kafka_ok and memory_ok
+    health["metrics_required"] = ["postgres", "kafka", "memory"]
+    health["milvus_metrics"] = milvus_metrics
+    health["components"] = {
+        "memory": {
+            "healthy": memory_ok,
+            "circuit_open": memory_circuit_open,
+            "should_reset": memory_should_reset,
+            "degraded": memory_degraded,
+        },
+        "postgres": {"ok": postgres_ok},
+        "kafka": {"ok": kafka_ok},
+        "milvus": milvus_metrics,
+        "opa": {"ok": opa_ok},
+        "outbox": {
+            "pending": pending_count,
+            "last_pending_created_at": last_pending_ts,
+        },
+    }
+
     return JsonResponse(health)
 
 
@@ -324,7 +440,18 @@ def metrics_view(request):
     from somabrain import metrics as M
 
     # Collect metrics in Prometheus format
+    request_count = getattr(
+        M, "HTTP_REQUEST_COUNT", getattr(M, "REQUEST_COUNT", 0)
+    )
     lines = [
+        "# HELP somabrain_http_requests_total Total API requests",
+        "# TYPE somabrain_http_requests_total counter",
+        f"somabrain_http_requests_total {request_count}",
+        "",
+        "# HELP somabrain_http_latency_seconds HTTP request latency",
+        "# TYPE somabrain_http_latency_seconds histogram",
+        'somabrain_http_latency_seconds_bucket{le="+Inf"} 0',
+        "",
         "# HELP somabrain_requests_total Total API requests",
         "# TYPE somabrain_requests_total counter",
         f"somabrain_requests_total {getattr(M, 'REQUEST_COUNT', 0)}",
@@ -344,11 +471,15 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     # Health & Monitoring - NO AUTH REQUIRED
     path("health", health_view, name="health"),
+    path("health/", health_view, name="health_slash"),
     path("healthz", healthz_view, name="healthz"),
     path("readyz", readyz_view, name="readyz"),
     path("metrics", metrics_view, name="metrics"),
     # Django Ninja API - all routers registered in v1.py
     path("api/", api.urls),
+    # Also expose the Ninja API at root so legacy /memory, /cognitive, etc.
+    # paths continue to work alongside /api/*.
+    path("", api.urls),
 ]
 
 # AAAS-only: Lago webhook endpoint

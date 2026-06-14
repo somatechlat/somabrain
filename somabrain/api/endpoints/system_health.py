@@ -204,6 +204,12 @@ def check_milvus() -> Dict[str, Any]:
     def _check():
         """Execute check."""
 
+        if not getattr(settings, "ENABLE_OAK", False):
+            return {"connected": False, "reason": "OAK disabled"}
+        host = getattr(settings, "SOMABRAIN_MILVUS_HOST", None)
+        if not host:
+            return {"connected": False, "reason": "Milvus host not configured"}
+
         from somabrain.memory.milvus_client import MilvusClient
 
         client = MilvusClient()

@@ -11,6 +11,35 @@ import pytest
 from somabrain.services.memory_service import MemoryService
 
 
+class _FakeNamespaceClient:
+    """Deterministic stand-in for a memory backend client."""
+
+    def __init__(self, namespace: str) -> None:
+        self.namespace = namespace
+
+    def remember(self, key: str, payload: dict):
+        return (0.1, 0.2, 0.3)
+
+    async def aremember(self, key: str, payload: dict):
+        return (0.1, 0.2, 0.3)
+
+    def recall(self, query: str, top_k: int = 3, universe: str | None = None):
+        return []
+
+    async def arecall(self, query: str, top_k: int = 3, universe: str | None = None):
+        return []
+
+    def health(self) -> dict:
+        return {"http": True}
+
+
+class _FakeBackend:
+    """Deterministic stand-in for a memory backend pool."""
+
+    def for_namespace(self, namespace: str):
+        return _FakeNamespaceClient(namespace)
+
+
 def _backend_available() -> bool:
     """Check if memory backend is available for testing."""
     try:
@@ -55,6 +84,43 @@ def test_recall_with_scores_returns_results(memory_service: MemoryService) -> No
     for hit in hits:
         assert isinstance(hit, dict)
         assert "payload" in hit or "score" in hit
+
+
+@pytest.mark.unit
+def test_memory_service_circuit_state_uses_real_breaker() -> None:
+    """MemoryService must delegate to the real CircuitBreaker API without AttributeError."""
+    from somabrain.infrastructure.cb_registry import get_cb
+
+    backend = _FakeBackend()
+    namespace = "test:memory_service:circuit"
+    tenant_id = MemoryService(backend, namespace).tenant_id
+
+    breaker = get_cb()
+    breaker.reset(tenant_id)
+
+    svc = MemoryService(backend, namespace)
+
+    # Closed-circuit state should be observable.
+    state = svc.get_circuit_state()
+    assert state["open"] is False
+    assert state["tenant"] == tenant_id
+
+    # No reset needed while closed.
+    assert svc._reset_circuit_if_needed() is False
+
+    # Open the circuit by recording failures.
+    threshold = breaker._failure_threshold_for(tenant_id)
+    for _ in range(threshold):
+        svc._mark_failure()
+
+    state = svc.get_circuit_state()
+    assert state["open"] is True
+
+    # Configure tenant-specific thresholds without raising.
+    MemoryService.configure_tenant_thresholds(
+        tenant_id, failure_threshold=3, reset_interval=1.0
+    )
+    breaker.reset(tenant_id)
 
 
 @pytest.mark.skipif(not _backend_available(), reason="Memory backend not available")

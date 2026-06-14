@@ -25,7 +25,12 @@ import numpy as np
 from django.conf import settings
 
 from common.kafka_utils import encode, make_producer
-from somabrain.admin.core.learning.prediction import LLMPredictor, PredictionResult
+from somabrain.admin.core.learning.prediction import (
+    BudgetedPredictor,
+    LLMPredictor,
+    MahalanobisPredictor,
+    PredictionResult,
+)
 
 try:
     from confluent_kafka import Consumer as CKConsumer
@@ -71,17 +76,17 @@ class ActionPredictorService:
             - Consumes from: cog.next_event (configurable via Settings)
             - Publishes to: cog.action.updates (configurable via Settings)
         """
-        # Use LLM predictor for action prediction (more suitable for action sequences)
-        # Use centralized Settings for LLM endpoint; Settings provides default handling
+        # Use an LLM predictor only when an endpoint is explicitly configured;
+        # otherwise fall back to the same budgeted Mahalanobis predictor used by
+        # the agent predictor. This keeps the standalone profile self-contained
+        # and avoids requiring an external LLM service for local development.
         llm_endpoint = getattr(settings, "SOMABRAIN_LLM_ENDPOINT", None) or getattr(
             settings, "llm_endpoint", None
         )
-        if not llm_endpoint:
-            raise RuntimeError(
-                "LLM endpoint required for action predictor (set SOMABRAIN_LLM_ENDPOINT)"
-            )
-
-        self.predictor = LLMPredictor(endpoint=llm_endpoint)
+        if llm_endpoint:
+            self.predictor = LLMPredictor(endpoint=llm_endpoint)
+        else:
+            self.predictor = BudgetedPredictor(MahalanobisPredictor(), timeout_ms=100)
         self.producer = make_producer()
         self.consumer = self._create_consumer()
         # Tenant ID from Settings (fallback to default defined in Settings)

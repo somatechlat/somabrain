@@ -24,6 +24,13 @@ from typing import Any, Dict
 import httpx
 import pytest
 
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(".env", override=False)
+except Exception:
+    pass
+
 # ---------------------------------------------------------------------------
 # Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
@@ -60,6 +67,12 @@ def _get_health() -> Dict[str, Any]:
     return r.json()
 
 
+def _api_token() -> str:
+    """Load the standalone API token used by the running app."""
+    token = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
+    return token
+
+
 def _make_remember_request(
     tenant_id: str, content: str, timeout: float = NORMAL_TIMEOUT
 ) -> httpx.Response:
@@ -68,11 +81,18 @@ def _make_remember_request(
         "X-Tenant-ID": tenant_id,
         "X-Namespace": "test",
         "Content-Type": "application/json",
+        "Authorization": f"Bearer {_api_token()}",
     }
     payload = {
-        "content": content,
-        "memory_type": "episodic",
-        "metadata": {"test": True},
+        "tenant": tenant_id,
+        "namespace": "test",
+        "key": f"resilience-{tenant_id}-{content}",
+        "value": {
+            "task": content,
+            "content": content,
+            "memory_type": "episodic",
+            "metadata": {"test": True},
+        },
     }
     return httpx.post(
         f"http://localhost:{APP_PORT}/memory/remember",
@@ -90,8 +110,9 @@ def _make_recall_request(
         "X-Tenant-ID": tenant_id,
         "X-Namespace": "test",
         "Content-Type": "application/json",
+        "Authorization": f"Bearer {_api_token()}",
     }
-    payload = {"query": query, "k": 5}
+    payload = {"tenant": tenant_id, "namespace": "test", "query": query, "top_k": 5}
     return httpx.post(
         f"http://localhost:{APP_PORT}/memory/recall",
         json=payload,

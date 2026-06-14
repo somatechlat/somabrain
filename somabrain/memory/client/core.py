@@ -22,11 +22,13 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         scorer: Optional[Any] = None,
         embedder: Optional[Any] = None,
         namespace: Optional[str] = None,
+        tenant: Optional[str] = None,
     ):
         self.cfg = cfg if cfg is not None else settings
         self._scorer = scorer
         self._embedder = embedder
         self.namespace = namespace or "default"
+        self.tenant = tenant or self.namespace
         self._mode = "http"
         self._http: Optional[Any] = None
         self._http_async: Optional[Any] = None
