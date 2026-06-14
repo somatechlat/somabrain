@@ -28,8 +28,19 @@ logger = logging.getLogger("somabrain.api.endpoints.oak")
 
 router = Router(tags=["oak"])
 
-# Re-use Milvus client (lazy)
-_milvus = MilvusClient()
+# Re-use Milvus client lazily so standalone/OAK-disabled deployments do not
+# attempt a Milvus connection at import time.
+_milvus: MilvusClient | None = None
+
+
+def _get_milvus() -> MilvusClient:
+    """Return the lazy singleton MilvusClient, raising if OAK is disabled."""
+    global _milvus
+    if _milvus is None:
+        if not getattr(settings, "ENABLE_OAK", False):
+            raise RuntimeError("OAK is not enabled")
+        _milvus = MilvusClient()
+    return _milvus
 
 
 # Local Schema Definitions
@@ -61,7 +72,7 @@ def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
 
     try:
         opt = option_manager.create_option(ctx.tenant_id, option_id, payload_bytes)
-        _milvus.upsert_option(
+        _get_milvus().upsert_option(
             tenant_id=opt.tenant_id,
             option_id=opt.option_id,
             payload=opt.payload,
@@ -87,7 +98,7 @@ def oak_option_update(
 
     try:
         opt = option_manager.update_option(ctx.tenant_id, option_id, payload_bytes)
-        _milvus.upsert_option(
+        _get_milvus().upsert_option(
             tenant_id=opt.tenant_id,
             option_id=opt.option_id,
             payload=opt.payload,

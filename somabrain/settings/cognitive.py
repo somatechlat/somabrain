@@ -1,5 +1,6 @@
 import environ  # type: ignore[import-untyped]
 
+from .infra import KAFKA_BOOTSTRAP_SERVERS as _INFRA_KAFKA_BOOTSTRAP_SERVERS
 from .infra import SOMABRAIN_MEMORY_HTTP_ENDPOINT as _INFRA_MEMORY_HTTP_ENDPOINT
 
 env = environ.Env()
@@ -7,6 +8,53 @@ env = environ.Env()
 # ============================================================================
 # COGNITIVE & MEMORY SETTINGS
 # ============================================================================
+
+# --- COGNITIVE TOPICS ---
+SOMABRAIN_TOPIC_NEXT_EVENT = env.str(
+    "SOMABRAIN_TOPIC_NEXT_EVENT", default="cog.next_event"
+)
+SOMABRAIN_TOPIC_GLOBAL_FRAME = env.str(
+    "SOMABRAIN_TOPIC_GLOBAL_FRAME", default="cog.global.frame"
+)
+SOMABRAIN_TOPIC_STATE_UPDATES = env.str(
+    "SOMABRAIN_TOPIC_STATE_UPDATES", default="cog.state.updates"
+)
+SOMABRAIN_TOPIC_AGENT_UPDATES = env.str(
+    "SOMABRAIN_TOPIC_AGENT_UPDATES", default="cog.agent.updates"
+)
+SOMABRAIN_TOPIC_ACTION_UPDATES = env.str(
+    "SOMABRAIN_TOPIC_ACTION_UPDATES", default="cog.action.updates"
+)
+SOMABRAIN_TOPIC_CONFIG_UPDATES = env.str(
+    "SOMABRAIN_TOPIC_CONFIG_UPDATES", default="cog.config.updates"
+)
+SOMABRAIN_TOPIC_SEGMENTS = env.str(
+    "SOMABRAIN_TOPIC_SEGMENTS", default="cog.segments"
+)
+
+# Lowercase aliases used by several cognitive service modules
+kafka_bootstrap_servers = _INFRA_KAFKA_BOOTSTRAP_SERVERS
+topic_next_event = SOMABRAIN_TOPIC_NEXT_EVENT
+topic_global_frame = SOMABRAIN_TOPIC_GLOBAL_FRAME
+topic_state_updates = SOMABRAIN_TOPIC_STATE_UPDATES
+topic_agent_updates = SOMABRAIN_TOPIC_AGENT_UPDATES
+topic_action_updates = SOMABRAIN_TOPIC_ACTION_UPDATES
+topic_config_updates = SOMABRAIN_TOPIC_CONFIG_UPDATES
+topic_segments = SOMABRAIN_TOPIC_SEGMENTS
+
+# --- LEARNER SETTINGS ---
+SOMABRAIN_LEARNING_TENANTS_FILE = env.str(
+    "SOMABRAIN_LEARNING_TENANTS_FILE", default="/app/config/learning.tenants.yaml"
+)
+
+# --- SEGMENTATION SETTINGS ---
+ENABLE_COG_THREADS = env.bool("ENABLE_COG_THREADS", default=True)
+SEGMENTATION_HEALTH_PORT = env.int("SEGMENTATION_HEALTH_PORT", default=9016)
+segment_health_port = SEGMENTATION_HEALTH_PORT
+segment_health_enable = env.str("SEGMENTATION_HEALTH_ENABLE", default="1")
+segment_grad_threshold = env.float("SOMABRAIN_SEGMENT_GRAD_THRESHOLD", default=0.2)
+segment_hmm_enabled = env.bool("SOMABRAIN_SEGMENT_HMM_ENABLED", default=True)
+segment_hmm_threshold = env.float("SOMABRAIN_SEGMENT_HMM_THRESHOLD", default=0.6)
 
 # --- MEMORY SETTINGS ---
 # Memory HTTP service
@@ -323,6 +371,14 @@ SOMABRAIN_PREDICTOR_PROVIDER = env.str("SOMABRAIN_PREDICTOR_PROVIDER", default="
 SOMABRAIN_PREDICTOR_DIM = env.int("SOMABRAIN_PREDICTOR_DIM", default=16)
 SOMABRAIN_PREDICTOR_ALPHA = env.float("SOMABRAIN_PREDICTOR_ALPHA", default=2.0)
 SOMABRAIN_PREDICTOR_GAMMA = env.float("SOMABRAIN_PREDICTOR_GAMMA", default=-0.5)
+
+# Learner dead-letter queue
+SOMABRAIN_LEARNER_DLQ_PATH = env.str(
+    "SOMABRAIN_LEARNER_DLQ_PATH", default="./data/learner_dlq.jsonl"
+)
+SOMABRAIN_LEARNER_DLQ_TOPIC = env.str(
+    "SOMABRAIN_LEARNER_DLQ_TOPIC", default="cog.learner.dlq"
+)
 
 # LLM endpoint
 SOMABRAIN_LLM_ENDPOINT = env.str("SOMABRAIN_LLM_ENDPOINT", default=None)

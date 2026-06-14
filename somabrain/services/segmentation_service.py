@@ -275,3 +275,7 @@ class SegmentationService:
 
 class Segmenter(SegmentationService):
     """Alias for backward compatibility – behaves exactly like ``SegmentationService``."""
+
+
+if __name__ == "__main__":  # pragma: no cover
+    SegmentationService().run()

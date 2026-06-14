@@ -65,11 +65,15 @@ def http_client() -> httpx.Client:
     if not _api_available():
         pytest.skip("Somabrain API not reachable for workbench tests")
     base = API_URL
+    headers = {
+        "Authorization": f"Bearer {MEM_TOKEN}",
+        "Content-Type": "application/json",
+    }
     try:
         httpx.get(f"{base.rstrip('/')}/health", timeout=1.0)
     except Exception:
         base = "http://localhost:30101"
-    return httpx.Client(base_url=base, timeout=5.0)
+    return httpx.Client(base_url=base, headers=headers, timeout=30.0)
 
 
 def _remember(client: httpx.Client, tenant: str, text: str) -> None:
@@ -81,7 +85,12 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
         text: The text.
     """
 
-    payload = {"payload": {"task": text, "content": text, "memory_type": "episodic"}}
+    payload = {
+        "tenant": tenant,
+        "namespace": "quality",
+        "key": f"recall-quality-{tenant}-{text}",
+        "value": {"task": text, "content": text, "memory_type": "episodic"},
+    }
     r = client.post("/memory/remember", headers={"X-Tenant-ID": tenant}, json=payload)
     assert r.status_code == 200, r.text
 
@@ -99,12 +108,21 @@ def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List
     r = client.post(
         "/memory/recall",
         headers={"X-Tenant-ID": tenant},
-        json={"query": query, "top_k": k},
+        json={"tenant": tenant, "namespace": "quality", "query": query, "top_k": k},
     )
     assert r.status_code == 200, r.text
     body = r.json()
     results = body.get("results") or body.get("memory") or []
-    texts = [str(item.get("content") or item.get("text") or "") for item in results]
+    texts = []
+    for item in results:
+        content = item.get("content") or item.get("text") or ""
+        if isinstance(content, dict):
+            text = str(
+                content.get("task") or content.get("content") or content.get("text") or ""
+            )
+        else:
+            text = str(content)
+        texts.append(text)
     return texts
 
 

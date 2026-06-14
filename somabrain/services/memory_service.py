@@ -64,10 +64,10 @@ class MemoryService:
         # Enforce production-like degradation defaults: always queue, never silently drop.
         self._degrade_queue = True
         self._degrade_readonly = bool(
-            getattr(settings, "memory_degrade_readonly", False)
+            getattr(settings, "SOMABRAIN_MEMORY_DEGRADE_READONLY", False)
         )
         self._degrade_topic = getattr(
-            settings, "memory_degrade_topic", "memory.degraded"
+            settings, "SOMABRAIN_MEMORY_DEGRADE_TOPIC", "memory.degraded"
         )
 
     # ---------------------------------------------------------------------
@@ -351,7 +351,7 @@ class MemoryService:
 
         if not self._is_circuit_open():
             return False
-        tenant = getattr(self, "namespace", "default")
+        tenant = self.tenant_id
         breaker = self.__class__._circuit_breaker
         if not breaker.should_attempt_reset(tenant):
             return False

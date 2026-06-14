@@ -80,7 +80,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     if not pool:
         raise HttpError(503, "Memory pool not available")
 
-    namespace = ctx.namespace
+    namespace = payload.namespace or ctx.namespace
     memsvc = MemoryService(pool, namespace)
 
     top_k = max(1, int(payload.top_k))

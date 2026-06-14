@@ -49,7 +49,6 @@ except Exception:  # pragma: no cover
 
 # Outbox API (DB-backed) required
 from common.infra_utils import assert_ready
-from somabrain.db.outbox import enqueue_event
 
 # Topic configuration constants (centralised settings only)
 GLOBAL_FRAME_TOPIC = getattr(settings, "topic_global_frame", "cog.global.frame")
@@ -265,6 +264,8 @@ class OrchestratorService:
             "policy_tags": ["auto:segment"],
         }
         try:
+            from somabrain.db.outbox import enqueue_event
+
             enqueue_event(
                 topic="memory.episodic.snapshot",
                 payload=payload,

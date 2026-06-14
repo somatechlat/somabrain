@@ -13,6 +13,14 @@ from somabrain.metrics.outbox_metrics import (
     report_outbox_pending,
     report_outbox_processed,
 )
+from somabrain.metrics.learning import (
+    LEARNER_DLQ_TOTAL,
+    LEARNER_EVENT_LATENCY,
+    LEARNER_EVENTS_CONSUMED,
+    LEARNER_EVENTS_FAILED,
+    LEARNER_EVENTS_PRODUCED,
+    LEARNER_LAG_SECONDS,
+)
 from somabrain.metrics.memory_metrics import (
     MEMORY_OUTBOX_SYNC_TOTAL,
     record_memory_snapshot,
@@ -38,6 +46,12 @@ __all__ = [
     "DEFAULT_TENANT_LABEL",
     "report_outbox_pending",
     "report_outbox_processed",
+    "LEARNER_DLQ_TOTAL",
+    "LEARNER_EVENT_LATENCY",
+    "LEARNER_EVENTS_CONSUMED",
+    "LEARNER_EVENTS_FAILED",
+    "LEARNER_EVENTS_PRODUCED",
+    "LEARNER_LAG_SECONDS",
     "MEMORY_OUTBOX_SYNC_TOTAL",
     "record_memory_snapshot",
     "MILVUS_INGEST_LAT_P95",

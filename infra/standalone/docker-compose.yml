@@ -151,6 +151,42 @@ services:
     networks:
       - somabrain_standalone_net
 
+  # --- Kafka topic bootstrap ----------------------------------------------
+  somabrain_standalone_kafka_topics_init:
+    image: apache/kafka:3.7.0
+    restart: "no"
+    depends_on:
+      somabrain_standalone_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_standalone_net
+    environment:
+      KAFKA_BROKER_CONTAINER_PORT: ${KAFKA_BROKER_CONTAINER_PORT:-9092}
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        BOOTSTRAP="somabrain_standalone_kafka:$${KAFKA_BROKER_CONTAINER_PORT}"
+        TOPICS=(
+          cog.global.frame
+          cog.next_event
+          cog.action.updates
+          cog.state.updates
+          cog.agent.updates
+          cog.config.updates
+          cog.segments
+        )
+        for t in "$${TOPICS[@]}"; do
+          /opt/kafka/bin/kafka-topics.sh \
+            --bootstrap-server "$${BOOTSTRAP}" \
+            --create --if-not-exists \
+            --topic "$${t}" \
+            --partitions 3 \
+            --replication-factor 1
+        done
+        echo "Kafka topics initialized."
+
   somabrain_standalone_kafka_exporter:
     image: danielqsj/kafka-exporter:v1.7.0
     restart: unless-stopped
@@ -529,10 +565,21 @@ services:
       RUNNING_IN_DOCKER: "true"
       # Host headers seen by the app container (healthchecks, host-bound curl, Docker Desktop proxy)
       ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,host.docker.internal,somabrain_standalone_app}"
+      # Gunicorn writes its control socket to $HOME; tmpfs /tmp keeps it writable.
+      HOME: "/tmp"
 
       # VAULT BOOTSTRAP ONLY
       VAULT_ADDR: "http://somabrain_standalone_vault:8200"
       VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+
+      # Resolved secrets required before Django settings import.
+      # Vault bootstrap also provides these, but explicit env values keep the
+      # container runnable when Vault is temporarily unavailable.
+      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      # Use the internal Postgres service name; the host-bound port is not reachable from the container.
+      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
 
       # Configuration Pass-throughs (No hardcoded URLs)
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
@@ -590,6 +637,8 @@ services:
         condition: service_healthy
       somabrain_standalone_kafka:
         condition: service_healthy
+      somabrain_standalone_kafka_topics_init:
+        condition: service_completed_successfully
       somabrain_standalone_opa:
         condition: service_healthy
     deploy:
@@ -608,6 +657,15 @@ services:
       # VAULT BOOTSTRAP ONLY
       VAULT_ADDR: "http://somabrain_standalone_vault:8200"
       VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+
+      # Resolved secrets required before Django settings import.
+      # Vault bootstrap only runs in WSGI/ASGI entrypoints; workers import settings directly.
+      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      # Use the internal Postgres service name; the host-bound port is not reachable from the container.
+      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
 
       # Configuration Pass-throughs
       SOMABRAIN_STRICT_REAL: "1"
@@ -699,6 +757,14 @@ services:
       VAULT_ADDR: "http://somabrain_standalone_vault:8200"
       VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
 
+      # Resolved secrets required before Django settings import.
+      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      # Use the internal Postgres service name; the host-bound port is not reachable from the container.
+      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
+
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
@@ -766,6 +832,8 @@ services:
         condition: service_completed_successfully
       somabrain_standalone_kafka:
         condition: service_healthy
+      somabrain_standalone_kafka_topics_init:
+        condition: service_completed_successfully
     networks:
       - somabrain_standalone_net
     extra_hosts:
@@ -778,6 +846,14 @@ services:
       # VAULT BOOTSTRAP ONLY
       VAULT_ADDR: "http://somabrain_standalone_vault:8200"
       VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+
+      # Resolved secrets required before Django settings import.
+      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      # Use the internal Postgres service name; the host-bound port is not reachable from the container.
+      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
 
       # Propagate the global memory cap to the integrator service.
       SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
