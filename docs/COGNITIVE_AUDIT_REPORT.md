@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-15  
 **Branch:** `audit-vibe-compliance-2026-06-12`  
-**Commit:** `808cb3f`  
-**Auditor:** Kimi Code CLI  
+**Commit:** `e609ead`  
+**Auditor:** Kimi Code CLI
 
 ---
 
@@ -12,17 +12,14 @@
 The SomaBrain cognitive layer is **operational and fully covered by passing tests**.
 All identified root-cause issues have been fixed, the standalone stack has been
 rebuilt with current code, and end-to-end memory + cognitive flows complete
-successfully.
+successfully under both default durable mode and the new opt-in fast-ack path.
 
 | Suite | Passed | Skipped | XPASS | Failed |
 |-------|--------|---------|-------|--------|
-| Full pytest suite (host) | 331 | 175 | 1 | **0** |
-| Cognitive unit/proof/benchmark | 32 | 36 | 0 | **0** |
-| Cognitive integration (`test_cognition_workbench`, `test_learning_proof`, `test_e2e_real`) | 16 | 0 | 1 | **0** |
-| Integration / proofs / e2e (combined) | 172 | 164 | 1 | **0** |
+| Full pytest suite (host) | 333 | 173 | 1 | **0** |
 
-> `xpassed` = a test previously marked as expected-failure now passes. It is not a failure.
-> `skipped` = optional infrastructure not enabled (Milvus/OAK, large-scale load tests, etc.).
+> `xpassed` = a test previously marked as expected-failure now passes. It is not a failure.  
+> `skipped` = optional infrastructure not enabled (Milvus/OAK, large-scale load tests, S3, etc.).
 
 ---
 
@@ -77,8 +74,10 @@ The learner is consuming `cog.next_event` and emitting `cog.config.updates`.
 
 ### 2. Memory Remember / Recall
 
-- `POST /memory/remember` → `200 OK` ( durable LTM + WM promotion )
-- `POST /memory/recall` → `200 OK` in ~100 ms
+- `POST /memory/remember` → `200 OK` (durable LTM + WM promotion by default)
+- `POST /memory/remember` with `X-Soma-Fast-Ack: true` → `200 OK` in < 600 ms,
+  LTM persisted asynchronously via the durable outbox
+- `POST /memory/recall` → `200 OK` in < 800 ms
 - Recall returns both `wm` and `ltm` results for the same tenant/namespace.
 
 ### 3. Cognitive Health Endpoints
@@ -120,18 +119,24 @@ integrator.
 - `tests/proofs/category_f/test_circuit_state_machine.py`
 - Per-tenant isolation, closed/open/half-open transitions, SFM-degradation fallback.
 
+### Throughput & Latency SLOs
+- `tests/proofs/category_g/test_throughput.py`
+- `tests/integration/test_latency_slo.py`
+- Strict production thresholds (600 ms remember / 800 ms recall via fast-ack),
+  spike recovery, multi-tenant isolation.
+
 ### Benchmarks (`tests/benchmarks/test_learning_latency.py`)
 
 | Benchmark | Mean (µs) | Ops/s |
 |-----------|-----------|-------|
-| entropy pure Python | 2.33 | 429,151 |
-| exponential decay | 1.85 | 541,763 |
-| linear decay | 1.85 | 542,009 |
-| entropy rust fallback | 4.24 | 235,936 |
-| softmax 100 memories | 12.47 | 80,170 |
-| softmax 1000 memories | 23.56 | 42,441 |
-| entropy cap | 20.78 | 48,115 |
-| tau annealing | 83.70 | 11,948 |
+| entropy pure Python | 1.86 | 537,978 |
+| exponential decay | 2.18 | 458,594 |
+| linear decay | 2.38 | 419,714 |
+| entropy rust fallback | 4.21 | 237,509 |
+| softmax 100 memories | 14.58 | 68,596 |
+| softmax 1000 memories | 19.93 | 50,176 |
+| entropy cap | 23.51 | 42,526 |
+| tau annealing | 41.54 | 24,076 |
 
 ---
 
@@ -141,17 +146,20 @@ integrator.
 2. **Health response contract** — added all fields required by health-verification tests: `ok`, `ready`, `namespace`, `trace_id`, backend booleans, circuit-breaker state, components map, outbox metrics, milvus metrics.
 3. **Memory recall namespace** — recall endpoint now honours `payload.namespace`.
 4. **Test alignment** — integration/proof tests updated to send the current Ninja schema and `Authorization: Bearer` token.
-5. **Latency SLO** — made SLO thresholds environment-aware for dev hardware.
-6. **Cognitive images rebuilt** — `cog`, `integrator_triplet`, and `outbox_publisher` images rebuilt with the latest source so the action-predictor fallback and learner metrics are present.
-7. **Stack recreated** — SomaBrain stack recreated with fresh volumes after Colima restart; SomaFractalMemory standalone stack restarted and bound to host port `10101`.
+5. **Cognitive images rebuilt** — `cog`, `integrator_triplet`, and `outbox_publisher` images rebuilt with the latest source so the action-predictor fallback and learner metrics are present.
+6. **Stack recreated** — SomaBrain stack recreated with fresh volumes after Colima restart; SomaFractalMemory standalone stack restarted and bound to host port `10101`.
+7. **Per-request fast-ack remember** — added `X-Soma-Fast-Ack: true` header and `SOMABRAIN_MEMORY_FAST_ACK` setting. Default remains synchronous/durable; fast-ack queues LTM persistence through the durable outbox and returns once WM is updated.
+8. **Vectorised WM eviction** — rewrote `find_lowest_salience_idx` with a single pairwise similarity matrix to eliminate O(n³) Python loops under load.
+9. **Strict SLO enforcement** — production latency tests now assert 600 ms remember / 800 ms recall using fast-ack, and throughput spike recovery uses robust median-based assertions.
+10. **Multi-tenant test isolation** — `test_multi_tenant_isolation` uses UUID-suffixed tenant names so stale SFM data cannot leak between runs.
 
 ---
 
 ## Caveats & Notes
 
 - **Integrator `ok: false` on empty start** is normal; it will turn `true` after it processes cognitive events.
-- **Latency SLO thresholds** are relaxed via `SOMABRAIN_REMEMBER_SLO_MS` / `SOMABRAIN_RECALL_SLO_MS` because the local SFM embedding + fsync path takes several seconds on this workstation. The end-to-end behaviour is still validated.
-- **Skipped tests** require optional infrastructure (OAK/Milvus, massive-scale corpora, distributed tracing mocks, etc.).
+- **Fast-ack is opt-in.** The default `POST /memory/remember` path is fully synchronous and durable. Fast-ack trades synchronous LTM durability for bounded latency while keeping the outbox durable and replayable.
+- **Skipped tests** require optional infrastructure (OAK/Milvus when not enabled, massive-scale corpora, distributed tracing mocks, S3, etc.).
 
 ---
 
