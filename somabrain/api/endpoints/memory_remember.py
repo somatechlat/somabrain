@@ -6,12 +6,14 @@ Complex memory write logic (batch, signals, embedding).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from typing import List
 
 import httpx
 import numpy as np
+from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router
@@ -39,6 +41,33 @@ from somabrain.metrics import record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
 
 logger = logging.getLogger("somabrain.api.endpoints.memory_remember")
+
+
+async def _persist_ltm_in_background(
+    memsvc: MemoryService,
+    key: str,
+    stored_payload: dict,
+    request_id: str,
+    dedupe_key: str,
+    tenant_id: str,
+) -> None:
+    """Best-effort async LTM persistence after the HTTP response has been sent.
+
+    Used when ``SOMABRAIN_MEMORY_FAST_ACK`` is enabled. The outbox event is
+    created before the response is returned, so a failure here leaves a
+    pending event that can be replayed by a memory outbox worker.
+    """
+    try:
+        await memsvc.aremember(key, stored_payload, request_id)
+    except Exception:
+        logger.debug("Background LTM persist failed for tenant=%s key=%s", tenant_id, key)
+    else:
+        try:
+            from somabrain.db.outbox import mark_event_sent
+
+            await sync_to_async(mark_event_sent)(dedupe_key, tenant_id)
+        except Exception:
+            pass
 
 router = Router(tags=["memory"])
 
@@ -110,11 +139,54 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     coord = None
     degraded_warnings: List[str] = []
 
+    fast_ack = (
+        request.headers.get("X-Soma-Fast-Ack", "").lower() == "true"
+        or bool(getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK", False))
+    )
+
     if memsvc._is_circuit_open():
         memsvc._queue_degraded(
             "remember", {"key": payload.key, "payload": stored_payload}
         )
         degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
+    elif fast_ack:
+        # Fast-ack production path: ack after WM admit and durable outbox record,
+        # persist to LTM asynchronously so latency is bounded by WM operations.
+        try:
+            from somabrain.db.outbox import enqueue_memory_event
+
+            coord = memsvc.client().coord_for_key(payload.key, payload.universe)
+            dedupe_key = await sync_to_async(enqueue_memory_event)(
+                topic="memory.store",
+                payload={
+                    "key": payload.key,
+                    "payload": stored_payload,
+                    "request_id": request_id,
+                },
+                tenant_id=payload.tenant,
+                coord=coord,
+                extra_key=request_id,
+                check_backpressure_flag=True,
+            )
+            asyncio.create_task(
+                _persist_ltm_in_background(
+                    memsvc,
+                    payload.key,
+                    stored_payload,
+                    request_id,
+                    dedupe_key,
+                    payload.tenant,
+                )
+            )
+        except Exception as exc:
+            logger.warning("Fast-ack enqueue failed, falling back to sync persist: %s", exc)
+            try:
+                coord = await memsvc.aremember(payload.key, stored_payload)
+                persisted_to_ltm = True
+            except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc2:
+                raise _map_memory_error(exc2) from exc2
+        else:
+            degraded_warnings.append("ltm-persist:queued-async")
     else:
         try:
             coord = await memsvc.aremember(payload.key, stored_payload)
@@ -174,6 +246,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         "coordinate": coordinate_list,
         "promoted_to_wm": promoted_to_wm,
         "persisted_to_ltm": persisted_to_ltm,
+        "queued_for_ltm": not persisted_to_ltm and fast_ack,
         "deduplicated": False,
         "importance": signal_feedback.importance,
         "novelty": signal_feedback.novelty,

@@ -178,8 +178,13 @@ def test_multi_tenant_isolation(http_client: httpx.Client) -> None:
         http_client: The http_client.
     """
 
-    tenant_a = "workbench-tenant-a"
-    tenant_b = "workbench-tenant-b"
+    import uuid
+
+    # Use unique tenant names per run so stale data from previous test runs
+    # in the persistent SFM backend cannot break isolation assertions.
+    suffix = uuid.uuid4().hex[:8]
+    tenant_a = f"workbench-tenant-a-{suffix}"
+    tenant_b = f"workbench-tenant-b-{suffix}"
     text_a = "alpha unique payload"
     text_b = "beta distinct payload"
     _remember(http_client, tenant_a, text_a)
