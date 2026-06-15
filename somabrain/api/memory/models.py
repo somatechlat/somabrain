@@ -140,6 +140,7 @@ class MemoryWriteResponse(BaseModel):
     coordinate: Optional[List[float]] = None
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
+    queued_for_ltm: bool = False
     deduplicated: bool = False
     importance: Optional[float] = None
     novelty: Optional[float] = None

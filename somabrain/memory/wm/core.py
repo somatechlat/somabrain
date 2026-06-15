@@ -140,6 +140,8 @@ class WorkingMemory:
             ValueError: If capacity or dimension are not positive integers.
         """
         self.capacity = int(capacity)
+        # Keep the private alias that some capacity/throughput tests expect.
+        self._capacity = self.capacity
         self.dim = int(dim)
         self._items: List[WMItem] = []
         # salience weights and capacity bounds
@@ -392,6 +394,7 @@ class WorkingMemory:
                 self.capacity = min(self._max_cap, self.capacity + 1)
             elif self._min_cap < self.capacity and s < 0.3:
                 self.capacity = max(self._min_cap, self.capacity - 1)
+            self._capacity = self.capacity
             return True
         return False
 

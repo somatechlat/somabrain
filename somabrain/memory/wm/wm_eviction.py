@@ -21,12 +21,12 @@ from typing import TYPE_CHECKING, List, Optional
 import numpy as np
 
 from somabrain.math import cosine_similarity
-from somabrain.memory.wm.wm_salience import compute_eviction_salience
 
 if TYPE_CHECKING:
     from somabrain.memory.wm_persistence import WMPersister
     from somabrain.memory.wm.core import WMItem
 
+_EPS = 1e-12
 logger = logging.getLogger(__name__)
 
 
@@ -42,6 +42,10 @@ def find_lowest_salience_idx(
     Per Requirement B1.1: WHEN WM reaches capacity THEN the system SHALL
     evict the item with lowest salience score.
 
+    This implementation vectorises the pairwise novelty computation so the
+    eviction decision is O(n^2) in numpy once per call instead of repeating
+    O(n^2) work inside a Python loop.
+
     Args:
         items: List of working memory items.
         alpha: Weight for novelty component.
@@ -50,23 +54,38 @@ def find_lowest_salience_idx(
         recency_scale: Time scale for recency decay.
 
     Returns:
-        Index of the item with lowest salience.
+        Index of the item with the lowest salience.
     """
     if not items:
         return 0
+    n = len(items)
+    if n == 1:
+        return 0
 
-    min_salience = float("inf")
-    min_idx = 0
+    arr = np.asarray([it.vector for it in items], dtype=np.float64)
+    norms = np.linalg.norm(arr, axis=1)
+    valid = norms > _EPS
+    novelty = np.ones(n, dtype=np.float64)
 
-    for idx, item in enumerate(items):
-        salience = compute_eviction_salience(
-            item, items, alpha, gamma, now, recency_scale
-        )
-        if salience < min_salience:
-            min_salience = salience
-            min_idx = idx
+    if np.any(valid):
+        # Normalise valid rows; zero-norm rows stay as zeros and get novelty 1.0
+        arr_norm = arr.copy()
+        arr_norm[valid] = arr[valid] / norms[valid, None]
+        sims = arr_norm @ arr_norm.T
+        # Ignore self-similarity
+        np.fill_diagonal(sims, -1.0)
+        max_sims = np.max(sims, axis=1)
+        novelty = 1.0 - np.clip(max_sims, -1.0, 1.0)
+        novelty[~valid] = 1.0
 
-    return min_idx
+    ages = np.array([max(0.0, now - it.admitted_at) for it in items], dtype=np.float64)
+    if recency_scale > 0:
+        recency = np.exp(-ages / recency_scale)
+    else:
+        recency = np.ones(n, dtype=np.float64)
+
+    salience = alpha * novelty + gamma * recency
+    return int(np.argmin(salience))
 
 
 def evict_item(
