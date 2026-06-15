@@ -355,16 +355,26 @@ class IntegratorHub:
     def _default_opa_request(self, url: str, context: Dict[str, float]) -> bool:
         """Execute default opa request.
 
+        Posts to the canonical integrator policy path unless the configured URL
+        already points to a specific OPA Data API path.
+
         Args:
             url: The url.
             context: The context.
         """
 
         try:
-            resp = requests.post(url, json={"input": context}, timeout=1)
+            normalized = url.rstrip("/")
+            if "/v1/data" not in normalized:
+                normalized = f"{normalized}/v1/data/soma/policy/integrator"
+            resp = requests.post(normalized, json={"input": context}, timeout=1)
             if not resp.ok:
                 return False
-            return bool(resp.json().get("result", False))
+            data = resp.json().get("result", {})
+            # The integrator policy exposes an integrator.allow boolean.
+            if isinstance(data, dict):
+                return bool(data.get("allow", data.get("result", False)))
+            return bool(data)
         except Exception as exc:
             import logging
 
