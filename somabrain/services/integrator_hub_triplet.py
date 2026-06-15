@@ -120,7 +120,7 @@ class IntegratorHub:
         else:
             # When external backends are disabled, skip Kafka bootstrap configuration.
             self.bootstrap = None
-        if not self.bootstrap:
+        if not self.bootstrap and start_io:
             raise RuntimeError("Kafka bootstrap not configured for IntegratorHub.")
         self.topic_updates = topic_updates or {
             "state": getattr(ss, "SOMABRAIN_TOPIC_STATE_UPDATES", "cog.state.updates"),
@@ -412,23 +412,29 @@ class IntegratorHub:
 # Module entry point
 # ---------------------------------------------------------------------------
 # When the module is executed via ``python -m somabrain.services.integrator_hub_triplet``
-# (as defined in the Docker compose ``command``), we want the process to stay
-# alive and expose the health endpoint.  The original implementation only
-# defined the ``IntegratorHub`` class without any side‑effects, causing the
-# container to exit immediately after import.  This resulted in repeated
-# restarts and failed health checks.
-#
-# The block below creates an ``IntegratorHub`` instance with ``start_io=False``
-# so it does not attempt to connect to Kafka (respecting the ``require_external_backends``
-# setting).  The health server is started automatically in ``__init__``.  We then
-# keep the process alive with a simple sleep loop, allowing the health endpoint
-# to be queried while avoiding unnecessary CPU usage.
+# (as defined in the Docker compose ``command``), we start real Kafka I/O whenever
+# external backends are configured.  If Kafka is unavailable we fall back to a
+# health-only server so the container stays alive for diagnostics.
 if __name__ == "__main__":  # pragma: no cover
-    hub = IntegratorHub(start_io=False)
+    import logging
+
+    _main_logger = logging.getLogger(__name__)
+    hub: Optional[IntegratorHub] = None
     try:
-        # Keep the process running so the health server remains reachable.
-        while True:
-            time.sleep(60)
-    except KeyboardInterrupt:
-        # Graceful shutdown on SIGINT / container stop.
-        pass
+        hub = IntegratorHub(start_io=True)
+        _main_logger.info("IntegratorHub started with Kafka I/O.")
+    except Exception as exc:
+        _main_logger.warning(
+            "IntegratorHub Kafka I/O unavailable (%s); starting health-only.", exc
+        )
+        hub = IntegratorHub(start_io=False)
+    if hub and hub.consumer is not None:
+        hub.run()
+    else:
+        try:
+            # Keep the process running so the health server remains reachable.
+            while True:
+                time.sleep(60)
+        except KeyboardInterrupt:
+            # Graceful shutdown on SIGINT / container stop.
+            pass
