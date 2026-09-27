@@ -32,7 +32,6 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         self.tenant = tenant or self.namespace
         self._mode = "http"
         self._http: Optional[Any] = None
-        self._http_async: Optional[Any] = None
 
         self._init_http()
 
@@ -78,6 +77,30 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
             return data
         return None
 
+    def _interpret_delete_response(self, resp: Any) -> bool:
+        """Map a ``DELETE /memories/{coord}`` response to "was it removed".
+
+        The SomaFractalMemory API answers HTTP 200 with ``{"deleted": true}``
+        when it removed the row and ``{"deleted": false}`` when the coordinate
+        was already absent; a missing coordinate is also reported as HTTP 404.
+        The body's ``deleted`` flag is therefore authoritative — the status code
+        alone cannot distinguish "removed" from "already gone", and reading only
+        the status would report a no-op as a successful delete.
+        """
+        status = int(getattr(resp, "status_code", 0) or 0)
+        if status == 404:
+            return False
+        if not (200 <= status < 300):
+            raise RuntimeError(f"memory service delete failed: HTTP {status}")
+
+        data = self._response_json(resp)
+        if isinstance(data, dict) and isinstance(data.get("deleted"), bool):
+            return bool(data["deleted"])
+        # A 2xx without an explicit outcome must not be read as success.
+        raise RuntimeError(
+            f"memory service delete returned HTTP {status} without a 'deleted' flag: {data!r}"
+        )
+
     def delete(self, coordinate: Any) -> bool:
         """Delete a memory by coordinate (``DELETE /memories/{coord}``).
 
@@ -96,12 +119,7 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
             resp = self._http.delete(f"/memories/{coord_str}")
         except httpx.HTTPError as exc:
             raise RuntimeError(f"memory service unreachable (delete): {exc}") from exc
-        status = int(getattr(resp, "status_code", 0) or 0)
-        if status == 404:
-            return False
-        if 200 <= status < 300:
-            return True
-        raise RuntimeError(f"memory service delete failed: HTTP {status}")
+        return self._interpret_delete_response(resp)
 
     async def adelete(self, coordinate: Any) -> bool:
         """Async variant of :meth:`delete`."""
@@ -113,12 +131,7 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
                 resp = await self._http_async.delete(f"/memories/{coord_str}")
             except httpx.HTTPError as exc:
                 raise RuntimeError(f"memory service unreachable (delete): {exc}") from exc
-            status = int(getattr(resp, "status_code", 0) or 0)
-            if status == 404:
-                return False
-            if 200 <= status < 300:
-                return True
-            raise RuntimeError(f"memory service delete failed: HTTP {status}")
+            return self._interpret_delete_response(resp)
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.delete, coordinate)
 

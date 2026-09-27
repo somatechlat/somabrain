@@ -22,6 +22,21 @@ def _http_setting(attr: str, default_val: int) -> int:
 class TransportMixin:
     """Handles HTTP transport for the Memory Client."""
 
+    @property
+    def _http_async(self) -> Any | None:
+        """Async HTTP client for the *currently running* event loop.
+
+        Read through to ``MemoryHTTPTransport.async_client`` rather than being
+        cached on the instance: an ``httpx.AsyncClient`` is bound to the loop it
+        first ran on, and ASGI servers replace that loop between requests. A
+        cached client therefore raises ``RuntimeError: Event loop is closed`` on
+        a later request.
+        """
+        transport = getattr(self, "_transport", None)
+        if transport is None:
+            return None
+        return transport.async_client
+
     def _init_http(self) -> None:
         import httpx  # type: ignore
 
@@ -119,7 +134,6 @@ class TransportMixin:
             logger=logger,
         )
         self._http = self._transport.client
-        self._http_async = self._transport.async_client
 
         # Strict mode: memory is always required
         if self._http is None:

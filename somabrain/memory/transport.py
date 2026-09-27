@@ -97,6 +97,7 @@ class MemoryHTTPTransport:
         self._logger = logger
         self._client: Optional[httpx.Client] = None
         self._async_client: Optional[httpx.AsyncClient] = None
+        self._async_loop: Optional[asyncio.AbstractEventLoop] = None
         self._init_clients()
 
     @property
@@ -106,7 +107,28 @@ class MemoryHTTPTransport:
 
     @property
     def async_client(self) -> Optional[httpx.AsyncClient]:
-        """The asynchronous HTTP client."""
+        """The asynchronous HTTP client, bound to the running event loop.
+
+        An ``httpx.AsyncClient`` owns connection-pool state tied to the event
+        loop it first ran on. ASGI servers close and replace that loop between
+        requests, after which the pooled connections raise
+        ``RuntimeError: Event loop is closed``. So the client is rebuilt
+        whenever the running loop differs from the one it was built for. The
+        abandoned client is not ``aclose()``d here: closing it would need the
+        loop that is already gone.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop: callers get whatever was built at construction.
+            return self._async_client
+
+        if self._async_client is not None and self._async_loop is loop:
+            return self._async_client
+
+        client = self._new_async_client()
+        self._async_client = client
+        self._async_loop = loop if client is not None else None
         return self._async_client
 
     def _init_clients(self) -> None:
@@ -136,18 +158,41 @@ class MemoryHTTPTransport:
             self._logger.error("Failed to create sync HTTP client: %s", e)
             self._client = None
 
-        # Initialize async client
+        # Initialize async client for the loop that is current at construction.
+        self._async_client = self._new_async_client()
+        try:
+            self._async_loop = asyncio.get_running_loop() if self._async_client else None
+        except RuntimeError:
+            self._async_loop = None
+
+    def _new_async_client(self) -> Optional[httpx.AsyncClient]:
+        """Build a fresh async client for the current event loop.
+
+        Returns None when no base URL is configured or construction fails; the
+        failure is logged rather than silently swallowed.
+        """
+        if not self.base_url:
+            return None
+
+        client_kwargs: dict[str, Any] = {
+            "base_url": self.base_url,
+            "headers": dict(self._headers),
+            "timeout": 10.0,
+        }
+        if self._limits is not None:
+            client_kwargs["limits"] = self._limits
+
         try:
             transport = httpx.AsyncHTTPTransport(retries=self._retries)
             async_kwargs = dict(client_kwargs)
             async_kwargs["transport"] = transport
-            self._async_client = httpx.AsyncClient(**async_kwargs)
+            return httpx.AsyncClient(**async_kwargs)
         except Exception:
             try:
-                self._async_client = httpx.AsyncClient(**client_kwargs)
+                return httpx.AsyncClient(**client_kwargs)
             except Exception as e:
                 self._logger.error("Failed to create async HTTP client: %s", e)
-                self._async_client = None
+                return None
 
     def post_with_retries_sync(
         self,
