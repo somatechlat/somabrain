@@ -340,6 +340,16 @@ SomaBrain exposes a large set of environment-driven settings. Key examples:
 | [Standalone Deployment](infra/standalone/DEPLOYMENT_GUIDE.md) | Current Docker standalone deployment |
 | [SOMA Covenant](docs/THE-SOMA-COVENANT.md) | Governance principles |
 
+### ISO Documentation Suite (v2.0.0)
+
+| Document | Standard | Description |
+|----------|----------|-------------|
+| [SOMA-BR-ARCH-001](docs/iso/SOMA-BR-ARCH-001.md) | ISO/IEC 42010 | Architecture Document — GMD algorithm, deployment modes, architecture views, core algorithms, Rust core, service layer, integrations, multi-tenancy, observability |
+| [SOMA-BR-AUDIT-001](docs/iso/SOMA-BR-AUDIT-001.md) | ISO 19011 | Audit Report — Executive scorecard, code quality analysis, strengths, weaknesses, recommendations |
+| [SOMA-BR-SEC-001](docs/iso/SOMA-BR-SEC-001.md) | ISO/IEC 27001 | Security Assessment — JWT auth, OPA policies, constitution signing, TLS, Vault, per-tenant isolation |
+| [SOMA-BR-RISK-001](docs/iso/SOMA-BR-RISK-001.md) | ISO 31000 | Risk Register — Complexity debt, SFM dependency, Kafka availability, Milvus scaling, calibration drift |
+| [SOMA-BR-PROD-001](docs/iso/SOMA-BR-PROD-001.md) | ISO/IEC 25010 | Production Readiness — Scorecard, standalone vs AAAS readiness, K8s deployment, Helm charts |
+
 ---
 
 ## 🔬 Research Foundations

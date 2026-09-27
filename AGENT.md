@@ -150,6 +150,16 @@ open http://localhost:10351
 - OPS Manual: `docs/OPS_MANUAL.md`
 - SRS: `docs/SRS_FULL.md`
 
+### ISO Documentation Suite (v2.0.0)
+
+ISO-compliant documentation in `docs/iso/`:
+
+- **SOMA-BR-ARCH-001.md** (ISO/IEC 42010) — Architecture: GMD algorithm, deployment modes, views, Rust core, services, integrations, multi-tenancy, observability, known debt
+- **SOMA-BR-AUDIT-001.md** (ISO 19011) — Audit: Executive scorecard (Arch A-, Code B+, Tests A-, Docs A-, Security B+), strengths, weaknesses, recommendations
+- **SOMA-BR-SEC-001.md** (ISO/IEC 27001) — Security: JWT, OPA, constitution signing, TLS, Vault, per-tenant isolation, threat model
+- **SOMA-BR-RISK-001.md** (ISO 31000) — Risk Register: complexity debt, SFM dependency, Kafka availability, Milvus scaling, calibration drift
+- **SOMA-BR-PROD-001.md** (ISO/IEC 25010) — Production Readiness: scorecard (3.96/5.00), standalone GO, AAAS CONDITIONAL GO, K8s status, Helm charts
+
 ---
 
 ## Configuration Tuning (Meta-Controller)

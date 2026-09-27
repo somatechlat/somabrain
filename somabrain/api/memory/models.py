@@ -3,6 +3,22 @@
 This module contains all Pydantic request/response models used by the Memory API.
 Extracted from somabrain/api/memory_api.py for better organization.
 
+CANONICAL MEMORY CONTRACT (the seam)
+------------------------------------
+``POST /api/memory/remember``  (alias ``/memory/remember``)
+``POST /api/memory/recall``    (alias ``/memory/recall``)
+``POST /api/memory/forget``    (alias ``/memory/forget``)
+
+``MemoryWriteRequest`` accepts BOTH the rich write shape
+(``tenant/namespace/key/value``) and the seam ``MemoryWrite`` shape
+(``text/kind/tenant_id/session_id/coord/embedding/salience/source``), plus the
+dialect aliases ``content`` and ``memory_type``. There is a single write path;
+the aliases are folded in by ``MemoryWriteRequest._normalize_seam_fields``.
+
+Recall hits are returned as ``MemoryHit`` items
+(``text/coord/score/store/created_at``) with the legacy
+``content/layer/coordinate`` keys retained as aliases.
+
 Models:
 - MemoryAttachment: Attachment descriptor for memory entries
 - MemoryLink: Link descriptor for memory relationships
@@ -10,7 +26,8 @@ Models:
 - MemorySignalFeedback: Feedback on signal processing
 - MemoryWriteRequest/Response: Single memory write operations
 - MemoryRecallRequest/Response: Memory recall operations
-- MemoryRecallItem: Individual recall result item
+- MemoryRecallItem: Individual recall result item (MemoryHit shape)
+- ForgetRequest/Response: Memory delete operations
 - MemoryBatchWriteRequest/Response: Batch memory write operations
 - MemoryMetricsResponse: Memory metrics response
 - MemoryRecallSessionResponse: Recall session response
@@ -18,9 +35,11 @@ Models:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class MemoryAttachment(BaseModel):
@@ -85,14 +104,66 @@ class MemorySignalFeedback(BaseModel):
 
 
 class MemoryWriteRequest(BaseModel):
-    """Request model for single memory write operations."""
+    """Request model for single memory write operations.
 
-    tenant: str = Field(..., min_length=1, description="Tenant identifier")
+    Accepts the rich write shape and the seam ``MemoryWrite`` shape:
+
+    .. code-block:: json
+
+        {"text": "...", "kind": "episodic", "tenant_id": "...",
+         "session_id": null, "coord": "x,y,z", "embedding": [..],
+         "salience": 0.5, "source": "agent-chat"}
+    """
+
+    # --- seam fields (THE SEAM contract) ---
+    text: Optional[str] = Field(
+        None, description="Primary memory text (seam). Alias: content"
+    )
+    content: Optional[str] = Field(
+        None, description="Dialect alias for text (BrainBridge / legacy proofs)"
+    )
+    kind: str = Field(
+        "episodic",
+        description="Memory kind: episodic | semantic | belief (seam)",
+    )
+    memory_type: Optional[str] = Field(
+        None, description="Dialect alias for kind (legacy value.memory_type)"
+    )
+    tenant_id: Optional[str] = Field(
+        None, description="Tenant identifier (seam). Alias for tenant"
+    )
+    session_id: Optional[str] = Field(
+        None, description="Optional session scope for this memory"
+    )
+    coord: Optional[Union[str, List[float]]] = Field(
+        None,
+        description="Explicit coordinate identity, either 'x,y,z' or [x,y,z]. "
+        "When provided it is the single storage identity.",
+    )
+    embedding: Optional[List[float]] = Field(
+        None,
+        description="Optional precomputed embedding vector stored with the memory",
+    )
+    salience: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Salience weight in [0,1] (seam)"
+    )
+    source: Optional[str] = Field(
+        "agent-chat", description="Write provenance (seam)"
+    )
+
+    # --- rich write shape (still canonical) ---
+    tenant: str = Field(
+        default="",
+        description="Tenant identifier. May be omitted here and supplied as the "
+        "X-Tenant-ID header; the handler resolves and requires one of the two.",
+    )
     namespace: str = Field(
-        ..., min_length=1, description="Logical namespace (e.g. wm, ltm)"
+        "default", min_length=1, description="Logical namespace (e.g. wm, ltm)"
     )
     key: str = Field(
-        ..., min_length=1, description="Stable key used to derive coordinates"
+        ...,
+        min_length=1,
+        description="Stable key used to derive coordinates when coord is absent",
     )
     value: Dict[str, Any] = Field(..., description="Payload stored in memory")
     meta: Optional[Dict[str, Any]] = Field(
@@ -129,15 +200,125 @@ class MemoryWriteRequest(BaseModel):
         None, description="Agent correlation identifier for downstream observability"
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_seam_fields(cls, data: Any) -> Any:
+        """Fold the seam/dialect field names into the canonical write shape.
+
+        Runs before field validation so the rich required fields
+        (``tenant``/``key``/``value``) are present once aliases are resolved.
+        """
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+
+        # tenant scoping: tenant_id (seam) == tenant (rich)
+        tenant = d.get("tenant") or d.get("tenant_id") or ""
+        if isinstance(tenant, str):
+            tenant = tenant.strip()
+        else:
+            tenant = str(tenant or "").strip()
+        d["tenant"] = tenant
+        d["tenant_id"] = str(d.get("tenant_id") or tenant).strip() or tenant
+
+        # meta alias used by the BrainBridge proof scripts
+        if d.get("meta") is None and d.get("metadata") is not None:
+            d["meta"] = d["metadata"]
+
+        # namespace default
+        ns = d.get("namespace")
+        if not isinstance(ns, str) or not ns.strip():
+            d["namespace"] = "default"
+
+        # value: tolerate absent/dict/scalar, and dict-valued `content`
+        value = d.get("value")
+        content = d.get("content")
+        if isinstance(content, dict) and not isinstance(value, dict):
+            value = dict(content)
+            content = None
+        if not isinstance(value, dict):
+            value = {} if value is None else {"text": value}
+        d["value"] = value
+
+        # primary text: text | content | value.text | value.task
+        text = d.get("text")
+        if not isinstance(text, str) or not text.strip():
+            if isinstance(content, str) and content.strip():
+                text = content
+            else:
+                text = (
+                    value.get("text")
+                    or value.get("content")
+                    or value.get("task")
+                    or value.get("what")
+                )
+        if isinstance(text, str) and text.strip():
+            d["text"] = text.strip()
+            value.setdefault("text", d["text"])
+        else:
+            d["text"] = None
+
+        # kind: kind | memory_type | value.memory_type
+        kind = d.get("kind") or d.get("memory_type") or value.get("memory_type")
+        kind = str(kind or "episodic").strip().lower() or "episodic"
+        d["kind"] = kind
+        d["memory_type"] = kind
+        value.setdefault("memory_type", kind)
+
+        # salience / source / session_id ride into the stored value
+        if d.get("session_id"):
+            value.setdefault("session_id", str(d["session_id"]))
+        if d.get("salience") is not None:
+            value.setdefault("salience", float(d["salience"]))
+        if d.get("source"):
+            value.setdefault("source", str(d["source"]))
+        if d.get("embedding") is not None:
+            value.setdefault("embedding", list(d["embedding"]))
+
+        # key: required for deterministic identity when coord is absent
+        key = d.get("key")
+        if not isinstance(key, str) or not key.strip():
+            coord = d.get("coord")
+            if isinstance(coord, str) and coord.strip():
+                key = coord.strip()
+            elif isinstance(coord, (list, tuple)) and len(coord) >= 3:
+                try:
+                    key = f"{float(coord[0])},{float(coord[1])},{float(coord[2])}"
+                except (TypeError, ValueError):
+                    key = None
+            if not key:
+                key = d.get("text") or value.get("task") or ""
+            key = str(key).strip()
+        if not key:
+            raise ValueError(
+                "one of 'key', 'coord' or 'text' is required to identify the memory"
+            )
+        d["key"] = key
+
+        if not value:
+            raise ValueError("one of 'value', 'text' or 'content' is required")
+        return d
+
 
 class MemoryWriteResponse(BaseModel):
-    """Response model for single memory write operations."""
+    """Response model for single memory write operations.
+
+    Superset of the seam ``MemoryAck``: ``coord`` (canonical ``x,y,z`` string),
+    ``store``, ``ok`` and ``error`` are always present alongside the legacy
+    ``coordinate`` float list.
+    """
 
     ok: bool
     tenant: str
     namespace: str
     key: Optional[str] = None
+    coord: Optional[str] = Field(
+        None, description="Canonical coordinate string 'x,y,z' (seam MemoryAck.coord)"
+    )
     coordinate: Optional[List[float]] = None
+    store: str = Field("somafractalmemory", description="Store that acked the write")
+    kind: Optional[str] = None
+    error: Optional[str] = None
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
     queued_for_ltm: bool = False
@@ -200,11 +381,43 @@ class MemoryRecallRequest(BaseModel):
     )
 
 
-class MemoryRecallItem(BaseModel):
-    """Individual recall result item."""
+def _iso_created_at(payload: Dict[str, Any]) -> str:
+    """Derive an ISO-8601 ``created_at`` from a stored payload."""
+    raw = payload.get("timestamp") or payload.get("created_at")
+    if isinstance(raw, (int, float)):
+        try:
+            return datetime.fromtimestamp(float(raw), tz=timezone.utc).isoformat()
+        except (OverflowError, OSError, ValueError):
+            pass
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return datetime.fromtimestamp(time.time(), tz=timezone.utc).isoformat()
 
-    layer: str
+
+class MemoryRecallItem(BaseModel):
+    """Individual recall result item (seam ``MemoryHit`` shape).
+
+    ``text``, ``coord``, ``score``, ``store`` and ``created_at`` are the
+    canonical hit fields; ``content``, ``layer``, ``payload`` and
+    ``coordinate`` are retained as legacy aliases.
+    """
+
+    # --- seam MemoryHit fields ---
+    text: str = ""
+    coord: Optional[str] = Field(
+        None, description="Canonical coordinate string 'x,y,z' (MemoryHit.coord)"
+    )
     score: Optional[float] = None
+    store: str = Field(
+        "somafractalmemory",
+        description="Originating store: somabrain | somafractalmemory",
+    )
+    created_at: str = Field(
+        "", description="ISO-8601 creation timestamp of the stored memory"
+    )
+
+    # --- legacy aliases ---
+    layer: str
     payload: Dict[str, Any]
     coordinate: Optional[List[float]] = None
     source: str
@@ -236,6 +449,26 @@ class MemoryRecallResponse(BaseModel):
     chunk_size: Optional[int] = None
     conversation_id: Optional[str] = None
     degraded: bool = False
+
+
+class ForgetRequest(BaseModel):
+    """Request model for forgetting (deleting) a memory by coordinate."""
+
+    coord: Union[str, List[float]] = Field(
+        ..., description="Coordinate identity: 'x,y,z' or [x,y,z]"
+    )
+    tenant: Optional[str] = Field(None, description="Tenant identifier (rich name)")
+    tenant_id: Optional[str] = Field(None, description="Tenant identifier (seam name)")
+
+
+class ForgetResponse(BaseModel):
+    """Response model for forget operations (seam ``MemoryAck`` shape)."""
+
+    ok: bool
+    coord: str
+    store: str = "somafractalmemory"
+    tenant: str = ""
+    error: Optional[str] = None
 
 
 class MemoryMetricsResponse(BaseModel):
@@ -324,12 +557,15 @@ __all__ = [
     "MemoryRecallRequest",
     "MemoryRecallItem",
     "MemoryRecallResponse",
+    "ForgetRequest",
+    "ForgetResponse",
     "MemoryMetricsResponse",
     "MemoryBatchWriteItem",
     "MemoryBatchWriteRequest",
     "MemoryBatchWriteResult",
     "MemoryBatchWriteResponse",
     "MemoryRecallSessionResponse",
+    "_iso_created_at",
 ]
 
 

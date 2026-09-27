@@ -58,7 +58,7 @@ async def _persist_ltm_in_background(
     pending event that can be replayed by a memory outbox worker.
     """
     try:
-        await memsvc.aremember(key, stored_payload, request_id)
+        await memsvc.aremember(key, stored_payload)
     except Exception:
         logger.debug("Background LTM persist failed for tenant=%s key=%s", tenant_id, key)
     else:
@@ -110,7 +110,20 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     if not pool:
         raise HttpError(503, "Memory services not available")
 
-    resolved_ns = _resolve_namespace(payload.tenant, payload.namespace)
+    # Tenant scoping: body tenant_id (seam) or tenant (rich), falling back to
+    # the X-Tenant-ID header. Never silently default — a write without a tenant
+    # cannot be isolated and is rejected.
+    tenant = (payload.tenant or payload.tenant_id or "").strip()
+    if not tenant:
+        tenant = (request.headers.get("X-Tenant-ID") or "").strip()
+    if not tenant:
+        raise HttpError(
+            400, "tenant_id is required (body tenant_id or X-Tenant-ID header)"
+        )
+    payload.tenant = tenant
+    payload.tenant_id = tenant
+
+    resolved_ns = _resolve_namespace(tenant, payload.namespace)
     memsvc = MemoryService(pool, resolved_ns)
     memsvc._reset_circuit_if_needed()
 
@@ -132,6 +145,13 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         ttl_seconds=payload.ttl_seconds,
         trace_id=payload.trace_id,
         actor=actor,
+        text=payload.text,
+        kind=payload.kind,
+        session_id=payload.session_id,
+        salience=payload.salience,
+        source=payload.source,
+        coord=payload.coord,
+        embedding=payload.embedding,
     )
 
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
@@ -243,7 +263,15 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         "tenant": payload.tenant,
         "namespace": payload.namespace,
         "key": payload.key,
+        "coord": (
+            f"{coordinate_list[0]},{coordinate_list[1]},{coordinate_list[2]}"
+            if coordinate_list
+            else None
+        ),
         "coordinate": coordinate_list,
+        "store": "somafractalmemory",
+        "kind": payload.kind,
+        "error": None,
         "promoted_to_wm": promoted_to_wm,
         "persisted_to_ltm": persisted_to_ltm,
         "queued_for_ltm": not persisted_to_ltm and fast_ack,

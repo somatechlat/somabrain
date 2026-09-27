@@ -7,6 +7,7 @@ delegates circuit‑breaker logic to the shared :class:`~somabrain.core.infrastr
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from typing import Any, Iterable, List
@@ -385,6 +386,28 @@ class MemoryService:
 
         self._reset_circuit_if_needed()
         return self.client().delete(coordinate)
+
+    async def adelete(self, coordinate):
+        """Async variant of :meth:`delete` used by the forget endpoint."""
+
+        self._reset_circuit_if_needed()
+        if self._is_circuit_open():
+            raise CircuitBreakerOpen("Memory service unavailable (circuit open)")
+        client = self.client()
+        try:
+            if hasattr(client, "adelete"):
+                result = await client.adelete(coordinate)
+            else:
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(None, client.delete, coordinate)
+            self._mark_success()
+            return result
+        except (httpx.HTTPError, MemoryServiceError, RuntimeError):
+            self._mark_failure()
+            raise
+        except Exception as e:
+            self._mark_failure()
+            _reraise_backend_error(e, "adelete")
 
     def health(self) -> dict:
         """Execute health."""

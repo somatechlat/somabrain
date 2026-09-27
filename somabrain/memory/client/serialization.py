@@ -27,6 +27,46 @@ def _parse_coord_string(coord_str: str) -> Tuple[float, float, float] | None:
     return None
 
 
+def _explicit_coord(payload: Any) -> Tuple[float, float, float] | None:
+    """Return the caller-supplied coordinate of *payload*, if any.
+
+    Only the ``coord`` / ``coordinate`` keys are consulted. Unlike
+    :func:`_extract_memory_coord` this never falls back to ``id`` derivation,
+    so a payload without an explicit coordinate keeps the deterministic
+    ``_stable_coord`` identity instead of accidentally re-keying.
+    """
+    if not isinstance(payload, dict):
+        return None
+    for key in ("coord", "coordinate"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            parsed = _parse_coord_string(value)
+            if parsed:
+                return parsed
+        elif isinstance(value, (list, tuple)) and len(value) >= 3:
+            try:
+                return (float(value[0]), float(value[1]), float(value[2]))
+            except (TypeError, ValueError):
+                return None
+    return None
+
+
+def _coord_to_str(coord: Any) -> str | None:
+    """Format a coordinate tuple/list/string as the canonical ``x,y,z`` string."""
+    if isinstance(coord, str):
+        parsed = _parse_coord_string(coord)
+    elif isinstance(coord, (list, tuple)) and len(coord) >= 3:
+        try:
+            parsed = (float(coord[0]), float(coord[1]), float(coord[2]))
+        except (TypeError, ValueError):
+            parsed = None
+    else:
+        parsed = None
+    if parsed is None:
+        return None
+    return f"{parsed[0]},{parsed[1]},{parsed[2]}"
+
+
 def _extract_memory_coord(
     resp: Any,
     idempotency_key: str | None = None,

@@ -202,11 +202,21 @@ def _compose_memory_payload(
     ttl_seconds: Optional[int],
     trace_id: Optional[str],
     actor: str,
+    text: Optional[str] = None,
+    kind: Optional[str] = None,
+    session_id: Optional[str] = None,
+    salience: Optional[float] = None,
+    source: Optional[str] = None,
+    coord: Optional[Any] = None,
+    embedding: Optional[List[float]] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
     """Compose a complete memory payload from request parameters.
 
     Merges the provided value with metadata, tags, attachments, links, and
-    signal data to create a fully-formed payload ready for storage.
+    signal data to create a fully-formed payload ready for storage. The seam
+    fields (``text``, ``kind``, ``session_id``, ``salience``, ``source``,
+    ``coord``, ``embedding``) are persisted alongside the rich fields so the
+    stored representation is identical no which dialect wrote it.
 
     Args:
         tenant: Tenant identifier for the memory.
@@ -225,6 +235,14 @@ def _compose_memory_payload(
         ttl_seconds: Time-to-live hint for automatic cleanup.
         trace_id: Correlation identifier for observability.
         actor: Identity of the actor performing the write.
+        text: Primary memory text (seam ``MemoryWrite.text``).
+        kind: Memory kind — episodic | semantic | belief (seam).
+        session_id: Optional session scope (seam).
+        salience: Salience weight in [0,1] (seam).
+        source: Write provenance (seam).
+        coord: Explicit coordinate identity (seam). Stored as the payload's
+            ``coordinate`` so the write path uses it as the storage identity.
+        embedding: Optional precomputed embedding vector (seam).
 
     Returns:
         Tuple of (stored_payload, signal_data, seed_text) where:
@@ -233,14 +251,34 @@ def _compose_memory_payload(
         - seed_text: Text to use for embedding generation
     """
     stored_payload: Dict[str, Any] = dict(value)
+    if text:
+        stored_payload["text"] = text
     stored_payload.setdefault("task", stored_payload.get("text") or key)
     stored_payload.setdefault("tenant_id", tenant)
     stored_payload.setdefault("namespace", namespace)
     stored_payload.setdefault("tenant", tenant)
     stored_payload.setdefault("key", key)
-    stored_payload.setdefault(
-        "memory_type", stored_payload.get("memory_type", "episodic")
+    memory_type = (
+        kind
+        or stored_payload.get("memory_type")
+        or stored_payload.get("kind")
+        or "episodic"
     )
+    stored_payload["memory_type"] = str(memory_type)
+    stored_payload["kind"] = str(memory_type)
+    if session_id:
+        stored_payload["session_id"] = session_id
+    if salience is not None:
+        stored_payload["salience"] = float(salience)
+    if source:
+        stored_payload["source"] = source
+    if embedding is not None:
+        stored_payload["embedding"] = [float(x) for x in embedding]
+    if coord is not None:
+        coord_list = _as_float_list(coord)
+        if coord_list is None:
+            raise HttpError(400, f"invalid coord: {coord!r}")
+        stored_payload["coordinate"] = coord_list
     if meta:
         incoming_meta = dict(meta)
         existing_meta = stored_payload.get("meta")
@@ -280,8 +318,9 @@ def _compose_memory_payload(
         stored_payload["signals"] = signal_data
 
     seed_text = (
-        stored_payload.get("task")
+        text
         or stored_payload.get("text")
+        or stored_payload.get("task")
         or stored_payload.get("content")
         or key
     )

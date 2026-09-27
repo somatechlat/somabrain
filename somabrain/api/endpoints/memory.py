@@ -2,13 +2,24 @@
 
 Migrated from FastAPI to Django Ninja.
 Memory recall, storage, and management endpoints.
+
+CANONICAL CONTRACT (see ``somabrain.api.memory.models`` for the shapes):
+
+* ``POST /api/memory/remember`` — write (alias ``/memory/remember``)
+* ``POST /api/memory/recall``   — read  (alias ``/memory/recall``)
+* ``POST /api/memory/forget``   — delete (alias ``/memory/forget``)
+
+``/api/memory/*`` and ``/memory/*`` are the same handlers (the NinjaAPI is
+dual-mounted in ``somabrain.config.urls``); ``/api/remember`` and friends are
+thin aliases registered in ``somabrain.api.v1`` for the legacy BrainBridge
+dialect. There is exactly one implementation behind all of them.
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import httpx
 from django.conf import settings
@@ -16,10 +27,15 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from somabrain.api.auth import api_key_auth
-from somabrain.api.memory.helpers import _serialize_coord
+from somabrain.api.memory.helpers import (
+    _as_float_list,
+    _resolve_namespace,
+    _serialize_coord,
+)
+from somabrain.api.memory.models import ForgetRequest, ForgetResponse, _iso_created_at
 from somabrain.api.auth import require_auth
 from somabrain.core.exceptions import CircuitBreakerOpen, MemoryServiceError
 from somabrain.services.memory_service import MemoryService
@@ -61,18 +77,76 @@ def _get_wm():
     return get_working_memory()
 
 
+def _hit_text(payload: Any) -> str:
+    """Extract the primary text from a stored memory payload."""
+    if not isinstance(payload, dict):
+        return "" if payload is None else str(payload)
+    for key in ("text", "task", "content", "what", "fact", "headline", "description"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+        if isinstance(value, dict):
+            nested = value.get("text") or value.get("task") or value.get("content")
+            if isinstance(nested, str) and nested.strip():
+                return nested
+    return ""
+
+
+def _hit_record(
+    payload: Any, score: float, layer: str, coord_list: Optional[List[float]]
+) -> dict:
+    """Build one MemoryHit-shaped result plus its legacy aliases."""
+    payload_dict = payload if isinstance(payload, dict) else {"content": payload}
+    coord_str = (
+        f"{coord_list[0]},{coord_list[1]},{coord_list[2]}" if coord_list else None
+    )
+    return {
+        # seam MemoryHit fields
+        "text": _hit_text(payload_dict),
+        "coord": coord_str,
+        "score": float(score),
+        "store": "somabrain" if layer == "wm" else "somafractalmemory",
+        "created_at": _iso_created_at(payload_dict),
+        # legacy aliases
+        "content": payload,
+        "layer": layer,
+        "coordinate": coord_list,
+    }
+
+
 class RecallRequest(BaseModel):
+    """Recall request — accepts ``top_k`` or ``k``, ``tenant`` or ``tenant_id``."""
+
     query: str = Field(..., description="Query text")
     top_k: int = Field(10, description="Max results")
     layer: str = Field("both", description="wm, ltm, or both")
     tenant: Optional[str] = None
+    tenant_id: Optional[str] = Field(None, description="Seam alias for tenant")
     namespace: Optional[str] = None
     universe: Optional[str] = Field(None, description="Optional universe scope")
+    k: Optional[int] = Field(None, description="Seam/legacy alias for top_k")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_aliases(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        d = dict(data)
+        if d.get("top_k") is None and d.get("k") is not None:
+            d["top_k"] = d["k"]
+        if not d.get("tenant") and d.get("tenant_id"):
+            d["tenant"] = d["tenant_id"]
+        return d
 
 
 @router.post("/recall", auth=api_key_auth)
 async def recall_memory(request: HttpRequest, payload: RecallRequest):
-    """Unified recall endpoint backed by the real memory backend."""
+    """Unified recall endpoint backed by the real memory backend.
+
+    Returns seam ``MemoryHit`` items (``text/coord/score/store/created_at``)
+    in ``results``; the legacy ``content/layer/coordinate`` keys are kept on
+    each item as aliases.
+    """
     ctx = await get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
 
@@ -81,9 +155,16 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
         raise HttpError(503, "Memory pool not available")
 
     namespace = payload.namespace or ctx.namespace
-    memsvc = MemoryService(pool, namespace)
+    # Tenant scoping: the request body's tenant wins so a remembered item is
+    # recallable with the same tenant_id even when the X-Tenant-ID header is
+    # absent (the seam carries tenant on every call, not only in headers).
+    tenant = (payload.tenant or payload.tenant_id or ctx.tenant_id or "").strip()
+    tenant = tenant or ctx.tenant_id
+    # Same fully-qualified namespace as the remember path so recall reads the
+    # representation that was written (one write path, one read path).
+    memsvc = MemoryService(pool, _resolve_namespace(tenant, namespace))
 
-    top_k = max(1, int(payload.top_k))
+    top_k = max(1, int(payload.top_k or payload.k or 10))
     layer = payload.layer or "both"
     universe = payload.universe or request.headers.get("X-Universe")
 
@@ -95,14 +176,20 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     degraded_reasons: List[str] = []
 
     def _tenant_match(hit_payload: dict | None) -> bool:
-        """Drop LTM hits that belong to a different tenant/namespace."""
+        """Drop LTM hits that belong to a different tenant/namespace.
+
+        Tenant is the isolation boundary and is always enforced. Namespace is
+        an opt-in refinement: it is only compared when the caller set
+        ``namespace`` explicitly on the request, so a seam-shaped call (which
+        has no namespace field) still sees what it wrote under the default.
+        """
         if not isinstance(hit_payload, dict):
             return True
         hit_tenant = hit_payload.get("tenant") or hit_payload.get("tenant_id")
         hit_namespace = hit_payload.get("namespace")
-        if hit_tenant and hit_tenant != ctx.tenant_id:
+        if hit_tenant and hit_tenant != tenant:
             return False
-        if hit_namespace and hit_namespace != namespace:
+        if hit_namespace and payload.namespace and hit_namespace != payload.namespace:
             return False
         return True
 
@@ -136,13 +223,18 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
                     if isinstance(hit, dict)
                     else getattr(hit, "coordinate", None)
                 )
+                coord_list = _serialize_coord(coord) or _as_float_list(
+                    (payload_data or {}).get("coordinate")
+                    if isinstance(payload_data, dict)
+                    else None
+                )
                 results.append(
-                    {
-                        "content": payload_data,
-                        "layer": "ltm",
-                        "score": float(score) if isinstance(score, (int, float)) else 1.0,
-                        "coordinate": _serialize_coord(coord),
-                    }
+                    _hit_record(
+                        payload_data,
+                        float(score) if isinstance(score, (int, float)) else 1.0,
+                        "ltm",
+                        coord_list,
+                    )
                 )
         except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
             logger.warning("LTM recall failed for namespace=%s: %s", namespace, exc)
@@ -162,14 +254,18 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
         wm = _get_wm()
         if wm:
             try:
-                wm_items = wm.items(ctx.tenant_id)
+                wm_items = wm.items(tenant)
                 wm_hits = len(wm_items)
-                results.extend(
-                    [
-                        {"content": item, "layer": "wm", "score": 1.0}
-                        for item in wm_items[:top_k]
-                    ]
-                )
+                for item in wm_items[:top_k]:
+                    item_payload = item if isinstance(item, dict) else {"content": item}
+                    results.append(
+                        _hit_record(
+                            item,
+                            1.0,
+                            "wm",
+                            _as_float_list(item_payload.get("coordinate")),
+                        )
+                    )
             except Exception as exc:
                 logger.warning("WM recall failed: %s", exc)
 
@@ -180,7 +276,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     dt_ms = round((time.perf_counter() - t0) * 1000.0, 3)
 
     return {
-        "tenant": ctx.tenant_id,
+        "tenant": tenant,
         "namespace": namespace,
         "results": results,
         "wm_hits": wm_hits,
@@ -189,6 +285,53 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
         "total_results": len(results),
         "degraded": degraded,
         "degraded_reasons": degraded_reasons,
+    }
+
+
+@router.post("/forget", response=ForgetResponse, auth=api_key_auth)
+async def forget_memory(request: HttpRequest, payload: ForgetRequest):
+    """Delete the memory at ``coord`` (seam ``MemoryGateway.forget``).
+
+    Fails closed: a backend outage surfaces as an HTTP error, never as a
+    silent success. ``ok: false`` with an ``error`` is returned only when the
+    coordinate is not present.
+    """
+    ctx = await get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    require_auth(request, settings)
+
+    tenant = (payload.tenant or payload.tenant_id or ctx.tenant_id or "").strip()
+    tenant = tenant or ctx.tenant_id
+    namespace = ctx.namespace
+
+    coord_list = _as_float_list(payload.coord)
+    if coord_list is None:
+        raise HttpError(400, f"invalid coord: {payload.coord!r}")
+    coord_str = f"{coord_list[0]},{coord_list[1]},{coord_list[2]}"
+
+    pool = _get_memory_pool()
+    if not pool:
+        raise HttpError(503, "Memory pool not available")
+
+    memsvc = MemoryService(pool, _resolve_namespace(tenant, namespace))
+    memsvc._reset_circuit_if_needed()
+
+    try:
+        deleted = await memsvc.adelete(tuple(coord_list))
+    except AttributeError as exc:
+        # Older backends without delete support must not silently no-op.
+        raise HttpError(501, f"memory backend cannot delete: {exc}") from exc
+    except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
+        raise _map_memory_error(exc) from exc
+    except Exception as exc:
+        logger.exception("forget failed for coord=%s: %s", coord_str, exc)
+        raise HttpError(500, f"forget failed: {exc}") from exc
+
+    return {
+        "ok": bool(deleted),
+        "coord": coord_str,
+        "store": "somafractalmemory",
+        "tenant": tenant,
+        "error": None if deleted else "not found",
     }
 
 

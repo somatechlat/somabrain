@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 api = NinjaAPI(
     title="SomaBrain API",
-    version="1.0.0",
+    version="2.0.0",
+    urls_namespace="somabrain-api",
     description="Cognitive Architecture API - Advanced AI System",
     docs_url="/docs",
 )
@@ -101,6 +102,13 @@ _safe_add_router(api, "/memory/admin/", memory_admin_router, tags=["Memory Admin
 from somabrain.api.endpoints.memory_remember import router as memory_remember_router
 
 _safe_add_router(api, "/memory/", memory_remember_router, tags=["Memory"])
+
+# Legacy BrainBridge spellings (/remember|recall|forget) — thin aliases of the
+# canonical /memory/* handlers above. Canonical contract lives at
+# /api/memory/remember|recall|forget (also reachable at /memory/*).
+from somabrain.api.endpoints.memory_alias import router as memory_alias_router
+
+_safe_add_router(api, "", memory_alias_router, tags=["Memory"])
 
 # Context Router
 from somabrain.api.endpoints.context import router as context_router

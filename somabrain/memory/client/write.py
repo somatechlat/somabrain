@@ -5,9 +5,30 @@ import time
 import logging
 from typing import Any, Tuple, Iterable, List
 from django.conf import settings
-from .serialization import _compat_enrich_payload, _stable_coord, _extract_memory_coord
+from .serialization import (
+    _compat_enrich_payload,
+    _coord_to_str,
+    _explicit_coord,
+    _extract_memory_coord,
+    _stable_coord,
+)
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_coord(
+    coord_key: str, payload: dict, universe: str
+) -> Tuple[float, float, float]:
+    """Resolve the storage identity for a write.
+
+    A caller-supplied ``coord`` / ``coordinate`` wins so the seam's
+    ``make_coord()`` value is the single coordinate writer. Without one the
+    deterministic ``_stable_coord(universe::coord_key)`` is used.
+    """
+    explicit = _explicit_coord(payload)
+    if explicit is not None:
+        return explicit
+    return _stable_coord(f"{universe}::{coord_key}")
 
 
 class WriteMixin:
@@ -18,7 +39,7 @@ class WriteMixin:
     ) -> Tuple[float, float, float]:
         """Store a memory using a stable coordinate derived from coord_key."""
         enriched, universe, _hdr = _compat_enrich_payload(self.cfg, payload, coord_key)
-        coord = _stable_coord(f"{universe}::{coord_key}")
+        coord = _resolve_coord(coord_key, payload, universe)
 
         # ensure we don't mutate caller's dict; copy and normalize metadata
         payload = dict(enriched)
@@ -146,7 +167,7 @@ class WriteMixin:
 
         for coord_key, payload in records:
             enriched, universe, _ = _compat_enrich_payload(self.cfg, payload, coord_key)
-            coord = _stable_coord(f"{universe}::{coord_key}")
+            coord = _resolve_coord(coord_key, payload, universe)
             enriched_payload = dict(enriched)
             enriched_payload.setdefault("coordinate", coord)
             enriched_payload.setdefault("memory_type", "episodic")
@@ -237,7 +258,7 @@ class WriteMixin:
                 enriched, universe, compat_hdr = _compat_enrich_payload(
                     self.cfg, payload, coord_key
                 )
-                coord = _stable_coord(f"{universe}::{coord_key}")
+                coord = _resolve_coord(coord_key, payload, universe)
                 enriched = dict(enriched)
                 enriched.setdefault("coordinate", coord)
                 memory_type = str(
@@ -288,7 +309,7 @@ class WriteMixin:
 
         for coord_key, payload in records:
             enriched, universe, _ = _compat_enrich_payload(self.cfg, payload, coord_key)
-            coord = _stable_coord(f"{universe}::{coord_key}")
+            coord = _resolve_coord(coord_key, payload, universe)
             enriched_payload = dict(enriched)
             enriched_payload.setdefault("coordinate", coord)
             enriched_payload.setdefault("memory_type", "episodic")
@@ -360,7 +381,7 @@ class WriteMixin:
             raise RuntimeError("HTTP memory service required for persistence")
 
         enriched, uni, compat_hdr = _compat_enrich_payload(self.cfg, payload, coord_key)
-        sc = _stable_coord(f"{uni}::{coord_key}")
+        sc = _resolve_coord(coord_key, payload, uni)
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
         memory_type = str(
             enriched.get("memory_type") or enriched.get("type") or "episodic"
@@ -409,7 +430,7 @@ class WriteMixin:
         rid_hdr = {"X-Request-ID": rid} if rid else {}
         enriched, uni, compat_hdr = _compat_enrich_payload(self.cfg, payload, coord_key)
         rid_hdr.update(compat_hdr)
-        sc = _stable_coord(f"{uni}::{coord_key}")
+        sc = _resolve_coord(coord_key, payload, uni)
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
         memory_type = str(
             enriched.get("memory_type") or enriched.get("type") or "episodic"

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://somatech.dev/schemas/compatibility.json",
+  "description": "Soma Cognitive Triad Version Compatibility Contract",
+  "version": "1.0.0",
+  "updated": "2026-06-15",
+  "self": {
+    "name": "somaagent01",
+    "version": "2.0.0",
+    "standalone_port": 20020,
+    "aaas_port": 63900
+  },
+  "requires": {
+    "somabrain": {
+      "min_version": "0.2.0",
+      "max_version": "0.2.x",
+      "aaas_port": 63996,
+      "protocol": "http",
+      "endpoints": {
+        "health": "/health",
+        "recall": "/api/v1/memory/recall",
+        "remember": "/api/v1/memory/store",
+        "context_evaluate": "/v1/context/evaluate",
+        "neuromodulators": "/v1/neuromodulators",
+        "reward": "/v1/learning/reward"
+      }
+    },
+    "somafractalmemory": {
+      "min_version": "0.2.0",
+      "max_version": "0.2.x",
+      "aaas_port": 63901,
+      "protocol": "http",
+      "endpoints": {
+        "health": "/healthz",
+        "store": "/memories",
+        "search": "/memories/search",
+        "fetch": "/memories/{coord}",
+        "graph_link": "/graph/link",
+        "graph_neighbors": "/graph/neighbors"
+      }
+    }
+  },
+  "modes": {
+    "standalone": {
+      "needs": [],
+      "disabled_features": [
+        "brain_bridge",
+        "sfm_adapter",
+        "aaas_billing",
+        "neuromodulator_sync",
+        "sleep_consolidation"
+      ]
+    },
+    "aaas": {
+      "needs": ["somabrain", "somafractalmemory"],
+      "enabled_features": [
+        "brain_bridge",
+        "sfm_adapter",
+        "aaas_billing",
+        "neuromodulator_sync",
+        "sleep_consolidation",
+        "cognitive_context_eval",
+        "episodic_memory",
+        "pending_memory_sync"
+      ]
+    }
+  },
+  "tested_combinations": [
+    {
+      "id": "M-001",
+      "somaagent01": "2.0.0",
+      "somabrain": "0.2.0",
+      "somafractalmemory": "0.2.0",
+      "status": "current",
+      "date": "2026-06-15"
+    }
+  ],
+  "shared_infrastructure": {
+    "postgresql": { "min_version": "15", "aaas_port": 63932 },
+    "redis": { "min_version": "7.0", "aaas_port": 63979 },
+    "kafka": { "min_version": "3.7", "optional_in_standalone": true },
+    "milvus": { "min_version": "2.3" },
+    "keycloak": { "min_version": "24", "aaas_port": 63980 },
+    "vault": { "min_version": "1.13", "aaas_port": 63982 },
+    "opa": { "min_version": "0.54" },
+    "spicedb": { "min_version": "1.29" }
+  }
+}
