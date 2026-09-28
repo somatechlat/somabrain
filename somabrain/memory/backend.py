@@ -16,7 +16,7 @@ import abc
 import asyncio
 from typing import Iterable, List, Optional, Tuple
 
-from .memory_client import RecallHit
+from .types import RecallHit
 
 
 class AbstractMemoryBackend(abc.ABC):

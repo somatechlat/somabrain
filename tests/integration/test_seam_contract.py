@@ -1,6 +1,6 @@
 """Round-trip proof for the canonical memory contract (THE SEAM) — live HTTP.
 
-Replaces the previous in-process ``_Fake*`` / ``monkeypatch`` suite (finding F-05
+Replaces the previous in-process mock / monkeypatch suite (finding F-05
 in SOMA-TRIAD-ARCH-001). Per ``somabrain/AGENT.md:138`` integration suites use
 real infrastructure only. These tests exercise the running SomaBrain API at
 ``:30101`` end to end: remember → recall → forget, tenant isolation, and the

@@ -54,8 +54,9 @@ def verify_lago_signature(request: HttpRequest) -> bool:
     """
     webhook_secret = getattr(settings, "LAGO_WEBHOOK_SECRET", "")
     if not webhook_secret:
-        logger.warning("LAGO_WEBHOOK_SECRET not configured - skipping verification")
-        return True  # Allow in development
+        # T-5 fail-closed: unverified webhooks must not be accepted.
+        logger.error("LAGO_WEBHOOK_SECRET not configured - rejecting webhook")
+        return False
 
     signature = request.headers.get("X-Lago-Signature", "")
     if not signature:

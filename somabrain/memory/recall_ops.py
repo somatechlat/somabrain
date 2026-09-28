@@ -12,7 +12,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, List, Optional
 
-from somabrain.memory.filtering import _filter_payloads_by_keyword
 from somabrain.memory.hit_processing import deduplicate_hits, normalize_recall_hits
 from somabrain.memory.types import RecallHit
 
@@ -21,20 +20,6 @@ if TYPE_CHECKING:
     from somabrain.memory.transport import MemoryHTTPTransport
 
 logger = logging.getLogger(__name__)
-
-
-def filter_hits_by_keyword(hits: List[RecallHit], keyword: str) -> List[RecallHit]:
-    """Filter hits by keyword using payload filtering."""
-    if not hits:
-        return []
-    payloads = [h.payload for h in hits if isinstance(h.payload, dict)]
-    filtered = _filter_payloads_by_keyword(payloads, keyword)
-    if filtered and len(filtered) <= len(payloads):
-        allowed_ids = {id(p) for p in filtered}
-        narrowed = [h for h in hits if id(h.payload) in allowed_ids]
-        if narrowed:
-            return narrowed
-    return hits
 
 
 def _filter_by_tenant(hits: List[RecallHit], tenant: Optional[str]) -> List[RecallHit]:
@@ -115,10 +100,6 @@ def process_search_response(
         hits = filtered_hits
         if not hits:
             return []
-
-    hits = filter_hits_by_keyword(hits, query_text)
-    if not hits:
-        return []
 
     deduped = deduplicate_hits(hits)
     if not deduped:
@@ -394,10 +375,10 @@ def recall_with_degradation(
         # E1.5: Check if we should trigger alert
         degradation_mgr.check_alert(tenant)
         logger.warning(
-            "SFM degraded mode: returning empty results",
+            "SFM degraded mode: raising instead of empty results",
             extra={"tenant": tenant, "query_preview": query[:50] if query else ""},
         )
-        return []
+        raise RuntimeError("SFM degraded mode - recall blocked")
 
     try:
         require_healthy_fn()
@@ -406,13 +387,14 @@ def recall_with_degradation(
         degradation_mgr.mark_recovered(tenant)
         return results
     except RuntimeError as exc:
-        # SFM unavailable - enter degraded mode
+        # SFM unavailable - enter degraded mode. T-5: never dress an outage
+        # as "no memories" — raise so the caller can surface unavailability.
         degradation_mgr.mark_degraded(tenant)
         logger.warning(
             "SFM unavailable, entering degraded mode",
             extra={"tenant": tenant, "error": str(exc)},
         )
-        return []
+        raise
 
 
 async def arecall_with_degradation(

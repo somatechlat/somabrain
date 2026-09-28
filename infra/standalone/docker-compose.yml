@@ -493,6 +493,8 @@ services:
       VAULT_ADDR: "http://somabrain_standalone_vault:8200"
       VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
+      # Shared seam dim: agent MEM_EMBED_DIM == SFM SOMA_VECTOR_DIM == this
+      EMBED_DIM: "768"
       RUNNING_IN_DOCKER: "true"
     # Dev convenience: run Django migrations.
     command: [ "sh", "-lc", "cd /app && python manage.py migrate --noinput" ]

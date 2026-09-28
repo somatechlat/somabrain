@@ -155,7 +155,14 @@ class MilvusClient:
                 "pymilvus library not available. Install pymilvus to use MilvusClient."
             )
 
-        self.dim: int = int(getattr(settings, "SOMABRAIN_EMBED_DIM", 128))
+        # Seam dim unity (ARCHITECTURE-INVARIANTS §2): MEM_EMBED_DIM ==
+        # SOMA_VECTOR_DIM == SOMABRAIN_EMBED_DIM. Never invent a fallback.
+        dim = getattr(settings, "SOMABRAIN_EMBED_DIM", None)
+        if not dim:
+            raise RuntimeError(
+                "SOMABRAIN_EMBED_DIM is not configured — refusing to guess a vector dim"
+            )
+        self.dim: int = int(dim)
         self.collection_name: str = getattr(
             settings, "SOMABRAIN_MILVUS_COLLECTION", "oak_options"
         )

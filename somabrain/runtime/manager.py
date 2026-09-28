@@ -131,7 +131,18 @@ class RuntimeManager:
         try:
             from somabrain.memory.pool import MultiTenantMemory
 
-            self._mt_memory = MultiTenantMemory(cfg=settings)
+            embedder = self._initialize_embedder()
+            scorer = None
+            try:
+                from somabrain.bootstrap.singletons import make_unified_scorer
+
+                scorer = make_unified_scorer(settings)
+            except Exception as se:
+                logger.warning("UnifiedScorer init failed: %s", se)
+
+            self._mt_memory = MultiTenantMemory(
+                cfg=settings, scorer=scorer, embedder=embedder
+            )
             logger.info("Memory pool initialized successfully")
             return self._mt_memory
         except Exception as e:

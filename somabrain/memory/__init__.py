@@ -6,12 +6,10 @@ This module provides:
 - RecallHit: Normalized memory recall hit from the SFM service
 - MemoryHTTPTransport: HTTP transport layer for memory service
 - MemoryClient: Main client for memory operations
-- get_memory_backend: Factory for HTTP or Direct backend (AAAS mode)
 """
 
 from .client import MemoryClient
 
-from .filtering import _filter_payloads_by_keyword
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
 from .hit_processing import (
     coerce_timestamp_value,
@@ -39,7 +37,6 @@ from .payload import (
     prepare_memory_payload,
 )
 from .recall_ops import (
-    filter_hits_by_keyword,
     memories_search_async,
     memories_search_sync,
     process_search_response,
@@ -73,28 +70,6 @@ from .utils import (
 )
 
 
-# AAAS Mode support - lazy imports to avoid circular dependencies
-def get_memory_backend(*args, **kwargs):
-    """Lazy import of get_memory_backend to avoid circular imports."""
-    from .backends import get_memory_backend as _get_memory_backend
-
-    return _get_memory_backend(*args, **kwargs)
-
-
-def is_aaas_mode():
-    """Lazy import of is_aaas_mode to avoid circular imports."""
-    from .backends import is_aaas_mode as _is_aaas_mode
-
-    return _is_aaas_mode()
-
-
-def get_memory_mode():
-    """Lazy import of get_memory_mode to avoid circular imports."""
-    from .backends import get_memory_mode as _get_memory_mode
-
-    return _get_memory_mode()
-
-
 __all__ = [
     # Hierarchical memory
     "LayerPolicy",
@@ -113,8 +88,6 @@ __all__ = [
     "_stable_coord",
     "_parse_coord_string",
     "_extract_memory_coord",
-    # Filtering
-    "_filter_payloads_by_keyword",
     # Hit processing
     "normalize_recall_hits",
     "hit_identity",
@@ -155,17 +128,12 @@ __all__ = [
     # Recall operations
     "memories_search_sync",
     "memories_search_async",
-    "filter_hits_by_keyword",
     "process_search_response",
     # Utility functions
     "get_tenant_namespace",
     "coord_for_key",
     "fetch_by_coord",
     "store_from_payload",
-    # AAAS Mode
-    "get_memory_backend",
-    "get_memory_mode",
-    "is_aaas_mode",
 ]
 
 

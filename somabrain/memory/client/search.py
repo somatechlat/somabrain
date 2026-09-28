@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List
 from .types import RecallHit
 from .serialization import _compat_enrich_payload, _normalize_recall_hits
-from .ranking import _filter_hits_by_keyword, _deduplicate_hits, _rescore_and_rank_hits
+from .ranking import _deduplicate_hits, _rescore_and_rank_hits
 
 
 class SearchMixin:
@@ -55,10 +55,6 @@ class SearchMixin:
                 hits = filtered_hits
                 if not hits:
                     return []
-
-            hits = _filter_hits_by_keyword(hits, query_text)
-            if not hits:
-                return []
 
             deduped = _deduplicate_hits(hits)
             if not deduped:
@@ -124,10 +120,6 @@ class SearchMixin:
                 hits = filtered_hits
                 if not hits:
                     return []
-
-            hits = _filter_hits_by_keyword(hits, query_text)
-            if not hits:
-                return []
 
             deduped = _deduplicate_hits(hits)
             if not deduped:

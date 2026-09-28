@@ -77,6 +77,41 @@ def _get_wm():
     return get_working_memory()
 
 
+def _get_embedder():
+    """Get the runtime semantic embedder (SomaBrain)."""
+    from somabrain.runtime.manager import get_embedder
+
+    return get_embedder()
+
+
+def _evict_wm_coord(wm: Any, tenant: str, coord_list: list) -> int:
+    """Remove WM items whose stored coordinate matches ``coord_list``."""
+    target = tuple(float(x) for x in coord_list)
+    removed = 0
+    store = getattr(wm, "_wms", {}).get(tenant) if hasattr(wm, "_wms") else None
+    if store is None:
+        return 0
+    items = getattr(store, "_items", None)
+    if items is None:
+        return 0
+    keep = []
+    for it in items:
+        payload = getattr(it, "payload", None) or {}
+        raw = payload.get("coordinate") or payload.get("coord")
+        if isinstance(raw, str):
+            try:
+                raw = [float(x) for x in raw.split(",")]
+            except Exception:
+                raw = None
+        if isinstance(raw, (list, tuple)) and len(raw) == 3:
+            if tuple(float(x) for x in raw) == target:
+                removed += 1
+                continue
+        keep.append(it)
+    store._items = keep
+    return removed
+
+
 def _hit_text(payload: Any) -> str:
     """Extract the primary text from a stored memory payload."""
     if not isinstance(payload, dict):
@@ -231,7 +266,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
                 results.append(
                     _hit_record(
                         payload_data,
-                        float(score) if isinstance(score, (int, float)) else 1.0,
+                        float(score) if isinstance(score, (int, float)) else 0.0,
                         "ltm",
                         coord_list,
                     )
@@ -249,23 +284,46 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
             degraded = True
             degraded_reasons.append(f"ltm: {exc}")
 
-    # 2) Add working-memory items when requested
+    # 2) Add working-memory items when requested — semantic score vs query,
+    #    never a hardcoded 1.0 dump (that would crush LTM ranking).
     if layer in ("wm", "both"):
         wm = _get_wm()
         if wm:
             try:
-                wm_items = wm.items(tenant)
-                wm_hits = len(wm_items)
-                for item in wm_items[:top_k]:
-                    item_payload = item if isinstance(item, dict) else {"content": item}
-                    results.append(
-                        _hit_record(
-                            item,
-                            1.0,
-                            "wm",
-                            _as_float_list(item_payload.get("coordinate")),
+                query_vec = None
+                try:
+                    embedder = _get_embedder()
+                    if embedder is not None:
+                        query_vec = embedder.embed(payload.query)
+                except Exception:
+                    query_vec = None
+
+                if query_vec is not None:
+                    scored_wm = wm.recall(tenant, query_vec, top_k)
+                    wm_hits = len(scored_wm)
+                    for score, item in scored_wm[:top_k]:
+                        item_payload = item if isinstance(item, dict) else {"content": item}
+                        results.append(
+                            _hit_record(
+                                item,
+                                float(score),
+                                "wm",
+                                _as_float_list(item_payload.get("coordinate")),
+                            )
                         )
-                    )
+                else:
+                    wm_items = wm.items(tenant, limit=top_k)
+                    wm_hits = len(wm_items)
+                    for item in wm_items[:top_k]:
+                        item_payload = item if isinstance(item, dict) else {"content": item}
+                        results.append(
+                            _hit_record(
+                                item,
+                                0.0,
+                                "wm",
+                                _as_float_list(item_payload.get("coordinate")),
+                            )
+                        )
             except Exception as exc:
                 logger.warning("WM recall failed: %s", exc)
 
@@ -326,12 +384,22 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
         logger.exception("forget failed for coord=%s: %s", coord_str, exc)
         raise HttpError(500, f"forget failed: {exc}") from exc
 
+    # Also evict from working memory so recall cannot resurrect a forgotten row.
+    wm_removed = 0
+    wm = _get_wm()
+    if wm is not None:
+        try:
+            wm_removed = _evict_wm_coord(wm, tenant, coord_list)
+        except Exception as exc:
+            logger.warning("WM evict failed for coord=%s: %s", coord_str, exc)
+
+    ok = bool(deleted) or wm_removed > 0
     return {
-        "ok": bool(deleted),
+        "ok": ok,
         "coord": coord_str,
         "store": "somafractalmemory",
         "tenant": tenant,
-        "error": None if deleted else "not found",
+        "error": None if ok else "not found",
     }
 
 

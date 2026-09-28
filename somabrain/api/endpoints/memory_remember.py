@@ -59,8 +59,13 @@ async def _persist_ltm_in_background(
     """
     try:
         await memsvc.aremember(key, stored_payload)
-    except Exception:
-        logger.debug("Background LTM persist failed for tenant=%s key=%s", tenant_id, key)
+    except Exception as exc:
+        logger.warning(
+            "Background LTM persist failed for tenant=%s key=%s: %s",
+            tenant_id,
+            key,
+            exc,
+        )
     else:
         try:
             from somabrain.db.outbox import mark_event_sent

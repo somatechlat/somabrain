@@ -95,17 +95,33 @@ def _mark_outbox_sent(event_id: int) -> None:
         logger.debug(f"Failed to mark outbox event sent: {exc}")
 
 
-def _get_tenant_namespace(cfg: Any) -> tuple[str, str]:
-    """Resolve tenant and namespace from cfg/settings."""
+def _get_tenant_namespace(cfg: Any, payload: dict | None = None) -> tuple[str, str]:
+    """Resolve tenant and namespace: request payload wins over cfg defaults.
+
+    T-5 / isolation: a write must land on the caller's tenant, never a
+    silent process-wide default. cfg/settings is fallback only when the
+    payload carries no tenant.
+    """
     from django.conf import settings
 
-    tenant = getattr(cfg, "tenant", None) or getattr(
-        settings, "SOMABRAIN_DEFAULT_TENANT", "public"
-    )
-    namespace = getattr(cfg, "namespace", None) or getattr(
-        settings, "SOMABRAIN_NAMESPACE", "public"
-    )
-    return str(tenant or "public"), str(namespace or "public")
+    tenant = ""
+    namespace = ""
+    if isinstance(payload, dict):
+        tenant = str(payload.get("tenant") or payload.get("tenant_id") or "").strip()
+        namespace = str(payload.get("namespace") or "").strip()
+    if not tenant:
+        tenant = str(
+            getattr(cfg, "tenant", None)
+            or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "")
+            or ""
+        ).strip()
+    if not namespace:
+        namespace = str(
+            getattr(cfg, "namespace", None)
+            or getattr(settings, "SOMABRAIN_NAMESPACE", "public")
+            or "public"
+        ).strip()
+    return tenant, namespace
 
 
 def remember_sync_persist(
@@ -126,7 +142,7 @@ def remember_sync_persist(
     if transport is None or transport.client is None:
         raise RuntimeError("HTTP memory service required for persistence")
 
-    tenant, namespace = _get_tenant_namespace(cfg)
+    tenant, namespace = _get_tenant_namespace(cfg, payload)
     enriched, uni, compat_hdr = enrich_payload(
         payload, coord_key, namespace, tenant=tenant
     )
@@ -193,7 +209,7 @@ async def aremember_background(
 
     rid = request_id or str(uuid.uuid4())
     rid_hdr = {"X-Request-ID": rid}
-    tenant, namespace = _get_tenant_namespace(cfg)
+    tenant, namespace = _get_tenant_namespace(cfg, payload)
     enriched, uni, compat_hdr = enrich_payload(
         payload, coord_key, namespace, tenant=tenant
     )
@@ -252,7 +268,7 @@ def prepare_bulk_items(
     prepared: List[dict[str, Any]] = []
     universes: List[str] = []
     coords: List[Tuple[float, float, float]] = []
-    tenant, namespace = _get_tenant_namespace(cfg)
+    tenant, namespace = _get_tenant_namespace(cfg, payload)
     cfg_namespace = getattr(cfg, "namespace", None)
 
     for coord_key, payload in records:

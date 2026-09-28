@@ -71,11 +71,12 @@ def _get_vault_client() -> Any | None:
     )
 
     if not vault_addr or not vault_token:
-        # Fallback: allow test environments to bypass Vault safely.
-        if os.environ.get("DJANGO_SETTINGS_MODULE") and "test" in str(
-            os.environ.get("DJANGO_SETTINGS_MODULE")
-        ):
-            logger.warning("Vault not configured in test environment.")
+        # Explicit test-only bypass (never silent). Production and STANDALONE
+        # must set VAULT_ADDR + VAULT_TOKEN (T-5).
+        if os.environ.get("SOMABRAIN_VAULT_BYPASS") == "1":
+            logger.warning(
+                "SOMABRAIN_VAULT_BYPASS=1 — Vault bypassed (non-production only)"
+            )
             return None
 
         raise VaultNotConfigured(

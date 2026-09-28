@@ -44,11 +44,11 @@ from django.conf import settings
 
 from somabrain.services.memory_service import MemoryService
 
-from .memory_client import MemoryClient
-from .memory_pool import MultiTenantMemory
-from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED
-from .mt_wm import MultiTenantWM
-from .reflect import top_keywords
+from ..core.utils.reflect import top_keywords
+from ..metrics.consolidation import CONSOLIDATION_RUNS, REM_SYNTHESIZED
+from .client import MemoryClient
+from .pool import MultiTenantMemory
+from .wm.mt_wm import MultiTenantWM
 
 
 def _episodics_from_wm(
@@ -191,7 +191,12 @@ def main():
     args = parser.parse_args()
 
     tenant = args.tenant
-    mtwm = MultiTenantWM(dim=getattr(settings, "SOMABRAIN_EMBED_DIM", 256), cfg=None)
+    embed_dim = getattr(settings, "SOMABRAIN_EMBED_DIM", None)
+    if not embed_dim:
+        raise RuntimeError(
+            "SOMABRAIN_EMBED_DIM is not configured — refusing to guess a vector dim"
+        )
+    mtwm = MultiTenantWM(dim=int(embed_dim), cfg=None)
     mtmem = MultiTenantMemory(settings)
 
     if args.nrem:

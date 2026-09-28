@@ -248,10 +248,7 @@ class WriteMixin:
     ) -> Tuple[float, float, float]:
         """Store a memory asynchronously, waiting for real backend confirmation.
 
-        The previous implementation scheduled a background task from sync
-        ``remember`` and returned immediately, which silently reported success
-        even when the backend rejected the write. This version awaits the
-        persistence call and propagates failures so callers can react honestly.
+        Awaits persistence and propagates failures — never silent success.
         """
         if self._http_async is not None:
             try:
@@ -264,26 +261,49 @@ class WriteMixin:
                 memory_type = str(
                     enriched.get("memory_type") or enriched.get("type") or "episodic"
                 )
-                body = {
+                from somabrain.memory.remember import _get_tenant_namespace
+
+                tenant, _ns = _get_tenant_namespace(self.cfg, payload)
+                embedding = enriched.get("embedding")
+                if embedding is None:
+                    embedding = payload.get("embedding")
+                body: dict[str, Any] = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
                     "payload": enriched,
                     "memory_type": memory_type,
                     "type": memory_type,
+                    "tenant_id": tenant or None,
                 }
+                if embedding is not None:
+                    body["embedding"] = embedding
 
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
                 rid_hdr.update(compat_hdr)
                 ok, response_data = await self._store_http_async(body, rid_hdr)
-                if ok and response_data is not None:
-                    server_coord = _extract_memory_coord(
-                        response_data, idempotency_key=rid
-                    )
-                    if server_coord:
-                        return server_coord
-                return coord
-            except Exception:
-                pass
+                if ok:
+                    server_coord = None
+                    if response_data is not None:
+                        try:
+                            server_coord = _extract_memory_coord(
+                                response_data, idempotency_key=rid
+                            )
+                        except Exception:
+                            server_coord = None
+                    return server_coord or coord
+                logger.warning(
+                    "aremember backend rejected write key=%s ok=%s resp=%r",
+                    coord_key,
+                    ok,
+                    response_data,
+                )
+                raise RuntimeError(
+                    f"Memory service unavailable (remember persist failed): {response_data!r}"
+                )
+            except RuntimeError:
+                raise
+            except Exception as exc:
+                logger.warning("aremember async path failed key=%s: %s", coord_key, exc)
 
         # Fall back to the synchronous persistence helper and *await* the result.
         loop = asyncio.get_event_loop()
@@ -386,12 +406,22 @@ class WriteMixin:
         memory_type = str(
             enriched.get("memory_type") or enriched.get("type") or "episodic"
         )
-        body = {
+        # ARCHITECTURE-INVARIANTS §5: embedding and tenant_id are FIRST-CLASS
+        # top-level fields on MemoryStoreRequest — never only inside payload.
+        from somabrain.memory.remember import _get_tenant_namespace
+        tenant, _ns = _get_tenant_namespace(self.cfg, payload)
+        embedding = enriched.get("embedding")
+        if embedding is None:
+            embedding = payload.get("embedding")
+        body: dict[str, Any] = {
             "coord": coord_str,
             "payload": enriched,
             "memory_type": memory_type,
             "type": memory_type,
+            "tenant_id": tenant or None,
         }
+        if embedding is not None:
+            body["embedding"] = embedding
 
         rid = request_id or str(uuid.uuid4())
         rid_hdr = {"X-Request-ID": rid}
@@ -435,17 +465,28 @@ class WriteMixin:
         memory_type = str(
             enriched.get("memory_type") or enriched.get("type") or "episodic"
         )
-        body = {
+        from somabrain.memory.remember import _get_tenant_namespace
+        tenant, _ns = _get_tenant_namespace(self.cfg, payload)
+        embedding = enriched.get("embedding")
+        if embedding is None:
+            embedding = payload.get("embedding")
+        body: dict[str, Any] = {
             "coord": coord_str,
             "payload": enriched,
             "memory_type": memory_type,
             "type": memory_type,
+            "tenant_id": tenant or None,
         }
+        if embedding is not None:
+            body["embedding"] = embedding
 
         try:
             await self._store_http_async(body, rid_hdr)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning(
+                "LTM background persist failed key=%s: %s", coord_key, exc
+            )
+            raise
 
     def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:
         """Compatibility helper: store a payload dict into the memory backend."""

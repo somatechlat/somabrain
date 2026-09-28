@@ -28,7 +28,11 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         self.cfg = cfg if cfg is not None else settings
         self._scorer = scorer
         self._embedder = embedder
-        self.namespace = namespace or "default"
+        if not namespace:
+            raise ValueError(
+                "MemoryClient: namespace is required (T-5 fail-closed, no default)"
+            )
+        self.namespace = namespace
         self.tenant = tenant or self.namespace
         self._mode = "http"
         self._http: Optional[Any] = None
@@ -146,8 +150,10 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         """
         enriched = dict(payload)
         enriched.setdefault("coordinate", tuple(coordinate))
+        if not tenant:
+            raise ValueError("store_with_coord: tenant is required (T-5 fail-closed)")
         enriched.setdefault("tenant", tenant)
-        enriched.setdefault("namespace", self.namespace or "default")
+        enriched.setdefault("namespace", self.namespace)
         # Scope the SFM universe to the tenant so the backend and our filters
         # both keep this memory separate from other tenants.
         enriched.setdefault("universe", tenant)
@@ -155,7 +161,7 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         return await loop.run_in_executor(None, self.store_from_payload, enriched)
 
     async def search(
-        self, query: str, top_k: int = 5, tenant: str = "default"
+        self, query: str, top_k: int = 5, tenant: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Search memories and return raw result dicts (async wrapper).
 
@@ -163,6 +169,8 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         memory universe. Without this, the SFM backend returns memories from
         every tenant and the test/user sees cross-tenant leakage.
         """
+        if not tenant:
+            raise ValueError("search: tenant is required (T-5 fail-closed)")
         loop = asyncio.get_event_loop()
         hits = await loop.run_in_executor(
             None, self.recall, query, top_k, tenant

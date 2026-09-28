@@ -25,9 +25,12 @@ Functions:
 from __future__ import annotations
 
 import hashlib
+import re
 from typing import Callable, Optional
 
 import numpy as np
+
+_TOKEN_RE = re.compile(r"[a-z0-9']+")
 
 # Prefer the optional top-level arc_cache helper; if unavailable, caching is disabled
 try:  # pragma: no cover - trivial import guard
@@ -51,61 +54,53 @@ except Exception:  # pragma: no cover
 
 class TinyDeterministicEmbedder:
     """
-    Deterministic, tiny CPU-only embedder for local development.
+    Deterministic CPU-only feature-hashing embedder.
 
-    Produces unit-norm Gaussian vectors seeded deterministically by input text.
-    This embedder is designed for development and testing environments where
-    reproducibility and low resource usage are prioritized over semantic quality.
+    Token-level hashing (not whole-string RNG) so shared words map to shared
+    dimensions — "what is my name" and "User preferred name is NEO" actually
+    overlap. Unit-norm, reproducible, no network.
 
     Attributes:
         dim (int): Dimensionality of output embedding vectors.
         seed_salt (int): Salt value for seeding random number generation.
-
-    Example:
-        >>> embedder = TinyDeterministicEmbedder(dim=128, seed_salt=42)
-        >>> vector = embedder.embed("hello world")
-        >>> print(f"Vector shape: {vector.shape}, Norm: {np.linalg.norm(vector):.3f}")
     """
 
-    def __init__(self, dim: int = 256, seed_salt: int = 1337):
+    def __init__(self, dim: int = 768, seed_salt: int = 1337):
         """
         Initialize the deterministic embedder.
-        Enforces global HRR_DIM, HRR_DTYPE, and SEED for reproducibility.
         Args:
-            dim (int, optional): Output vector dimensionality. Defaults to 256.
+            dim (int, optional): Output vector dimensionality. Defaults to 768.
             seed_salt (int, optional): Salt for random seed generation. Defaults to 1337.
         """
         self.dim = int(dim)
         self.seed_salt = int(seed_salt)
 
-    def _seed(self, text: str) -> int:
-        """
-        Generate deterministic seed from text.
-
-        Uses BLAKE2b hash of the input text combined with seed salt to produce
-        a deterministic seed for random number generation.
-
-        Args:
-            text (str): Input text to seed from.
-
-        Returns:
-            int: Deterministic seed value.
-        """
-        h = hashlib.blake2b(text.encode("utf-8"), digest_size=8).digest()
-        return int.from_bytes(h, "big") ^ self.seed_salt
+    def _token_digest(self, token: str) -> bytes:
+        return hashlib.blake2b(
+            f"{self.seed_salt}:{token}".encode("utf-8"), digest_size=16
+        ).digest()
 
     def embed(self, text: str) -> np.ndarray:
         """
-        Generate embedding vector for input text.
-        Produces a unit-norm Gaussian vector using deterministic seeding, global HRR_DTYPE.
-        The same text will always produce the same embedding vector.
-        Mathematical invariant: always unit-norm, HRR_DTYPE, reproducible.
+        Feature-hash tokens into a unit-norm vector.
+
+        Same tokens → same dimensions. Empty text maps to a zero-safe unit vector.
         """
         from somabrain.math import normalize_vector
 
-        rng = np.random.default_rng(self._seed(text))
-        v = rng.normal(0.0, 1.0, size=self.dim).astype("float32")
-        return normalize_vector(v, dtype=np.float32)
+        vec = np.zeros(self.dim, dtype="float32")
+        raw = (text or "").lower()
+        tokens = [t for t in _TOKEN_RE.findall(raw) if t]
+        if not tokens:
+            tokens = ["__empty__"]
+        for token in tokens:
+            digest = self._token_digest(token)
+            n = len(digest)
+            for offset in (0, 4, 8):
+                idx = int.from_bytes(digest[offset : offset + 4], "big") % self.dim
+                sign = 1.0 if digest[(offset + 4) % n] & 1 else -1.0
+                vec[idx] += sign
+        return normalize_vector(vec, dtype=np.float32)
 
 
 class _JLProjector:

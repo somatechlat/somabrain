@@ -30,6 +30,32 @@ logger = logging.getLogger("somabrain.api.endpoints.neuromod")
 
 router = Router(tags=["neuromod"])
 
+_NEUROMOD_STORE = None
+
+
+def _neuromod_store():
+    """Process-wide PerTenantNeuromodulators (real runtime store, not a mock)."""
+    global _NEUROMOD_STORE
+    if _NEUROMOD_STORE is None:
+        from somabrain.runtime.neuromodulators import PerTenantNeuromodulators
+
+        _NEUROMOD_STORE = PerTenantNeuromodulators()
+    return _NEUROMOD_STORE
+
+
+def _state_values(tenant_id: str) -> dict:
+    from somabrain.runtime.neuromodulators import NeuromodState
+
+    state = _neuromod_store().get_state(tenant_id)
+    if not isinstance(state, NeuromodState):
+        state = NeuromodState()
+    return {
+        "dopamine": float(state.dopamine),
+        "serotonin": float(state.serotonin),
+        "noradrenaline": float(state.noradrenaline),
+        "acetylcholine": float(state.acetylcholine),
+    }
+
 
 @router.get("/state", auth=api_key_auth)
 def get_neuromod_state(request: HttpRequest):
@@ -37,37 +63,15 @@ def get_neuromod_state(request: HttpRequest):
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
 
-    # Get neuromodulator values from app singletons
     try:
-        from somabrain import app as app_module
-
-        neuromod_manager = getattr(app_module, "per_tenant_neuromodulators", None)
-
-        if neuromod_manager and hasattr(neuromod_manager, "get"):
-            values = neuromod_manager.get(ctx.tenant_id)
-        else:
-            # Default values
-            values = {
-                "dopamine": 0.5,
-                "serotonin": 0.5,
-                "noradrenaline": 0.5,
-                "acetylcholine": 0.5,
-            }
+        values = _state_values(ctx.tenant_id)
     except Exception as exc:
-        logger.warning(f"Failed to get neuromod state: {exc}")
-        values = {
-            "dopamine": 0.5,
-            "serotonin": 0.5,
-            "noradrenaline": 0.5,
-            "acetylcholine": 0.5,
-        }
+        logger.warning("Failed to get neuromod state: %s", exc)
+        values = _state_values(ctx.tenant_id)
 
     return {
         "tenant_id": ctx.tenant_id,
-        "dopamine": values.get("dopamine", 0.5),
-        "serotonin": values.get("serotonin", 0.5),
-        "noradrenaline": values.get("noradrenaline", 0.5),
-        "acetylcholine": values.get("acetylcholine", 0.5),
+        **values,
     }
 
 
@@ -78,47 +82,22 @@ def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
     require_auth(request, settings)
 
     try:
-        from somabrain import app as app_module
+        from somabrain.runtime.neuromodulators import NeuromodState
 
-        neuromod_manager = getattr(app_module, "per_tenant_neuromodulators", None)
-
-        if neuromod_manager and hasattr(neuromod_manager, "adjust"):
-            # Apply adjustments
-            adjustments = {}
-            if hasattr(body, "dopamine"):
-                adjustments["dopamine"] = body.dopamine
-            if hasattr(body, "serotonin"):
-                adjustments["serotonin"] = body.serotonin
-            if hasattr(body, "noradrenaline"):
-                adjustments["noradrenaline"] = body.noradrenaline
-            if hasattr(body, "acetylcholine"):
-                adjustments["acetylcholine"] = body.acetylcholine
-
-            neuromod_manager.adjust(ctx.tenant_id, **adjustments)
-            values = neuromod_manager.get(ctx.tenant_id)
-        else:
-            values = {
-                "dopamine": getattr(body, "dopamine", 0.5),
-                "serotonin": getattr(body, "serotonin", 0.5),
-                "noradrenaline": getattr(body, "noradrenaline", 0.5),
-                "acetylcholine": getattr(body, "acetylcholine", 0.5),
-            }
-
-        logger.info(f"Neuromod adjusted for {ctx.tenant_id}")
-
+        store = _neuromod_store()
+        current = _state_values(ctx.tenant_id)
+        for name in ("dopamine", "serotonin", "noradrenaline", "acetylcholine"):
+            val = getattr(body, name, None)
+            if val is not None:
+                current[name] = float(val)
+        store.set_state(ctx.tenant_id, NeuromodState(**current))
+        values = current
+        logger.info("Neuromod adjusted for %s", ctx.tenant_id)
     except Exception as exc:
-        logger.error(f"Failed to adjust neuromod: {exc}")
-        values = {
-            "dopamine": 0.5,
-            "serotonin": 0.5,
-            "noradrenaline": 0.5,
-            "acetylcholine": 0.5,
-        }
+        logger.error("Failed to adjust neuromod: %s", exc)
+        values = _state_values(ctx.tenant_id)
 
     return {
         "tenant_id": ctx.tenant_id,
-        "dopamine": values.get("dopamine", 0.5),
-        "serotonin": values.get("serotonin", 0.5),
-        "noradrenaline": values.get("noradrenaline", 0.5),
-        "acetylcholine": values.get("acetylcholine", 0.5),
+        **values,
     }

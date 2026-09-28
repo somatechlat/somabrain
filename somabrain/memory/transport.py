@@ -318,9 +318,18 @@ def create_memory_transport(
     # TENANT ISOLATION (D1.3): Always set tenant headers for isolation
     tenant, namespace = get_tenant_namespace(cfg)
 
-    # CRITICAL: Always set both headers - never leave empty (D1.4)
-    headers["X-Soma-Namespace"] = namespace or "default"
-    headers["X-Soma-Tenant"] = tenant or "default"
+    # T-5 fail-closed: never silently map a missing tenant/namespace to
+    # "default" — that is cross-tenant mixing by omission (F-06 / R-05).
+    if not tenant:
+        raise RuntimeError(
+            "memory transport: tenant is not configured (T-5 fail-closed)"
+        )
+    if not namespace:
+        raise RuntimeError(
+            "memory transport: namespace is not configured (T-5 fail-closed)"
+        )
+    headers["X-Soma-Namespace"] = namespace
+    headers["X-Soma-Tenant"] = tenant
 
     max_conns = _http_setting("http_max_connections", 64)
     keepalive = _http_setting("http_keepalive_connections", 32)

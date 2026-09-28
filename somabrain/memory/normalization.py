@@ -11,24 +11,14 @@ from typing import Any, Optional, Tuple
 
 
 def _stable_coord(key: str) -> Tuple[float, float, float]:
-    """Derive a deterministic 3D coordinate in [-1,1]^3 from a string key.
+    """Re-export the single coordinate authority (T-2).
 
-    Uses BLAKE2b hashing to generate a reproducible coordinate from any
-    string key. This ensures the same key always maps to the same location
-    in the coordinate space.
-
-    Args:
-        key: The string key to hash into a coordinate.
-
-    Returns:
-        A tuple (x, y, z) where each component is in [-1, 1].
+    Implementation lives in ``somabrain.memory.client.serialization`` so the
+    in-repo definition count stays at one. Hash math must not change.
     """
-    h = hashlib.blake2b(key.encode("utf-8"), digest_size=12).digest()
-    a = int.from_bytes(h[0:4], "big") / 2**32
-    b = int.from_bytes(h[4:8], "big") / 2**32
-    c = int.from_bytes(h[8:12], "big") / 2**32
-    # spread over [-1, 1]
-    return (2 * a - 1, 2 * b - 1, 2 * c - 1)
+    from somabrain.memory.client.serialization import _stable_coord as _impl
+
+    return _impl(key)
 
 
 def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:

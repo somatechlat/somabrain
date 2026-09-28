@@ -208,36 +208,6 @@ def _rank_hits(hits: List[RecallHit], query: str) -> List[RecallHit]:
     return [item[-1] for item in ranked]
 
 
-def _filter_payloads_by_keyword(payloads: Iterable[Any], keyword: str) -> List[dict]:
-    items: List[dict] = [p for p in payloads if isinstance(p, dict)]
-    key = str(keyword or "").strip().lower()
-    if not key:
-        return items
-
-    filtered: List[dict] = []
-    fields = ("what", "headline", "text", "content", "who", "task", "session")
-    for entry in items:
-        for field in fields:
-            value = entry.get(field)
-            if isinstance(value, str) and key in value.lower():
-                filtered.append(entry)
-                break
-    return filtered or items
-
-
-def _filter_hits_by_keyword(hits: List[RecallHit], keyword: str) -> List[RecallHit]:
-    if not hits:
-        return []
-    payloads = [h.payload for h in hits if isinstance(h.payload, dict)]
-    filtered = _filter_payloads_by_keyword(payloads, keyword)
-    if filtered and len(filtered) <= len(payloads):
-        allowed_ids = {id(p) for p in filtered}
-        narrowed = [h for h in hits if id(h.payload) in allowed_ids]
-        if narrowed:
-            return narrowed
-    return hits
-
-
 def _recency_normalisation(cfg: Any) -> tuple[float, float]:
     scale = getattr(cfg, "recall_recency_time_scale", 60.0)
     if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
@@ -380,18 +350,47 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
     return value
 
 
+def _resolve_semantic_scorer(cfg: Any, scorer: Any, embedder: Any) -> tuple[Any, Any]:
+    """Return (scorer, embedder) from runtime when not injected.
+
+    Semantic ranking is mandatory — never fall back to lexical/keyword ranking.
+    """
+    if scorer is not None and embedder is not None:
+        return scorer, embedder
+    try:
+        from somabrain.runtime.manager import get_embedder
+
+        embedder = embedder or get_embedder()
+    except Exception:
+        embedder = embedder or None
+    if scorer is None:
+        try:
+            from somabrain.bootstrap.singletons import make_unified_scorer
+
+            scorer = make_unified_scorer(cfg)
+        except Exception:
+            scorer = None
+    if scorer is None or embedder is None:
+        raise RuntimeError(
+            "SomaBrain semantic scorer/embedder required for recall ranking"
+        )
+    return scorer, embedder
+
+
 def _rescore_and_rank_hits(
     cfg: Any, scorer: Any, embedder: Any, hits: List[RecallHit], query: str
 ) -> List[RecallHit]:
-    if not scorer or not embedder:
-        _apply_weighting_to_hits(cfg, hits)
-        return _rank_hits(hits, query)
+    scorer, embedder = _resolve_semantic_scorer(cfg, scorer, embedder)
 
     query_vec = embedder.embed(query)
     now_ts = datetime.now(timezone.utc).timestamp()
 
     def _text_of(p: dict) -> str:
-        return str(p.get("task") or p.get("fact") or p.get("content") or "").strip()
+        for key in ("text", "content", "task", "fact", "headline", "what"):
+            v = p.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return ""
 
     scored_hits = []
     for hit in hits:

@@ -367,21 +367,25 @@ def rescore_and_rank_hits(
         Sorted list of RecallHit objects (highest score first).
     """
     if not scorer or not embedder:
-        # Use alternative logic if scorer is not available
-        apply_weighting_to_hits(hits)
-        return rank_hits(hits, query)
+        try:
+            from somabrain.memory.client.ranking import _resolve_semantic_scorer
+
+            scorer, embedder = _resolve_semantic_scorer(cfg, scorer, embedder)
+        except Exception as exc:
+            raise RuntimeError(
+                "SomaBrain semantic scorer/embedder required for recall ranking"
+            ) from exc
 
     query_vec = embedder.embed(query)
     now_ts = datetime.now(timezone.utc).timestamp()
 
     def _text_of(p: dict) -> str:
-        """Execute text of.
-
-        Args:
-            p: The p.
-        """
-
-        return str(p.get("task") or p.get("fact") or p.get("content") or "").strip()
+        """Canonical text for embedding — must include the seam `text` field."""
+        for key in ("text", "content", "task", "fact", "headline", "what"):
+            v = p.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return ""
 
     scored_hits = []
     for hit in hits:
