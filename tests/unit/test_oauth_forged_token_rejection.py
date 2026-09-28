@@ -1,4 +1,4 @@
-"""OAuth JWT auth security tests.
+"""OAuth JWT auth — forged-token rejection security tests.
 
 Verify that forged tokens are rejected even when DEBUG=True — including when the
 JWKS endpoint is unreachable, which is exactly the path that must never fall
