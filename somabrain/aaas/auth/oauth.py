@@ -15,8 +15,9 @@ class JWTAuth(HttpBearer):
     """
     JWT authentication for Keycloak SSO.
 
-    Validates JWTs issued by Keycloak with proper JWKS verification.
-    VIBE COMPLIANT: Real signature verification enabled.
+    Validates JWTs issued by Keycloak with proper JWKS signature verification.
+    VIBE COMPLIANT: Signature verification is always enforced, including in DEBUG.
+    There is no unverified decode path — DEBUG is not a license to skip auth.
     """
 
     def authenticate(self, request: HttpRequest, token: str) -> dict | None:
@@ -38,32 +39,22 @@ class JWTAuth(HttpBearer):
                 f"{keycloak_url}/realms/{keycloak_realm}/protocol/openid-connect/certs"
             )
 
-            # Get signing key from JWKS
+            # Get signing key from JWKS. If the key material cannot be fetched
+            # there is nothing to verify against, so authentication fails closed.
             try:
                 jwks_client = PyJWKClient(jwks_uri, cache_keys=True)
                 signing_key = jwks_client.get_signing_key_from_jwt(token)
             except Exception as e:
                 logger.error(f"JWKS fetch failed: {e}")
-                # Fall back to unverified decode if JWKS unavailable
-                # This allows local dev without Keycloak running
-                if getattr(settings, "DEBUG", False):
-                    logger.warning("DEBUG mode: falling back to unverified JWT decode")
-                    payload = jwt.decode(
-                        token,
-                        options={"verify_signature": False},
-                        algorithms=["RS256"],
-                    )
-                else:
-                    return None
-            else:
-                # Production: Verify signature
-                payload = jwt.decode(
-                    token,
-                    signing_key.key,
-                    algorithms=["RS256"],
-                    audience=getattr(settings, "KEYCLOAK_CLIENT_ID", None),
-                    issuer=f"{keycloak_url}/realms/{keycloak_realm}",
-                )
+                return None
+
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                audience=getattr(settings, "KEYCLOAK_CLIENT_ID", None),
+                issuer=f"{keycloak_url}/realms/{keycloak_realm}",
+            )
 
             return {
                 "user_id": payload.get("sub"),
