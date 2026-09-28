@@ -12,12 +12,12 @@ Exit Codes:
   1: One or more components failed readiness checks
 
 Environment variables (taken from existing config):
-  SOMABRAIN_POSTGRES_DSN        Postgres DSN (e.g. postgresql://user:pass@host:5432/db)
+  SOMABRAIN_POSTGRES_DSN        Postgres DSN (format: postgresql://<user>:<password>@host:port/dbname)
   SOMABRAIN_REDIS_URL           Redis URL (e.g. redis://127.0.0.1:6379/0)
   SOMABRAIN_KAFKA_URL           Kafka host:port (dev convenience)
   SOMA_KAFKA_BOOTSTRAP          Preferred bootstrap servers (compose/k8s)
   SOMABRAIN_OPA_URL             OPA base URL (e.g. http://127.0.0.1:8181)
-  SOMABRAIN_TOPIC_*             Required Kafka topic names (reward/config/global_frame/next_events)
+  SOMABRAIN_TOPIC_*             Required Kafka topic names (reward/config/global_frame/next_event)
 
 Strict posture: no silent alternatives; if any component is unavailable the script exits 1.
 """
@@ -41,7 +41,7 @@ REQUIRED_TOPIC_ENV_VARS = [
     "SOMABRAIN_TOPIC_REWARD_EVENTS",
     "SOMABRAIN_TOPIC_CONFIG_UPDATES",
     "SOMABRAIN_TOPIC_GLOBAL_FRAME",
-    "SOMABRAIN_TOPIC_NEXT_EVENTS",
+    "SOMABRAIN_TOPIC_NEXT_EVENT",
 ]
 
 

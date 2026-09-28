@@ -69,14 +69,6 @@ def _get_vault_client() -> Any | None:
     )
 
     if not vault_addr or not vault_token:
-        # Explicit test-only bypass (never silent). Production and STANDALONE
-        # must set VAULT_ADDR + VAULT_TOKEN (T-5).
-        if os.environ.get("SOMABRAIN_VAULT_BYPASS") == "1":
-            logger.warning(
-                "SOMABRAIN_VAULT_BYPASS=1 — Vault bypassed (non-production only)"
-            )
-            return None
-
         raise VaultNotConfigured(
             "Vault not configured. Set VAULT_ADDR and VAULT_TOKEN environment variables."
         )

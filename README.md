@@ -209,9 +209,13 @@ services:
     ports:
       - "9696:9696"
     environment:
-      - SOMABRAIN_POSTGRES_DSN=postgresql://soma@postgres/somabrain
+      # Secrets are NOT environment variables. The DSN embeds the password, so
+      # it is read from Vault at runtime and never set here:
+      #   secret/agent/credentials/postgres_password
+      # Topology only:
       - SOMABRAIN_REDIS_URL=redis://redis:6379/0
       - SOMABRAIN_MILVUS_HOST=milvus
+    # VAULT_ADDR + VAULT_TOKEN are injected by the deployer, never committed.
 ```
 
 ---

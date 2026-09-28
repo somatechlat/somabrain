@@ -865,7 +865,7 @@ SOMA_DB_USER=postgres
 SOMA_DB_PASSWORD=somastack2024
 
 # Redis
-REDIS_URL=redis://:somastack2024@localhost:20379/1
+REDIS_URL=redis://<user>:<password>@localhost:20379/1
 
 # Memory Service
 SOMA_MEMORY_URL=http://localhost:10101
@@ -1616,7 +1616,7 @@ SOMABRAIN_REDIS_URL="redis://localhost:30100"
 SOMABRAIN_KAFKA_URL="somabrain_standalone_kafka:9092"
 
 # Postgres
-SOMABRAIN_POSTGRES_DSN="postgresql://soma:soma@localhost:30106/somabrain"
+SOMABRAIN_POSTGRES_DSN="postgresql://<user>:<password>@localhost:30106/somabrain"
 
 # OPA
 SOMABRAIN_OPA_URL="http://localhost:30104"
@@ -3636,7 +3636,7 @@ class AppConfig(BaseSettings):
     """
 
     # Database
-    database_url: str = "postgresql://user:pass@localhost/somabrain"
+    database_url: str = "postgresql://<user>:<password>@localhost/somabrain"
     database_pool_size: int = 10
 
     # Vector Service
@@ -3666,7 +3666,7 @@ class AppConfig(BaseSettings):
 
 **Development** (`.env.development`):
 ```bash
-SOMABRAIN_DATABASE_URL=postgresql://dev:dev@localhost/somabrain_dev
+SOMABRAIN_DATABASE_URL=postgresql://<user>:<password>@localhost/somabrain_dev
 SOMABRAIN_LOG_LEVEL=DEBUG
 SOMABRAIN_PROMETHEUS_METRICS=false
 ```

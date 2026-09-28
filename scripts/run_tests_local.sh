@@ -23,8 +23,14 @@ export SOMABRAIN_MILVUS_PORT=20530
 export MILVUS_PORT=20530
 export SOMABRAIN_OPA_URL=http://localhost:20181
 export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:10101
-export SOMABRAIN_MEMORY_HTTP_TOKEN="${SOMABRAIN_MEMORY_HTTP_TOKEN:-}"
-export SOMA_API_TOKEN="${SOMA_API_TOKEN:-${SOMABRAIN_MEMORY_HTTP_TOKEN:-}}"
+# Service tokens are credentials: read from Vault, never defaulted to empty.
+# An empty default is a shim that authenticates as nobody.
+if [ -z "${SOMABRAIN_MEMORY_HTTP_TOKEN:-}" ]; then
+  echo "ERROR: SOMABRAIN_MEMORY_HTTP_TOKEN is not set." >&2
+  echo "  Read it from Vault: secret/agent/credentials/somabrain_memory_http_token" >&2
+  exit 1
+fi
+export SOMA_API_TOKEN="${SOMA_API_TOKEN:-$SOMABRAIN_MEMORY_HTTP_TOKEN}"
 
 echo "🔍 Verifying Critical Env Vars:"
 echo "   SOMA_MILVUS_PORT=$SOMA_MILVUS_PORT"

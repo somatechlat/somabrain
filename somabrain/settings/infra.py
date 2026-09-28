@@ -58,7 +58,7 @@ def configure_infra_secrets() -> None:
     try:
         db_creds = get_db_credentials()
         # Construct DSN from Vault if available
-        # Expected format: postgres://user:pass@host:port/db
+        # Expected format: postgres://<user>:<password>@host:port/db
         if db_creds:
             _user = db_creds.get("username")
             _pass = db_creds.get("password")

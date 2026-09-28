@@ -264,7 +264,7 @@ Two deployment modes controlled by `SOMABRAIN_MODE` (`somabrain/core/mode.py`):
 
 ```bash
 # Infrastructure
-SOMABRAIN_POSTGRES_DSN=postgresql://user:pass@host/db
+SOMABRAIN_POSTGRES_DSN=postgresql://<user>:<password>@host/db
 SOMABRAIN_REDIS_URL=redis://host:6379/0
 SOMABRAIN_KAFKA_URL=kafka://host:9092
 SOMABRAIN_MILVUS_HOST=milvus

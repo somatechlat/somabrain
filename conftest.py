@@ -35,12 +35,24 @@ test_memory_endpoint = os.environ.get(
 test_pg_user = os.environ.get(
     "TEST_PG_USER", os.environ.get("POSTGRES_USER", "somabrain")
 )
-test_pg_password = os.environ.get(
-    "TEST_PG_PASSWORD", os.environ.get("POSTGRES_PASSWORD", "somabrain")
-)
 test_pg_host = os.environ.get("TEST_PG_HOST", "localhost")
 test_pg_port = os.environ.get("TEST_PG_PORT", "30106")
 test_pg_db = os.environ.get("TEST_PG_DB", os.environ.get("POSTGRES_DB", "somabrain"))
+
+# VIBE secret contract: the test DB password is a credential, so it is never a
+# literal in this file and never defaulted. It is resolved from Vault
+# (secret/agent/credentials/postgres_password via get_db_credentials) exactly as
+# production does. The test runner may inject it explicitly through
+# TEST_PG_PASSWORD; there is deliberately no fallback value — a baked-in default
+# would be a dummy credential past a real auth gate.
+test_pg_password = os.environ.get("TEST_PG_PASSWORD")
+if not test_pg_password:
+    try:
+        from somabrain.core.security.vault_client import get_db_credentials
+
+        test_pg_password = (get_db_credentials() or {}).get("password")
+    except Exception:
+        test_pg_password = None
 
 if "TEST_PG_DSN" in os.environ:
     test_pg_dsn = os.environ["TEST_PG_DSN"]
@@ -60,7 +72,9 @@ test_redis_url = os.environ.get(
 )
 
 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = test_memory_endpoint
-os.environ.setdefault("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
+# No empty-string default for the memory HTTP token: an empty token is a shim
+# that lets a service authenticate as nobody. The test runner supplies the real
+# value (from Vault) or the call fails closed.
 os.environ.setdefault("SOMABRAIN_API_URL", "http://localhost:30101")
 os.environ["SOMABRAIN_REDIS_URL"] = test_redis_url
 os.environ["REDIS_URL"] = test_redis_url

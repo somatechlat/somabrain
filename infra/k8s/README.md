@@ -52,7 +52,7 @@ brain-resilient.yaml
 ## Environment Variables (ConfigMap)
 ```yaml
 SOMABRAIN_LOG_LEVEL: "INFO"
-SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma@postgres:5432/somabrain"
+SOMABRAIN_POSTGRES_DSN: "postgresql://<user>:<password>@postgres:5432/somabrain"
 SOMABRAIN_REDIS_URL: "redis://redis:6379/0"
 SOMABRAIN_KAFKA_URL: "kafka:9092"
 SOMABRAIN_MILVUS_HOST: "milvus"

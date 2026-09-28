@@ -75,13 +75,6 @@ def _get_jwt_cache() -> JWTKeyCache:
     return container.get("jwt_key_cache")
 
 
-def _auth_disabled() -> bool:
-    # Auth disable capability removed: always enforce auth in strict mode.
-    """Execute auth disabled."""
-
-    return False
-
-
 def _get_jwt_key() -> str | None:
     """Get JWT key with TTL-based caching.
 
