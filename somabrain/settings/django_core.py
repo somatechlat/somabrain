@@ -130,6 +130,7 @@ def configure_vault_secrets() -> None:
         os.environ["SOMA_API_TOKEN"] = api_token
         os.environ["SOMABRAIN_API_TOKEN"] = api_token
 
+
 SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
 if not SECRET_KEY:
     raise environ.ImproperlyConfigured(

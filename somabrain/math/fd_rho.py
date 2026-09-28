@@ -5,7 +5,6 @@ matrix S such that S^T S approximates the covariance of streamed vectors.
 It supports inserting vectors and extracting a low-rank approximation.
 """
 
-from typing import Optional
 
 import numpy as np
 
@@ -55,7 +54,7 @@ class FrequentDirections:
         """Return S^T S as the FD covariance approximation."""
         return self.S.T @ self.S
 
-    def top_components(self, r: Optional[int] = None):
+    def top_components(self, r: int | None = None):
         """Execute top components.
 
         Args:

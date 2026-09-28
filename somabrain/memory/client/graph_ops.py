@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from opentelemetry import trace
 
@@ -30,11 +30,11 @@ logger = logging.getLogger(__name__)
 class GraphLink:
     """Represents a graph link between two coordinates."""
 
-    from_coord: Tuple[float, ...]
-    to_coord: Tuple[float, ...]
+    from_coord: tuple[float, ...]
+    to_coord: tuple[float, ...]
     link_type: str
     strength: float = 1.0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
     tenant: str = "default"
     created_at: float = 0.0
 
@@ -43,28 +43,30 @@ class GraphLink:
 class GraphNeighbor:
     """Represents a neighbor in the graph."""
 
-    coord: Tuple[float, ...]
+    coord: tuple[float, ...]
     link_type: str
     strength: float = 1.0
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class GraphOpsMixin:
     """Mixin adding graph operations to MemoryClient."""
 
-    def _coord_to_str(self, coord: Tuple[float, ...]) -> str:
+    def _coord_to_str(self, coord: tuple[float, ...]) -> str:
         """Convert coordinate tuple to comma-separated string."""
         return ",".join(str(c) for c in coord)
 
-    def _str_to_coord(self, coord_str: str) -> Tuple[float, ...]:
+    def _str_to_coord(self, coord_str: str) -> tuple[float, ...]:
         """Convert comma-separated string to coordinate tuple."""
         return tuple(float(c) for c in coord_str.split(","))
 
-    def _graph_headers(self, tenant: str) -> Dict[str, str]:
+    def _graph_headers(self, tenant: str) -> dict[str, str]:
         """Build headers for graph requests."""
         return {"X-Soma-Tenant": tenant}
 
-    def _queue_to_outbox(self, topic: str, payload: Dict[str, Any], tenant: str) -> None:
+    def _queue_to_outbox(
+        self, topic: str, payload: dict[str, Any], tenant: str
+    ) -> None:
         """Queue a failed operation to the outbox for retry."""
         try:
             from somabrain.db.outbox import (
@@ -104,11 +106,11 @@ class GraphOpsMixin:
 
     def create_link(
         self,
-        from_coord: Tuple[float, ...],
-        to_coord: Tuple[float, ...],
+        from_coord: tuple[float, ...],
+        to_coord: tuple[float, ...],
         link_type: str = "related",
         strength: float = 1.0,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
         tenant: str = "default",
         timeout_ms: float = 100.0,
     ) -> bool:
@@ -216,13 +218,13 @@ class GraphOpsMixin:
 
     def get_neighbors(
         self,
-        coord: Tuple[float, ...],
+        coord: tuple[float, ...],
         k_hop: int = 1,
         limit: int = 10,
-        link_type: Optional[str] = None,
+        link_type: str | None = None,
         tenant: str = "default",
         timeout_ms: float = 100.0,
-    ) -> List[GraphNeighbor]:
+    ) -> list[GraphNeighbor]:
         """Get neighbors of a coordinate."""
         tracer = trace.get_tracer("soma.memory_client")
         with tracer.start_as_current_span("sb_graph_neighbors_query") as span:
@@ -235,8 +237,12 @@ class GraphOpsMixin:
             start_time = time.perf_counter()
 
             if self._http is None or self._http.client is None:
-                logger.warning("GraphOpsMixin: transport not available for get_neighbors")
-                SB_GRAPH_NEIGHBORS_TOTAL.labels(tenant=tenant, status="no_transport").inc()
+                logger.warning(
+                    "GraphOpsMixin: transport not available for get_neighbors"
+                )
+                SB_GRAPH_NEIGHBORS_TOTAL.labels(
+                    tenant=tenant, status="no_transport"
+                ).inc()
                 return []
 
             params = {
@@ -272,7 +278,9 @@ class GraphOpsMixin:
                                 )
                             )
                     span.set_attribute("neighbors_count", len(neighbors))
-                    SB_GRAPH_NEIGHBORS_TOTAL.labels(tenant=tenant, status="success").inc()
+                    SB_GRAPH_NEIGHBORS_TOTAL.labels(
+                        tenant=tenant, status="success"
+                    ).inc()
                     SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=tenant).observe(duration)
                     return neighbors
                 else:
@@ -296,13 +304,13 @@ class GraphOpsMixin:
 
     def find_path(
         self,
-        from_coord: Tuple[float, ...],
-        to_coord: Tuple[float, ...],
+        from_coord: tuple[float, ...],
+        to_coord: tuple[float, ...],
         max_length: int = 10,
-        link_type: Optional[str] = None,
+        link_type: str | None = None,
         tenant: str = "default",
         timeout_ms: float = 200.0,
-    ) -> List[Tuple[float, ...]]:
+    ) -> list[tuple[float, ...]]:
         """Find shortest path between two coordinates."""
         tracer = trace.get_tracer("soma.memory_client")
         with tracer.start_as_current_span("sb_graph_path_query") as span:
@@ -380,7 +388,7 @@ class GraphOpsMixin:
 
     def create_co_recalled_links(
         self,
-        coords: List[Tuple[float, ...]],
+        coords: list[tuple[float, ...]],
         strength: float = 0.5,
         tenant: str = "default",
         timeout_ms: float = 100.0,

@@ -18,7 +18,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -56,7 +56,7 @@ class TierOut(Schema):
     max_agents: int
     max_memories_per_agent: int
     rate_limit_rpm: int
-    features: Dict[str, Any]
+    features: dict[str, Any]
     is_default: bool
 
 
@@ -73,9 +73,9 @@ class LicenseOut(Schema):
     agents_used: int
     agents_limit: int
     rate_limit_rpm: int
-    features: Dict[str, Any]
-    trial_ends_at: Optional[str]
-    valid_until: Optional[str]
+    features: dict[str, Any]
+    trial_ends_at: str | None
+    valid_until: str | None
 
 
 class EntitlementCheck(Schema):
@@ -83,7 +83,7 @@ class EntitlementCheck(Schema):
 
     allowed: bool
     feature: str
-    reason: Optional[str]
+    reason: str | None
 
 
 class UsageOut(Schema):
@@ -102,7 +102,7 @@ class UsageOut(Schema):
 # =============================================================================
 
 
-@router.get("/tiers", response=List[TierOut])
+@router.get("/tiers", response=list[TierOut])
 def list_subscription_tiers():
     """
     List all available subscription tiers.

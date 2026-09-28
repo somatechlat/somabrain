@@ -12,8 +12,9 @@ This suite categorizes verification checks into strict ISO domains:
 Configuration is centralized in `tests.integration.infra_config`.
 """
 
-import pytest
 import httpx
+import pytest
+
 from tests.integration.infra_config import PORTS, URLS
 
 # ---------------------------------------------------------------------------

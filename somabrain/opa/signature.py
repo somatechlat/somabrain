@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import base64
 import pathlib
-from typing import Any, cast  # noqa: E402
+from typing import Any, cast
 
 # Cryptography is an optional dependency; import lazily with alternative.
 try:
@@ -57,7 +57,7 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     from typing import (
         Any,
         cast,
-    )  # noqa: E402  (import after top‑level imports is acceptable here)
+    )
 
     private_key_any = cast(Any, private_key)
     signature = private_key_any.sign(

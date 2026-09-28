@@ -8,15 +8,13 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Optional
 
 from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import api_key_auth
-from somabrain.api.auth import require_auth
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.tenant import get_tenant_sync as get_tenant
 
 logger = logging.getLogger("somabrain.api.endpoints.context")
@@ -134,7 +132,7 @@ def feedback_endpoint(request: HttpRequest, payload: dict):
 
 
 @router.get("/adaptation/state", auth=api_key_auth)
-def adaptation_state_endpoint(request: HttpRequest, tenant_id: Optional[str] = None):
+def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None):
     """Get current adaptation weights and learning state."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)

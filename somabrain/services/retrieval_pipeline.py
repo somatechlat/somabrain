@@ -15,18 +15,17 @@ while allowing tests to run without external services.
 from __future__ import annotations
 
 import logging
-from typing import Any, List, Optional
+from typing import Any
 
 import httpx
-
-from somabrain.admin.core.embeddings import make_embedder
-from somabrain.admin.core.learning.scoring import UnifiedScorer
-from somabrain.schemas import RetrievalCandidate, RetrievalRequest, RetrievalResponse
-from somabrain.services.memory_service import MemoryService
 
 # Use the real runtime package. The package exports embedder, mt_wm, mt_memory,
 # cfg, and initialize_runtime() via its __init__.py.
 from somabrain import runtime as _rt
+from somabrain.admin.core.embeddings import make_embedder
+from somabrain.admin.core.learning.scoring import UnifiedScorer
+from somabrain.schemas import RetrievalCandidate, RetrievalRequest, RetrievalResponse
+from somabrain.services.memory_service import MemoryService
 
 if _rt.mt_memory is None:
     _rt.initialize_runtime()
@@ -48,8 +47,8 @@ def _candidate_from_payload(
     payload: dict,
     *,
     retriever: str,
-    key: Optional[str] = None,
-    coord: Optional[str] = None,
+    key: str | None = None,
+    coord: str | None = None,
     score: float = 1.0,
 ) -> RetrievalCandidate:
     """Execute candidate from payload.
@@ -78,7 +77,7 @@ def _heuristic_is_key(query: str) -> bool:
     return " " not in q and len(q) >= 6
 
 
-def _safe_coord_from_str(coord_str: str) -> Optional[str]:
+def _safe_coord_from_str(coord_str: str) -> str | None:
     """Execute safe coord from str.
 
     Args:
@@ -100,7 +99,7 @@ async def run_retrieval_pipeline(
     req: RetrievalRequest,
     *,
     ctx: Any,
-    universe: Optional[str],
+    universe: str | None,
     trace_id: str,
 ) -> RetrievalResponse:
     """Execute run retrieval pipeline.
@@ -112,9 +111,9 @@ async def run_retrieval_pipeline(
     namespace = _as_namespace(ctx)
     memsvc = MemoryService(_rt.mt_memory, namespace)
 
-    candidates: List[RetrievalCandidate] = []
+    candidates: list[RetrievalCandidate] = []
     degraded = False
-    error_msg: Optional[str] = None
+    error_msg: str | None = None
 
     # Prepare scorer/embedder if available (best-effort)
     scorer: UnifiedScorer | None = getattr(_rt, "unified_scorer", None)
@@ -154,7 +153,9 @@ async def run_retrieval_pipeline(
             logger.warning(error_msg)
         except httpx.HTTPStatusError as exc:
             degraded = True
-            error_msg = f"memory backend error during exact lookup: {exc.response.status_code}"
+            error_msg = (
+                f"memory backend error during exact lookup: {exc.response.status_code}"
+            )
             logger.warning(error_msg)
         except Exception as exc:
             degraded = True

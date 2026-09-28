@@ -29,13 +29,13 @@ from somabrain.transactions.tracer import (
 )
 
 __all__ = [
-    "TransactionEvent",
-    "TransactionEventStore",
-    "get_event_store",
-    "TransactionTracer",
-    "get_tracer",
-    "trace_transaction",
     "CompensatingAction",
     "TransactionCompensator",
+    "TransactionEvent",
+    "TransactionEventStore",
+    "TransactionTracer",
     "get_compensator",
+    "get_event_store",
+    "get_tracer",
+    "trace_transaction",
 ]

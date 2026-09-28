@@ -4,10 +4,11 @@ Exits non-zero on failure.
 """
 
 import sys
-import requests
+
 import redis
-from kafka import KafkaProducer
+import requests
 from django.conf import settings
+from kafka import KafkaProducer
 
 # Use centralized Settings for port configuration
 kafka_port = getattr(settings, "SOMABRAIN_KAFKA_PORT", None)

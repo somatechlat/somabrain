@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import httpx
 from django.conf import settings
@@ -19,11 +19,11 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
 
     def __init__(
         self,
-        cfg: Optional[Any] = None,
-        scorer: Optional[Any] = None,
-        embedder: Optional[Any] = None,
-        namespace: Optional[str] = None,
-        tenant: Optional[str] = None,
+        cfg: Any | None = None,
+        scorer: Any | None = None,
+        embedder: Any | None = None,
+        namespace: str | None = None,
+        tenant: str | None = None,
     ):
         self.cfg = cfg if cfg is not None else settings
         self._scorer = scorer
@@ -35,20 +35,20 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         self.namespace = namespace
         self.tenant = tenant or self.namespace
         self._mode = "http"
-        self._http: Optional[Any] = None
+        self._http: Any | None = None
 
         self._init_http()
 
     def coord_for_key(
         self, key: str, universe: str | None = None
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """Return a deterministic coordinate for *key* and optional *universe*."""
         uni = universe or "real"
         return _stable_coord(f"{uni}::{key}")
 
     def fetch_by_coord(
         self, coordinate: Any, universe: str | None = None
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Fetch a stored memory payload by coordinate (``GET /memories/{coord}``).
 
         Fail-closed: raises when the transport is missing or the backend
@@ -134,13 +134,15 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
             try:
                 resp = await self._http_async.delete(f"/memories/{coord_str}")
             except httpx.HTTPError as exc:
-                raise RuntimeError(f"memory service unreachable (delete): {exc}") from exc
+                raise RuntimeError(
+                    f"memory service unreachable (delete): {exc}"
+                ) from exc
             return self._interpret_delete_response(resp)
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.delete, coordinate)
 
     async def store(
-        self, coordinate: List[float], payload: Dict[str, Any], tenant: str = "default"
+        self, coordinate: list[float], payload: dict[str, Any], tenant: str = "default"
     ) -> bool:
         """Store a memory with an explicit coordinate (async wrapper).
 
@@ -161,8 +163,8 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         return await loop.run_in_executor(None, self.store_from_payload, enriched)
 
     async def search(
-        self, query: str, top_k: int = 5, tenant: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, query: str, top_k: int = 5, tenant: str | None = None
+    ) -> list[dict[str, Any]]:
         """Search memories and return raw result dicts (async wrapper).
 
         Search is scoped to the caller's tenant by reusing the tenant as the
@@ -172,7 +174,5 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         if not tenant:
             raise ValueError("search: tenant is required (T-5 fail-closed)")
         loop = asyncio.get_event_loop()
-        hits = await loop.run_in_executor(
-            None, self.recall, query, top_k, tenant
-        )
+        hits = await loop.run_in_executor(None, self.recall, query, top_k, tenant)
         return [hit.raw if hit.raw is not None else hit.payload for hit in hits]

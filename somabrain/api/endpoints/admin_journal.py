@@ -7,7 +7,6 @@ Journal management endpoints for administrators.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from django.http import HttpRequest
 from ninja import Router
@@ -27,7 +26,7 @@ def list_journal_events(
     request: HttpRequest,
     limit: int = 100,
     offset: int = 0,
-    tenant_id: Optional[str] = None,
+    tenant_id: str | None = None,
 ):
     """List journal events with optional tenant filtering."""
     try:

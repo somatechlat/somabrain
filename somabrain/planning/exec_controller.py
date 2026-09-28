@@ -42,7 +42,6 @@ from __future__ import annotations
 import logging
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, Optional, Tuple
 
 from somabrain.metrics.executive import EXEC_BANDIT_ARM
 
@@ -64,11 +63,11 @@ class ExecConfig:
     After initialization, all fields are guaranteed to have non-None values.
     """
 
-    window: Optional[int] = None
-    conflict_threshold: Optional[float] = None
+    window: int | None = None
+    conflict_threshold: float | None = None
     explore_boost_k: int = 2
     use_bandits: bool = False
-    bandit_eps: Optional[float] = None
+    bandit_eps: float | None = None
 
     def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""
@@ -89,7 +88,7 @@ class Policy:
     use_graph: bool
     inhibit_store: bool
     inhibit_act: bool
-    target_universe: Optional[str] = None
+    target_universe: str | None = None
 
 
 class ExecutiveController:
@@ -118,12 +117,12 @@ class ExecutiveController:
             - Bandit epsilon controls exploration rate in epsilon-greedy strategy
         """
         self.cfg = cfg
-        self._recall_strength: Dict[str, Deque[float]] = {}
+        self._recall_strength: dict[str, deque[float]] = {}
         # Two-armed bandit per tenant: 0=baseline, 1=explore (use_graph+boost_k)
-        self._bandit_counts: Dict[str, Tuple[int, int]] = {}
-        self._bandit_rewards: Dict[str, Tuple[float, float]] = {}
+        self._bandit_counts: dict[str, tuple[int, int]] = {}
+        self._bandit_rewards: dict[str, tuple[float, float]] = {}
 
-    def _window(self, tenant: str) -> Deque[float]:
+    def _window(self, tenant: str) -> deque[float]:
         """Get or create the per-tenant sliding window of recall strengths."""
         w = self._recall_strength.get(tenant)
         if w is None:
@@ -138,7 +137,7 @@ class ExecutiveController:
         self._window(tenant).append(float(max(0.0, min(1.0, recall_strength))))
         # Update bandit reward with latest strength for last chosen arm if any
 
-    def _bandit_state(self, tenant: str) -> Tuple[Tuple[int, int], Tuple[float, float]]:
+    def _bandit_state(self, tenant: str) -> tuple[tuple[int, int], tuple[float, float]]:
         """Return (counts, rewards) tuples for the 2-armed bandit, initializing if missing."""
         c = self._bandit_counts.get(tenant)
         r = self._bandit_rewards.get(tenant)

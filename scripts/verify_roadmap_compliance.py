@@ -7,12 +7,12 @@ It performs end-to-end testing of the mathematical foundations and feature imple
 """
 
 import json
-import time
-import requests
-from typing import Dict
-import numpy as np
 import math
+import time
 from collections import defaultdict
+
+import numpy as np
+import requests
 
 
 class RoadmapComplianceVerifier:
@@ -230,7 +230,7 @@ class RoadmapComplianceVerifier:
         print("✅ End-to-end integration verified")
         return True
 
-    def run_full_verification(self) -> Dict[str, bool]:
+    def run_full_verification(self) -> dict[str, bool]:
         """Run complete roadmap verification."""
         print("🎯 Starting comprehensive roadmap compliance verification...")
         print("=" * 60)

@@ -2,7 +2,6 @@
 
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -15,10 +14,10 @@ class ServiceEndpoint:
     default_port: int
     path: str = ""
     required: bool = True
-    health_check: Optional[str] = None
+    health_check: str | None = None
 
     def get_url(
-        self, environment: str = "development", host: Optional[str] = None
+        self, environment: str = "development", host: str | None = None
     ) -> str:
         """Resolve service URL from environment or defaults."""
         url = os.environ.get(self.env_var)
@@ -126,4 +125,4 @@ class ServiceRegistry:
 
 SERVICES = ServiceRegistry()
 
-__all__ = ["ServiceEndpoint", "ServiceRegistry", "SERVICES"]
+__all__ = ["SERVICES", "ServiceEndpoint", "ServiceRegistry"]

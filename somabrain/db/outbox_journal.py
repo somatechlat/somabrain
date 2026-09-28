@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.db import transaction
 
@@ -23,12 +23,12 @@ logger = logging.getLogger(__name__)
 
 
 def get_journal_events(
-    tenant_id: Optional[str] = None,
-    status: Optional[str] = None,
-    topic: Optional[str] = None,
-    limit: Optional[int] = None,
-    since: Optional[datetime] = None,
-) -> List[JournalEvent]:
+    tenant_id: str | None = None,
+    status: str | None = None,
+    topic: str | None = None,
+    limit: int | None = None,
+    since: datetime | None = None,
+) -> list[JournalEvent]:
     """Get events from the local journal with filtering.
 
     Args:
@@ -53,7 +53,7 @@ def get_journal_events(
 
 @transaction.atomic
 def replay_journal_events(
-    tenant_id: Optional[str] = None,
+    tenant_id: str | None = None,
     limit: int = 100,
     mark_processed: bool = True,
 ) -> int:
@@ -110,7 +110,7 @@ def replay_journal_events(
     return replayed_count
 
 
-def get_journal_stats() -> Dict[str, Any]:
+def get_journal_stats() -> dict[str, Any]:
     """Get statistics about the local journal.
 
     Returns:
@@ -124,7 +124,7 @@ def get_journal_stats() -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-def cleanup_journal() -> Dict[str, Any]:
+def cleanup_journal() -> dict[str, Any]:
     """Clean up the local journal by removing old files.
 
     Returns:

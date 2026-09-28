@@ -2,8 +2,8 @@
 
 import asyncio
 import os
-import uuid
 import sys
+import uuid
 from urllib.parse import quote
 
 # Configure environment for Host-to-Docker connectivity

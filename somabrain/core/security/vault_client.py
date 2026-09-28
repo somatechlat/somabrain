@@ -12,7 +12,7 @@ Usage:
 
 import logging
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -22,13 +22,11 @@ logger = logging.getLogger(__name__)
 class VaultNotConfigured(ImproperlyConfigured):
     """Vault not configured - secrets cannot be fetched."""
 
-    pass
 
 
 class SecretNotFound(ImproperlyConfigured):
     """Secret not found in Vault."""
 
-    pass
 
 
 def _split_secret_path(path: str) -> tuple[str, str]:
@@ -97,7 +95,7 @@ def _get_vault_client() -> Any | None:
         raise VaultNotConfigured(f"Vault connection failed: {e}")
 
 
-def get_secret(path: str, key: Optional[str] = None) -> Any:
+def get_secret(path: str, key: str | None = None) -> Any:
     """Get secret from Vault. FAILS if not found.
 
     Args:

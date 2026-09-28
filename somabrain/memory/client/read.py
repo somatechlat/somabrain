@@ -1,9 +1,11 @@
 from __future__ import annotations
-import uuid
+
 import asyncio
-from typing import List, Tuple, Any
+import uuid
+from typing import Any
+
+from .serialization import _parse_coord_string, _response_json
 from .types import RecallHit
-from .serialization import _response_json, _parse_coord_string
 
 
 class ReadMixin:
@@ -15,7 +17,7 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         """Retrieve memories relevant to the query using the HTTP memory service."""
         # Strict mode: memory service is ALWAYS required
         if self._http is None:
@@ -31,7 +33,7 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         """Recall memories including similarity scores."""
 
         if self._http is not None:
@@ -49,7 +51,7 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         """Async recall for HTTP mode; falls back to sync execution when needed."""
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
@@ -67,7 +69,7 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         """Async companion to :meth:`recall_with_scores`."""
 
         if self._http_async is not None:
@@ -80,8 +82,8 @@ class ReadMixin:
         return await self.arecall(query, top_k, universe, request_id)
 
     def payloads_for_coords(
-        self, coords: List[Tuple[float, float, float]], universe: str | None = None
-    ) -> List[dict]:
+        self, coords: list[tuple[float, float, float]], universe: str | None = None
+    ) -> list[dict]:
         """Bulk retrieval of payloads for the given coordinates."""
         if not coords:
             return []
@@ -108,7 +110,7 @@ class ReadMixin:
         except Exception:
             return []
 
-        out: List[dict] = []
+        out: list[dict] = []
         if isinstance(data, dict):
             entries = data.get("payloads") or data.get("results") or []
             if isinstance(entries, list):
@@ -121,7 +123,7 @@ class ReadMixin:
                         coord_value = entry.get("coord") or entry.get("coordinate")
                     if coord_value is None:
                         coord_value = payload.get("coordinate")
-                    parsed_coord: Tuple[float, float, float] | None = None
+                    parsed_coord: tuple[float, float, float] | None = None
                     if isinstance(coord_value, str):
                         parsed_coord = _parse_coord_string(coord_value)
                     elif (

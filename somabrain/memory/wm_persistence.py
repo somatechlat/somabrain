@@ -13,7 +13,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from somabrain.memory.client import MemoryClient
@@ -31,14 +31,14 @@ class WMPersistenceEntry:
 
     tenant_id: str
     item_id: str
-    vector: List[float]
-    payload: Dict[str, Any]
+    vector: list[float]
+    payload: dict[str, Any]
     tick: int
     admitted_at: float
     cleanup_overlap: float
     memory_type: str = "working_memory"
     evicted: bool = False
-    evicted_at: Optional[float] = None
+    evicted_at: float | None = None
 
 
 class WMPersister:
@@ -52,7 +52,7 @@ class WMPersister:
 
     def __init__(
         self,
-        memory_client: "MemoryClient",
+        memory_client: MemoryClient,
         tenant_id: str = "default",
         queue_size: int = 1000,
         flush_interval_ms: int = 100,
@@ -72,7 +72,7 @@ class WMPersister:
         )
         self._flush_interval = flush_interval_ms / 1000.0
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
         self._item_counter = 0
 
     def _generate_item_id(self, tick: int) -> str:
@@ -101,7 +101,7 @@ class WMPersister:
         await self._flush_queue()
         logger.info("WMPersister stopped", tenant=self._tenant_id)
 
-    async def queue_persist(self, item: "WMItem") -> str:
+    async def queue_persist(self, item: WMItem) -> str:
         """Queue a WM item for persistence.
 
         Per Requirement A1.3: Async persistence within 1 second.
@@ -185,7 +185,7 @@ class WMPersister:
             Number of items flushed.
         """
         flushed = 0
-        batch: List[WMPersistenceEntry] = []
+        batch: list[WMPersistenceEntry] = []
 
         # Drain queue
         while not self._queue.empty():
@@ -236,7 +236,7 @@ class WMRestorer:
 
     def __init__(
         self,
-        memory_client: "MemoryClient",
+        memory_client: MemoryClient,
         tenant_id: str = "default",
         timeout_s: float = 5.0,
     ):
@@ -251,7 +251,7 @@ class WMRestorer:
         self._tenant_id = tenant_id
         self._timeout = timeout_s
 
-    async def restore(self, wm: "WorkingMemory") -> int:
+    async def restore(self, wm: WorkingMemory) -> int:
         """Restore WM state from SFM.
 
         Per Requirement A1.2: Restores within 5 seconds.
@@ -324,7 +324,7 @@ class WMRestorer:
                 elapsed_s=elapsed,
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(
                 "WM restoration timed out",
                 tenant=self._tenant_id,
@@ -339,11 +339,11 @@ class WMRestorer:
 
 
 # Global persister instances per tenant
-_persisters: Dict[str, WMPersister] = {}
+_persisters: dict[str, WMPersister] = {}
 
 
 def get_wm_persister(
-    memory_client: "MemoryClient",
+    memory_client: MemoryClient,
     tenant_id: str = "default",
 ) -> WMPersister:
     """Get or create WMPersister for tenant."""
@@ -353,8 +353,8 @@ def get_wm_persister(
 
 
 async def restore_wm_state(
-    wm: "WorkingMemory",
-    memory_client: "MemoryClient",
+    wm: WorkingMemory,
+    memory_client: MemoryClient,
     tenant_id: str = "default",
 ) -> int:
     """Convenience function to restore WM state.

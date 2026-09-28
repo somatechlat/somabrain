@@ -6,7 +6,6 @@ Implements Platt scaling and temperature scaling for confidence calibration.
 
 import math
 from dataclasses import dataclass
-from typing import List, Tuple
 
 import numpy as np
 
@@ -18,7 +17,7 @@ class CalibrationResult:
     temperature: float
     ece: float
     brier_score: float
-    reliability_diagram: List[Tuple[float, float, int]]
+    reliability_diagram: list[tuple[float, float, int]]
 
 
 class TemperatureScaler:
@@ -31,7 +30,7 @@ class TemperatureScaler:
         self.temperature = 1.0
         self.is_fitted = False
 
-    def fit(self, confidences: List[float], accuracies: List[float]) -> float:
+    def fit(self, confidences: list[float], accuracies: list[float]) -> float:
         """
         Fit temperature using bounded NLL minimization (golden-section).
 
@@ -102,7 +101,7 @@ class TemperatureScaler:
 
 
 def compute_ece(
-    confidences: List[float], accuracies: List[float], n_bins: int = 10
+    confidences: list[float], accuracies: list[float], n_bins: int = 10
 ) -> float:
     """
     Compute Expected Calibration Error (ECE).
@@ -145,7 +144,7 @@ def compute_ece(
     return ece
 
 
-def compute_brier_score(confidences: List[float], accuracies: List[float]) -> float:
+def compute_brier_score(confidences: list[float], accuracies: list[float]) -> float:
     """
     Compute Brier score for calibration.
 
@@ -166,8 +165,8 @@ def compute_brier_score(confidences: List[float], accuracies: List[float]) -> fl
 
 
 def reliability_diagram(
-    confidences: List[float], accuracies: List[float], n_bins: int = 10
-) -> List[Tuple[float, float, int]]:
+    confidences: list[float], accuracies: list[float], n_bins: int = 10
+) -> list[tuple[float, float, int]]:
     """
     Generate data for reliability diagram.
 

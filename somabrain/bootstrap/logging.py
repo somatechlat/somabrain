@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from typing import Tuple
 
 from django.conf import settings
 
@@ -109,14 +108,14 @@ def setup_logging() -> None:
         cognitive_handler.setFormatter(
             logging.Formatter("%(asctime)s - COGNITIVE - %(levelname)s - %(message)s")
         )
-        setattr(cognitive_handler, "_somabrain_marker", True)
+        cognitive_handler._somabrain_marker = True
         cognitive_logger.addHandler(cognitive_handler)
 
     state.initialized = True
     logger.info("🧠 SomaBrain cognitive logging initialized")
 
 
-def get_loggers() -> Tuple[logging.Logger, logging.Logger, logging.Logger]:
+def get_loggers() -> tuple[logging.Logger, logging.Logger, logging.Logger]:
     """Get the configured loggers.
 
     Returns:

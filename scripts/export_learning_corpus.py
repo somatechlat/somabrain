@@ -7,20 +7,21 @@ import argparse
 import datetime as _dt
 import json
 import subprocess
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
-
+from collections.abc import Iterable
 from dataclasses import asdict
+from pathlib import Path
+from typing import Any
 
 # Unified configuration – use the central Settings instance
 from django.conf import settings
-from somabrain.learning.dataset import build_examples, iter_jsonl, export_examples
+
+from somabrain.learning.dataset import build_examples, export_examples, iter_jsonl
 
 
-def _git_metadata() -> Dict[str, Any]:
+def _git_metadata() -> dict[str, Any]:
     """Execute git metadata."""
 
-    meta: Dict[str, Any] = {}
+    meta: dict[str, Any] = {}
     try:
         commit = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -50,11 +51,11 @@ def _git_metadata() -> Dict[str, Any]:
     return meta
 
 
-def _config_snapshot() -> Dict[str, Any]:
+def _config_snapshot() -> dict[str, Any]:
     """Execute config snapshot."""
 
     cfg = settings
-    snapshot: Dict[str, Any] = {}
+    snapshot: dict[str, Any] = {}
     try:
         cfg_dict = asdict(cfg)
         snapshot["learning_loop_enabled"] = cfg_dict.get("learning_loop_enabled")
@@ -71,7 +72,7 @@ def _config_snapshot() -> Dict[str, Any]:
     return snapshot
 
 
-def _digest_dict(payload: Dict[str, Any]) -> Optional[str]:
+def _digest_dict(payload: dict[str, Any]) -> str | None:
     """Execute digest dict.
 
     Args:
@@ -87,7 +88,7 @@ def _digest_dict(payload: Dict[str, Any]) -> Optional[str]:
     return hashlib.sha256(blob).hexdigest()
 
 
-def main(argv: Optional[Iterable[str]] = None) -> int:
+def main(argv: Iterable[str] | None = None) -> int:
     """Execute main.
 
     Args:
@@ -124,7 +125,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
             "learning_loop_enabled flag is false. Enable it in config or rerun with --force."
         )
 
-    records: List[dict] = []
+    records: list[dict] = []
     for idx, record in enumerate(iter_jsonl(str(input_path))):
         records.append(record)
         if args.limit is not None and idx + 1 >= args.limit:
@@ -133,7 +134,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     examples = build_examples(records)
     export_examples(examples, args.output)
 
-    metadata: Dict[str, Any] = {
+    metadata: dict[str, Any] = {
         "generated_at": _dt.datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
         "input": str(input_path),
         "output": str(Path(args.output)),

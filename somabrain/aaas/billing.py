@@ -18,8 +18,7 @@ VIBE Coding Rules v5.2 - ALL 7 PERSONAS:
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import httpx
 from django.conf import settings
@@ -71,7 +70,7 @@ class LagoClient:
     # CUSTOMER OPERATIONS
     # -------------------------------------------------------------------------
 
-    def create_customer(self, tenant: Tenant) -> Optional[dict]:
+    def create_customer(self, tenant: Tenant) -> dict | None:
         """
         Create a Lago customer for a tenant.
 
@@ -122,7 +121,7 @@ class LagoClient:
             logger.exception(f"Lago create customer error: {e}")
             return None
 
-    def get_customer(self, external_id: str) -> Optional[dict]:
+    def get_customer(self, external_id: str) -> dict | None:
         """Get Lago customer by external ID (tenant UUID)."""
         try:
             response = self._get_client().get(f"/api/v1/customers/{external_id}")
@@ -136,7 +135,7 @@ class LagoClient:
             logger.exception(f"Lago get customer error: {e}")
             return None
 
-    def update_customer(self, external_id: str, updates: dict) -> Optional[dict]:
+    def update_customer(self, external_id: str, updates: dict) -> dict | None:
         """Update Lago customer details."""
         try:
             response = self._get_client().put(
@@ -163,7 +162,7 @@ class LagoClient:
         tenant: Tenant,
         tier: SubscriptionTier,
         external_id: str = None,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """
         Create a Lago subscription for a tenant.
 
@@ -229,7 +228,7 @@ class LagoClient:
         self,
         external_id: str,
         new_plan_code: str,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Change subscription to a different plan."""
         try:
             response = self._get_client().put(
@@ -278,7 +277,7 @@ class LagoClient:
             True if event was recorded, False otherwise
         """
         try:
-            event_timestamp = timestamp or datetime.now(timezone.utc)
+            event_timestamp = timestamp or datetime.now(UTC)
 
             response = self._get_client().post(
                 "/api/v1/events",
@@ -352,7 +351,7 @@ class LagoClient:
             logger.exception(f"Lago get invoices error: {e}")
             return []
 
-    def get_invoice(self, invoice_id: str) -> Optional[dict]:
+    def get_invoice(self, invoice_id: str) -> dict | None:
         """Get a specific invoice by ID."""
         try:
             response = self._get_client().get(f"/api/v1/invoices/{invoice_id}")
@@ -366,7 +365,7 @@ class LagoClient:
             logger.exception(f"Lago get invoice error: {e}")
             return None
 
-    def download_invoice_pdf(self, invoice_id: str) -> Optional[bytes]:
+    def download_invoice_pdf(self, invoice_id: str) -> bytes | None:
         """Download invoice as PDF."""
         try:
             response = self._get_client().get(f"/api/v1/invoices/{invoice_id}/download")
@@ -389,7 +388,7 @@ class LagoClient:
         external_customer_id: str,
         credits: int,
         currency: str = "USD",
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Create a wallet (prepaid credits) for a customer."""
         try:
             response = self._get_client().post(
@@ -419,7 +418,7 @@ class LagoClient:
         wallet_id: str,
         credits: int,
         reason: str = "Manual credit",
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Add credits to a wallet."""
         try:
             response = self._get_client().post(
@@ -446,7 +445,7 @@ class LagoClient:
     # ANALYTICS (REAL REVENUE DATA)
     # -------------------------------------------------------------------------
 
-    def get_mrr_analytics(self, currency: str = "USD") -> Optional[dict]:
+    def get_mrr_analytics(self, currency: str = "USD") -> dict | None:
         """
         Fetch MRR analytics from Lago.
 
@@ -546,7 +545,7 @@ class LagoClient:
 # SINGLETON INSTANCE
 # =============================================================================
 
-_lago_client: Optional[LagoClient] = None
+_lago_client: LagoClient | None = None
 
 
 def get_lago_client() -> LagoClient:

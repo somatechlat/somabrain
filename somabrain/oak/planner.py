@@ -17,8 +17,6 @@ magic numbers, in line with the VIBE coding rules.
 
 from __future__ import annotations
 
-from typing import List
-
 from django.conf import settings
 
 from somabrain.admin.core.models import CognitiveThread
@@ -26,7 +24,7 @@ from somabrain.admin.core.models import CognitiveThread
 __all__ = ["plan_for_tenant"]
 
 
-def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]:
+def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> list[str]:
     """Return a utility‑ranked list of option IDs for a specific tenant.
 
     Parameters

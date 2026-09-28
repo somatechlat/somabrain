@@ -40,8 +40,8 @@ from __future__ import annotations
 
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List
 
 from django.conf import settings
 
@@ -118,7 +118,7 @@ class Neuromodulators:
             acetylcholine=settings.SOMABRAIN_NEURO_ACETYL_BASE,
             timestamp=time.time(),
         )
-        self._subs: List[Callable[[NeuromodState], None]] = []
+        self._subs: list[Callable[[NeuromodState], None]] = []
 
         # Initialize Rust backend if available
         self._rust_impl = None
@@ -202,7 +202,7 @@ class PerTenantNeuromodulators:
     def __init__(self):
         """Initialize the instance."""
 
-        self._states: Dict[str, NeuromodState] = {}
+        self._states: dict[str, NeuromodState] = {}
         self._global = Neuromodulators()
 
     def get_state(self, tenant_id: str | None = None) -> NeuromodState:
@@ -288,7 +288,7 @@ class AdaptiveNeuromodulators:
             timestamp=time.time(),
         )
 
-    def get_adaptation_stats(self) -> Dict[str, Any]:
+    def get_adaptation_stats(self) -> dict[str, Any]:
         """Get adaptation statistics for verification."""
         return {
             "dopamine": self.dopamine_param.get_stats(),
@@ -388,7 +388,7 @@ class AdaptivePerTenantNeuromodulators:
     def __init__(self):
         """Initialize the instance."""
 
-        self._adaptive_systems: Dict[str, AdaptiveNeuromodulators] = {}
+        self._adaptive_systems: dict[str, AdaptiveNeuromodulators] = {}
         self._global = AdaptiveNeuromodulators()
 
     def get_adaptive_system(self, tenant_id: str) -> AdaptiveNeuromodulators:
@@ -413,7 +413,7 @@ class AdaptivePerTenantNeuromodulators:
         system = self.get_adaptive_system(tenant_id)
         return system.update_from_performance(performance, task_type)
 
-    def get_adaptation_stats(self, tenant_id: str | None = None) -> Dict[str, Any]:
+    def get_adaptation_stats(self, tenant_id: str | None = None) -> dict[str, Any]:
         """Get adaptation statistics."""
         if tenant_id is None:
             return self._global.get_adaptation_stats()

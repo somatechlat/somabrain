@@ -11,10 +11,10 @@ Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from somabrain.memory.client import MemoryClient, GraphNeighbor
+    from somabrain.memory.client import GraphNeighbor, MemoryClient
 
 from somabrain.metrics.planning import PLAN_GRAPH_UNAVAILABLE
 from somabrain.planning import coord_to_str, get_graph_client, task_key_to_coord
@@ -26,10 +26,10 @@ def plan_from_graph(
     task_key: str,
     mem,
     max_steps: int = 5,
-    rel_types: Optional[List[str]] = None,
-    universe: Optional[str] = None,
-    graph_client: Optional["MemoryClient"] = None,
-) -> List[str]:
+    rel_types: list[str] | None = None,
+    universe: str | None = None,
+    graph_client: MemoryClient | None = None,
+) -> list[str]:
     """
     BFS graph traversal for planning using EXISTING MemoryClient.
 
@@ -62,8 +62,8 @@ def plan_from_graph(
 
     # BFS traversal
     visited: set = set()
-    queue: List[Tuple[Tuple[float, ...], int]] = [(start_coord, 0)]
-    results: List[str] = []
+    queue: list[tuple[tuple[float, ...], int]] = [(start_coord, 0)]
+    results: list[str] = []
     graph_limit = 20  # Limit neighbors per node
 
     while queue and len(results) < max_steps:
@@ -107,12 +107,12 @@ def plan_from_graph(
     return results
 
 
-def _extract_task_from_neighbor(neighbor: "GraphNeighbor") -> Optional[str]:
+def _extract_task_from_neighbor(neighbor: GraphNeighbor) -> str | None:
     """Extract task string from neighbor metadata."""
     if neighbor.metadata:
         # Try common metadata keys
         for key in ("task", "text", "content", "description", "name"):
-            if key in neighbor.metadata and neighbor.metadata[key]:
+            if neighbor.metadata.get(key):
                 return str(neighbor.metadata[key])
 
     # Fall back to coordinate string

@@ -1,8 +1,8 @@
 import logging
-from typing import Optional
-from ninja.security import HttpBearer
+
 from django.conf import settings
 from django.http import HttpRequest
+from ninja.security import HttpBearer
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class JWTAuth(HttpBearer):
     VIBE COMPLIANT: Real signature verification enabled.
     """
 
-    def authenticate(self, request: HttpRequest, token: str) -> Optional[dict]:
+    def authenticate(self, request: HttpRequest, token: str) -> dict | None:
         """Authenticate JWT token from Keycloak."""
         try:
             import jwt
@@ -126,7 +126,7 @@ class GoogleOAuth:
 
         return f"https://accounts.google.com/o/oauth2/auth?{urllib.parse.urlencode(params)}"
 
-    async def exchange_code(self, code: str) -> Optional[dict]:
+    async def exchange_code(self, code: str) -> dict | None:
         """Exchange authorization code for tokens."""
         import httpx
 
@@ -148,7 +148,7 @@ class GoogleOAuth:
             logger.error(f"Google token exchange failed: {response.text}")
             return None
 
-    async def get_user_info(self, access_token: str) -> Optional[dict]:
+    async def get_user_info(self, access_token: str) -> dict | None:
         """Get user info from Google."""
         import httpx
 

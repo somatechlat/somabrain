@@ -17,7 +17,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: System maintenance
 """
 
-from typing import List, Optional
 from uuid import UUID
 
 from django.db import transaction
@@ -73,8 +72,8 @@ class MaintenanceMode(Schema):
 
     enabled: bool
     message: str
-    started_at: Optional[str]
-    expected_end: Optional[str]
+    started_at: str | None
+    expected_end: str | None
 
 
 # =============================================================================
@@ -380,11 +379,11 @@ def revoke_all_api_keys(
     )
 
 
-@router.get("/tenants", response=List[TenantOverride])
+@router.get("/tenants", response=list[TenantOverride])
 @require_auth(roles=["super-admin"])
 def list_all_tenants(
     request: AuthenticatedRequest,
-    status: Optional[str] = None,
+    status: str | None = None,
     limit: int = 50,
 ):
     """

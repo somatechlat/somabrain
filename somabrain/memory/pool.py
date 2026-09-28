@@ -7,7 +7,7 @@ external memory service.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Use the unified Settings singleton for configuration.
 from django.conf import settings as Config
@@ -21,13 +21,13 @@ class MultiTenantMemory:
     def __init__(
         self,
         cfg: Config,
-        scorer: Optional[Any] = None,
-        embedder: Optional[Any] = None,
+        scorer: Any | None = None,
+        embedder: Any | None = None,
     ):
         """Initialize the instance."""
 
         self.cfg = cfg
-        self._pool: Dict[str, MemoryClient] = {}
+        self._pool: dict[str, MemoryClient] = {}
         self._scorer = scorer
         self._embedder = embedder
 

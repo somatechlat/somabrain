@@ -7,7 +7,7 @@ client and related components.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 @dataclass
@@ -23,10 +23,10 @@ class BulkStoreResult:
 
     succeeded: int
     failed: int
-    coordinates: List[Tuple[float, float, float]]
-    failed_items: List[int] = field(default_factory=list)
+    coordinates: list[tuple[float, float, float]]
+    failed_items: list[int] = field(default_factory=list)
     request_id: str = ""
-    error: Optional[str] = None
+    error: str | None = None
     latency_ms: float = 0.0
     success_rate: float = 0.0
 
@@ -42,7 +42,7 @@ class RecallHit:
         raw: Optional raw response data from the memory service.
     """
 
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     score: float | None = None
-    coordinate: Tuple[float, float, float] | None = None
-    raw: Dict[str, Any] | None = None
+    coordinate: tuple[float, float, float] | None = None
+    raw: dict[str, Any] | None = None

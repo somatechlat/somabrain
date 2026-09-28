@@ -28,10 +28,11 @@ import logging
 import os
 import threading
 import time
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, TextIO
+from typing import Any, TextIO
 
 # NOTE: The journal configuration pulls values from the global ``settings``
 # object defined in ``common.config.settings``. The original implementation
@@ -103,13 +104,13 @@ class JournalEvent:
 
     id: str | int
     topic: str
-    payload: Dict[str, Any]
-    tenant_id: Optional[str] = None
-    dedupe_key: Optional[str] = None
+    payload: dict[str, Any]
+    tenant_id: str | None = None
+    dedupe_key: str | None = None
     timestamp: datetime | None = None
     status: str = "pending"  # pending, sent, failed
     retries: int = 0
-    last_error: Optional[str] = None
+    last_error: str | None = None
 
     def __post_init__(self) -> None:
         """Execute post init  ."""
@@ -117,7 +118,7 @@ class JournalEvent:
         if self.timestamp is None:
             self.timestamp = datetime.utcnow()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary for JSON serialization."""
         if self.timestamp is None:
             raise RuntimeError(
@@ -128,7 +129,7 @@ class JournalEvent:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> JournalEvent:
+    def from_dict(cls, data: dict[str, Any]) -> JournalEvent:
         """Create event from dictionary."""
         if "timestamp" in data and isinstance(data["timestamp"], str):
             data["timestamp"] = datetime.fromisoformat(data["timestamp"])
@@ -158,7 +159,7 @@ class LocalJournal:
 
         self.config = config
         self.journal_dir = Path(config.journal_dir)
-        self.current_file: Optional[Path] = None
+        self.current_file: Path | None = None
         self.current_file_handle: TextIO | None = None
         self.current_file_size = 0
         self.last_rotation = time.time()
@@ -297,12 +298,12 @@ class LocalJournal:
 
     def read_events(
         self,
-        tenant_id: Optional[str] = None,
-        status: Optional[str] = None,
-        topic: Optional[str] = None,
-        limit: Optional[int] = None,
-        since: Optional[datetime] = None,
-    ) -> List[JournalEvent]:
+        tenant_id: str | None = None,
+        status: str | None = None,
+        topic: str | None = None,
+        limit: int | None = None,
+        since: datetime | None = None,
+    ) -> list[JournalEvent]:
         """Read events from journal files with filtering."""
 
         events = []
@@ -387,7 +388,7 @@ class LocalJournal:
 
         return updated
 
-    def _rewrite_journal_files(self, events: List[JournalEvent]) -> None:
+    def _rewrite_journal_files(self, events: list[JournalEvent]) -> None:
         """Rewrite all journal files with updated events."""
         # Close current file
         if self.current_file_handle:
@@ -416,7 +417,7 @@ class LocalJournal:
         for event in events:
             self._write_event(event)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get journal statistics."""
         try:
             stats = {
@@ -494,7 +495,7 @@ def get_journal() -> LocalJournal:
     return container.get("journal")
 
 
-def init_journal(config: Optional[JournalConfig] = None) -> LocalJournal:
+def init_journal(config: JournalConfig | None = None) -> LocalJournal:
     """Initialize the journal with specific configuration.
 
     Args:

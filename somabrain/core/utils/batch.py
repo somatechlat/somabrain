@@ -6,14 +6,12 @@ normalization to ensure efficient, low-allocation bindings.
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
 
 from . import numerics as _num
 
 
-def ensure_batch(x: np.ndarray) -> Tuple[np.ndarray, bool]:
+def ensure_batch(x: np.ndarray) -> tuple[np.ndarray, bool]:
     """Ensure x has a leading batch dimension; returns (x_batched, was_scalar).
 
     If input already has ndim >= 2, returns it unchanged with was_scalar=False.

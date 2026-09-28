@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import time
-from typing import Tuple
 
 import httpx
 import pytest
-from hypothesis import given, settings as hypothesis_settings, strategies as st
-
 from django.conf import settings
+from hypothesis import given
+from hypothesis import settings as hypothesis_settings
+from hypothesis import strategies as st
+
 from somabrain.memory.client import MemoryClient, _stable_coord
 
 pytestmark = pytest.mark.property
@@ -64,7 +65,7 @@ def test_memory_round_trip(key: str, payload: dict) -> None:
         coord = client.remember(key, payload)
     except RuntimeError as exc:
         pytest.skip(f"Memory service write failed: {exc}")
-    assert isinstance(coord, Tuple)
+    assert isinstance(coord, tuple)
 
     # small delay to allow service to index
     time.sleep(0.1)

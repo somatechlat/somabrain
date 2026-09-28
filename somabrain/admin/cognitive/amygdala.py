@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -70,10 +69,10 @@ class SalienceConfig:
     threshold_act: float
     hysteresis: float
     use_soft: bool = False
-    soft_temperature: Optional[float] = None
+    soft_temperature: float | None = None
     method: str = "dense"
     w_fd: float = 0.0
-    fd_energy_floor: Optional[float] = None
+    fd_energy_floor: float | None = None
 
     def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""
@@ -98,7 +97,7 @@ class AmygdalaSalience:
     def __init__(
         self,
         cfg: SalienceConfig,
-        fd_backend: Optional[FDSalienceSketch] = None,
+        fd_backend: FDSalienceSketch | None = None,
     ):
         """
         Initialize the AmygdalaSalience component.
@@ -128,7 +127,7 @@ class AmygdalaSalience:
         novelty: float,
         pred_error: float,
         neuromod: NeuromodState,
-        wm_vector: Optional[np.ndarray] = None,
+        wm_vector: np.ndarray | None = None,
     ) -> float:
         """
         Compute salience score from novelty and prediction error.

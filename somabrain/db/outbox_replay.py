@@ -11,13 +11,12 @@ Thread Safety:
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
 
 from django.db import transaction
 from django.db.models import Count
 
-from somabrain.metrics import report_outbox_replayed
 from somabrain.admin.core.models import OutboxEvent
+from somabrain.metrics import report_outbox_replayed
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
 
 
 @transaction.atomic
-def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) -> int:
+def mark_events_for_replay(limit: int = 100, tenant_id: str | None = None) -> int:
     """Mark failed events for replay by setting their status back to 'pending'.
 
     Args:
@@ -112,10 +111,10 @@ def mark_tenant_events_for_replay(
 def list_tenant_events(
     tenant_id: str,
     status: str = "pending",
-    topic_filter: Optional[str] = None,
+    topic_filter: str | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> List[OutboxEvent]:
+) -> list[OutboxEvent]:
     """List outbox events for a specific tenant with filtering options.
 
     Args:
@@ -142,7 +141,7 @@ def list_tenant_events(
     return list(qs.order_by("-created_at")[offset : offset + limit])
 
 
-def get_failed_counts_by_tenant() -> Dict[str, int]:
+def get_failed_counts_by_tenant() -> dict[str, int]:
     """Get failed event counts per tenant.
 
     Returns:
@@ -156,7 +155,7 @@ def get_failed_counts_by_tenant() -> Dict[str, int]:
     return {row["tenant_id"] or "default": row["count"] for row in counts}
 
 
-def get_sent_counts_by_tenant() -> Dict[str, int]:
+def get_sent_counts_by_tenant() -> dict[str, int]:
     """Get sent event counts per tenant.
 
     Returns:

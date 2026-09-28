@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Dict
 
 import somabrain.metrics as app_metrics
 
@@ -212,7 +211,7 @@ class LeaderMetricsCollector:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self._metrics: Dict[str, LeaderMetrics] = {}
+        self._metrics: dict[str, LeaderMetrics] = {}
 
     def get_metrics(self, tenant: str, instance_id: str) -> LeaderMetrics:
         """Get or create metrics for a tenant/instance."""

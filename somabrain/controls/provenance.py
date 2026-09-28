@@ -40,7 +40,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-from typing import Optional
 
 
 def canonical_body(body: bytes) -> bytes:
@@ -57,7 +56,7 @@ def canonical_body(body: bytes) -> bytes:
         return body or b""
 
 
-def verify_hmac_sha256(secret: Optional[str], body: bytes, header: str) -> bool:
+def verify_hmac_sha256(secret: str | None, body: bytes, header: str) -> bool:
     """Execute verify hmac sha256.
 
     Args:

@@ -26,7 +26,7 @@ class PerformanceMetrics:
     latency: float = 1.0
     accuracy: float = 0.0
 
-    def clamp(self) -> "PerformanceMetrics":
+    def clamp(self) -> PerformanceMetrics:
         """Execute clamp."""
 
         self.success_rate = min(max(self.success_rate, 0.0), 1.0)

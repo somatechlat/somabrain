@@ -28,7 +28,7 @@ from django.conf import settings
 # ---------------------------------------------------------------------------
 
 
-def _clean(value: Optional[str]) -> Optional[str]:
+def _clean(value: str | None) -> str | None:
     """Execute clean.
 
     Args:
@@ -44,7 +44,7 @@ def _clean(value: Optional[str]) -> Optional[str]:
     return text or None
 
 
-def _first_non_empty(*values: Optional[str]) -> Optional[str]:
+def _first_non_empty(*values: str | None) -> str | None:
     """Execute first non empty."""
 
     for value in values:
@@ -54,7 +54,7 @@ def _first_non_empty(*values: Optional[str]) -> Optional[str]:
     return None
 
 
-def _from_settings(attr: str) -> Optional[str]:
+def _from_settings(attr: str) -> str | None:
     # Retrieve configuration from the centralized Settings singleton.
     """Execute from settings.
 
@@ -68,7 +68,7 @@ def _from_settings(attr: str) -> Optional[str]:
         return None
 
 
-def get_redis_url(default: Optional[str] = None) -> Optional[str]:
+def get_redis_url(default: str | None = None) -> str | None:
     """Return the Redis connection URL from environment or shared settings."""
     url = _first_non_empty(
         _from_settings("SOMABRAIN_REDIS_URL"),
@@ -91,11 +91,11 @@ class MemoryEndpoint:
 
     scheme: str
     host: str
-    port: Optional[int]
+    port: int | None
     url: str
 
 
-def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
+def resolve_memory_endpoint(default: str | None = None) -> MemoryEndpoint:
     """Return the canonical memory endpoint (scheme/host/port/url)."""
 
     explicit = _first_non_empty(_from_settings("SOMABRAIN_MEMORY_HTTP_ENDPOINT"))
@@ -126,7 +126,7 @@ def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
     raise RuntimeError("Memory HTTP endpoint is not configured")
 
 
-def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
+def get_memory_http_endpoint(default: str | None = None) -> str | None:
     """Compatibility wrapper returning only the endpoint URL."""
 
     try:
@@ -135,7 +135,7 @@ def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
         return default
 
 
-def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
+def get_kafka_bootstrap(default: str | None = None) -> str | None:
     """Return the Kafka bootstrap server list."""
     bootstrap = _first_non_empty(
         _from_settings("KAFKA_BOOTSTRAP_SERVERS"),
@@ -152,7 +152,7 @@ def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def get_opa_url(default: Optional[str] = None) -> Optional[str]:
+def get_opa_url(default: str | None = None) -> str | None:
     """Return the Open Policy Agent endpoint."""
     url = _first_non_empty(
         _from_settings("SOMABRAIN_OPA_URL"),
@@ -168,7 +168,7 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
+def get_api_base_url(default: str | None = None) -> str | None:
     """Return the primary SomaBrain API base URL."""
     url = _first_non_empty(
         settings.SOMABRAIN_API_URL,
@@ -192,7 +192,7 @@ def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
+def get_postgres_dsn(default: str | None = None) -> str | None:
     """Return the Postgres DSN."""
     dsn = _first_non_empty(
         _from_settings("SOMABRAIN_POSTGRES_DSN"),
@@ -204,14 +204,14 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def require(value: Optional[str], *, message: str) -> str:
+def require(value: str | None, *, message: str) -> str:
     """Ensure a configuration value exists, raising a RuntimeError otherwise."""
     if value:
         return value
     raise RuntimeError(message)
 
 
-def _parse_url(value: str) -> tuple[str, str, Optional[int]]:
+def _parse_url(value: str) -> tuple[str, str, int | None]:
     """Execute parse url.
 
     Args:
@@ -230,8 +230,8 @@ __all__ = [
     "get_kafka_bootstrap",
     "get_memory_http_endpoint",
     "get_opa_url",
-    "resolve_memory_endpoint",
     "get_postgres_dsn",
     "get_redis_url",
     "require",
+    "resolve_memory_endpoint",
 ]

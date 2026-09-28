@@ -14,7 +14,9 @@ For INTEGRATION tests against real Redis/Postgres/Memory Service, see:
 from __future__ import annotations
 
 import numpy as np
-from hypothesis import given, settings as hyp_settings, strategies as st
+from hypothesis import given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 
 from somabrain.memory.superposed_trace import SuperposedTrace, TraceConfig
 from somabrain.memory.wm.core import WorkingMemory

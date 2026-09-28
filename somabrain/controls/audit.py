@@ -39,7 +39,7 @@ import json
 import os
 import threading
 import time
-from typing import Any, Dict
+from typing import Any
 
 from .metrics import AUDIT_WRITES
 
@@ -71,7 +71,7 @@ class AuditLogger:
         except Exception:
             return ""
 
-    def _hash(self, rec: Dict[str, Any]) -> str:
+    def _hash(self, rec: dict[str, Any]) -> str:
         """Execute hash.
 
         Args:
@@ -84,7 +84,7 @@ class AuditLogger:
         h.update(json.dumps(rec, sort_keys=True, separators=(",", ":")).encode("utf-8"))
         return h.hexdigest()
 
-    def write(self, rec: Dict[str, Any]) -> None:
+    def write(self, rec: dict[str, Any]) -> None:
         """Execute write.
 
         Args:

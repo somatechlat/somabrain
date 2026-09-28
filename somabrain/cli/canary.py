@@ -34,7 +34,7 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import httpx
 from django.conf import settings
@@ -89,7 +89,7 @@ def _helm_upgrade(
     release: str,
     namespace: str,
     chart_path: Path,
-    set_values: List[str],
+    set_values: list[str],
 ) -> int:
     """Run ``helm upgrade --install``.
 
@@ -144,7 +144,7 @@ def _tenant_health_url(tenant: str) -> str:
     return f"http://{host}:{port}/health?tenant={tenant}"
 
 
-def _check_tenant_health(tenants: List[str], timeout: int) -> bool:
+def _check_tenant_health(tenants: list[str], timeout: int) -> bool:
     """Poll each tenant's ``/health`` endpoint.
 
     Returns ``True`` only if *all* tenants respond with HTTP 200 within the
@@ -178,7 +178,7 @@ def main() -> None:
         sys.exit(1)
 
     # Gather current feature‑flag state – this can be useful for debugging.
-    flag_state: Dict[str, Any] = FeatureFlags.get_status()
+    flag_state: dict[str, Any] = FeatureFlags.get_status()
     print("Current feature flags:")
     for k, v in flag_state.items():
         print(f"  {k}: {v}")

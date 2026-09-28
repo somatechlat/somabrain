@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 import httpx
 
@@ -18,7 +18,7 @@ class AuthClient:
         self,
         base_url: str = "http://auth.soma-infra.svc.cluster.local:8080",
         timeout: float = 5.0,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
     ) -> None:
         """Initialize the instance."""
 
@@ -27,7 +27,7 @@ class AuthClient:
             headers["X-API-Key"] = api_key
         self._client = httpx.Client(base_url=base_url, timeout=timeout, headers=headers)
 
-    def validate(self, token: str) -> Dict[str, Any]:
+    def validate(self, token: str) -> dict[str, Any]:
         """Execute validate.
 
         Args:
@@ -39,7 +39,7 @@ class AuthClient:
         return resp.json()
 
     def issue_service_token(
-        self, subject: str, scopes: Optional[list[str]] = None
+        self, subject: str, scopes: list[str] | None = None
     ) -> str:
         """Execute issue service token.
 

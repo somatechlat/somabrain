@@ -12,7 +12,7 @@ standalone deployment profile.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -30,7 +30,7 @@ class StandaloneAPIKeyAuth(HttpBearer):
 
     def authenticate(
         self, request: HttpRequest, token: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         expected = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", "")
         if not expected or token != expected:
             return None

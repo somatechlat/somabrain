@@ -17,7 +17,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any
 
 import redis.asyncio as redis
 from redis.exceptions import RedisError
@@ -36,15 +36,15 @@ import asyncio
 class TenantRegistry:
     """Centralized tenant management service with perfect architecture."""
 
-    def __init__(self, redis_url: Optional[str] = None):
+    def __init__(self, redis_url: str | None = None):
         """Initialize the instance."""
 
         self.redis_url = redis_url or "redis://localhost:6379/0"
-        self._redis: Optional[redis.Redis] = None
-        self._redis_loop: Optional[asyncio.AbstractEventLoop] = None
-        self._tenant_cache: Dict[str, TenantMetadata] = {}
-        self._exempt_cache: Set[str] = set()
-        self._system_tenant_ids: Dict[str, str] = {}
+        self._redis: redis.Redis | None = None
+        self._redis_loop: asyncio.AbstractEventLoop | None = None
+        self._tenant_cache: dict[str, TenantMetadata] = {}
+        self._exempt_cache: set[str] = set()
+        self._system_tenant_ids: dict[str, str] = {}
         self._initialized = False
         self._cache_ttl = 300  # 5 minutes
 
@@ -126,7 +126,7 @@ class TenantRegistry:
             logger.error("Failed to store tenant metadata: %s", e)
             raise
 
-    async def _load_tenant_metadata(self, tenant_id: str) -> Optional[TenantMetadata]:
+    async def _load_tenant_metadata(self, tenant_id: str) -> TenantMetadata | None:
         """Load tenant metadata from Redis."""
         redis_conn = await self._ensure_redis_connection()
 
@@ -185,14 +185,14 @@ class TenantRegistry:
 
     async def register_tenant(
         self,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
         display_name: str = "Unknown",
-        tier: Union[TenantTier, str] = TenantTier.ENTERPRISE,
+        tier: TenantTier | str = TenantTier.ENTERPRISE,
         is_exempt: bool = False,
-        exempt_reason: Optional[str] = None,
-        created_by: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
-        expires_at: Optional[datetime] = None,
+        exempt_reason: str | None = None,
+        created_by: str | None = None,
+        config: dict[str, Any] | None = None,
+        expires_at: datetime | None = None,
     ) -> str:
         """Register a new tenant with validation and audit logging."""
 
@@ -255,7 +255,7 @@ class TenantRegistry:
         logger.info("Tenant registered: %s (%s)", tenant_id, display_name)
         return tenant_id
 
-    async def get_tenant(self, tenant_id: str) -> Optional[TenantMetadata]:
+    async def get_tenant(self, tenant_id: str) -> TenantMetadata | None:
         """Get tenant metadata with caching."""
         if not self._initialized:
             await self.initialize()
@@ -284,13 +284,13 @@ class TenantRegistry:
         normalized_id = self._normalize_tenant_id(tenant_id)
         return normalized_id in self._exempt_cache
 
-    async def get_system_tenant_id(self, name: str) -> Optional[str]:
+    async def get_system_tenant_id(self, name: str) -> str | None:
         """Get system tenant ID by name (e.g., 'agent_zero')."""
         return self._system_tenant_ids.get(name.lower())
 
     async def get_all_tenants(
-        self, tier: Optional[TenantTier] = None
-    ) -> List[TenantMetadata]:
+        self, tier: TenantTier | None = None
+    ) -> list[TenantMetadata]:
         """Get all tenants with optional tier filtering."""
         if not self._initialized:
             await self.initialize()
@@ -314,7 +314,7 @@ class TenantRegistry:
             return []
 
     async def update_tenant_status(
-        self, tenant_id: str, status: Union[TenantStatus, str]
+        self, tenant_id: str, status: TenantStatus | str
     ) -> bool:
         """Update tenant status with validation."""
         if not self._initialized:
@@ -431,7 +431,7 @@ class TenantRegistry:
             logger.error("Failed to load tenants from storage: %s", e)
 
     async def _audit_log(
-        self, action: str, tenant_id: str, details: Dict[str, Any]
+        self, action: str, tenant_id: str, details: dict[str, Any]
     ) -> None:
         """Audit log tenant operations."""
         redis_conn = await self._ensure_redis_connection()
@@ -454,7 +454,7 @@ class TenantRegistry:
         except RedisError as e:
             logger.error("Failed to write audit log: %s", e)
 
-    async def get_tenant_stats(self) -> Dict[str, Any]:
+    async def get_tenant_stats(self) -> dict[str, Any]:
         """Get tenant registry statistics."""
         if not self._initialized:
             await self.initialize()

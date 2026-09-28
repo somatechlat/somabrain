@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Tuple
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any
 
 from somabrain.memory.normalization import _extract_memory_coord
 
@@ -35,7 +36,7 @@ def remember_bulk_optimized(
     store_http_sync_fn: Callable,
     prepare_bulk_items_fn: Callable,
     process_bulk_response_fn: Callable,
-) -> "BulkStoreResult":
+) -> BulkStoreResult:
     """Optimized bulk store with chunking and partial failure handling."""
     import time
 
@@ -71,8 +72,8 @@ def remember_bulk_optimized(
         )
 
     chunks = [items_list[i : i + chunk_size] for i in range(0, total_items, chunk_size)]
-    all_coords: List[Tuple[float, float, float]] = []
-    failed_indices: List[int] = []
+    all_coords: list[tuple[float, float, float]] = []
+    failed_indices: list[int] = []
     succeeded_count = 0
     current_index = 0
 
@@ -193,7 +194,7 @@ def remember_bulk_sync(
     prepare_bulk_items_fn: Callable,
     process_bulk_response_fn: Callable,
     has_transport: bool,
-) -> List[Tuple[float, float, float]]:
+) -> list[tuple[float, float, float]]:
     """Store multiple memories in a single HTTP round-trip."""
     require_healthy_fn()
 
@@ -250,7 +251,7 @@ async def aremember_bulk(
     prepare_bulk_items_fn: Callable,
     process_bulk_response_fn: Callable,
     has_async_transport: bool,
-) -> List[Tuple[float, float, float]]:
+) -> list[tuple[float, float, float]]:
     """Async companion to remember_bulk using the async HTTP client."""
     require_healthy_fn()
 

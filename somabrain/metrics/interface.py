@@ -33,7 +33,8 @@ VIBE Compliance:
 from __future__ import annotations
 
 import threading
-from typing import Any, Callable, Dict, Optional, Protocol
+from collections.abc import Callable
+from typing import Any, Protocol
 
 
 class MetricsInterface(Protocol):
@@ -46,7 +47,7 @@ class MetricsInterface(Protocol):
     def inc_counter(
         self,
         name: str,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
         value: float = 1.0,
     ) -> None:
         """Increment a counter metric.
@@ -62,7 +63,7 @@ class MetricsInterface(Protocol):
         self,
         name: str,
         value: float,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """Record an observation in a histogram.
 
@@ -77,7 +78,7 @@ class MetricsInterface(Protocol):
         self,
         name: str,
         value: float,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """Set a gauge metric value.
 
@@ -128,7 +129,7 @@ class MetricsInterface(Protocol):
 class _NoOpMetric:
     """No-op metric that accepts any method call and does nothing."""
 
-    def __getattr__(self, name: str) -> Callable[..., "_NoOpMetric"]:
+    def __getattr__(self, name: str) -> Callable[..., _NoOpMetric]:
         """Execute getattr  .
 
         Args:
@@ -137,7 +138,7 @@ class _NoOpMetric:
 
         return lambda *args, **kwargs: self
 
-    def __call__(self, *args: Any, **kwargs: Any) -> "_NoOpMetric":
+    def __call__(self, *args: Any, **kwargs: Any) -> _NoOpMetric:
         """Execute call  ."""
 
         return self
@@ -155,29 +156,26 @@ class NullMetrics:
     def inc_counter(
         self,
         name: str,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
         value: float = 1.0,
     ) -> None:
         """No-op counter increment."""
-        pass
 
     def observe_histogram(
         self,
         name: str,
         value: float,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """No-op histogram observation."""
-        pass
 
     def set_gauge(
         self,
         name: str,
         value: float,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """No-op gauge set."""
-        pass
 
     def get_counter(self, name: str, description: str = "") -> _NoOpMetric:
         """Return no-op counter."""
@@ -216,15 +214,15 @@ class PrometheusMetrics:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self._counters: Dict[str, Any] = {}
-        self._gauges: Dict[str, Any] = {}
-        self._histograms: Dict[str, Any] = {}
+        self._counters: dict[str, Any] = {}
+        self._gauges: dict[str, Any] = {}
+        self._histograms: dict[str, Any] = {}
         self._lock = threading.Lock()  # Protects metric registry access
 
     def inc_counter(
         self,
         name: str,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
         value: float = 1.0,
     ) -> None:
         """Increment a counter metric."""
@@ -243,7 +241,7 @@ class PrometheusMetrics:
         self,
         name: str,
         value: float,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """Record an observation in a histogram."""
         try:
@@ -261,7 +259,7 @@ class PrometheusMetrics:
         self,
         name: str,
         value: float,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> None:
         """Set a gauge metric value."""
         try:
@@ -379,6 +377,6 @@ __all__ = [
     "NullMetrics",
     "PrometheusMetrics",
     "get_metrics",
-    "set_metrics",
     "reset_metrics",
+    "set_metrics",
 ]

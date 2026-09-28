@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import socket
-from typing import Dict
 
 from django.conf import settings
 
@@ -20,7 +19,7 @@ def _env_port(name: str, default_val: int) -> int:
         return default_val
 
 
-DEFAULT_SERVICE_PORTS: Dict[str, int] = {
+DEFAULT_SERVICE_PORTS: dict[str, int] = {
     "SOMABRAIN_HOST_PORT": _env_port("SOMABRAIN_HOST_PORT", 30101),
     # canonical host port for local somabrain API
     "REDIS_HOST_PORT": _env_port("REDIS_HOST_PORT", 6379),
@@ -66,7 +65,7 @@ def pick_free_port(start: int, host: str = "127.0.0.1", attempts: int = 1000) ->
     raise RuntimeError(f"No free port found in range starting at {start}")
 
 
-def allocate_ports(defaults: Dict[str, int] | None = None) -> Dict[str, int]:
+def allocate_ports(defaults: dict[str, int] | None = None) -> dict[str, int]:
     """Execute allocate ports.
 
     Args:
@@ -74,11 +73,11 @@ def allocate_ports(defaults: Dict[str, int] | None = None) -> Dict[str, int]:
     """
 
     defaults = defaults or DEFAULT_SERVICE_PORTS
-    allocation: Dict[str, int] = {}
+    allocation: dict[str, int] = {}
     for key, base in defaults.items():
         port = pick_free_port(base)
         allocation[key] = port
     return allocation
 
 
-__all__ = ["allocate_ports", "pick_free_port", "is_port_free", "DEFAULT_SERVICE_PORTS"]
+__all__ = ["DEFAULT_SERVICE_PORTS", "allocate_ports", "is_port_free", "pick_free_port"]

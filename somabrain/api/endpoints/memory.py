@@ -19,24 +19,22 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, List, Optional
+from typing import Any
 
 import httpx
 from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
-
 from pydantic import BaseModel, Field, model_validator
 
-from somabrain.api.auth import api_key_auth
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.api.memory.helpers import (
     _as_float_list,
     _resolve_namespace,
     _serialize_coord,
 )
 from somabrain.api.memory.models import ForgetRequest, ForgetResponse, _iso_created_at
-from somabrain.api.auth import require_auth
 from somabrain.core.exceptions import CircuitBreakerOpen, MemoryServiceError
 from somabrain.services.memory_service import MemoryService
 from somabrain.tenant import get_tenant, get_tenant_sync
@@ -128,7 +126,7 @@ def _hit_text(payload: Any) -> str:
 
 
 def _hit_record(
-    payload: Any, score: float, layer: str, coord_list: Optional[List[float]]
+    payload: Any, score: float, layer: str, coord_list: list[float] | None
 ) -> dict:
     """Build one MemoryHit-shaped result plus its legacy aliases."""
     payload_dict = payload if isinstance(payload, dict) else {"content": payload}
@@ -155,11 +153,11 @@ class RecallRequest(BaseModel):
     query: str = Field(..., description="Query text")
     top_k: int = Field(10, description="Max results")
     layer: str = Field("both", description="wm, ltm, or both")
-    tenant: Optional[str] = None
-    tenant_id: Optional[str] = Field(None, description="Seam alias for tenant")
-    namespace: Optional[str] = None
-    universe: Optional[str] = Field(None, description="Optional universe scope")
-    k: Optional[int] = Field(None, description="Seam/legacy alias for top_k")
+    tenant: str | None = None
+    tenant_id: str | None = Field(None, description="Seam alias for tenant")
+    namespace: str | None = None
+    universe: str | None = Field(None, description="Optional universe scope")
+    k: int | None = Field(None, description="Seam/legacy alias for top_k")
 
     @model_validator(mode="before")
     @classmethod
@@ -208,7 +206,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     wm_hits = 0
     ltm_hits = 0
     degraded = False
-    degraded_reasons: List[str] = []
+    degraded_reasons: list[str] = []
 
     def _tenant_match(hit_payload: dict | None) -> bool:
         """Drop LTM hits that belong to a different tenant/namespace.
@@ -302,7 +300,9 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
                     scored_wm = wm.recall(tenant, query_vec, top_k)
                     wm_hits = len(scored_wm)
                     for score, item in scored_wm[:top_k]:
-                        item_payload = item if isinstance(item, dict) else {"content": item}
+                        item_payload = (
+                            item if isinstance(item, dict) else {"content": item}
+                        )
                         results.append(
                             _hit_record(
                                 item,
@@ -315,7 +315,9 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
                     wm_items = wm.items(tenant, limit=top_k)
                     wm_hits = len(wm_items)
                     for item in wm_items[:top_k]:
-                        item_payload = item if isinstance(item, dict) else {"content": item}
+                        item_payload = (
+                            item if isinstance(item, dict) else {"content": item}
+                        )
                         results.append(
                             _hit_record(
                                 item,
@@ -405,7 +407,7 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
 
 @router.get("/metrics", auth=api_key_auth)
 def memory_metrics(
-    request: HttpRequest, tenant: Optional[str] = None, namespace: Optional[str] = None
+    request: HttpRequest, tenant: str | None = None, namespace: str | None = None
 ):
     """Get real memory metrics for a tenant/namespace."""
     ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))

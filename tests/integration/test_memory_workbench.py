@@ -1,12 +1,12 @@
 """Module test_memory_workbench."""
 
 import time
-from typing import List, Set
 
 import httpx
 import pytest
+
 from tests.integration.infra_config import AUTH
-from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
+from tests.utils.metrics import ndcg_at_k, precision_at_k, recall_at_k
 
 # API Endpoints
 ENDPOINT = "http://127.0.0.1:10101"
@@ -61,7 +61,7 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
     assert r.status_code == 200, f"Remember failed: {r.text}"
 
 
-def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
+def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> list[str]:
     # Updated API: POST /memories/search
     """Execute recall texts.
 
@@ -127,12 +127,12 @@ def test_memory_workbench(http_client: httpx.Client, tenant, corpus) -> None:
     for text in corpus:
         _remember(client, tenant, text)
     time.sleep(1.0)  # Increase sleep for latency
-    precisions: List[float] = []
-    recalls: List[float] = []
-    ndcgs: List[float] = []
+    precisions: list[float] = []
+    recalls: list[float] = []
+    ndcgs: list[float] = []
     for text, meta in corpus.items():
         retrieved = _recall_texts(client, tenant, meta["query"], k=5)
-        relevant: Set[str] = meta["relevant"]
+        relevant: set[str] = meta["relevant"]
         precisions.append(precision_at_k(relevant, retrieved, k=5))
         recalls.append(recall_at_k(relevant, retrieved, k=5))
         ndcgs.append(

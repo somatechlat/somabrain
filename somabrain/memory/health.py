@@ -14,7 +14,7 @@ Per Requirements E3.1-E3.5:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from somabrain.memory.transport import MemoryHTTPTransport
@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 def check_memory_health(
-    transport: Optional["MemoryHTTPTransport"],
+    transport: MemoryHTTPTransport | None,
     response_json_fn: callable,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return health information from the external memory service.
 
     Per Requirements E3.1-E3.5:

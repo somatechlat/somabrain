@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class TenantTier(str, Enum):
@@ -40,14 +40,14 @@ class TenantMetadata:
     created_at: datetime
     status: TenantStatus
     tier: TenantTier
-    config: Dict[str, Any]
+    config: dict[str, Any]
     is_exempt: bool
-    exempt_reason: Optional[str]
+    exempt_reason: str | None
     last_activity: datetime
-    created_by: Optional[str]
-    expires_at: Optional[datetime] = None
+    created_by: str | None
+    expires_at: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         data = asdict(self)
         data["status"] = self.status.value
@@ -55,7 +55,7 @@ class TenantMetadata:
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> TenantMetadata:
+    def from_dict(cls, data: dict[str, Any]) -> TenantMetadata:
         """Create from dictionary."""
         data = data.copy()
         data["status"] = TenantStatus(data["status"])

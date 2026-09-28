@@ -14,15 +14,13 @@ VIBE compliance:
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
 from django.conf import settings
 
 from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
 
 
-def _load_state_operator() -> Tuple[callable, int]:
+def _load_state_operator() -> tuple[callable, int]:
     """Load the Laplacian operator for the *state* domain.
 
     The environment variable ``SOMABRAIN_GRAPH_FILE_STATE`` is consulted first;
@@ -63,7 +61,7 @@ class StatePredictor(HeatDiffusionPredictor):
 
     def predict(
         self, source_idx: int, observed: np.ndarray
-    ) -> Tuple[np.ndarray, float, float]:
+    ) -> tuple[np.ndarray, float, float]:
         """Run a single prediction step.
 
         Parameters

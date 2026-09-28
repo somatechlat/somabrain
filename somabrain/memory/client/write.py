@@ -1,13 +1,16 @@
 from __future__ import annotations
-import uuid
+
 import asyncio
-import time
 import logging
-from typing import Any, Tuple, Iterable, List
+import time
+import uuid
+from collections.abc import Iterable
+from typing import Any
+
 from django.conf import settings
+
 from .serialization import (
     _compat_enrich_payload,
-    _coord_to_str,
     _explicit_coord,
     _extract_memory_coord,
     _stable_coord,
@@ -18,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def _resolve_coord(
     coord_key: str, payload: dict, universe: str
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """Resolve the storage identity for a write.
 
     A caller-supplied ``coord`` / ``coordinate`` wins so the seam's
@@ -36,7 +39,7 @@ class WriteMixin:
 
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """Store a memory using a stable coordinate derived from coord_key."""
         enriched, universe, _hdr = _compat_enrich_payload(self.cfg, payload, coord_key)
         coord = _resolve_coord(coord_key, payload, universe)
@@ -156,14 +159,14 @@ class WriteMixin:
         self,
         items: Iterable[tuple[str, dict[str, Any]]],
         request_id: str | None = None,
-    ) -> List[Tuple[float, float, float]]:
+    ) -> list[tuple[float, float, float]]:
         records = list(items)
         if not records:
             return []
 
-        prepared: List[dict[str, Any]] = []
-        universes: List[str] = []
-        coords: List[Tuple[float, float, float]] = []
+        prepared: list[dict[str, Any]] = []
+        universes: list[str] = []
+        coords: list[tuple[float, float, float]] = []
 
         for coord_key, payload in records:
             enriched, universe, _ = _compat_enrich_payload(self.cfg, payload, coord_key)
@@ -207,7 +210,7 @@ class WriteMixin:
             [entry["body"] for entry in prepared], headers
         )
         if success and response is not None:
-            returned: List[Any] = []
+            returned: list[Any] = []
             if isinstance(response, dict):
                 for key in ("items", "results", "memories", "entries"):
                     seq = response.get(key)
@@ -245,7 +248,7 @@ class WriteMixin:
 
     async def aremember(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         """Store a memory asynchronously, waiting for real backend confirmation.
 
         Awaits persistence and propagates failures — never silent success.
@@ -315,7 +318,7 @@ class WriteMixin:
         self,
         items: Iterable[tuple[str, dict[str, Any]]],
         request_id: str | None = None,
-    ) -> List[Tuple[float, float, float]]:
+    ) -> list[tuple[float, float, float]]:
         records = list(items)
         if not records:
             return []
@@ -323,9 +326,9 @@ class WriteMixin:
         if self._http_async is None:
             return self.remember_bulk(records, request_id=request_id)
 
-        prepared: List[dict[str, Any]] = []
-        universes: List[str] = []
-        coords: List[Tuple[float, float, float]] = []
+        prepared: list[dict[str, Any]] = []
+        universes: list[str] = []
+        coords: list[tuple[float, float, float]] = []
 
         for coord_key, payload in records:
             enriched, universe, _ = _compat_enrich_payload(self.cfg, payload, coord_key)
@@ -358,7 +361,7 @@ class WriteMixin:
             [entry["body"] for entry in prepared], headers
         )
         if success and response is not None:
-            returned: List[Any] = []
+            returned: list[Any] = []
             if isinstance(response, dict):
                 for key in ("items", "results", "memories", "entries"):
                     seq = response.get(key)
@@ -396,7 +399,7 @@ class WriteMixin:
 
     def _remember_sync_persist(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> Tuple[float, float, float] | None:
+    ) -> tuple[float, float, float] | None:
         if self._http is None:
             raise RuntimeError("HTTP memory service required for persistence")
 
@@ -409,6 +412,7 @@ class WriteMixin:
         # ARCHITECTURE-INVARIANTS §5: embedding and tenant_id are FIRST-CLASS
         # top-level fields on MemoryStoreRequest — never only inside payload.
         from somabrain.memory.remember import _get_tenant_namespace
+
         tenant, _ns = _get_tenant_namespace(self.cfg, payload)
         embedding = enriched.get("embedding")
         if embedding is None:
@@ -433,7 +437,7 @@ class WriteMixin:
                 stored, response_payload = self._store_http_sync(body, rid_hdr)
             except Exception:
                 stored = False
-        server_coord: Tuple[float, float, float] | None = None
+        server_coord: tuple[float, float, float] | None = None
         if stored and response_payload is not None:
             try:
                 server_coord = _extract_memory_coord(
@@ -466,6 +470,7 @@ class WriteMixin:
             enriched.get("memory_type") or enriched.get("type") or "episodic"
         )
         from somabrain.memory.remember import _get_tenant_namespace
+
         tenant, _ns = _get_tenant_namespace(self.cfg, payload)
         embedding = enriched.get("embedding")
         if embedding is None:
@@ -483,9 +488,7 @@ class WriteMixin:
         try:
             await self._store_http_async(body, rid_hdr)
         except Exception as exc:
-            logger.warning(
-                "LTM background persist failed key=%s: %s", coord_key, exc
-            )
+            logger.warning("LTM background persist failed key=%s: %s", coord_key, exc)
             raise
 
     def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:

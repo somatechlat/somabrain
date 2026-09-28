@@ -19,7 +19,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 import csv
 import io
 from datetime import datetime, timedelta
-from typing import List, Optional
 from uuid import UUID
 
 from django.db.models import Count, Q
@@ -49,22 +48,22 @@ class AuditLogOut(Schema):
     resource_id: str
     actor_id: str
     actor_type: str
-    ip_address: Optional[str]
-    user_agent: Optional[str]
-    details: Optional[dict]
-    tenant_id: Optional[UUID]
+    ip_address: str | None
+    user_agent: str | None
+    details: dict | None
+    tenant_id: UUID | None
 
 
 class AuditLogSearchRequest(Schema):
     """Search parameters for audit logs."""
 
-    action: Optional[str] = None
-    resource_type: Optional[str] = None
-    actor_id: Optional[str] = None
-    actor_type: Optional[str] = None
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    search: Optional[str] = None
+    action: str | None = None
+    resource_type: str | None = None
+    actor_id: str | None = None
+    actor_type: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    search: str | None = None
     limit: int = 50
     offset: int = 0
 
@@ -93,14 +92,14 @@ class ActionSummaryOut(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/logs", response=List[AuditLogOut])
+@router.get("/{tenant_id}/logs", response=list[AuditLogOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def list_tenant_audit_logs(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    action: Optional[str] = None,
-    resource_type: Optional[str] = None,
+    action: str | None = None,
+    resource_type: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -143,7 +142,7 @@ def list_tenant_audit_logs(
     ]
 
 
-@router.post("/{tenant_id}/logs/search", response=List[AuditLogOut])
+@router.post("/{tenant_id}/logs/search", response=list[AuditLogOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def search_tenant_audit_logs(
@@ -321,14 +320,14 @@ def export_tenant_audit_logs(
 # =============================================================================
 
 
-@router.get("/platform/logs", response=List[AuditLogOut])
+@router.get("/platform/logs", response=list[AuditLogOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def list_platform_audit_logs(
     request: AuthenticatedRequest,
-    action: Optional[str] = None,
-    resource_type: Optional[str] = None,
-    tenant_id: Optional[UUID] = None,
+    action: str | None = None,
+    resource_type: str | None = None,
+    tenant_id: UUID | None = None,
     limit: int = 100,
     offset: int = 0,
 ):
@@ -400,7 +399,7 @@ def get_platform_audit_stats(
     )
 
 
-@router.get("/platform/logs/actions", response=List[ActionSummaryOut])
+@router.get("/platform/logs/actions", response=list[ActionSummaryOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def list_unique_actions(request: AuthenticatedRequest):

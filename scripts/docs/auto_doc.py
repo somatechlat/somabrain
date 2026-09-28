@@ -1,7 +1,7 @@
 """Module auto_doc."""
 
-import os
 import ast
+import os
 import sys
 
 

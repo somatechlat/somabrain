@@ -16,22 +16,22 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from somabrain.math import cosine_similarity
 
 if TYPE_CHECKING:
-    from somabrain.memory.wm_persistence import WMPersister
     from somabrain.memory.wm.core import WMItem
+    from somabrain.memory.wm_persistence import WMPersister
 
 _EPS = 1e-12
 logger = logging.getLogger(__name__)
 
 
 def find_lowest_salience_idx(
-    items: List["WMItem"],
+    items: list[WMItem],
     alpha: float,
     gamma: float,
     now: float,
@@ -89,10 +89,10 @@ def find_lowest_salience_idx(
 
 
 def evict_item(
-    items: List["WMItem"],
-    item_ids: List[str],
+    items: list[WMItem],
+    item_ids: list[str],
     idx: int,
-    persister: Optional["WMPersister"],
+    persister: WMPersister | None,
 ) -> None:
     """Evict an item from working memory.
 
@@ -118,7 +118,7 @@ def evict_item(
     del items[idx]
 
 
-def _mark_evicted_async(persister: "WMPersister", item_id: str) -> None:
+def _mark_evicted_async(persister: WMPersister, item_id: str) -> None:
     """Mark an item as evicted in the persistence layer.
 
     This is a best-effort operation - failures are logged but don't
@@ -150,11 +150,11 @@ def _mark_evicted_async(persister: "WMPersister", item_id: str) -> None:
 
 
 def find_duplicate(
-    items: List["WMItem"],
+    items: list[WMItem],
     item_id: str,
     vector: np.ndarray,
     duplicate_threshold: float,
-) -> Optional[int]:
+) -> int | None:
     """Find an existing item that is a duplicate of the given vector.
 
     Per Requirement B1.4: Items with cosine similarity > threshold are

@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List, Optional
 
 from django.utils import timezone
 from ninja import Router, Schema
@@ -122,8 +121,8 @@ class APIVersionOut(Schema):
     version: str
     status: str
     released_at: str
-    deprecated_at: Optional[str]
-    sunset_at: Optional[str]
+    deprecated_at: str | None
+    sunset_at: str | None
     description: str
     changelog_url: str
 
@@ -134,7 +133,7 @@ class DeprecatedEndpointOut(Schema):
     endpoint: str
     deprecated_at: str
     sunset_at: str
-    replacement: Optional[str]
+    replacement: str | None
     reason: str
 
 
@@ -150,7 +149,7 @@ class ChangelogVersion(Schema):
 
     version: str
     date: str
-    changes: List[ChangelogEntry]
+    changes: list[ChangelogEntry]
 
 
 class CompatibilityCheck(Schema):
@@ -159,8 +158,8 @@ class CompatibilityCheck(Schema):
     compatible: bool
     current_version: str
     requested_version: str
-    warnings: List[str]
-    breaking_changes: List[str]
+    warnings: list[str]
+    breaking_changes: list[str]
 
 
 # =============================================================================
@@ -168,7 +167,7 @@ class CompatibilityCheck(Schema):
 # =============================================================================
 
 
-@router.get("/versions", response=List[APIVersionOut])
+@router.get("/versions", response=list[APIVersionOut])
 def list_api_versions():
     """
     List all API versions with their status.
@@ -210,7 +209,7 @@ def get_current_version():
     raise HttpError(500, "No current API version configured")
 
 
-@router.get("/deprecations", response=List[DeprecatedEndpointOut])
+@router.get("/deprecations", response=list[DeprecatedEndpointOut])
 def list_deprecated_endpoints():
     """
     List all deprecated endpoints.
@@ -250,7 +249,7 @@ def list_upcoming_sunsets():
 # =============================================================================
 
 
-@router.get("/changelog/{version}", response=List[ChangelogVersion])
+@router.get("/changelog/{version}", response=list[ChangelogVersion])
 def get_changelog(
     version: str,
     limit: int = 10,
@@ -369,7 +368,7 @@ def add_deprecation(
     request: AuthenticatedRequest,
     endpoint: str,
     sunset_at: str,
-    replacement: Optional[str] = None,
+    replacement: str | None = None,
     reason: str = "",
 ):
     """

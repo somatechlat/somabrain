@@ -16,12 +16,12 @@ from .schemas import (
 )
 
 __all__ = [
-    "router",
-    "UserCreate",
-    "UserUpdate",
-    "UserOut",
-    "UserListOut",
     "RoleAssignment",
-    "UserInvite",
+    "UserCreate",
     "UserFilters",
+    "UserInvite",
+    "UserListOut",
+    "UserOut",
+    "UserUpdate",
+    "router",
 ]

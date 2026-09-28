@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Optional
+from typing import Any
 
 # Module-level logger
 _logger = logging.getLogger("somabrain.lifecycle.watchdog")
@@ -64,7 +64,7 @@ async def stop_memory_watchdog(app: Any) -> None:
         pass
 
 
-async def shutdown_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
+async def shutdown_tenant_manager(logger: logging.Logger | None = None) -> None:
     """Shutdown tenant manager gracefully.
 
     Skipped in Standalone mode (somabrain.aaas not in INSTALLED_APPS).

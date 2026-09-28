@@ -17,10 +17,10 @@ from somabrain.bootstrap.logging import setup_logging
 
 # Re-export for backward compatibility
 __all__ = [
-    "setup_logging",
-    "logger",
     "cognitive_logger",
     "error_logger",
+    "logger",
+    "setup_logging",
 ]
 
 

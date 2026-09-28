@@ -7,10 +7,10 @@ from functools import lru_cache
 # Unified configuration – use the central Settings instance
 from django.conf import settings
 
+from somabrain.admin.core.embeddings import make_embedder
 from somabrain.cognitive.working_memory_buffer import WorkingMemoryBuffer
 from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
-from somabrain.admin.core.embeddings import make_embedder
 from somabrain.learning import UtilityWeights
 from somabrain.memory.pool import MultiTenantMemory
 

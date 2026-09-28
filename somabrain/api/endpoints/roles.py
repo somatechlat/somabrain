@@ -6,7 +6,6 @@ Django Ninja API for managing roles and field-level permissions.
 ALL 10 PERSONAS per VIBE Coding Rules v5.2
 """
 
-from typing import List, Optional
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -33,19 +32,19 @@ class RoleCreate(Schema):
 
     name: str
     slug: str
-    description: Optional[str] = None
-    platform_role: Optional[str] = None
-    parent_id: Optional[UUID] = None
+    description: str | None = None
+    platform_role: str | None = None
+    parent_id: UUID | None = None
 
 
 class RoleUpdate(Schema):
     """Schema for updating a role."""
 
-    name: Optional[str] = None
-    slug: Optional[str] = None
-    description: Optional[str] = None
-    platform_role: Optional[str] = None
-    parent_id: Optional[UUID] = None
+    name: str | None = None
+    slug: str | None = None
+    description: str | None = None
+    platform_role: str | None = None
+    parent_id: UUID | None = None
 
 
 class RoleOut(Schema):
@@ -54,10 +53,10 @@ class RoleOut(Schema):
     id: UUID
     name: str
     slug: str
-    description: Optional[str]
+    description: str | None
     is_system: bool
-    platform_role: Optional[str]
-    parent_id: Optional[UUID]
+    platform_role: str | None
+    parent_id: UUID | None
     created_at: str
     updated_at: str
 
@@ -95,8 +94,8 @@ class FieldPermissionCreate(Schema):
 class FieldPermissionUpdate(Schema):
     """Schema for updating field permission."""
 
-    can_view: Optional[bool] = None
-    can_edit: Optional[bool] = None
+    can_view: bool | None = None
+    can_edit: bool | None = None
 
 
 class FieldPermissionOut(Schema):
@@ -114,7 +113,7 @@ class PermissionMatrixOut(Schema):
     """Schema for permission matrix output."""
 
     model_name: str
-    fields: List[dict]
+    fields: list[dict]
 
 
 # =============================================================================
@@ -122,7 +121,7 @@ class PermissionMatrixOut(Schema):
 # =============================================================================
 
 
-@router.get("/", response=List[RoleOut])
+@router.get("/", response=list[RoleOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_roles(request: AuthenticatedRequest):
     """
@@ -234,7 +233,7 @@ def delete_role(request: AuthenticatedRequest, role_id: UUID):
 # =============================================================================
 
 
-@router.get("/{role_id}/permissions", response=List[FieldPermissionOut])
+@router.get("/{role_id}/permissions", response=list[FieldPermissionOut])
 @require_auth(roles=["super-admin"])
 def list_role_permissions(request: AuthenticatedRequest, role_id: UUID):
     """Get all field permissions for a role."""
@@ -294,7 +293,7 @@ def delete_permission(request: AuthenticatedRequest, perm_id: UUID):
 # =============================================================================
 
 
-@router.get("/{role_id}/matrix", response=List[PermissionMatrixOut])
+@router.get("/{role_id}/matrix", response=list[PermissionMatrixOut])
 @require_auth(roles=["super-admin"])
 def get_permission_matrix(request: AuthenticatedRequest, role_id: UUID):
     """
@@ -366,7 +365,7 @@ def get_permission_matrix(request: AuthenticatedRequest, role_id: UUID):
 @router.post("/{role_id}/matrix")
 @require_auth(roles=["super-admin"])
 def update_permission_matrix(
-    request: AuthenticatedRequest, role_id: UUID, matrix: List[dict]
+    request: AuthenticatedRequest, role_id: UUID, matrix: list[dict]
 ):
     """
     Bulk update permission matrix for a role.

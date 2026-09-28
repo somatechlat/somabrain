@@ -7,13 +7,15 @@
 from __future__ import annotations
 
 import numpy as np
-from hypothesis import given, settings as hyp_settings, strategies as st
+from hypothesis import given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 
 from somabrain.math.similarity import (
-    cosine_similarity,
-    cosine_error,
-    cosine_distance,
     batch_cosine_similarity,
+    cosine_distance,
+    cosine_error,
+    cosine_similarity,
 )
 
 dim_strategy = st.integers(min_value=2, max_value=2048)

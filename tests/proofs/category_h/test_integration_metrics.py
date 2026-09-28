@@ -242,9 +242,9 @@ class TestAdditionalMetrics:
         **Validates: Requirements H2.1, H2.2**
         """
         from somabrain.metrics.integration import (
-            SFM_BULK_STORE_TOTAL,
-            SFM_BULK_STORE_LATENCY,
             SFM_BULK_STORE_ITEMS,
+            SFM_BULK_STORE_LATENCY,
+            SFM_BULK_STORE_TOTAL,
         )
 
         assert SFM_BULK_STORE_TOTAL is not None
@@ -258,8 +258,8 @@ class TestAdditionalMetrics:
         **Validates: Requirements H2.1, H2.2**
         """
         from somabrain.metrics.integration import (
-            SFM_HYBRID_RECALL_TOTAL,
             SFM_HYBRID_RECALL_LATENCY,
+            SFM_HYBRID_RECALL_TOTAL,
         )
 
         assert SFM_HYBRID_RECALL_TOTAL is not None
@@ -272,10 +272,10 @@ class TestAdditionalMetrics:
         **Validates: Requirements H2.1-H2.5**
         """
         from somabrain.metrics import (
-            SFM_REQUEST_TOTAL,
-            SFM_REQUEST_DURATION,
             SFM_CIRCUIT_BREAKER_STATE,
             SFM_OUTBOX_PENDING,
+            SFM_REQUEST_DURATION,
+            SFM_REQUEST_TOTAL,
             SFM_WM_PROMOTION_TOTAL,
         )
 

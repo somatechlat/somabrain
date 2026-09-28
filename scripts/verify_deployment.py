@@ -10,6 +10,7 @@ It verifies:
 
 import sys
 import time
+
 import requests
 
 BASE_URL = "http://localhost:30101"

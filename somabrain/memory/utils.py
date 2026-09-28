@@ -7,7 +7,7 @@ to reduce file size while maintaining the same functionality.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any
 
 from somabrain.memory.normalization import _stable_coord
 from somabrain.memory.transport import _response_json
@@ -72,7 +72,7 @@ def get_tenant_namespace(
     return tenant, namespace
 
 
-def coord_for_key(key: str, universe: str | None = None) -> Tuple[float, float, float]:
+def coord_for_key(key: str, universe: str | None = None) -> tuple[float, float, float]:
     """Return a deterministic coordinate for *key* and optional *universe*.
 
     This is a lightweight helper used by migration scripts and
@@ -84,9 +84,9 @@ def coord_for_key(key: str, universe: str | None = None) -> Tuple[float, float, 
 
 
 def fetch_by_coord(
-    client: "httpx.Client | None",
-    coord: Tuple[float, float, float],
-) -> List[Dict[str, Any]]:
+    client: httpx.Client | None,
+    coord: tuple[float, float, float],
+) -> list[dict[str, Any]]:
     """Fetch memory payloads by coordinate using GET /memories/{coord}.
 
     Returns a list of payload dicts for the given coordinate. Returns an

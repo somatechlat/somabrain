@@ -14,7 +14,8 @@ Per Requirements C1.1-C1.5:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from somabrain.memory.transport import MemoryHTTPTransport
@@ -150,7 +151,7 @@ STOPWORDS = {
 }
 
 
-def extract_keywords(query: str) -> List[str]:
+def extract_keywords(query: str) -> list[str]:
     """Extract keywords from query for hybrid recall.
 
     Per Requirement C1.2: Extract keywords from query for hybrid matching.
@@ -172,18 +173,18 @@ def extract_keywords(query: str) -> List[str]:
 
 
 def hybrid_recall_sync(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     query: str,
     top_k: int,
     universe: str,
     request_id: str,
     tenant: str,
-    keywords: Optional[List[str]],
+    keywords: list[str] | None,
     http_post_fn: Callable,
     rescore_fn: Callable,
     recall_fallback_fn: Callable,
     require_healthy_fn: Callable,
-) -> List["RecallHit"]:
+) -> list[RecallHit]:
     """Synchronous hybrid recall combining vector similarity with keyword matching.
 
     Per Requirements C1.1-C1.5.
@@ -224,7 +225,7 @@ def hybrid_recall_sync(
         require_healthy_fn()
 
         # Build filters for hybrid search
-        filters: Dict[str, Any] = {}
+        filters: dict[str, Any] = {}
         if kw_list:
             filters["_keywords"] = kw_list
 
@@ -277,18 +278,18 @@ def hybrid_recall_sync(
 
 
 async def hybrid_recall_async(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     query: str,
     top_k: int,
     universe: str,
     request_id: str,
     tenant: str,
-    keywords: Optional[List[str]],
+    keywords: list[str] | None,
     http_post_fn: Callable,
     rescore_fn: Callable,
     recall_fallback_fn: Callable,
     require_healthy_fn: Callable,
-) -> List["RecallHit"]:
+) -> list[RecallHit]:
     """Async hybrid recall combining vector similarity with keyword matching.
 
     Per Requirements C1.1-C1.5.
@@ -326,7 +327,7 @@ async def hybrid_recall_async(
     try:
         require_healthy_fn()
 
-        filters: Dict[str, Any] = {}
+        filters: dict[str, Any] = {}
         if kw_list:
             filters["_keywords"] = kw_list
 

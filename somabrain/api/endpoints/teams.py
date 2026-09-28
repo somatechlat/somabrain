@@ -16,7 +16,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Team configuration
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -95,7 +95,7 @@ def create_team(tenant_id: str, name: str, description: str, created_by: str) ->
     return team
 
 
-def get_team(team_id: str) -> Optional[dict]:
+def get_team(team_id: str) -> dict | None:
     """Retrieve team.
 
     Args:
@@ -105,7 +105,7 @@ def get_team(team_id: str) -> Optional[dict]:
     return cache.get(get_team_key(team_id))
 
 
-def update_team(team_id: str, **updates) -> Optional[dict]:
+def update_team(team_id: str, **updates) -> dict | None:
     """Execute update team.
 
     Args:
@@ -120,7 +120,7 @@ def update_team(team_id: str, **updates) -> Optional[dict]:
     return team
 
 
-def get_tenant_teams(tenant_id: str) -> List[dict]:
+def get_tenant_teams(tenant_id: str) -> list[dict]:
     """Get all teams for a tenant."""
     team_ids = cache.get(get_teams_key(tenant_id), [])
     teams = []
@@ -141,10 +141,10 @@ class TeamOut(Schema):
 
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
     member_count: int
     created_at: str
-    created_by: Optional[str]
+    created_by: str | None
     is_private: bool
 
 
@@ -153,18 +153,18 @@ class TeamDetailOut(Schema):
 
     id: str
     name: str
-    description: Optional[str]
-    members: List[Dict[str, Any]]
-    settings: Dict[str, Any]
+    description: str | None
+    members: list[dict[str, Any]]
+    settings: dict[str, Any]
     created_at: str
-    created_by: Optional[str]
+    created_by: str | None
 
 
 class TeamCreate(Schema):
     """Create team request."""
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     is_private: bool = False
     allow_self_join: bool = False
 
@@ -172,10 +172,10 @@ class TeamCreate(Schema):
 class TeamUpdate(Schema):
     """Update team request."""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
-    is_private: Optional[bool] = None
-    allow_self_join: Optional[bool] = None
+    name: str | None = None
+    description: str | None = None
+    is_private: bool | None = None
+    allow_self_join: bool | None = None
 
 
 class TeamMemberAdd(Schema):
@@ -190,7 +190,7 @@ class TeamMemberOut(Schema):
 
     user_id: str
     email: str
-    display_name: Optional[str]
+    display_name: str | None
     role: str
     joined_at: str
 
@@ -200,7 +200,7 @@ class TeamMemberOut(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/teams", response=List[TeamOut])
+@router.get("/{tenant_id}/teams", response=list[TeamOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_teams(
     request: AuthenticatedRequest,
@@ -449,7 +449,7 @@ def delete_team(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/teams/{team_id}/members", response=List[TeamMemberOut])
+@router.get("/{tenant_id}/teams/{team_id}/members", response=list[TeamMemberOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_team_members(
     request: AuthenticatedRequest,
@@ -583,7 +583,7 @@ def remove_team_member(
 # =============================================================================
 
 
-@router.get("/my-teams", response=List[TeamOut])
+@router.get("/my-teams", response=list[TeamOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_my_teams(request: AuthenticatedRequest):
     """

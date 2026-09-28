@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from typing import List, Set
 
 import httpx
 import pytest
@@ -16,7 +15,8 @@ except Exception:
     pass
 
 from django.conf import settings
-from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
+
+from tests.utils.metrics import ndcg_at_k, precision_at_k, recall_at_k
 
 # Use centralized Settings for test configuration
 MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:10101"
@@ -95,7 +95,7 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
     assert r.status_code == 200, r.text
 
 
-def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
+def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> list[str]:
     """Execute recall texts.
 
     Args:
@@ -118,7 +118,10 @@ def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List
         content = item.get("content") or item.get("text") or ""
         if isinstance(content, dict):
             text = str(
-                content.get("task") or content.get("content") or content.get("text") or ""
+                content.get("task")
+                or content.get("content")
+                or content.get("text")
+                or ""
             )
         else:
             text = str(content)
@@ -159,7 +162,7 @@ def test_recall_quality_basic(http_client: httpx.Client) -> None:
     ndcgs = []
     for text, meta in corpus.items():
         retrieved = _recall_texts(http_client, tenant, meta["query"], k=5)
-        relevant: Set[str] = meta["relevant"]
+        relevant: set[str] = meta["relevant"]
         precisions.append(precision_at_k(relevant, retrieved, k=5))
         recalls.append(recall_at_k(relevant, retrieved, k=5))
         # Build binary relevance vector aligned with retrieved list

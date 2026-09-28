@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -57,7 +56,7 @@ class UnifiedScorer:
         weight_min: float,
         weight_max: float,
         recency_tau: float,
-        fd_backend: Optional[FDSalienceSketch] = None,
+        fd_backend: FDSalienceSketch | None = None,
     ) -> None:
         """Initialize the instance."""
 
@@ -117,7 +116,7 @@ class UnifiedScorer:
         # Use canonical cosine_similarity for FD-projected vectors
         return cosine_similarity(q_proj, c_proj)
 
-    def _recency_component(self, recency_steps: Optional[int]) -> float:
+    def _recency_component(self, recency_steps: int | None) -> float:
         """Execute recency component.
 
         Args:
@@ -136,8 +135,8 @@ class UnifiedScorer:
         query: np.ndarray,
         candidate: np.ndarray,
         *,
-        recency_steps: Optional[int] = None,
-        cosine: Optional[float] = None,
+        recency_steps: int | None = None,
+        cosine: float | None = None,
     ) -> float:
         """Execute score.
 

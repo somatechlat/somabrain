@@ -7,8 +7,8 @@ It uses Django's setup mechanics to properly initialize the application.
 
 from __future__ import annotations
 
-import os
 import json
+import os
 from pathlib import Path
 
 # Setup Django before importing app modules

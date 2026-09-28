@@ -6,8 +6,7 @@ Eye of God administrative interface backend.
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from django.db import transaction
@@ -25,9 +24,10 @@ from somabrain.aaas.models import (
     Tenant,
     TenantStatus,
 )
+
 from .schemas import (
-    APIKeyCreateSchema,
     APIKeyCreatedSchema,
+    APIKeyCreateSchema,
     APIKeyResponseSchema,
     SubscriptionChangeSchema,
     SubscriptionResponseSchema,
@@ -54,7 +54,7 @@ router = Router(tags=["AAAS Admin"])
 @router.get("/tenants", response=TenantListSchema, auth=APIKeyAuth())
 @require_scope("admin:tenants")
 def list_tenants(
-    request, page: int = 1, page_size: int = 20, status: Optional[str] = None
+    request, page: int = 1, page_size: int = 20, status: str | None = None
 ):
     """List all tenants (paginated)."""
     queryset = Tenant.objects.select_related("tier").all()
@@ -109,7 +109,7 @@ def create_tenant(request, data: TenantCreateSchema):
             tenant=tenant,
             tier=tier,
             status=SubscriptionStatus.ACTIVE,
-            current_period_start=datetime.now(timezone.utc),
+            current_period_start=datetime.now(UTC),
         )
         log_api_action(
             request,
@@ -252,7 +252,7 @@ def delete_tenant(request, tenant_id: UUID, hard_delete: bool = False):
 
 @router.get(
     "/tenants/{tenant_id}/api-keys",
-    response=List[APIKeyResponseSchema],
+    response=list[APIKeyResponseSchema],
     auth=APIKeyAuth(),
 )
 @require_scope("admin:tenants")
@@ -287,7 +287,7 @@ def create_api_key(request, tenant_id: UUID, data: APIKeyCreateSchema):
     if data.expires_days:
         from datetime import timedelta
 
-        expires_at = datetime.now(timezone.utc) + timedelta(days=data.expires_days)
+        expires_at = datetime.now(UTC) + timedelta(days=data.expires_days)
     api_key = APIKey.objects.create(
         tenant=tenant,
         name=data.name,
@@ -402,7 +402,7 @@ def change_subscription(request, tenant_id: UUID, data: SubscriptionChangeSchema
 # =============================================================================
 
 
-@router.get("/tiers", response=List[SubscriptionTierResponseSchema])
+@router.get("/tiers", response=list[SubscriptionTierResponseSchema])
 def list_tiers(request):
     """List available subscription tiers (public)."""
     tiers = SubscriptionTier.objects.filter(is_active=True).order_by("display_order")

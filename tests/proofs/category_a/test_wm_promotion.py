@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -228,9 +228,9 @@ class TestWMLTMPromoter:
             def __init__(self):
                 """Initialize the instance."""
 
-                self._stored: Dict[str, Any] = {}
+                self._stored: dict[str, Any] = {}
 
-            async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
+            async def aremember(self, key: str, payload: dict[str, Any]) -> tuple:
                 """Execute aremember.
 
                 Args:
@@ -260,6 +260,7 @@ class TestWMLTMPromoter:
         **Validates: Requirements A2.2**
         """
         import asyncio
+
         from somabrain.memory.promotion import WMLTMPromoter
 
         # Create test memory client
@@ -269,9 +270,9 @@ class TestWMLTMPromoter:
             def __init__(self):
                 """Initialize the instance."""
 
-                self._stored: Dict[str, Any] = {}
+                self._stored: dict[str, Any] = {}
 
-            async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
+            async def aremember(self, key: str, payload: dict[str, Any]) -> tuple:
                 """Execute aremember.
 
                 Args:
@@ -325,6 +326,7 @@ class TestWMLTMPromoter:
         - promotion_timestamp
         """
         import asyncio
+
         from somabrain.memory.promotion import WMLTMPromoter
 
         # Create test memory client that captures payload
@@ -334,9 +336,9 @@ class TestWMLTMPromoter:
             def __init__(self):
                 """Initialize the instance."""
 
-                self.last_payload: Dict[str, Any] = {}
+                self.last_payload: dict[str, Any] = {}
 
-            async def aremember(self, key: str, payload: Dict[str, Any]) -> tuple:
+            async def aremember(self, key: str, payload: dict[str, Any]) -> tuple:
                 """Execute aremember.
 
                 Args:
@@ -393,8 +395,8 @@ class TestPromotionMetrics:
         **Validates: Requirements A2.5**
         """
         from somabrain.memory.promotion import (
-            WM_PROMOTION_TOTAL,
             WM_PROMOTION_LATENCY,
+            WM_PROMOTION_TOTAL,
         )
 
         # Verify metrics exist

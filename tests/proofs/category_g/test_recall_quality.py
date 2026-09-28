@@ -17,7 +17,6 @@ Test Coverage:
 from __future__ import annotations
 
 import os
-from typing import List, Tuple
 
 import numpy as np
 import pytest
@@ -38,7 +37,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (norm_a * norm_b))
 
 
-def dcg_at_k(relevances: List[float], k: int) -> float:
+def dcg_at_k(relevances: list[float], k: int) -> float:
     """Calculate DCG@k."""
     dcg = 0.0
     for i, rel in enumerate(relevances[:k]):
@@ -46,7 +45,7 @@ def dcg_at_k(relevances: List[float], k: int) -> float:
     return dcg
 
 
-def ndcg_at_k(relevances: List[float], k: int) -> float:
+def ndcg_at_k(relevances: list[float], k: int) -> float:
     """Calculate nDCG@k."""
     dcg = dcg_at_k(relevances, k)
     ideal_relevances = sorted(relevances, reverse=True)
@@ -89,7 +88,7 @@ class TestRecallQualityUnderScale:
         # Group items into clusters for measurable precision
         num_clusters = 10
         items_per_cluster = corpus_size // num_clusters
-        cluster_centers: List[np.ndarray] = []
+        cluster_centers: list[np.ndarray] = []
 
         for cluster_id in range(num_clusters):
             # Create cluster center
@@ -108,7 +107,7 @@ class TestRecallQualityUnderScale:
                 wm.admit(item_id, vec, {"cluster": cluster_id, "index": i})
 
         # Query with cluster center and measure precision
-        precisions: List[float] = []
+        precisions: list[float] = []
 
         for cluster_id, center in enumerate(cluster_centers):
             results = wm.recall(center, top_k=10)
@@ -142,7 +141,7 @@ class TestRecallQualityUnderScale:
         wm = WorkingMemory(dim=512, capacity=corpus_size + 100)
 
         # Create corpus with known relevant items
-        relevant_items: List[Tuple[str, np.ndarray]] = []
+        relevant_items: list[tuple[str, np.ndarray]] = []
 
         # Create a query vector
         query = np.random.randn(512).astype(np.float32)
@@ -196,7 +195,7 @@ class TestRecallQualityUnderScale:
         query = query / np.linalg.norm(query)
 
         # Create items with known relevance (based on similarity to query)
-        items_with_relevance: List[Tuple[str, np.ndarray, float]] = []
+        items_with_relevance: list[tuple[str, np.ndarray, float]] = []
 
         for i in range(100):
             # Create items with varying similarity to query
@@ -271,7 +270,7 @@ class TestRecallQualityUnderScale:
         if len(result_vecs) < 2:
             pytest.skip("Not enough vectors for diversity test")
 
-        pairwise_sims: List[float] = []
+        pairwise_sims: list[float] = []
         for i in range(len(result_vecs)):
             for j in range(i + 1, len(result_vecs)):
                 sim = cosine_similarity(result_vecs[i], result_vecs[j])

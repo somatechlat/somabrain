@@ -4,6 +4,7 @@
 All API routers are registered in somabrain/api/v1.py
 """
 
+from django.apps import apps as _django_apps
 from django.contrib import admin
 from django.db import DatabaseError, OperationalError
 from django.http import JsonResponse
@@ -12,8 +13,6 @@ from django.utils import timezone
 
 # Import consolidated API from v1
 from somabrain.api.v1 import api
-
-from django.apps import apps as _django_apps
 
 # Webhook handler — AAAS only
 _lago_webhook = None
@@ -364,13 +363,11 @@ def health_view(request):
     except Exception:
         memory_ok = False
 
-    memory_degraded = (
-        memory_circuit_open or memory_should_reset or not memory_ok
-    )
+    memory_degraded = memory_circuit_open or memory_should_reset or not memory_ok
 
     try:
-        from somabrain.db.outbox import get_pending_count
         from somabrain.admin.core.models import OutboxEvent
+        from somabrain.db.outbox import get_pending_count
 
         pending_count = get_pending_count()
         last_pending = (
@@ -385,9 +382,7 @@ def health_view(request):
         last_pending_ts = None
 
     if getattr(settings, "ENABLE_OAK", False):
-        milvus_metrics = (
-            health["infrastructure"].get("milvus", {}).get("details") or {}
-        )
+        milvus_metrics = health["infrastructure"].get("milvus", {}).get("details") or {}
     else:
         milvus_metrics = {}
 
@@ -440,9 +435,7 @@ def metrics_view(request):
     from somabrain import metrics as M
 
     # Collect metrics in Prometheus format
-    request_count = getattr(
-        M, "HTTP_REQUEST_COUNT", getattr(M, "REQUEST_COUNT", 0)
-    )
+    request_count = getattr(M, "HTTP_REQUEST_COUNT", getattr(M, "REQUEST_COUNT", 0))
     lines = [
         "# HELP somabrain_http_requests_total Total API requests",
         "# TYPE somabrain_http_requests_total counter",

@@ -1,12 +1,14 @@
 from __future__ import annotations
-import math
+
 import hashlib
 import json
+import math
 import re
-from datetime import datetime, timezone
-from typing import Any, List, Iterable
-from .types import RecallHit
+from datetime import UTC, datetime
+from typing import Any
+
 from .serialization import _extract_memory_coord
+from .types import RecallHit
 
 
 def _hit_identity(hit: RecallHit) -> str:
@@ -15,7 +17,7 @@ def _hit_identity(hit: RecallHit) -> str:
         coord = _extract_memory_coord(hit.payload) or _extract_memory_coord(hit.raw)
     if coord:
         try:
-            return "coord:{:.6f},{:.6f},{:.6f}".format(coord[0], coord[1], coord[2])
+            return f"coord:{coord[0]:.6f},{coord[1]:.6f},{coord[2]:.6f}"
         except Exception:
             pass
     payload = hit.payload if isinstance(hit.payload, dict) else {}
@@ -77,7 +79,7 @@ def _coerce_timestamp_value(value: Any) -> float | None:
                 return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         return value.timestamp()
     return None
 
@@ -130,9 +132,9 @@ def _prefer_candidate_hit(current: RecallHit, candidate: RecallHit) -> bool:
     return False
 
 
-def _deduplicate_hits(hits: List[RecallHit]) -> List[RecallHit]:
+def _deduplicate_hits(hits: list[RecallHit]) -> list[RecallHit]:
     winners: dict[str, RecallHit] = {}
-    order: List[str] = []
+    order: list[str] = []
     for hit in hits:
         ident = _hit_identity(hit)
         existing = winners.get(ident)
@@ -175,8 +177,8 @@ def _lexical_bonus(payload: dict, query: str) -> float:
     return bonus
 
 
-def _rank_hits(hits: List[RecallHit], query: str) -> List[RecallHit]:
-    ranked: List[tuple[float, float, float, int, RecallHit]] = []
+def _rank_hits(hits: list[RecallHit], query: str) -> list[RecallHit]:
+    ranked: list[tuple[float, float, float, int, RecallHit]] = []
     for idx, hit in enumerate(hits):
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         lex_bonus = _lexical_bonus(payload, query)
@@ -300,8 +302,7 @@ def _density_factor(cfg: Any, margin: float | None) -> float:
         floor = 0.6
     if not math.isfinite(floor) or floor < 0:
         floor = 0.0
-    if floor > 1.0:
-        floor = 1.0
+    floor = min(floor, 1.0)
     try:
         weight = float(weight)
     except Exception:
@@ -332,9 +333,9 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
                     txt_norm = txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
                     dt = datetime.fromisoformat(txt_norm)
                     if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=UTC)
                     else:
-                        dt = dt.astimezone(timezone.utc)
+                        dt = dt.astimezone(UTC)
                     return float(dt.timestamp())
                 except Exception:
                     return None
@@ -378,12 +379,12 @@ def _resolve_semantic_scorer(cfg: Any, scorer: Any, embedder: Any) -> tuple[Any,
 
 
 def _rescore_and_rank_hits(
-    cfg: Any, scorer: Any, embedder: Any, hits: List[RecallHit], query: str
-) -> List[RecallHit]:
+    cfg: Any, scorer: Any, embedder: Any, hits: list[RecallHit], query: str
+) -> list[RecallHit]:
     scorer, embedder = _resolve_semantic_scorer(cfg, scorer, embedder)
 
     query_vec = embedder.embed(query)
-    now_ts = datetime.now(timezone.utc).timestamp()
+    now_ts = datetime.now(UTC).timestamp()
 
     def _text_of(p: dict) -> str:
         for key in ("text", "content", "task", "fact", "headline", "what"):
@@ -441,7 +442,7 @@ def _rescore_and_rank_hits(
     return scored_hits
 
 
-def _apply_weighting_to_hits(cfg: Any, hits: List[RecallHit]) -> None:
+def _apply_weighting_to_hits(cfg: Any, hits: list[RecallHit]) -> None:
     if not hits:
         return
     weighting_enabled = False

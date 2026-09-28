@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, List, Optional, Tuple
+from typing import Any
 
 from .types import RecallHit
 
 
-def _stable_coord(key: str) -> Tuple[float, float, float]:
+def _stable_coord(key: str) -> tuple[float, float, float]:
     """Derive a deterministic 3D coordinate in [-1,1]^3 from a string key."""
     h = hashlib.blake2b(key.encode("utf-8"), digest_size=12).digest()
     a = int.from_bytes(h[0:4], "big") / 2**32
@@ -16,7 +16,7 @@ def _stable_coord(key: str) -> Tuple[float, float, float]:
     return (2 * a - 1, 2 * b - 1, 2 * c - 1)
 
 
-def _parse_coord_string(coord_str: str) -> Tuple[float, float, float] | None:
+def _parse_coord_string(coord_str: str) -> tuple[float, float, float] | None:
     """Parse a comma-separated coordinate string into a 3D tuple."""
     try:
         parts = [float(x.strip()) for x in str(coord_str).split(",")]
@@ -27,7 +27,7 @@ def _parse_coord_string(coord_str: str) -> Tuple[float, float, float] | None:
     return None
 
 
-def _explicit_coord(payload: Any) -> Tuple[float, float, float] | None:
+def _explicit_coord(payload: Any) -> tuple[float, float, float] | None:
     """Return the caller-supplied coordinate of *payload*, if any.
 
     Only the ``coord`` / ``coordinate`` keys are consulted. Unlike
@@ -70,7 +70,7 @@ def _coord_to_str(coord: Any) -> str | None:
 def _extract_memory_coord(
     resp: Any,
     idempotency_key: str | None = None,
-) -> Tuple[float, float, float] | None:
+) -> tuple[float, float, float] | None:
     """Try to derive a coordinate tuple from the memory-service response."""
 
     if not resp:
@@ -89,7 +89,7 @@ def _extract_memory_coord(
     if data_dict is not None:
         for key in ("coord", "coordinate"):
             value = data_dict.get(key)
-            parsed: Optional[Tuple[float, float, float]] = None
+            parsed: tuple[float, float, float] | None = None
             if isinstance(value, str):
                 parsed = _parse_coord_string(value)
             elif isinstance(value, (list, tuple)) and len(value) >= 3:
@@ -137,8 +137,8 @@ def _extract_memory_coord(
     return None
 
 
-def _normalize_recall_hits(data: Any) -> List[RecallHit]:
-    hits: List[RecallHit] = []
+def _normalize_recall_hits(data: Any) -> list[RecallHit]:
+    hits: list[RecallHit] = []
     if isinstance(data, dict):
         items = None
         for key in ("matches", "results", "items", "memories", "entries", "hits"):
@@ -216,7 +216,7 @@ def _normalize_recall_hits(data: Any) -> List[RecallHit]:
 
 def _compat_enrich_payload(
     cfg: Any, payload: dict, coord_key: str
-) -> Tuple[dict, str, dict]:
+) -> tuple[dict, str, dict]:
     """Return an enriched (payload_copy, universe, extra_headers)."""
     p = dict(payload or {})
     # Universe scoping

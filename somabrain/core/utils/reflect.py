@@ -23,14 +23,13 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from typing import Dict, List, Tuple
 
 import numpy as np
 
 from somabrain.math import cosine_similarity
 
 STOP = set(
-    "the a an and or of to in on for with at from by as is are was were be been it this that these those i you he she we they do did does not".split()
+    ["the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "at", "from", "by", "as", "is", "are", "was", "were", "be", "been", "it", "this", "that", "these", "those", "i", "you", "he", "she", "we", "they", "do", "did", "does", "not"]
 )
 """
 Set of common English stop words to filter out during text analysis.
@@ -41,7 +40,7 @@ pronouns, and auxiliary verbs.
 """
 
 
-def top_keywords(texts: List[str], k: int = 8) -> List[str]:
+def top_keywords(texts: list[str], k: int = 8) -> list[str]:
     """
     Extract the most frequent keywords from a collection of texts.
 
@@ -60,7 +59,7 @@ def top_keywords(texts: List[str], k: int = 8) -> List[str]:
         >>> keywords = top_keywords(texts, k=5)
         >>> print(keywords)  # ['machine', 'learning', 'powerful', 'neural', 'networks']
     """
-    words: List[str] = []
+    words: list[str] = []
     for t in texts:
         toks = re.findall(r"[a-zA-Z0-9_]+", (t or "").lower())
         words.extend(w for w in toks if w not in STOP and len(w) > 2)
@@ -68,7 +67,7 @@ def top_keywords(texts: List[str], k: int = 8) -> List[str]:
     return [w for w, _ in counts.most_common(k)]
 
 
-def summarize_episodics(payloads: List[dict]) -> Tuple[str, List[dict]]:
+def summarize_episodics(payloads: list[dict]) -> tuple[str, list[dict]]:
     """
     Generate a simple heuristic summary of recent episodic memories.
 
@@ -99,7 +98,7 @@ def summarize_episodics(payloads: List[dict]) -> Tuple[str, List[dict]]:
     return summary, payloads
 
 
-def _tokenize(text: str) -> List[str]:
+def _tokenize(text: str) -> list[str]:
     """
     Internal function to tokenize text with stop word filtering.
 
@@ -119,7 +118,7 @@ def _tokenize(text: str) -> List[str]:
     ]
 
 
-def _vocab_and_vectors(texts: List[str]) -> Tuple[Dict[str, int], np.ndarray]:
+def _vocab_and_vectors(texts: list[str]) -> tuple[dict[str, int], np.ndarray]:
     """
     Internal function to create vocabulary and TF vectors from texts.
 
@@ -138,8 +137,8 @@ def _vocab_and_vectors(texts: List[str]) -> Tuple[Dict[str, int], np.ndarray]:
         Uses simple term frequency (not TF-IDF) for vectorization.
         Vectors are L2-normalized for cosine similarity.
     """
-    vocab: Dict[str, int] = {}
-    rows: List[Counter] = []
+    vocab: dict[str, int] = {}
+    rows: list[Counter] = []
     for t in texts:
         toks = _tokenize(t)
         counts = Counter(toks)
@@ -161,8 +160,8 @@ def _vocab_and_vectors(texts: List[str]) -> Tuple[Dict[str, int], np.ndarray]:
 
 
 def cluster_episodics(
-    payloads: List[dict], sim_threshold: float = 0.35, min_cluster_size: int = 2
-) -> List[List[int]]:
+    payloads: list[dict], sim_threshold: float = 0.35, min_cluster_size: int = 2
+) -> list[list[int]]:
     """
     Cluster episodic memories based on text similarity.
 
@@ -196,7 +195,7 @@ def cluster_episodics(
     _, mat = _vocab_and_vectors(texts)
     n = mat.shape[0]
     assigned = [-1] * n
-    clusters: List[List[int]] = []
+    clusters: list[list[int]] = []
     for i in range(n):
         if assigned[i] != -1:
             continue
@@ -229,7 +228,7 @@ def cluster_episodics(
 
 
 def summarize_cluster(
-    payloads: List[dict], indices: List[int], max_keywords: int = 8
+    payloads: list[dict], indices: list[int], max_keywords: int = 8
 ) -> str:
     """
     Generate a keyword-based summary for a cluster of memory payloads.

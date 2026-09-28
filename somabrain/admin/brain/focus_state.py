@@ -15,7 +15,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -41,7 +41,7 @@ class FocusState:
 
     def __init__(
         self,
-        hrr_context: "HRRContext",
+        hrr_context: HRRContext,
         cfg: Any,
         *,
         session_id: str,
@@ -59,19 +59,19 @@ class FocusState:
         self._cfg = cfg
         self._session_id = session_id
         self._tenant_id = tenant_id
-        self._previous_focus_vec: Optional[np.ndarray] = None
-        self._current_focus_vec: Optional[np.ndarray] = None
-        self._focus_digest: Optional[str] = None
+        self._previous_focus_vec: np.ndarray | None = None
+        self._current_focus_vec: np.ndarray | None = None
+        self._focus_digest: str | None = None
         self._tick = 0
-        self._previous_coord: Optional[str] = None
-        self._current_coord: Optional[str] = None
+        self._previous_coord: str | None = None
+        self._current_coord: str | None = None
 
     def update(
         self,
         task_vec: np.ndarray,
-        recall_hits: List[Tuple[str, np.ndarray]],
+        recall_hits: list[tuple[str, np.ndarray]],
         *,
-        timestamp: Optional[float] = None,
+        timestamp: float | None = None,
     ) -> None:
         """Update focus with task embedding and top-N recall hits.
 
@@ -119,17 +119,17 @@ class FocusState:
         return hashlib.sha256(quantized.tobytes()).hexdigest()[:16]
 
     @property
-    def current_focus_vec(self) -> Optional[np.ndarray]:
+    def current_focus_vec(self) -> np.ndarray | None:
         """Current focus vector (Requirement 7.5)."""
         return self._current_focus_vec
 
     @property
-    def previous_focus_vec(self) -> Optional[np.ndarray]:
+    def previous_focus_vec(self) -> np.ndarray | None:
         """Previous focus vector for prediction comparison (Requirement 7.5)."""
         return self._previous_focus_vec
 
     @property
-    def focus_digest(self) -> Optional[str]:
+    def focus_digest(self) -> str | None:
         """Deterministic digest of current focus (Requirement 7.7)."""
         return self._focus_digest
 
@@ -157,8 +157,8 @@ class FocusState:
         mem_client: Any,
         *,
         store_gate: bool,
-        universe: Optional[str] = None,
-    ) -> Optional[str]:
+        universe: str | None = None,
+    ) -> str | None:
         """Persist focus snapshot to memory if gate allows.
 
         Args:
@@ -184,7 +184,7 @@ class FocusState:
 
         try:
             # Create payload WITHOUT raw user text (Requirement 8.4)
-            payload: Dict[str, Any] = {
+            payload: dict[str, Any] = {
                 "type": "focus_snapshot",
                 "session_id": self._session_id,
                 "tick": self._tick,
@@ -212,9 +212,9 @@ class FocusState:
 
     def create_links(
         self,
-        graph_client: Optional["MemoryClient"],
-        used_memory_ids: List[str],
-        selected_option_ids: Optional[List[str]] = None,
+        graph_client: MemoryClient | None,
+        used_memory_ids: list[str],
+        selected_option_ids: list[str] | None = None,
     ) -> None:
         """Create focus chain links using EXISTING MemoryClient.
 
@@ -277,11 +277,11 @@ class FocusState:
                     except Exception as exc:
                         logger.debug(f"Focus used_option link failed: {exc}")
 
-    def _str_to_coord(self, coord_str: str) -> Tuple[float, ...]:
+    def _str_to_coord(self, coord_str: str) -> tuple[float, ...]:
         """Convert string to coordinate tuple."""
         return tuple(float(c) for c in coord_str.split(","))
 
-    def _id_to_coord(self, mem_id: str) -> Optional[Tuple[float, ...]]:
+    def _id_to_coord(self, mem_id: str) -> tuple[float, ...] | None:
         """Convert memory ID to coordinate if possible."""
         try:
             return self._str_to_coord(mem_id)

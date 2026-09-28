@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from enum import Enum
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -96,7 +95,7 @@ def create_notification(
     message: str,
     notification_type: str = "info",
     priority: str = "normal",
-    action_url: Optional[str] = None,
+    action_url: str | None = None,
 ) -> dict:
     """Create REAL notification in Django cache."""
     notification_id = str(uuid4())
@@ -127,7 +126,7 @@ def create_notification(
     return notification
 
 
-def get_user_notifications(user_id: str, unread_only: bool = False) -> List[dict]:
+def get_user_notifications(user_id: str, unread_only: bool = False) -> list[dict]:
     """Get notifications from REAL Django cache."""
     notification_ids = cache.get(get_notifications_key(user_id), [])
     notifications = []
@@ -168,10 +167,10 @@ class NotificationOut(Schema):
     message: str
     type: str
     priority: str
-    action_url: Optional[str]
+    action_url: str | None
     is_read: bool
     created_at: str
-    read_at: Optional[str]
+    read_at: str | None
 
 
 class NotificationCreate(Schema):
@@ -181,7 +180,7 @@ class NotificationCreate(Schema):
     message: str
     type: str = "info"
     priority: str = "normal"
-    action_url: Optional[str] = None
+    action_url: str | None = None
 
 
 class NotificationStats(Schema):
@@ -198,7 +197,7 @@ class NotificationStats(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/notifications", response=List[NotificationOut])
+@router.get("/{tenant_id}/notifications", response=list[NotificationOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_notifications(
     request: AuthenticatedRequest,

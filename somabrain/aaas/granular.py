@@ -27,7 +27,6 @@ ALL 10 PERSONAS:
 import logging
 from enum import Enum
 from functools import wraps
-from typing import List, Set
 
 from django.http import HttpRequest
 from ninja.errors import HttpError
@@ -216,7 +215,7 @@ class Permission(str, Enum):
 # PERMISSION MATRIX: Role → Allowed Permissions
 # =============================================================================
 
-PERMISSION_MATRIX: dict[str, Set[str]] = {
+PERMISSION_MATRIX: dict[str, set[str]] = {
     # ─────────────────────────────────────────────────────────────────────────
     # AAAS_ADMIN: Full platform control
     # ─────────────────────────────────────────────────────────────────────────
@@ -381,7 +380,7 @@ PERMISSION_MATRIX: dict[str, Set[str]] = {
 # =============================================================================
 
 
-def has_permission(user_roles: List[str], permission: str) -> bool:
+def has_permission(user_roles: list[str], permission: str) -> bool:
     """
     Check if any of the user's roles grant the given permission.
 
@@ -399,7 +398,7 @@ def has_permission(user_roles: List[str], permission: str) -> bool:
     return False
 
 
-def get_all_permissions(user_roles: List[str]) -> Set[str]:
+def get_all_permissions(user_roles: list[str]) -> set[str]:
     """
     Get all permissions for a user's roles.
 
@@ -417,7 +416,7 @@ def get_all_permissions(user_roles: List[str]) -> Set[str]:
 
 
 def check_permissions(
-    user_roles: List[str], required: List[str], require_all: bool = True
+    user_roles: list[str], required: list[str], require_all: bool = True
 ) -> bool:
     """
     Check multiple permissions.

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 _LOG = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ def configure_tracing(
     trace.set_tracer_provider(provider)
 
 
-def get_tracer(service_name: str) -> Optional[Tracer]:
+def get_tracer(service_name: str) -> Tracer | None:
     """Retrieve tracer.
 
     Args:

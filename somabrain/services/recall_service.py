@@ -35,7 +35,7 @@ from __future__ import annotations
 import asyncio
 import re
 import time as _t
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable
 
 from .. import metrics as M
 from ..math import cosine_similarity
@@ -46,20 +46,20 @@ def recall_ltm(
     mem_client,
     text: str,
     top_k: int,
-    universe: Optional[str],
+    universe: str | None,
     cohort: str,
     use_sdr: bool,
     sdr_enc,
     sdr_idx_map: dict,
     graph_hops: int,
     graph_limit: int,
-) -> Tuple[List[dict], List[Tuple[float, dict]]]:
+) -> tuple[list[dict], list[tuple[float, dict]]]:
     """LTM recall with optional SDR prefilter.
 
     Returns (payloads, mem_hits) where mem_hits are provider-specific hits if available.
     """
-    mem_hits: List[Tuple[float, dict]] = []
-    mem_payloads: List[dict] = []
+    mem_hits: list[tuple[float, dict]] = []
+    mem_payloads: list[dict] = []
     did_sdr = False
     if use_sdr and sdr_enc is not None and hasattr(mem_client, "all_memories"):
         try:
@@ -89,7 +89,7 @@ def recall_ltm(
             )
             did_sdr = False
     if not did_sdr:
-        hits = getattr(mem_client, "recall")(text, top_k=top_k)
+        hits = mem_client.recall(text, top_k=top_k)
         # hits may be RecallHit wrappers
         try:
             mem_payloads = [h.payload for h in hits]
@@ -126,7 +126,7 @@ def recall_ltm(
                 and hasattr(mem_client, "coord_for_key")
                 and hasattr(mem_client, "fetch_by_coord")
             ):
-                fallback_payloads: List[dict] = []
+                fallback_payloads: list[dict] = []
                 try:
                     coord = mem_client.coord_for_key(raw_query, universe)
                     fetched = mem_client.fetch_by_coord(coord, universe)
@@ -141,7 +141,7 @@ def recall_ltm(
                     )
                     fallback_payloads = []
                 if fallback_payloads:
-                    deduped: List[dict] = []
+                    deduped: list[dict] = []
                     for payload in fallback_payloads:
                         if payload not in mem_payloads:
                             deduped.append(payload)
@@ -226,13 +226,13 @@ def _text_of(p: dict) -> str:
 
 
 def diversify_payloads(
-    embed: Callable[[str], List[float]],
+    embed: Callable[[str], list[float]],
     query: str,
-    payloads: List[dict],
+    payloads: list[dict],
     method: str = "mmr",
-    k: Optional[int] = None,
+    k: int | None = None,
     lam: float = 0.5,
-) -> List[dict]:
+) -> list[dict]:
     """Apply diversity over payloads (MMR only).
 
     - embed: function mapping text -> vector (unit norm preferred)
@@ -257,7 +257,7 @@ def diversify_payloads(
 
         # cosine similarities to query as relevance
         rel = [cosine_similarity(qv, v) for v in vs]
-        selected: List[int] = []
+        selected: list[int] = []
         remaining = set(range(len(payloads)))
         # MMR greedy selection
         while len(selected) < k and remaining:
@@ -293,14 +293,14 @@ async def recall_ltm_async(
     mem_client,
     text: str,
     top_k: int,
-    universe: Optional[str],
+    universe: str | None,
     cohort: str,
     use_sdr: bool,
     sdr_enc,
     sdr_idx_map: dict,
     graph_hops: int,
     graph_limit: int,
-) -> Tuple[List[dict], List[Tuple[float, dict]]]:
+) -> tuple[list[dict], list[tuple[float, dict]]]:
     # Avoid blocking the event loop: run the synchronous recall_ltm in a
     # thread executor so heavy sync operations (including sync HTTP calls)
     # don't stall the async worker under high concurrency.

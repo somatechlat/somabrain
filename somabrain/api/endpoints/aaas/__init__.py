@@ -6,8 +6,8 @@ Django Ninja endpoints for tenant management, API keys, billing.
 
 from .endpoints import router
 from .schemas import (
-    APIKeyCreateSchema,
     APIKeyCreatedSchema,
+    APIKeyCreateSchema,
     APIKeyResponseSchema,
     SubscriptionChangeSchema,
     SubscriptionResponseSchema,
@@ -23,7 +23,6 @@ from .schemas import (
 )
 
 __all__ = [
-    "router",
     "APIKeyCreateSchema",
     "APIKeyCreatedSchema",
     "APIKeyResponseSchema",
@@ -38,4 +37,5 @@ __all__ = [
     "TenantUpdateSchema",
     "UsageEventSchema",
     "UsageReportSchema",
+    "router",
 ]

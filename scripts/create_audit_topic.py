@@ -20,8 +20,7 @@ def main():
 
     bs = args.bootstrap_server
     # accept kafka:// prefix
-    if bs.startswith("kafka://"):
-        bs = bs[len("kafka://") :]
+    bs = bs.removeprefix("kafka://")
 
     # retry loop with exponential backoff: Kafka may be starting in CI
     last_exc = None

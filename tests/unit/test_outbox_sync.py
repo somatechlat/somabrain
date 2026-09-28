@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
 import httpx
-
+import pytest
 from django.conf import settings
+
 from somabrain.admin.core.models import OutboxEvent
 from somabrain.memory.client import MemoryClient
 from somabrain.services.outbox_sync import _send_event

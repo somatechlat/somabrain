@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import os
-from typing import Dict
 
 try:
     from django.conf import settings
@@ -33,10 +32,10 @@ class TenantOverridesCache:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self._overrides: Dict[str, dict] | None = None
+        self._overrides: dict[str, dict] | None = None
         self._path: str | None = None
 
-    def load(self) -> Dict[str, dict]:
+    def load(self) -> dict[str, dict]:
         """Load tenant overrides from file or environment.
 
         Returns cached overrides if available and path hasn't changed.
@@ -46,7 +45,7 @@ class TenantOverridesCache:
         if self._overrides is not None and path == self._path:
             return self._overrides
 
-        overrides: Dict[str, dict] = {}
+        overrides: dict[str, dict] = {}
         # Attempt to load from YAML if available
         if path and os.path.exists(path):
             try:
@@ -124,7 +123,7 @@ def get_tenant_overrides_cache() -> TenantOverridesCache:
     return container.get("tenant_overrides_cache")
 
 
-def load_tenant_overrides() -> Dict[str, dict]:
+def load_tenant_overrides() -> dict[str, dict]:
     """Load tenant overrides from cache."""
     return get_tenant_overrides_cache().load()
 

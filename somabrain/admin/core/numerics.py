@@ -8,7 +8,8 @@ Canonical numeric primitives for SomaBrain.
 
 from __future__ import annotations
 
-from typing import Any, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 
@@ -25,7 +26,7 @@ _TINY_CACHE: dict = {}
 
 
 def compute_tiny_floor(
-    dim_or_array: Union[int, np.ndarray],
+    dim_or_array: int | np.ndarray,
     dtype: Any = np.float32,
     strategy: str = "sqrt",
     scale: float = 1.0,
@@ -66,7 +67,7 @@ def compute_tiny_floor(
                     D = int(np.prod(shape))
             else:
                 try:
-                    D = int(len(dim_or_array))
+                    D = len(dim_or_array)
                 except Exception:
                     D = 1
         dt = np.dtype(dtype)
@@ -90,7 +91,7 @@ def compute_tiny_floor(
     return tiny_amp
 
 
-def rfft_norm(x: _ArrayLike, n: Optional[int] = None, axis: int = -1) -> np.ndarray:
+def rfft_norm(x: _ArrayLike, n: int | None = None, axis: int = -1) -> np.ndarray:
     """Unitary real FFT (rfft) wrapper using norm='ortho'."""
     x = np.asarray(x)
     return np.fft.rfft(x, n=n, axis=axis, norm="ortho")

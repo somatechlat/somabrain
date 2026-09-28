@@ -38,15 +38,16 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any
 
 TOP1_KEYS = ("top1_accuracy", "top1", "recall_top1")
 MARGIN_KEYS = ("cosine_margin", "margin", "margin_mean")
 LATENCY_KEYS = ("recall_latency_p95", "latency_p95", "recall_latency")
 
 
-def _load_json(path: Path) -> Dict[str, Any]:
+def _load_json(path: Path) -> dict[str, Any]:
     """Execute load json.
 
     Args:
@@ -62,7 +63,7 @@ def _load_json(path: Path) -> Dict[str, Any]:
         raise SystemExit(f"invalid JSON in {path}: {exc}") from exc
 
 
-def _find_metric(blob: Any, keys: Iterable[str]) -> Optional[float]:
+def _find_metric(blob: Any, keys: Iterable[str]) -> float | None:
     """Execute find metric.
 
     Args:
@@ -86,14 +87,14 @@ def _find_metric(blob: Any, keys: Iterable[str]) -> Optional[float]:
     return None
 
 
-def _extract_metrics(data: Dict[str, Any]) -> Dict[str, float]:
+def _extract_metrics(data: dict[str, Any]) -> dict[str, float]:
     """Execute extract metrics.
 
     Args:
         data: The data.
     """
 
-    metrics: Dict[str, float] = {}
+    metrics: dict[str, float] = {}
     top1 = _find_metric(data, TOP1_KEYS)
     if top1 is not None:
         metrics["top1"] = top1

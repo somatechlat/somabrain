@@ -20,14 +20,12 @@ Notes:
 
 from __future__ import annotations
 
-from typing import Dict, Tuple
-
 import numpy as np
 
-from somabrain.math import cosine_similarity
 from somabrain.admin.core.numerics import normalize_array
 from somabrain.admin.core.quantum import HRRConfig
 from somabrain.core.utils.seed import seed_to_uint64
+from somabrain.math import cosine_similarity
 
 
 class PureQuantumLayer:
@@ -50,7 +48,7 @@ class PureQuantumLayer:
         self._perm_seed = cfg.seed
         self._perm = self._rng.permutation(cfg.dim)
         self._perm_inv = np.argsort(self._perm)
-        self._token_cache: Dict[str, np.ndarray] = {}
+        self._token_cache: dict[str, np.ndarray] = {}
 
     def _ensure_vector(self, v: object, name: str = "vector") -> np.ndarray:
         """Execute ensure vector.
@@ -187,8 +185,8 @@ class PureQuantumLayer:
         return cosine_similarity(a, b)
 
     def cleanup(
-        self, q: np.ndarray, anchors: Dict[str, np.ndarray]
-    ) -> Tuple[str, float]:
+        self, q: np.ndarray, anchors: dict[str, np.ndarray]
+    ) -> tuple[str, float]:
         """Execute cleanup.
 
         Args:

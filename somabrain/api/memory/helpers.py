@@ -20,7 +20,7 @@ import importlib.util
 import logging
 import os
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from django.conf import settings
 from ninja.errors import HttpError
@@ -86,7 +86,7 @@ def _get_app_config():
     cfg = getattr(rt, "cfg", None)
     if cfg is None:
         cfg = settings
-        setattr(rt, "cfg", cfg)
+        rt.cfg = cfg
     return cfg
 
 
@@ -167,7 +167,7 @@ def _resolve_namespace(tenant: str, namespace: str) -> str:
     return f"{core}:{ns_part}" if ns_part else core
 
 
-def _serialize_coord(coord: Any) -> Optional[List[float]]:
+def _serialize_coord(coord: Any) -> list[float] | None:
     """Convert a coordinate tuple to a serializable list of floats.
 
     Args:
@@ -189,27 +189,27 @@ def _compose_memory_payload(
     tenant: str,
     namespace: str,
     key: str,
-    value: Dict[str, Any],
-    meta: Optional[Dict[str, Any]],
-    universe: Optional[str],
-    attachments: List[MemoryAttachment],
-    links: List[MemoryLink],
-    tags: List[str],
-    policy_tags: List[str],
-    signals: Optional[MemorySignalPayload],
-    importance: Optional[float],
-    novelty: Optional[float],
-    ttl_seconds: Optional[int],
-    trace_id: Optional[str],
+    value: dict[str, Any],
+    meta: dict[str, Any] | None,
+    universe: str | None,
+    attachments: list[MemoryAttachment],
+    links: list[MemoryLink],
+    tags: list[str],
+    policy_tags: list[str],
+    signals: MemorySignalPayload | None,
+    importance: float | None,
+    novelty: float | None,
+    ttl_seconds: int | None,
+    trace_id: str | None,
     actor: str,
-    text: Optional[str] = None,
-    kind: Optional[str] = None,
-    session_id: Optional[str] = None,
-    salience: Optional[float] = None,
-    source: Optional[str] = None,
-    coord: Optional[Any] = None,
-    embedding: Optional[List[float]] = None,
-) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
+    text: str | None = None,
+    kind: str | None = None,
+    session_id: str | None = None,
+    salience: float | None = None,
+    source: str | None = None,
+    coord: Any | None = None,
+    embedding: list[float] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], str]:
     """Compose a complete memory payload from request parameters.
 
     Merges the provided value with metadata, tags, attachments, links, and
@@ -250,7 +250,7 @@ def _compose_memory_payload(
         - signal_data: Extracted signal information
         - seed_text: Text to use for embedding generation
     """
-    stored_payload: Dict[str, Any] = dict(value)
+    stored_payload: dict[str, Any] = dict(value)
     if text:
         stored_payload["text"] = text
     stored_payload.setdefault("task", stored_payload.get("text") or key)
@@ -304,7 +304,7 @@ def _compose_memory_payload(
     if trace_id:
         stored_payload["trace_id"] = trace_id
 
-    signal_data: Dict[str, Any] = {}
+    signal_data: dict[str, Any] = {}
     if signals is not None:
         signal_data.update(signals.dict(exclude_none=True))
     if importance is not None:
@@ -329,21 +329,21 @@ def _compose_memory_payload(
 
 
 __all__ = [
-    "_get_runtime",
+    "_as_float_list",
+    "_coerce_to_retrieval_request",
+    "_compose_memory_payload",
     "_get_app_config",
     "_get_embedder",
-    "_get_wm",
     "_get_memory_pool",
+    "_get_runtime",
+    "_get_wm",
+    "_map_retrieval_to_memory_items",
     "_resolve_namespace",
     "_serialize_coord",
-    "_compose_memory_payload",
-    "_as_float_list",
-    "_map_retrieval_to_memory_items",
-    "_coerce_to_retrieval_request",
 ]
 
 
-def _as_float_list(coord: object) -> Optional[List[float]]:
+def _as_float_list(coord: object) -> list[float] | None:
     """Convert coordinate to a list of floats.
 
     Handles list/tuple and comma-separated string formats.
@@ -370,9 +370,9 @@ def _as_float_list(coord: object) -> Optional[List[float]]:
 
 
 def _map_retrieval_to_memory_items(
-    candidates: List[dict],
+    candidates: list[dict],
     MemoryRecallItem,
-) -> List:
+) -> list:
     """Map retrieval candidates to MemoryRecallItem instances.
 
     Args:

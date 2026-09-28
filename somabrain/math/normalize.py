@@ -22,7 +22,7 @@ VIBE Compliance:
 
 from __future__ import annotations
 
-from typing import Tuple, Union
+from typing import Union
 
 import numpy as np
 
@@ -91,7 +91,7 @@ def safe_normalize(
     v: ArrayLike,
     eps: float = _EPS,
     dtype: np.dtype = np.float32,
-) -> Tuple[np.ndarray, float]:
+) -> tuple[np.ndarray, float]:
     """Normalize vector and return original norm.
 
     Useful when the original magnitude is needed for downstream computation

@@ -37,7 +37,7 @@ HRR_CLEANUP_USED = Counter(
 HRR_CLEANUP_SCORE = Histogram(
     "somabrain_hrr_cleanup_score",
     "HRR cleanup top-1 cosine score",
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
     registry=registry,
 )
 
@@ -57,7 +57,7 @@ HRR_ANCHOR_SIZE = Histogram(
 HRR_CONTEXT_SAT = Histogram(
     "somabrain_hrr_context_saturation",
     "HRR context saturation (anchors/max_anchors)",
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
     registry=registry,
 )
 

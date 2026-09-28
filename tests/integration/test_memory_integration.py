@@ -1,7 +1,8 @@
-import requests
-import time
 import os
 import sys
+import time
+
+import requests
 
 # Configuration
 SFM_ENDPOINT = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")

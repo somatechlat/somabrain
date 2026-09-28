@@ -18,11 +18,11 @@ import importlib.util
 import logging
 import os
 import sys
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from somabrain.admin.core.quantum import QuantumLayer
     from somabrain.admin.core.learning.scoring import UnifiedScorer
+    from somabrain.admin.core.quantum import QuantumLayer
 
 logger = logging.getLogger("somabrain.bootstrap.runtime_init")
 
@@ -80,7 +80,7 @@ def load_runtime_module():
     return _rt
 
 
-def create_mt_memory(cfg, scorer: "UnifiedScorer", embedder: Any, _rt: Any):
+def create_mt_memory(cfg, scorer: UnifiedScorer, embedder: Any, _rt: Any):
     """Create or retrieve the MultiTenantMemory singleton.
 
     Args:
@@ -100,7 +100,7 @@ def create_mt_memory(cfg, scorer: "UnifiedScorer", embedder: Any, _rt: Any):
         # Also patch this module's global for test visibility
         mod = sys.modules.get("somabrain.app")
         if mod:
-            setattr(mod, "mt_memory", _rt.mt_memory)
+            mod.mt_memory = _rt.mt_memory
     else:
         mt_memory = _rt.mt_memory
 
@@ -110,7 +110,7 @@ def create_mt_memory(cfg, scorer: "UnifiedScorer", embedder: Any, _rt: Any):
 def register_singletons(
     _rt: Any,
     embedder: Any,
-    quantum: Optional["QuantumLayer"],
+    quantum: QuantumLayer | None,
     mt_wm: Any,
     mc_wm: Any,
     mt_memory: Any,

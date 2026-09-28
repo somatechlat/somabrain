@@ -7,7 +7,6 @@ Provides lazy accessors and utility functions for health checks.
 from __future__ import annotations
 
 import urllib.request
-from typing import Dict, Optional
 
 from django.conf import settings
 
@@ -129,16 +128,16 @@ def ping(url: str) -> bool:
     """Ping a URL and return True if it responds with 2xx."""
     ping_timeout = float(getattr(settings, "HEALTH_PING_TIMEOUT", 0.5) or 0.5)
     try:
-        with urllib.request.urlopen(url, timeout=ping_timeout) as r:  # noqa: S310
+        with urllib.request.urlopen(url, timeout=ping_timeout) as r:
             return 200 <= getattr(r, "status", 500) < 300
     except Exception:
         return False
 
 
-def milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
+def milvus_metrics_for_tenant(tenant_id: str) -> dict[str, float | None]:
     """Return Milvus telemetry (p95 latencies + segment load) for a tenant."""
 
-    def _read(gauge, **labels) -> Optional[float]:
+    def _read(gauge, **labels) -> float | None:
         """Execute read.
 
         Args:

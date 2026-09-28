@@ -19,7 +19,6 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from typing import Dict, List
 
 import httpx
 import pytest
@@ -38,7 +37,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def get_tenant_headers(tenant_id: str) -> Dict[str, str]:
+def get_tenant_headers(tenant_id: str) -> dict[str, str]:
     """Get HTTP headers for a specific tenant."""
     return {
         "X-Tenant-ID": tenant_id,
@@ -52,7 +51,7 @@ def store_memory(
     content: str,
     key: str = None,
     memory_type: str = "episodic",
-) -> Dict:
+) -> dict:
     """Store a memory and return the response."""
     headers = get_tenant_headers(tenant_id)
     key = key or f"key_{uuid.uuid4().hex[:12]}"
@@ -80,7 +79,7 @@ def recall_memories(
     tenant_id: str,
     query: str,
     k: int = 10,
-) -> List[Dict]:
+) -> list[dict]:
     """Recall memories and return results list."""
     headers = get_tenant_headers(tenant_id)
 

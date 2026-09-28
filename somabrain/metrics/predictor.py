@@ -79,10 +79,10 @@ def record_planning_latency(backend: str, latency_seconds: float) -> None:
 
 
 __all__ = [
-    "PREDICTOR_LATENCY",
-    "PREDICTOR_LATENCY_BY",
-    "PREDICTOR_ALTERNATIVE",
     "PLANNING_LATENCY",
     "PLANNING_LATENCY_P99",
+    "PREDICTOR_ALTERNATIVE",
+    "PREDICTOR_LATENCY",
+    "PREDICTOR_LATENCY_BY",
     "record_planning_latency",
 ]

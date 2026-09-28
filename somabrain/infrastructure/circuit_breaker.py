@@ -6,11 +6,12 @@ Per Requirements F2.1-F2.5 for per-tenant circuit isolation.
 NO STUBS. NO MOCKS. NO HARDCODED RETURNS.
 """
 
-import time
 import logging
+import time
 import types
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,8 @@ class TenantCircuitState:
 class TenantCircuitConfig:
     """Per-tenant circuit-breaker thresholds and timing."""
 
-    failure_threshold: Optional[int] = None
-    recovery_timeout: Optional[float] = None
+    failure_threshold: int | None = None
+    recovery_timeout: float | None = None
 
 
 class CircuitBreaker:
@@ -54,9 +55,9 @@ class CircuitBreaker:
         failure_threshold: int = 5,
         recovery_timeout: float = 60.0,
         half_open_max_calls: int = 1,
-        global_failure_threshold: Optional[int] = None,
-        global_reset_interval: Optional[int] = None,
-        global_cooldown_interval: Optional[int] = None,
+        global_failure_threshold: int | None = None,
+        global_reset_interval: int | None = None,
+        global_cooldown_interval: int | None = None,
     ):
         """Initialize CircuitBreaker.
 
@@ -90,12 +91,12 @@ class CircuitBreaker:
         self._global_state = TenantCircuitState()
 
         # Per-tenant states
-        self._tenant_states: Dict[str, TenantCircuitState] = {}
+        self._tenant_states: dict[str, TenantCircuitState] = {}
 
         # Per-tenant configuration overrides
-        self._tenant_configs: Dict[str, TenantCircuitConfig] = {}
+        self._tenant_configs: dict[str, TenantCircuitConfig] = {}
 
-    def _get_tenant_state(self, tenant: Optional[str]) -> TenantCircuitState:
+    def _get_tenant_state(self, tenant: str | None) -> TenantCircuitState:
         """Get or create state for a tenant. None = global."""
         if tenant is None:
             return self._global_state
@@ -103,7 +104,7 @@ class CircuitBreaker:
             self._tenant_states[tenant] = TenantCircuitState()
         return self._tenant_states[tenant]
 
-    def _failure_threshold_for(self, tenant: Optional[str]) -> int:
+    def _failure_threshold_for(self, tenant: str | None) -> int:
         """Return the failure threshold for *tenant*, falling back to global."""
         if tenant is not None:
             cfg = self._tenant_configs.get(tenant)
@@ -111,7 +112,7 @@ class CircuitBreaker:
                 return cfg.failure_threshold
         return self.failure_threshold
 
-    def _recovery_timeout_for(self, tenant: Optional[str]) -> float:
+    def _recovery_timeout_for(self, tenant: str | None) -> float:
         """Return the recovery timeout for *tenant*, falling back to global."""
         if tenant is not None:
             cfg = self._tenant_configs.get(tenant)
@@ -119,7 +120,7 @@ class CircuitBreaker:
                 return cfg.recovery_timeout
         return self.recovery_timeout
 
-    def allow_request(self, tenant: Optional[str] = None) -> bool:
+    def allow_request(self, tenant: str | None = None) -> bool:
         """Check if a request should be allowed.
 
         Args:
@@ -131,13 +132,15 @@ class CircuitBreaker:
         state = self._get_tenant_state(tenant)
 
         if state.state == "OPEN":
-            if time.time() - state.last_failure_time > self._recovery_timeout_for(tenant):
+            if time.time() - state.last_failure_time > self._recovery_timeout_for(
+                tenant
+            ):
                 state.state = "HALF-OPEN"
                 return True
             return False
         return True
 
-    def is_open(self, tenant: Optional[str] = None) -> bool:
+    def is_open(self, tenant: str | None = None) -> bool:
         """Check if circuit is open for a tenant.
 
         Args:
@@ -150,13 +153,15 @@ class CircuitBreaker:
 
         # Check for HALF-OPEN transition
         if state.state == "OPEN":
-            if time.time() - state.last_failure_time > self._recovery_timeout_for(tenant):
+            if time.time() - state.last_failure_time > self._recovery_timeout_for(
+                tenant
+            ):
                 state.state = "HALF-OPEN"
                 return False  # HALF-OPEN allows requests
 
         return state.state == "OPEN"
 
-    def record_success(self, tenant: Optional[str] = None) -> None:
+    def record_success(self, tenant: str | None = None) -> None:
         """Record a successful operation.
 
         Args:
@@ -176,7 +181,7 @@ class CircuitBreaker:
         elif state.state == "CLOSED":
             state.failures = 0
 
-    def record_failure(self, tenant: Optional[str] = None) -> None:
+    def record_failure(self, tenant: str | None = None) -> None:
         """Record a failed operation.
 
         Args:
@@ -197,7 +202,7 @@ class CircuitBreaker:
                 threshold,
             )
 
-    def reset(self, tenant: Optional[str] = None) -> None:
+    def reset(self, tenant: str | None = None) -> None:
         """Reset circuit to CLOSED state.
 
         Args:
@@ -210,7 +215,7 @@ class CircuitBreaker:
         state.state = "CLOSED"
         logger.info("Circuit %s reset for tenant %s", self.name, tenant or "global")
 
-    def get_stats(self, tenant: Optional[str] = None) -> Dict[str, Any]:
+    def get_stats(self, tenant: str | None = None) -> dict[str, Any]:
         """Get statistics for a tenant's circuit.
 
         Args:
@@ -228,7 +233,7 @@ class CircuitBreaker:
             "tenant": tenant or "global",
         }
 
-    def should_attempt_reset(self, tenant: Optional[str] = None) -> bool:
+    def should_attempt_reset(self, tenant: str | None = None) -> bool:
         """Return True if the circuit is ready for a half-open probe.
 
         A circuit is ready when it is OPEN and the recovery timeout has
@@ -240,9 +245,11 @@ class CircuitBreaker:
             return False
         if state.last_failure_time <= 0.0:
             return False
-        return time.time() - state.last_failure_time > self._recovery_timeout_for(tenant)
+        return time.time() - state.last_failure_time > self._recovery_timeout_for(
+            tenant
+        )
 
-    def get_state(self, tenant: Optional[str] = None) -> Dict[str, Any]:
+    def get_state(self, tenant: str | None = None) -> dict[str, Any]:
         """Return a circuit-state snapshot compatible with ``MemoryService``.
 
         The returned dict includes an ``open`` boolean, the current state
@@ -262,8 +269,8 @@ class CircuitBreaker:
         self,
         tenant: str,
         *,
-        failure_threshold: Optional[int] = None,
-        reset_interval: Optional[float] = None,
+        failure_threshold: int | None = None,
+        reset_interval: float | None = None,
     ) -> None:
         """Configure per-tenant circuit-breaker thresholds.
 
@@ -301,7 +308,7 @@ class CircuitBreaker:
         )
 
     def call(
-        self, func: Callable, *args, tenant: Optional[str] = None, **kwargs
+        self, func: Callable, *args, tenant: str | None = None, **kwargs
     ) -> Any:
         """Execute a function with circuit breaker protection.
 

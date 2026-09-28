@@ -347,11 +347,11 @@ def record_memory_snapshot(
     tenant: str,
     namespace: str,
     *,
-    items: float | int | None = None,
+    items: float | None = None,
     eta: float | None = None,
     sparsity: float | None = None,
     margin: float | None = None,
-    config_version: float | int | None = None,
+    config_version: float | None = None,
 ) -> None:
     """Update governance metrics for a tenant/namespace pair."""
     t = str(tenant or "").strip() or "unknown"

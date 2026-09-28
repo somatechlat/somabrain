@@ -24,28 +24,28 @@ from somabrain.metrics.core import Counter, Histogram, registry
 NOVELTY_RAW = Histogram(
     "somabrain_novelty_raw",
     "Novelty raw distribution",
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
     labelnames=["cohort"],
     registry=registry,
 )
 ERROR_RAW = Histogram(
     "somabrain_error_raw",
     "Prediction error raw distribution",
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
     labelnames=["cohort"],
     registry=registry,
 )
 NOVELTY_NORM = Histogram(
     "somabrain_novelty_norm",
     "Novelty normalized (z-score) distribution",
-    buckets=[-5 + i * 0.5 for i in range(0, 21)],
+    buckets=[-5 + i * 0.5 for i in range(21)],
     labelnames=["cohort"],
     registry=registry,
 )
 ERROR_NORM = Histogram(
     "somabrain_error_norm",
     "Prediction error normalized (z-score) distribution",
-    buckets=[-5 + i * 0.5 for i in range(0, 21)],
+    buckets=[-5 + i * 0.5 for i in range(21)],
     labelnames=["cohort"],
     registry=registry,
 )
@@ -91,14 +91,14 @@ RECALL_CACHE_MISS = Counter(
 )
 
 __all__ = [
-    "NOVELTY_RAW",
+    "ERROR_NORM",
     "ERROR_RAW",
     "NOVELTY_NORM",
-    "ERROR_NORM",
-    "SDR_PREFILTER_LAT",
-    "SDR_CANDIDATES",
-    "RECALL_WM_LAT",
-    "RECALL_LTM_LAT",
+    "NOVELTY_RAW",
     "RECALL_CACHE_HIT",
     "RECALL_CACHE_MISS",
+    "RECALL_LTM_LAT",
+    "RECALL_WM_LAT",
+    "SDR_CANDIDATES",
+    "SDR_PREFILTER_LAT",
 ]

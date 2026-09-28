@@ -10,8 +10,8 @@ Tests:
 4. Stability: Proves entropy cap prevents divergence.
 """
 
-import pytest
 import numpy as np
+import pytest
 
 
 @pytest.fixture(autouse=True)
@@ -21,8 +21,8 @@ def setup_settings():
     BrainSetting.initialize_defaults(tenant="test_tenant")
 
 
-from somabrain.learning.adaptation import AdaptationEngine
 from somabrain.context.builder import RetrievalWeights
+from somabrain.learning.adaptation import AdaptationEngine
 
 
 @pytest.mark.integration
@@ -129,8 +129,8 @@ def test_learning_proof_tau_annealing():
 
     # We must patch the attributes looked up by annealing.py
     # annealing.py looks for 'tau_anneal_rate' and 'tau_anneal_mode' on settings
-    setattr(settings, "tau_anneal_rate", 0.05)
-    setattr(settings, "tau_anneal_mode", "linear")
+    settings.tau_anneal_rate = 0.05
+    settings.tau_anneal_mode = "linear"
 
     engine = AdaptationEngine(tenant_id="test_tenant")
     initial_tau = engine.retrieval_weights.tau

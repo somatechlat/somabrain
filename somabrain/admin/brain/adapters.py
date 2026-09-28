@@ -9,7 +9,7 @@ into standard Memory Service operations (remember, recall), ensuring that the
 UnifiedBrainCore uses the centralized MemoryClient lane strictly.
 """
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from somabrain.memory.client import MemoryClient
 
@@ -27,8 +27,8 @@ class FractalClientAdapter:
         self.client = client
 
     def encode_fractal(
-        self, content: Dict[str, Any], importance: float = 1.0
-    ) -> List[Any]:
+        self, content: dict[str, Any], importance: float = 1.0
+    ) -> list[Any]:
         """Persist content via the Memory Service.
 
         Translates the Brain's 'fractal encoding' request into a standard 'remember' call.
@@ -59,8 +59,8 @@ class FractalClientAdapter:
         return [coord]
 
     def retrieve_fractal(
-        self, query: Dict[str, Any], top_k: int = 3
-    ) -> List[Tuple[Any, float]]:
+        self, query: dict[str, Any], top_k: int = 3
+    ) -> list[tuple[Any, float]]:
         """Retrieve memories via the Memory Service.
 
         Translates Brain's 'retrieve_fractal' to 'recall'.

@@ -14,13 +14,14 @@ Notes:
 from __future__ import annotations
 
 import json
-from django.conf import settings
 import sys
 import time
-from typing import Any, Dict, Optional
+from typing import Any
+
+from django.conf import settings
 
 try:
-    from kafka import KafkaProducer, KafkaConsumer
+    from kafka import KafkaConsumer, KafkaProducer
 except Exception:
     print("kafka-python not installed", file=sys.stderr)
     sys.exit(2)
@@ -44,7 +45,7 @@ def _bootstrap() -> str:
     return str(url).replace("kafka://", "")
 
 
-def _avro_reward_serde() -> Optional[AvroSerde]:
+def _avro_reward_serde() -> AvroSerde | None:
     """Execute avro reward serde."""
 
     if load_schema is None or AvroSerde is None:
@@ -55,7 +56,7 @@ def _avro_reward_serde() -> Optional[AvroSerde]:
         return None
 
 
-def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
+def _decode_reward(value: bytes) -> dict[str, Any] | None:
     # Try Avro first
     """Execute decode reward.
 

@@ -17,7 +17,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from enum import Enum
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -127,7 +126,7 @@ def create_access_rule(
     return rule
 
 
-def get_access_rule(rule_id: str) -> Optional[dict]:
+def get_access_rule(rule_id: str) -> dict | None:
     """Retrieve access rule.
 
     Args:
@@ -137,7 +136,7 @@ def get_access_rule(rule_id: str) -> Optional[dict]:
     return cache.get(get_rule_key(rule_id))
 
 
-def update_access_rule(rule_id: str, **updates) -> Optional[dict]:
+def update_access_rule(rule_id: str, **updates) -> dict | None:
     """Execute update access rule.
 
     Args:
@@ -152,7 +151,7 @@ def update_access_rule(rule_id: str, **updates) -> Optional[dict]:
     return rule
 
 
-def get_tenant_rules(tenant_id: str) -> List[dict]:
+def get_tenant_rules(tenant_id: str) -> list[dict]:
     """Retrieve tenant rules.
 
     Args:
@@ -180,7 +179,7 @@ class AccessRuleOut(Schema):
     type: str
     value: str
     action: str
-    description: Optional[str]
+    description: str | None
     enabled: bool
     hits: int
     created_at: str
@@ -192,16 +191,16 @@ class AccessRuleCreate(Schema):
     type: str  # country, region, ip_range, ip_address
     value: str
     action: str = "deny"
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class AccessRuleUpdate(Schema):
     """Update access rule."""
 
-    value: Optional[str] = None
-    action: Optional[str] = None
-    description: Optional[str] = None
-    enabled: Optional[bool] = None
+    value: str | None = None
+    action: str | None = None
+    description: str | None = None
+    enabled: bool | None = None
 
 
 class GeoSettings(Schema):
@@ -217,10 +216,10 @@ class IPInfo(Schema):
     """IP address information."""
 
     ip_address: str
-    country_code: Optional[str]
-    country_name: Optional[str]
-    region: Optional[str]
-    city: Optional[str]
+    country_code: str | None
+    country_name: str | None
+    region: str | None
+    city: str | None
     is_blocked: bool
 
 
@@ -229,13 +228,13 @@ class IPInfo(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/rules", response=List[AccessRuleOut])
+@router.get("/{tenant_id}/rules", response=list[AccessRuleOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def list_access_rules(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    rule_type: Optional[str] = None,
+    rule_type: str | None = None,
 ):
     """
     List all access rules for a tenant.

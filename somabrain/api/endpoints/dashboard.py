@@ -17,7 +17,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 from datetime import timedelta
-from typing import List, Optional
 from uuid import UUID
 
 from django.core.cache import cache
@@ -78,7 +77,7 @@ class TenantSummaryOut(Schema):
     tier: str
     user_count: int
     api_key_count: int
-    last_activity: Optional[str]
+    last_activity: str | None
     created_at: str
 
     @staticmethod
@@ -124,8 +123,8 @@ class RecentActivityOut(Schema):
     id: UUID
     action: str
     resource_type: str
-    actor_email: Optional[str]
-    tenant_name: Optional[str]
+    actor_email: str | None
+    tenant_name: str | None
     timestamp: str
 
 
@@ -167,7 +166,7 @@ class RevenueStatsOut(Schema):
     arr: float
     mrr_growth: float  # Percentage change vs last month
     active_subs: int
-    by_tier: List[TierRevenueOut]
+    by_tier: list[TierRevenueOut]
     timestamp: str
 
 
@@ -317,13 +316,13 @@ def get_revenue_stats(request: AuthenticatedRequest):
     return stats
 
 
-@router.get("/tenants", response=List[TenantSummaryOut])
+@router.get("/tenants", response=list[TenantSummaryOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.TENANTS_READ.value)
 def list_tenants_summary(
     request: AuthenticatedRequest,
-    status: Optional[str] = None,
-    tier: Optional[str] = None,
+    status: str | None = None,
+    tier: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -348,7 +347,7 @@ def list_tenants_summary(
     return list(queryset[offset : offset + limit])
 
 
-@router.get("/tier-distribution", response=List[TierDistributionOut])
+@router.get("/tier-distribution", response=list[TierDistributionOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_tier_distribution(request: AuthenticatedRequest):
@@ -371,7 +370,7 @@ def get_tier_distribution(request: AuthenticatedRequest):
     ]
 
 
-@router.get("/daily-signups", response=List[DailyMetricOut])
+@router.get("/daily-signups", response=list[DailyMetricOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_daily_signups(request: AuthenticatedRequest, days: int = 30):
@@ -395,7 +394,7 @@ def get_daily_signups(request: AuthenticatedRequest, days: int = 30):
     ]
 
 
-@router.get("/daily-usage", response=List[DailyMetricOut])
+@router.get("/daily-usage", response=list[DailyMetricOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_daily_usage(request: AuthenticatedRequest, days: int = 30):
@@ -419,7 +418,7 @@ def get_daily_usage(request: AuthenticatedRequest, days: int = 30):
     ]
 
 
-@router.get("/recent-activity", response=List[RecentActivityOut])
+@router.get("/recent-activity", response=list[RecentActivityOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.AUDIT_READ.value)
 def get_recent_activity(request: AuthenticatedRequest, limit: int = 20):

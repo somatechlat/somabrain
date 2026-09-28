@@ -20,7 +20,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Django setup MUST be called before importing any Django models
 # This is required for standalone workers outside of manage.py
@@ -58,7 +58,7 @@ _BACKPRESSURE_ENABLED = (
 )
 
 
-def _bootstrap() -> Optional[str]:
+def _bootstrap() -> str | None:
     # Prefer explicit SOMA_KAFKA_BOOTSTRAP if present (plain host:port)
     """Execute bootstrap."""
 
@@ -104,10 +104,10 @@ def _make_producer():  # pragma: no cover - optional at runtime
 def _publish_record(
     producer,
     topic: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     *,
     key: str | None = None,
-    headers: Dict[str, Any] | None = None,
+    headers: dict[str, Any] | None = None,
 ) -> None:
     """Publish a record to Kafka with enhanced keying and headers for idempotency."""
     if producer is None:
@@ -136,11 +136,11 @@ def _publish_record(
         header_items.append(("x-timestamp-ms", str(timestamp_ms).encode("utf-8")))
 
         # Add version header for schema evolution
-        header_items.append(("x-schema-version", "1.0".encode("utf-8")))
+        header_items.append(("x-schema-version", b"1.0"))
 
         # Add producer identification
         header_items.append(
-            ("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode("utf-8"))
+            ("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode())
         )
 
         # Add custom headers
@@ -285,7 +285,7 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
 
     # Report processed events
     if report_outbox_processed is not None:
-        for tenant_label, topic in processed_counts.keys():  # type: ignore
+        for tenant_label, topic in processed_counts:  # type: ignore
             count = processed_counts.get((str(tenant_label), str(topic)), 0)  # type: ignore
             try:
                 report_outbox_processed(str(tenant_label), str(topic), count)

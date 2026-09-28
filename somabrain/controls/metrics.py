@@ -37,7 +37,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import somabrain.metrics as metrics
+from somabrain import metrics
 
 
 def use_registry(r: Any) -> None:
@@ -74,7 +74,7 @@ REALITY_LOW = metrics.get_counter(
 DRIFT_SCORE = metrics.get_histogram(
     "somabrain_drift_score",
     "Drift score (z-distance) of inputs",
-    buckets=[i for i in range(0, 21)],
+    buckets=[i for i in range(21)],
 )
 DRIFT_ALERT = metrics.get_counter(
     "somabrain_drift_alert_total",

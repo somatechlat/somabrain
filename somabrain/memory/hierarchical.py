@@ -9,8 +9,8 @@ recall path with optional promotion hooks.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional, Tuple
 
 import numpy as np
 
@@ -21,10 +21,10 @@ from .superposed_trace import CleanupIndex, SuperposedTrace, TraceConfig
 class LayerPolicy:
     """Policy parameters for a memory layer."""
 
-    threshold: Optional[float] = (
+    threshold: float | None = (
         None  # minimum cleanup score required to accept the hit
     )
-    promote_margin: Optional[float] = (
+    promote_margin: float | None = (
         None  # margin requirement to promote into the next tier
     )
 
@@ -44,7 +44,7 @@ class LayerPolicy:
                 BrainSetting.get("cleanup_promote_margin", "default"),
             )
 
-    def validate(self) -> "LayerPolicy":
+    def validate(self) -> LayerPolicy:
         """Execute validate."""
 
         thr = float(self.threshold)
@@ -61,7 +61,7 @@ class RecallContext:
     """Result of a hierarchical recall attempt."""
 
     layer: str
-    anchor_id: Optional[str]
+    anchor_id: str | None
     score: float
     second_score: float
     raw: np.ndarray
@@ -83,9 +83,9 @@ class TieredMemory:
         *,
         wm_policy: LayerPolicy | None = None,
         ltm_policy: LayerPolicy | None = None,
-        promotion_callback: Optional[Callable[[RecallContext], bool]] = None,
-        wm_cleanup_index: Optional["CleanupIndex"] = None,
-        ltm_cleanup_index: Optional["CleanupIndex"] = None,
+        promotion_callback: Callable[[RecallContext], bool] | None = None,
+        wm_cleanup_index: CleanupIndex | None = None,
+        ltm_cleanup_index: CleanupIndex | None = None,
     ) -> None:
         """Initialize the instance."""
 
@@ -217,11 +217,11 @@ class TieredMemory:
     def configure(
         self,
         *,
-        wm_eta: Optional[float] = None,
-        ltm_eta: Optional[float] = None,
-        cleanup_topk: Optional[int] = None,
-        cleanup_params: Optional[dict] = None,
-        wm_tau: Optional[float] = None,
+        wm_eta: float | None = None,
+        ltm_eta: float | None = None,
+        cleanup_topk: int | None = None,
+        cleanup_params: dict | None = None,
+        wm_tau: float | None = None,
     ) -> None:
         """Execute configure."""
 
@@ -250,9 +250,9 @@ class TieredMemory:
 
     def rebuild_cleanup_indexes(
         self,
-        wm_cleanup_index: Optional[CleanupIndex] = None,
-        ltm_cleanup_index: Optional[CleanupIndex] = None,
-    ) -> Tuple[int, int]:
+        wm_cleanup_index: CleanupIndex | None = None,
+        ltm_cleanup_index: CleanupIndex | None = None,
+    ) -> tuple[int, int]:
         """Execute rebuild cleanup indexes.
 
         Args:

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
 class ComplexityDetector:
     """Detect content complexity for auto-scaling decisions."""
 
-    def analyze_complexity(self, content: Dict[str, Any]) -> float:
+    def analyze_complexity(self, content: dict[str, Any]) -> float:
         """Analyze the complexity of content to determine processing requirements."""
         complexity_score = 0.0
 

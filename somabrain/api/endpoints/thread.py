@@ -7,7 +7,6 @@ Manage per-tenant threads of option IDs.
 from __future__ import annotations
 
 import logging
-from typing import List
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -15,9 +14,8 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import api_key_auth
-from somabrain.api.auth import require_auth
 from somabrain.admin.core.models import CognitiveThread
+from somabrain.api.auth import api_key_auth, require_auth
 
 logger = logging.getLogger("somabrain.api.endpoints.thread")
 
@@ -50,7 +48,7 @@ class ThreadCreateRequest(Schema):
     """Data model for ThreadCreateRequest."""
 
     tenant_id: str
-    options: List[str]
+    options: list[str]
 
 
 @router.post("/thread", auth=api_key_auth)

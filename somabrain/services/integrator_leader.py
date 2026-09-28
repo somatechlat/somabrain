@@ -15,14 +15,14 @@ Key features:
 from __future__ import annotations
 
 import os
-from common.config.settings import settings
-import time
 import threading
+import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
+from common.config.settings import settings
 from somabrain.common.infra import assert_ready
 from somabrain.modes import feature_enabled
+
 import somabrain.metrics as app_metrics
 
 # Leader election metrics
@@ -93,17 +93,17 @@ class LeaderState:
 class IntegratorLeaderElection:
     """Redis-based leader election service for integrator instances."""
 
-    def __init__(self, redis_url: Optional[str] = None) -> None:
+    def __init__(self, redis_url: str | None = None) -> None:
         # Prefer explicit argument; fall back to central settings.
         self._redis_url = redis_url or settings.redis_url or ""
         self._redis_client = None
-        self._leader_states: Dict[str, LeaderState] = {}
-        self._configs: Dict[str, LeaderConfig] = {}
+        self._leader_states: dict[str, LeaderState] = {}
+        self._configs: dict[str, LeaderConfig] = {}
         self._lock_prefix = "integrator_leader"
         # Use centralized configuration for hostname
         self._instance_id = f"{settings.hostname}-{int(time.time())}"
         self._running = False
-        self._heartbeat_thread: Optional[threading.Thread] = None
+        self._heartbeat_thread: threading.Thread | None = None
 
         # Initialize Redis client
         self._init_redis()
@@ -325,7 +325,7 @@ class IntegratorLeaderElection:
         except Exception:
             return False
 
-    def get_leader_info(self, tenant: str) -> Optional[Tuple[str, float]]:
+    def get_leader_info(self, tenant: str) -> tuple[str, float] | None:
         """Get current leader info for a tenant."""
         try:
             lock_key = self._get_lock_key(tenant)

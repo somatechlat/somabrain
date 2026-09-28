@@ -51,7 +51,9 @@ def test_api_health():
     pytest.fail(f"API endpoint at {url} not reachable after retries")
 
 
-@pytest.mark.skipif(not _kafka_available(), reason=f"Kafka not reachable at {KAFKA_BOOTSTRAP}")
+@pytest.mark.skipif(
+    not _kafka_available(), reason=f"Kafka not reachable at {KAFKA_BOOTSTRAP}"
+)
 def test_kafka_connectivity():
     """Verify Kafka broker is reachable."""
     from kafka import KafkaAdminClient
@@ -65,7 +67,9 @@ def test_kafka_connectivity():
         pytest.fail(f"Kafka broker at {KAFKA_BOOTSTRAP} unreachable")
 
 
-@pytest.mark.skipif(not _redis_available(), reason=f"Redis not reachable at {REDIS_URL}")
+@pytest.mark.skipif(
+    not _redis_available(), reason=f"Redis not reachable at {REDIS_URL}"
+)
 def test_redis_connectivity():
     """Verify Redis is reachable."""
     r = redis.from_url(REDIS_URL)

@@ -17,7 +17,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 import logging
-from typing import Optional
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -28,9 +27,9 @@ logger = logging.getLogger(__name__)
 def send_invitation_email(
     to_email: str,
     tenant_name: str,
-    inviter_name: Optional[str] = None,
-    custom_message: Optional[str] = None,
-    invite_url: Optional[str] = None,
+    inviter_name: str | None = None,
+    custom_message: str | None = None,
+    invite_url: str | None = None,
 ) -> bool:
     """
     Send an invitation email to a new user.
@@ -146,7 +145,7 @@ Questions? Contact us at {context["support_email"]}
 def send_password_reset_email(
     to_email: str,
     reset_url: str,
-    user_name: Optional[str] = None,
+    user_name: str | None = None,
 ) -> bool:
     """
     Send a password reset email.
@@ -238,8 +237,8 @@ def send_notification_email(
     to_email: str,
     subject: str,
     message: str,
-    action_url: Optional[str] = None,
-    action_text: Optional[str] = None,
+    action_url: str | None = None,
+    action_text: str | None = None,
 ) -> bool:
     """
     Send a general notification email.

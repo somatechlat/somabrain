@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 from somabrain.math import cosine_similarity

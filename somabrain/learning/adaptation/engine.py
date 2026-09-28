@@ -14,7 +14,7 @@ Decomposition:
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from somabrain.feedback import Feedback
@@ -44,10 +44,10 @@ from somabrain.learning.persistence import (
 )
 from somabrain.learning.tenant_cache import get_tenant_override as _get_tenant_override
 
-from .types import RetrievalWeights
-from .utils import clamp as _clamp
 from .history import HistoryManager
 from .metrics import update_metrics
+from .types import RetrievalWeights
+from .utils import clamp as _clamp
 
 
 class AdaptationEngine:
@@ -56,13 +56,13 @@ class AdaptationEngine:
     def __init__(
         self,
         retrieval: RetrievalWeights | None = None,
-        utility: Optional[UtilityWeights] = None,
-        learning_rate: Optional[float] = None,
-        max_history: Optional[int] = None,
+        utility: UtilityWeights | None = None,
+        learning_rate: float | None = None,
+        max_history: int | None = None,
         constraints: AdaptationConstraints | dict | None = None,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
         enable_dynamic_lr: bool = False,
-        gains: Optional[AdaptationGains] = None,
+        gains: AdaptationGains | None = None,
     ) -> None:
         """Initialize the instance."""
 
@@ -206,9 +206,9 @@ class AdaptationEngine:
 
     def reset(
         self,
-        retrieval_defaults: Optional[RetrievalWeights] = None,
-        utility_defaults: Optional[UtilityWeights] = None,
-        base_lr: Optional[float] = None,
+        retrieval_defaults: RetrievalWeights | None = None,
+        utility_defaults: UtilityWeights | None = None,
+        base_lr: float | None = None,
         clear_history: bool = True,
     ) -> None:
         """Execute reset."""
@@ -320,12 +320,12 @@ class AdaptationEngine:
         return float(self._retrieval.alpha)
 
     def apply_feedback(
-        self, utility: float | Feedback, reward: Optional[float] = None
+        self, utility: float | Feedback, reward: float | None = None
     ) -> bool:
         """Execute apply feedback."""
 
         if hasattr(utility, "score"):
-            utility_val = float(getattr(utility, "score"))
+            utility_val = float(utility.score)
         else:
             utility_val = float(utility)
         signal = reward if reward is not None else utility_val

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any
 
 from somabrain import metrics as M
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def inject_trace_context(headers: Dict[str, str]) -> Dict[str, str]:
+def inject_trace_context(headers: dict[str, str]) -> dict[str, str]:
     """Inject OpenTelemetry trace context into HTTP headers.
 
     Per Requirements H1.1-H1.3:
@@ -183,7 +183,7 @@ def record_http_metrics(
 
 
 def http_post_with_retries_sync(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     endpoint: str,
     body: dict,
     headers: dict,
@@ -191,7 +191,7 @@ def http_post_with_retries_sync(
     *,
     max_retries: int = 2,
     operation: str = "unknown",
-) -> Tuple[bool, int, Any]:
+) -> tuple[bool, int, Any]:
     """Execute a synchronous HTTP POST with retries, metrics, and tracing.
 
     Per Requirements H1.1-H1.4:
@@ -242,7 +242,7 @@ def http_post_with_retries_sync(
 
 
 async def http_post_with_retries_async(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     endpoint: str,
     body: dict,
     headers: dict,
@@ -250,7 +250,7 @@ async def http_post_with_retries_async(
     *,
     max_retries: int = 2,
     operation: str = "unknown",
-) -> Tuple[bool, int, Any]:
+) -> tuple[bool, int, Any]:
     """Execute an async HTTP POST with retries, metrics, and tracing.
 
     Per Requirements H1.1-H1.4:
@@ -301,11 +301,11 @@ async def http_post_with_retries_async(
 
 
 def store_http_sync(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     body: dict,
     headers: dict,
     tenant: str,
-) -> Tuple[bool, Any]:
+) -> tuple[bool, Any]:
     """POST a memory to the HTTP memory service (sync).
 
     The service's OpenAPI defines the endpoint ``POST /memories`` with a
@@ -332,11 +332,11 @@ def store_http_sync(
 
 
 async def store_http_async(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     body: dict,
     headers: dict,
     tenant: str,
-) -> Tuple[bool, Any]:
+) -> tuple[bool, Any]:
     """POST a memory to the HTTP memory service (async).
 
     Args:
@@ -363,11 +363,11 @@ async def store_http_async(
 
 
 def store_bulk_http_sync(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     batch_request: dict,
     headers: dict,
     tenant: str,
-) -> Tuple[bool, int, Any]:
+) -> tuple[bool, int, Any]:
     """Store multiple memories by iterating over items (sync).
 
     The memory service API does not provide a batch endpoint. This method
@@ -401,11 +401,11 @@ def store_bulk_http_sync(
 
 
 async def store_bulk_http_async(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     batch_request: dict,
     headers: dict,
     tenant: str,
-) -> Tuple[bool, int, Any]:
+) -> tuple[bool, int, Any]:
     """Store multiple memories by iterating over items (async).
 
     Args:
@@ -435,12 +435,12 @@ async def store_bulk_http_async(
 
 
 __all__ = [
+    "http_post_with_retries_async",
+    "http_post_with_retries_sync",
     "inject_trace_context",
     "record_http_metrics",
-    "http_post_with_retries_sync",
-    "http_post_with_retries_async",
-    "store_http_sync",
-    "store_http_async",
-    "store_bulk_http_sync",
     "store_bulk_http_async",
+    "store_bulk_http_sync",
+    "store_http_async",
+    "store_http_sync",
 ]

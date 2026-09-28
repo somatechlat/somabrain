@@ -10,7 +10,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from typing import Any, Iterable, List
+from collections.abc import Iterable
+from typing import Any
 
 import httpx
 from django.conf import settings
@@ -22,7 +23,6 @@ logger = logging.getLogger(__name__)
 from somabrain.core.exceptions import (
     CircuitBreakerOpen,
     MemoryServiceError,
-    MemoryTimeoutError,
 )
 from somabrain.infrastructure.cb_registry import get_cb
 from somabrain.journal import JournalEvent, get_journal
@@ -39,7 +39,9 @@ def _reraise_backend_error(exc: Exception, operation: str) -> None:
     if isinstance(exc, (httpx.HTTPError, MemoryServiceError, RuntimeError)):
         raise
     logger.exception("Unexpected memory backend error during %s: %s", operation, exc)
-    raise MemoryServiceError(f"unexpected memory error during {operation}: {exc}") from exc
+    raise MemoryServiceError(
+        f"unexpected memory error during {operation}: {exc}"
+    ) from exc
 
 
 class MemoryService:
@@ -186,7 +188,7 @@ class MemoryService:
 
     def recall_with_scores(
         self, query: str, top_k: int = 3, universe: str | None = None
-    ) -> List[Any]:
+    ) -> list[Any]:
         """Recall memories while preserving similarity scores when supported."""
 
         self._reset_circuit_if_needed()
@@ -261,7 +263,7 @@ class MemoryService:
 
     async def arecall_with_scores(
         self, query: str, top_k: int = 3, universe: str | None = None
-    ) -> List[Any]:
+    ) -> list[Any]:
         """Async variant of :meth:`recall_with_scores`."""
 
         self._reset_circuit_if_needed()
@@ -338,7 +340,9 @@ class MemoryService:
             return False
         except Exception as exc:
             logger.exception(
-                "Unexpected health check error for namespace=%s: %s", self.namespace, exc
+                "Unexpected health check error for namespace=%s: %s",
+                self.namespace,
+                exc,
             )
             return False
         if isinstance(health, dict):

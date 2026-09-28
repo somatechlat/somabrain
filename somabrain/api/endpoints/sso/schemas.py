@@ -9,7 +9,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ninja import Schema
 
@@ -37,7 +37,7 @@ class SAMLConfig(Schema):
 
     entity_id: str
     sso_url: str
-    slo_url: Optional[str] = None
+    slo_url: str | None = None
     certificate: str
     name_id_format: str = "emailAddress"
     sign_requests: bool = True
@@ -49,10 +49,10 @@ class OIDCConfig(Schema):
     issuer_url: str
     client_id: str
     client_secret: str
-    authorization_endpoint: Optional[str] = None
-    token_endpoint: Optional[str] = None
-    userinfo_endpoint: Optional[str] = None
-    scopes: List[str] = ["openid", "email", "profile"]
+    authorization_endpoint: str | None = None
+    token_endpoint: str | None = None
+    userinfo_endpoint: str | None = None
+    scopes: list[str] = ["openid", "email", "profile"]
 
 
 class LDAPConfig(Schema):
@@ -63,7 +63,7 @@ class LDAPConfig(Schema):
     bind_dn: str
     bind_password: str
     user_search_filter: str = "(uid={username})"
-    group_search_filter: Optional[str] = None
+    group_search_filter: str | None = None
     use_ssl: bool = True
 
 
@@ -75,7 +75,7 @@ class IdPOut(Schema):
     type: str
     status: str
     created_at: str
-    last_verified_at: Optional[str]
+    last_verified_at: str | None
     login_count: int
     error_count: int
 
@@ -87,13 +87,13 @@ class IdPDetailOut(Schema):
     name: str
     type: str
     status: str
-    config: Dict[str, Any]
+    config: dict[str, Any]
     created_at: str
-    created_by: Optional[str]
-    last_verified_at: Optional[str]
+    created_by: str | None
+    last_verified_at: str | None
     login_count: int
     error_count: int
-    last_error: Optional[str]
+    last_error: str | None
 
 
 class IdPCreate(Schema):
@@ -101,15 +101,15 @@ class IdPCreate(Schema):
 
     name: str
     type: str
-    config: Dict[str, Any]
+    config: dict[str, Any]
 
 
 class IdPUpdate(Schema):
     """Update IdP request."""
 
-    name: Optional[str] = None
-    config: Optional[Dict[str, Any]] = None
-    status: Optional[str] = None
+    name: str | None = None
+    config: dict[str, Any] | None = None
+    status: str | None = None
 
 
 class SSOSettings(Schema):
@@ -117,7 +117,7 @@ class SSOSettings(Schema):
 
     enabled: bool = False
     enforce_sso: bool = False
-    default_idp_id: Optional[str] = None
+    default_idp_id: str | None = None
     allow_password_login: bool = True
     auto_provision_users: bool = True
     jit_user_role: str = "member"

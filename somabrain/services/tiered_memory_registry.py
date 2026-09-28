@@ -7,7 +7,7 @@ with ``register`` and ``get`` methods.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -21,8 +21,8 @@ class TieredMemoryRegistry:
         # - tenant -> in‑process records captured via remember() for diagnostics
         """Initialize the instance."""
 
-        self._store: Dict[str, Any] = {}
-        self._records: Dict[str, Dict[str, Any]] = {}
+        self._store: dict[str, Any] = {}
+        self._records: dict[str, dict[str, Any]] = {}
 
     def register(self, tenant: str, memory_obj: Any) -> None:
         """Register *memory_obj* for *tenant*.
@@ -41,13 +41,13 @@ class TieredMemoryRegistry:
     def remember(
         self,
         tenant: str,
-        namespace: Optional[str] = None,
+        namespace: str | None = None,
         *,
-        anchor_id: Optional[str] = None,
-        key_vector: Optional[np.ndarray] = None,
-        value_vector: Optional[np.ndarray] = None,
-        payload: Optional[Dict[str, Any]] = None,
-        coordinate: Optional[List[Any]] = None,
+        anchor_id: str | None = None,
+        key_vector: np.ndarray | None = None,
+        value_vector: np.ndarray | None = None,
+        payload: dict[str, Any] | None = None,
+        coordinate: list[Any] | None = None,
     ) -> None:
         """Persist a captured record in the in‑process registry.
 
@@ -77,11 +77,11 @@ class TieredMemoryRegistry:
             "has_value_vector": value_vector is not None,
         }
 
-    def last(self, tenant: str) -> Dict[str, Any] | None:
+    def last(self, tenant: str) -> dict[str, Any] | None:
         """Return the latest in‑process records for a tenant, if any."""
         return self._records.get(tenant)
 
-    def rebuild(self, tenant: str, namespace: Optional[str] = None) -> Dict[str, Any]:
+    def rebuild(self, tenant: str, namespace: str | None = None) -> dict[str, Any]:
         """Rebuild ANN indexes for a tenant/namespace.
 
         This is a no-op in the in-memory implementation.
@@ -94,7 +94,7 @@ class TieredMemoryRegistry:
             "records_count": len(self._records.get(tenant, {})),
         }
 
-    def apply_effective_config(self, event: Any) -> Optional[Dict[str, Any]]:
+    def apply_effective_config(self, event: Any) -> dict[str, Any] | None:
         """Apply configuration event to the registry.
 
         Returns metrics if applicable, None otherwise.

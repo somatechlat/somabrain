@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from django.conf import settings
 
@@ -57,10 +57,10 @@ class RuntimeManager:
     """
 
     def __init__(self):
-        self._embedder: Optional[Any] = None
-        self._mt_wm: Optional[Any] = None
-        self._mt_memory: Optional[Any] = None
-        self._cfg: Optional[Any] = None
+        self._embedder: Any | None = None
+        self._mt_wm: Any | None = None
+        self._mt_memory: Any | None = None
+        self._cfg: Any | None = None
         self._lock = threading.Lock()
         self._initialized = False
         self._last_status: dict = {
@@ -150,28 +150,28 @@ class RuntimeManager:
             return None
 
     @property
-    def embedder(self) -> Optional[Any]:
+    def embedder(self) -> Any | None:
         """Get or initialize the embedder singleton."""
         if self._embedder is None:
             self.initialize_runtime()
         return self._embedder
 
     @property
-    def mt_wm(self) -> Optional[Any]:
+    def mt_wm(self) -> Any | None:
         """Get or initialize the working memory singleton."""
         if self._mt_wm is None:
             self.initialize_runtime()
         return self._mt_wm
 
     @property
-    def mt_memory(self) -> Optional[Any]:
+    def mt_memory(self) -> Any | None:
         """Get or initialize the memory pool singleton."""
         if self._mt_memory is None:
             self.initialize_runtime()
         return self._mt_memory
 
     @property
-    def cfg(self) -> Optional[Any]:
+    def cfg(self) -> Any | None:
         """Get the runtime configuration object."""
         if self._cfg is None:
             self.initialize_runtime()

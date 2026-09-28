@@ -18,7 +18,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -87,7 +87,7 @@ def record_activity(
     user_id: str,
     activity_type: str,
     description: str,
-    metadata: Optional[Dict] = None,
+    metadata: dict | None = None,
 ):
     """Record a new activity."""
     activity = {
@@ -117,14 +117,14 @@ def record_activity(
     return activity
 
 
-def get_tenant_activities(tenant_id: str, limit: int = 50) -> List[dict]:
+def get_tenant_activities(tenant_id: str, limit: int = 50) -> list[dict]:
     """Get recent tenant activities."""
     key = get_activities_key(tenant_id)
     activities = cache.get(key, [])
     return activities[:limit]
 
 
-def get_user_activities(user_id: str, limit: int = 50) -> List[dict]:
+def get_user_activities(user_id: str, limit: int = 50) -> list[dict]:
     """Get recent user activities."""
     key = get_user_activities_key(user_id)
     activities = cache.get(key, [])
@@ -142,8 +142,8 @@ class ActivityOut(Schema):
     id: str
     type: str
     description: str
-    user_id: Optional[str]
-    metadata: Optional[Dict[str, Any]]
+    user_id: str | None
+    metadata: dict[str, Any] | None
     timestamp: str
 
 
@@ -151,7 +151,7 @@ class TimelineGroup(Schema):
     """Grouped timeline activities."""
 
     date: str
-    activities: List[ActivityOut]
+    activities: list[ActivityOut]
 
 
 class ActivityRecord(Schema):
@@ -159,7 +159,7 @@ class ActivityRecord(Schema):
 
     type: str
     description: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class ActivityStats(Schema):
@@ -168,8 +168,8 @@ class ActivityStats(Schema):
     total_activities: int
     activities_today: int
     activities_this_week: int
-    top_activity_types: Dict[str, int]
-    most_active_users: List[Dict[str, Any]]
+    top_activity_types: dict[str, int]
+    most_active_users: list[dict[str, Any]]
 
 
 # =============================================================================
@@ -177,14 +177,14 @@ class ActivityStats(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/timeline", response=List[ActivityOut])
+@router.get("/{tenant_id}/timeline", response=list[ActivityOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_timeline(
     request: AuthenticatedRequest,
     tenant_id: UUID,
     limit: int = 50,
-    activity_type: Optional[str] = None,
-    user_id: Optional[str] = None,
+    activity_type: str | None = None,
+    user_id: str | None = None,
 ):
     """
     Get activity timeline for a tenant.
@@ -225,7 +225,7 @@ def get_timeline(
     ]
 
 
-@router.get("/{tenant_id}/timeline/grouped", response=List[TimelineGroup])
+@router.get("/{tenant_id}/timeline/grouped", response=list[TimelineGroup])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def get_grouped_timeline(
     request: AuthenticatedRequest,
@@ -279,7 +279,7 @@ def get_grouped_timeline(
     return result
 
 
-@router.get("/{tenant_id}/user/{user_id}", response=List[ActivityOut])
+@router.get("/{tenant_id}/user/{user_id}", response=list[ActivityOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_user_timeline(
     request: AuthenticatedRequest,
@@ -422,7 +422,7 @@ def get_activity_stats(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/audit-feed", response=List[ActivityOut])
+@router.get("/{tenant_id}/audit-feed", response=list[ActivityOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def get_audit_feed(

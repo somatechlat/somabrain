@@ -16,11 +16,9 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Environment overrides
 """
 
-from typing import Dict, List, Optional
 from uuid import UUID
 
 from django.core.cache import cache
-from django.utils import timezone
 from ninja import Router, Schema
 
 from somabrain.aaas.auth import AuthenticatedRequest, require_auth
@@ -40,7 +38,7 @@ class FeatureFlagOut(Schema):
 
     key: str
     name: str
-    description: Optional[str]
+    description: str | None
     enabled: bool
     rollout_percentage: int
     created_at: str
@@ -52,7 +50,7 @@ class FeatureFlagCreate(Schema):
 
     key: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     enabled: bool = False
     rollout_percentage: int = 0
 
@@ -60,10 +58,10 @@ class FeatureFlagCreate(Schema):
 class FeatureFlagUpdate(Schema):
     """Update feature flag."""
 
-    name: Optional[str] = None
-    description: Optional[str] = None
-    enabled: Optional[bool] = None
-    rollout_percentage: Optional[int] = None
+    name: str | None = None
+    description: str | None = None
+    enabled: bool | None = None
+    rollout_percentage: int | None = None
 
 
 class TenantFlagOverride(Schema):
@@ -71,7 +69,7 @@ class TenantFlagOverride(Schema):
 
     flag_key: str
     enabled: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class FlagCheckResult(Schema):
@@ -127,7 +125,7 @@ DEFAULT_FLAGS = {
 }
 
 
-def get_all_flags() -> Dict[str, dict]:
+def get_all_flags() -> dict[str, dict]:
     """Get all flags from cache or defaults."""
     cached = cache.get("feature_flags")
     if cached:
@@ -135,7 +133,7 @@ def get_all_flags() -> Dict[str, dict]:
     return DEFAULT_FLAGS.copy()
 
 
-def get_flag(key: str) -> Optional[dict]:
+def get_flag(key: str) -> dict | None:
     """Get a single flag."""
     flags = get_all_flags()
     return flags.get(key)
@@ -148,7 +146,7 @@ def set_flag(key: str, flag_data: dict):
     cache.set("feature_flags", flags, timeout=3600)
 
 
-def get_tenant_overrides(tenant_id: str) -> Dict[str, bool]:
+def get_tenant_overrides(tenant_id: str) -> dict[str, bool]:
     """Get tenant-specific flag overrides."""
     return cache.get(f"feature_flags:tenant:{tenant_id}", {})
 
@@ -173,7 +171,7 @@ def _feature_flags_read_only() -> None:
 # =============================================================================
 
 
-def evaluate_flag(flag_key: str, tenant_id: Optional[str] = None) -> tuple:
+def evaluate_flag(flag_key: str, tenant_id: str | None = None) -> tuple:
     """
     Evaluate if a flag is enabled for a given context.
 
@@ -213,7 +211,7 @@ def evaluate_flag(flag_key: str, tenant_id: Optional[str] = None) -> tuple:
 # =============================================================================
 
 
-@router.get("/flags", response=List[FeatureFlagOut])
+@router.get("/flags", response=list[FeatureFlagOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_feature_flags(request: AuthenticatedRequest):
     """List all feature flags."""
@@ -333,7 +331,7 @@ def check_flag(
 def check_flags_bulk(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    flag_keys: List[str],
+    flag_keys: list[str],
 ):
     """Check multiple flags at once."""
     # Tenant isolation

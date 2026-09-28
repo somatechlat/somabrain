@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Deque, Dict, Optional
 
 from somabrain.services.memory_service import MemoryService
 
@@ -51,7 +50,7 @@ class Hippocampus:
         """Initialize the instance."""
 
         self.cfg = cfg
-        self._buffers: Dict[str, Deque[dict]] = defaultdict(
+        self._buffers: dict[str, deque[dict]] = defaultdict(
             lambda: deque(maxlen=cfg.buffer_max)
         )
         # Bind to runtime singletons via DI container if not provided
@@ -66,7 +65,7 @@ class Hippocampus:
         self._mt_memory = mt_memory
         self._mt_wm = mt_wm
 
-    def add_memory(self, payload: dict, tenant_id: Optional[str] = None) -> None:
+    def add_memory(self, payload: dict, tenant_id: str | None = None) -> None:
         """Store an episodic payload and persist it immediately to memory service."""
         tenant = tenant_id or self.cfg.tenant
         p = dict(payload)
@@ -88,7 +87,7 @@ class Hippocampus:
                 # Do not swallow silently; raise so caller can see real failure
                 raise
 
-    def consolidate(self, tenant_id: Optional[str] = None) -> dict:
+    def consolidate(self, tenant_id: str | None = None) -> dict:
         """Run NREM+REM style consolidation using real working/long-term memory."""
         tenant = tenant_id or self.cfg.tenant
         if self._mt_memory is None or self._mt_wm is None:

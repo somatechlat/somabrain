@@ -7,8 +7,6 @@ domain. Deterministic when a seed is provided.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
-
 import numpy as np
 
 from somabrain.admin.core import numerics as _num
@@ -16,8 +14,8 @@ from somabrain.core.utils import seed as _seed
 
 
 def make_unitary_role(
-    dim: int, seed: Optional[int | str | bytes] = None, dtype=np.float32
-) -> Tuple[np.ndarray, np.ndarray]:
+    dim: int, seed: int | str | bytes | None = None, dtype=np.float32
+) -> tuple[np.ndarray, np.ndarray]:
     """Return (time_domain_vector, rfft_spectrum) for a unitary role.
 
     The returned `time_domain_vector` has shape (dim,) and dtype `dtype`.
@@ -43,7 +41,7 @@ def make_unitary_role(
 
 
 def role_spectrum_from_seed(
-    dim: int, seed: Optional[int | str | bytes] = None, dtype=np.float32
+    dim: int, seed: int | str | bytes | None = None, dtype=np.float32
 ) -> np.ndarray:
     """Convenience: return only the rfft spectrum for a role."""
     _, spec = make_unitary_role(dim, seed=seed, dtype=dtype)

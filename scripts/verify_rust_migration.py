@@ -1,5 +1,5 @@
-import sys
 import os
+import sys
 
 # Add local directory to path to find the built module if not installed
 sys.path.insert(

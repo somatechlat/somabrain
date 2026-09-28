@@ -10,8 +10,6 @@ VIBE RULE 11: All user-facing text MUST use get_message().
 
 from __future__ import annotations
 
-from typing import Optional
-
 
 class SomabrainError(RuntimeError):
     """Base class for all domain‑specific errors.
@@ -25,8 +23,8 @@ class SomabrainError(RuntimeError):
         self,
         message: str,
         *,
-        code: Optional[str] = None,
-        cause: Optional[BaseException] = None,
+        code: str | None = None,
+        cause: BaseException | None = None,
     ) -> None:
         """Initialize the instance."""
 
@@ -43,7 +41,7 @@ class ConfigError(SomabrainError):
         key: str,
         reason: str = "missing",
         *,
-        cause: Optional[BaseException] = None,
+        cause: BaseException | None = None,
     ) -> None:
         """Initialize config error with I18N support."""
         from common.messages import ErrorCode, get_message
@@ -68,9 +66,9 @@ class ExternalError(SomabrainError):
     def __init__(
         self,
         service: str,
-        message: Optional[str] = None,
+        message: str | None = None,
         *,
-        cause: Optional[BaseException] = None,
+        cause: BaseException | None = None,
     ) -> None:
         """Initialize external error with I18N support."""
         from common.messages import ErrorCode, get_message
@@ -99,7 +97,7 @@ class MemoryError(SomabrainError):
         self,
         operation: str,
         *,
-        cause: Optional[BaseException] = None,
+        cause: BaseException | None = None,
     ) -> None:
         """Initialize memory error with I18N support."""
         from common.messages import ErrorCode, get_message
@@ -127,7 +125,7 @@ class CognitiveError(SomabrainError):
         self,
         operation: str,
         *,
-        cause: Optional[BaseException] = None,
+        cause: BaseException | None = None,
     ) -> None:
         """Initialize cognitive error with I18N support."""
         from common.messages import ErrorCode, get_message

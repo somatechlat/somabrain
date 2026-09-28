@@ -16,12 +16,10 @@ fallback for empty or ``None`` values.
 
 from __future__ import annotations
 
-from typing import Optional
-
-__all__ = ["tenant_label", "resolve_namespace"]
+__all__ = ["resolve_namespace", "tenant_label"]
 
 
-def tenant_label(namespace: Optional[str]) -> str:
+def tenant_label(namespace: str | None) -> str:
     """Return a stable, human‑readable tenant identifier.
 
     The function follows the historic behaviour used in ``MemoryService``:

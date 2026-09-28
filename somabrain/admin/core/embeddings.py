@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Callable, Optional
+from collections.abc import Callable
 
 import numpy as np
 
@@ -77,7 +77,7 @@ class TinyDeterministicEmbedder:
 
     def _token_digest(self, token: str) -> bytes:
         return hashlib.blake2b(
-            f"{self.seed_salt}:{token}".encode("utf-8"), digest_size=16
+            f"{self.seed_salt}:{token}".encode(), digest_size=16
         ).digest()
 
     def embed(self, text: str) -> np.ndarray:
@@ -129,7 +129,7 @@ class _JLProjector:
         self,
         base_embed: Callable[[str], np.ndarray],
         base_dim: int,
-        target_k: Optional[int],
+        target_k: int | None,
         seed: int = 42,
     ):
         """
@@ -145,7 +145,7 @@ class _JLProjector:
         self.base_dim = int(base_dim)
         self.k = int(target_k) if target_k else None
         self.seed = int(seed)
-        self._P: Optional[np.ndarray] = None
+        self._P: np.ndarray | None = None
 
     def _ensure_P(self) -> None:
         """

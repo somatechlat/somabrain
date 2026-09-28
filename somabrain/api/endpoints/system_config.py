@@ -16,7 +16,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Runtime configuration
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
@@ -38,7 +38,7 @@ SYSTEM_CONFIG_KEY = "system:config"
 MAINTENANCE_KEY = "system:maintenance"
 
 
-def get_system_config() -> Dict[str, Any]:
+def get_system_config() -> dict[str, Any]:
     """Get system configuration."""
     config = cache.get(SYSTEM_CONFIG_KEY)
     if not config:
@@ -61,7 +61,7 @@ def get_system_config() -> Dict[str, Any]:
     return config
 
 
-def set_system_config(config: Dict[str, Any]):
+def set_system_config(config: dict[str, Any]):
     """Update system configuration."""
     cache.set(SYSTEM_CONFIG_KEY, config, timeout=86400)
 
@@ -75,7 +75,7 @@ class SystemConfigOut(Schema):
     """System configuration output."""
 
     maintenance_mode: bool
-    maintenance_message: Optional[str]
+    maintenance_message: str | None
     max_tenants: int
     default_tier: str
     signup_enabled: bool
@@ -91,22 +91,22 @@ class SystemConfigOut(Schema):
 class SystemConfigUpdate(Schema):
     """Update system configuration."""
 
-    maintenance_mode: Optional[bool] = None
-    maintenance_message: Optional[str] = None
-    max_tenants: Optional[int] = None
-    default_tier: Optional[str] = None
-    signup_enabled: Optional[bool] = None
-    require_email_verification: Optional[bool] = None
-    session_timeout_minutes: Optional[int] = None
-    api_rate_limit_default: Optional[int] = None
+    maintenance_mode: bool | None = None
+    maintenance_message: str | None = None
+    max_tenants: int | None = None
+    default_tier: str | None = None
+    signup_enabled: bool | None = None
+    require_email_verification: bool | None = None
+    session_timeout_minutes: int | None = None
+    api_rate_limit_default: int | None = None
 
 
 class MaintenanceMode(Schema):
     """Maintenance mode settings."""
 
     enabled: bool
-    message: Optional[str] = None
-    scheduled_end: Optional[str] = None
+    message: str | None = None
+    scheduled_end: str | None = None
 
 
 class SystemStatsOut(Schema):
@@ -119,7 +119,7 @@ class SystemStatsOut(Schema):
     total_webhooks: int
     total_notifications: int
     audit_logs_count: int
-    cache_hit_rate: Optional[float]
+    cache_hit_rate: float | None
     uptime_seconds: int
 
 
@@ -346,10 +346,12 @@ def get_database_stats(request: AuthenticatedRequest):
             cursor.execute("SELECT pg_database_size(current_database())")
             db_size = cursor.fetchone()[0] / (1024 * 1024)  # MB
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT count(*) FROM information_schema.tables 
                 WHERE table_schema = 'public'
-            """)
+            """
+            )
             tables = cursor.fetchone()[0]
 
             cursor.execute(
@@ -380,7 +382,7 @@ def get_database_stats(request: AuthenticatedRequest):
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def clear_cache(
     request: AuthenticatedRequest,
-    pattern: Optional[str] = None,
+    pattern: str | None = None,
 ):
     """
     Clear cache entries.

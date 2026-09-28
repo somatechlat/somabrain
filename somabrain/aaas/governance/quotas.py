@@ -35,8 +35,7 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Tuple
+from datetime import UTC, datetime, timedelta
 
 from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 
@@ -51,7 +50,7 @@ class QuotaInfo:
     daily_limit: int
     remaining: int
     used_today: int
-    reset_at: Optional[datetime] = None
+    reset_at: datetime | None = None
     is_exempt: bool = False
 
 
@@ -69,7 +68,7 @@ class QuotaConfig:
     Fields default to None, which triggers Settings lookup in __post_init__.
     """
 
-    daily_writes: Optional[int] = None
+    daily_writes: int | None = None
 
     def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""
@@ -100,7 +99,7 @@ class QuotaManager:
         """
         self.cfg = cfg
         # key -> (date_key, count)
-        self._counts: Dict[str, Tuple[int, int]] = {}
+        self._counts: dict[str, tuple[int, int]] = {}
         self._tenant_manager = None  # Lazy initialization
         logger.warning(
             "QuotaManager uses in-memory counters; enable a Redis-backed quota store "
@@ -207,9 +206,9 @@ class QuotaManager:
         cur_day, cnt = self._counts.get(tenant_id, (day, 0))
         if cur_day != day:
             cnt = 0
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         reset_time = datetime(
-            now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc
+            now.year, now.month, now.day, 0, 0, 0, tzinfo=UTC
         )
         # Move to next day safely
         reset_time = reset_time + timedelta(days=1)
@@ -222,9 +221,9 @@ class QuotaManager:
             is_exempt=is_exempt,
         )
 
-    def get_all_quotas(self) -> List[QuotaInfo]:
+    def get_all_quotas(self) -> list[QuotaInfo]:
         """Get quota information for all tenants."""
-        quotas: List[QuotaInfo] = []
+        quotas: list[QuotaInfo] = []
         for tenant_id in list(self._counts.keys()):
             quotas.append(self.get_quota_info(tenant_id))
         return quotas

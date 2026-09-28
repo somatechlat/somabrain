@@ -10,7 +10,7 @@ cross-tenant data leakage. See Requirements D1.1, D1.2.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from somabrain.memory.hit_processing import deduplicate_hits, normalize_recall_hits
 from somabrain.memory.types import RecallHit
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _filter_by_tenant(hits: List[RecallHit], tenant: Optional[str]) -> List[RecallHit]:
+def _filter_by_tenant(hits: list[RecallHit], tenant: str | None) -> list[RecallHit]:
     """Filter hits to only include those belonging to the specified tenant.
 
     SECURITY: This is a critical security filter to prevent cross-tenant data leakage.
@@ -72,8 +72,8 @@ def process_search_response(
     query_text: str,
     top_k: int,
     rescore_fn: callable,
-    tenant: Optional[str] = None,
-) -> List[RecallHit]:
+    tenant: str | None = None,
+) -> list[RecallHit]:
     """Process search response data into ranked RecallHit list.
 
     SECURITY: Results are filtered by tenant_id to prevent cross-tenant data leakage.
@@ -111,15 +111,15 @@ def process_search_response(
 
 
 def memories_search_sync(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     query: str,
     top_k: int,
     universe: str,
     request_id: str,
     http_post_fn: callable,
     rescore_fn: callable,
-    tenant: Optional[str] = None,
-) -> List[RecallHit]:
+    tenant: str | None = None,
+) -> list[RecallHit]:
     """Synchronous memory search via HTTP POST to /memories/search.
 
     SECURITY: Results are filtered by tenant_id to prevent cross-tenant data leakage.
@@ -175,15 +175,15 @@ def memories_search_sync(
 
 
 async def memories_search_async(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     query: str,
     top_k: int,
     universe: str,
     request_id: str,
     http_post_fn: callable,
     rescore_fn: callable,
-    tenant: Optional[str] = None,
-) -> List[RecallHit]:
+    tenant: str | None = None,
+) -> list[RecallHit]:
     """Async memory search via HTTP POST to /memories/search.
 
     SECURITY: Results are filtered by tenant_id to prevent cross-tenant data leakage.
@@ -239,11 +239,11 @@ async def memories_search_async(
 
 
 def recall_with_graph_boost(
-    hits: List[RecallHit],
-    graph_client: "MemoryClient",
-    graph_boost_factor: Optional[float] = None,
-    max_neighbors: Optional[int] = None,
-) -> List[RecallHit]:
+    hits: list[RecallHit],
+    graph_client: MemoryClient,
+    graph_boost_factor: float | None = None,
+    max_neighbors: int | None = None,
+) -> list[RecallHit]:
     """Boost recall results using graph neighbor relationships.
     ...
         Returns:
@@ -344,7 +344,7 @@ def recall_with_degradation(
     request_id: str,
     require_healthy_fn: callable,
     http_recall_fn: callable,
-) -> List[RecallHit]:
+) -> list[RecallHit]:
     """Recall memories with degradation handling.
 
     Per Requirements E1.1-E1.5:
@@ -406,7 +406,7 @@ async def arecall_with_degradation(
     require_healthy_fn: callable,
     http_recall_async_fn: callable,
     has_async_client: bool,
-) -> List[RecallHit]:
+) -> list[RecallHit]:
     """Async recall with degradation handling.
 
     Per Requirements E1.1-E1.5.

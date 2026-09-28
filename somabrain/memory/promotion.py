@@ -16,12 +16,11 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from prometheus_client import Counter, Histogram
 
 if TYPE_CHECKING:
-    from somabrain.memory.client import MemoryClient
     from somabrain.memory.client import MemoryClient
 
 logger = logging.getLogger(__name__)
@@ -52,8 +51,8 @@ class PromotionCandidate:
     first_tick: int
     consecutive_count: int = 1
     last_salience: float = 0.0
-    vector: List[float] = field(default_factory=list)
-    payload: Dict[str, Any] = field(default_factory=dict)
+    vector: list[float] = field(default_factory=list)
+    payload: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -62,8 +61,8 @@ class PromotionResult:
 
     item_id: str
     promoted: bool
-    ltm_coordinate: Optional[Tuple[float, float, float]] = None
-    error: Optional[str] = None
+    ltm_coordinate: tuple[float, float, float] | None = None
+    error: str | None = None
     latency_ms: float = 0.0
 
 
@@ -82,8 +81,8 @@ class PromotionTracker:
 
     def __init__(
         self,
-        threshold: Optional[float] = None,
-        min_ticks: Optional[int] = None,
+        threshold: float | None = None,
+        min_ticks: int | None = None,
         tenant_id: str = "default",
     ):
         """Initialize PromotionTracker.
@@ -102,7 +101,7 @@ class PromotionTracker:
         self._threshold = float(threshold)
         self._min_ticks = int(min_ticks)
         self._tenant_id = tenant_id
-        self._candidates: Dict[str, PromotionCandidate] = {}
+        self._candidates: dict[str, PromotionCandidate] = {}
         # Track promoted items to avoid re-promotion
         self._promoted_ids: set[str] = set()
 
@@ -121,8 +120,8 @@ class PromotionTracker:
         item_id: str,
         salience: float,
         tick: int,
-        vector: Optional[List[float]] = None,
-        payload: Optional[Dict[str, Any]] = None,
+        vector: list[float] | None = None,
+        payload: dict[str, Any] | None = None,
     ) -> bool:
         """Check if item should be promoted.
 
@@ -173,7 +172,7 @@ class PromotionTracker:
         # Check if ready for promotion
         return candidate.consecutive_count >= self._min_ticks
 
-    def get_candidate(self, item_id: str) -> Optional[PromotionCandidate]:
+    def get_candidate(self, item_id: str) -> PromotionCandidate | None:
         """Get promotion candidate by ID."""
         return self._candidates.get(item_id)
 
@@ -189,7 +188,7 @@ class PromotionTracker:
         """Reset candidate tracking (e.g., after failed promotion)."""
         self._candidates.pop(item_id, None)
 
-    def get_pending_candidates(self) -> List[PromotionCandidate]:
+    def get_pending_candidates(self) -> list[PromotionCandidate]:
         """Get all candidates ready for promotion."""
         return [
             c
@@ -215,11 +214,11 @@ class WMLTMPromoter:
 
     def __init__(
         self,
-        memory_client: "MemoryClient",
-        graph_client: Optional["MemoryClient"] = None,
+        memory_client: MemoryClient,
+        graph_client: MemoryClient | None = None,
         tenant_id: str = "default",
-        threshold: Optional[float] = None,
-        min_ticks: Optional[int] = None,
+        threshold: float | None = None,
+        min_ticks: int | None = None,
     ):
         """Initialize WMLTMPromoter.
 
@@ -239,14 +238,14 @@ class WMLTMPromoter:
             tenant_id=tenant_id,
         )
         # Map item_id -> LTM coordinate for reference (A2.2)
-        self._ltm_references: Dict[str, Tuple[float, float, float]] = {}
+        self._ltm_references: dict[str, tuple[float, float, float]] = {}
 
     @property
     def tracker(self) -> PromotionTracker:
         """Get the promotion tracker."""
         return self._tracker
 
-    def get_ltm_reference(self, item_id: str) -> Optional[Tuple[float, float, float]]:
+    def get_ltm_reference(self, item_id: str) -> tuple[float, float, float] | None:
         """Get LTM coordinate for a promoted item.
 
         Per Requirement A2.2: Promoted items retain reference to LTM coordinate.
@@ -258,10 +257,10 @@ class WMLTMPromoter:
         item_id: str,
         salience: float,
         tick: int,
-        vector: List[float],
-        payload: Dict[str, Any],
-        wm_coordinate: Optional[Tuple[float, float, float]] = None,
-    ) -> Optional[PromotionResult]:
+        vector: list[float],
+        payload: dict[str, Any],
+        wm_coordinate: tuple[float, float, float] | None = None,
+    ) -> PromotionResult | None:
         """Check if item should be promoted and promote if ready.
 
         Per Requirement A2.1: Promotes if salience >= threshold for 3+ ticks.
@@ -295,9 +294,9 @@ class WMLTMPromoter:
     async def promote(
         self,
         item_id: str,
-        vector: List[float],
-        payload: Dict[str, Any],
-        wm_coordinate: Optional[Tuple[float, float, float]] = None,
+        vector: list[float],
+        payload: dict[str, Any],
+        wm_coordinate: tuple[float, float, float] | None = None,
     ) -> PromotionResult:
         """Promote a WM item to LTM.
 
@@ -407,8 +406,8 @@ class WMLTMPromoter:
     def _queue_to_outbox(
         self,
         item_id: str,
-        vector: List[float],
-        payload: Dict[str, Any],
+        vector: list[float],
+        payload: dict[str, Any],
     ) -> None:
         """Queue failed promotion to outbox for retry.
 
@@ -458,15 +457,15 @@ class WMLTMPromoter:
 
 
 # Global promoter instances per tenant
-_promoters: Dict[str, WMLTMPromoter] = {}
+_promoters: dict[str, WMLTMPromoter] = {}
 
 
 def get_wm_ltm_promoter(
-    memory_client: "MemoryClient",
-    graph_client: Optional["MemoryClient"] = None,
+    memory_client: MemoryClient,
+    graph_client: MemoryClient | None = None,
     tenant_id: str = "default",
-    threshold: Optional[float] = None,
-    min_ticks: Optional[int] = None,
+    threshold: float | None = None,
+    min_ticks: int | None = None,
 ) -> WMLTMPromoter:
     """Get or create WMLTMPromoter for tenant.
 

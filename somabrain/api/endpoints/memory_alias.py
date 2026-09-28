@@ -20,7 +20,11 @@ from django.http import HttpRequest
 from ninja import Router
 
 from somabrain.api.auth import api_key_auth
-from somabrain.api.endpoints.memory import forget_memory, recall_memory
+from somabrain.api.endpoints.memory import (
+    RecallRequest,
+    forget_memory,
+    recall_memory,
+)
 from somabrain.api.endpoints.memory_remember import (
     remember_memory_async,
     remember_memory_batch,
@@ -33,8 +37,6 @@ from somabrain.api.memory.models import (
     MemoryWriteRequest,
     MemoryWriteResponse,
 )
-
-from somabrain.api.endpoints.memory import RecallRequest  # noqa: F401  (re-export)
 
 router = Router(tags=["memory"])
 

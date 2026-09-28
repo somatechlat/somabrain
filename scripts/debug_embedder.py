@@ -8,9 +8,10 @@ import django
 
 django.setup()
 
-from somabrain.admin.core.embeddings import make_embedder
-from django.conf import settings
 import numpy as np
+from django.conf import settings
+
+from somabrain.admin.core.embeddings import make_embedder
 
 print(f"Numpy version: {np.__version__}")
 

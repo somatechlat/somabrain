@@ -14,8 +14,8 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Dict, Generator, List, Optional
 
 import httpx
 import pytest
@@ -59,7 +59,7 @@ class BackendHealth:
     name: str
     healthy: bool
     latency_ms: float
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass
@@ -67,7 +67,7 @@ class InfrastructureHealth:
     """Overall infrastructure health status."""
 
     all_healthy: bool
-    backends: Dict[str, BackendHealth]
+    backends: dict[str, BackendHealth]
     timestamp: float
 
 
@@ -275,7 +275,7 @@ def tenant_pair() -> tuple[str, str]:
 
 
 @pytest.fixture
-def multi_tenant_ids() -> List[str]:
+def multi_tenant_ids() -> list[str]:
     """Generate 100 unique tenant IDs for concurrent isolation testing."""
     return [f"tenant_{i:03d}_{uuid.uuid4().hex[:6]}" for i in range(100)]
 
@@ -283,9 +283,9 @@ def multi_tenant_ids() -> List[str]:
 def make_test_jwt(tenant_id: str = "default") -> str:
     """Generate a test JWT signed with the configured JWT secret."""
     import os
+    import time
 
     import jwt
-    import time
 
     secret = os.environ.get("SOMABRAIN_JWT_SECRET")
     if not secret:
@@ -303,7 +303,7 @@ def make_test_jwt(tenant_id: str = "default") -> str:
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-def get_tenant_headers(tenant_id: str, namespace: str = "test") -> Dict[str, str]:
+def get_tenant_headers(tenant_id: str, namespace: str = "test") -> dict[str, str]:
     """Get HTTP headers for a specific tenant."""
     return {
         "X-Tenant-ID": tenant_id,

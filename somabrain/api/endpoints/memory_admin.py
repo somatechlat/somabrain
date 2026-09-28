@@ -7,19 +7,18 @@ Administrative endpoints for memory system management.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.http import HttpRequest
 from ninja import Query, Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import api_key_auth
+from somabrain.api.auth import api_key_auth, require_admin_auth
 from somabrain.api.memory.models import (
     AnnRebuildRequest,
     OutboxEventSummary,
     OutboxReplayRequest,
 )
-from somabrain.api.auth import require_admin_auth
 from somabrain.db import outbox as outbox_db
 
 logger = logging.getLogger("somabrain.api.endpoints.memory_admin")
@@ -30,7 +29,7 @@ router = Router(tags=["memory-admin"])
 @router.post("/rebuild-ann", auth=api_key_auth)
 def rebuild_ann_indexes(
     request: HttpRequest, payload: AnnRebuildRequest
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Admin: Rebuild ANN indexes.
 
     The external SFM service manages its own indexes; there is no exposed
@@ -44,11 +43,11 @@ def rebuild_ann_indexes(
     )
 
 
-@router.get("/outbox", response=List[OutboxEventSummary], auth=api_key_auth)
+@router.get("/outbox", response=list[OutboxEventSummary], auth=api_key_auth)
 def list_outbox_events(
     request: HttpRequest,
     status: str = Query("failed", description="Outbox status filter"),
-    tenant: Optional[str] = Query(None, description="Optional tenant filter"),
+    tenant: str | None = Query(None, description="Optional tenant filter"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
@@ -62,7 +61,7 @@ def list_outbox_events(
     except ValueError as exc:
         raise HttpError(400, str(exc))
 
-    summaries: List[OutboxEventSummary] = []
+    summaries: list[OutboxEventSummary] = []
     for ev in events:
         # Django usage: created_at is datetime
         created_ts = ev.created_at.timestamp() if ev.created_at else 0.0
@@ -86,7 +85,7 @@ def list_outbox_events(
 @router.post("/outbox/replay", auth=api_key_auth)
 def replay_outbox_events(
     request: HttpRequest, payload: OutboxReplayRequest
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Admin: Replay outbox events."""
     require_admin_auth(request, getattr(request, "cfg", None))
 

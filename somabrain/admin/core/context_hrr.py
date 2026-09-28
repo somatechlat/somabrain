@@ -18,8 +18,8 @@ from __future__ import annotations
 import math
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Tuple
 
 import numpy as np
 
@@ -203,10 +203,8 @@ class HRRContext:
             elif score > second_score:
                 second_score = score
 
-        if best_score < 0.0:
-            best_score = 0.0
-        if second_score < 0.0:
-            second_score = 0.0
+        best_score = max(best_score, 0.0)
+        second_score = max(second_score, 0.0)
         return CleanupResult(best_id, float(best_score), float(second_score))
 
     def analyze(self, query: np.ndarray) -> CleanupResult:
@@ -228,7 +226,7 @@ class HRRContext:
         )
         return result
 
-    def cleanup(self, query: np.ndarray) -> Tuple[str, float]:
+    def cleanup(self, query: np.ndarray) -> tuple[str, float]:
         """Execute cleanup.
 
         Args:

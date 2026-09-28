@@ -12,7 +12,7 @@ API against real code and only gate the graph-dependent paths on memory availabi
 from __future__ import annotations
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -78,8 +78,10 @@ class TestPlanningWithLiveMemory:
         """C2.5: Planning with a real graph client returns string task steps."""
         from somabrain.memory.client import MemoryClient
 
-        transport: Dict[str, Any] = {
-            "base_url": os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:10101"),
+        transport: dict[str, Any] = {
+            "base_url": os.environ.get(
+                "SOMABRAIN_MEMORY_URL", "http://localhost:10101"
+            ),
             "token": os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN", ""),
         }
         client = MemoryClient(transport, tenant="default")

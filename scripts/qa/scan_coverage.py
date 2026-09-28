@@ -1,7 +1,7 @@
 """Module scan_coverage."""
 
-import os
 import ast
+import os
 import sys
 
 

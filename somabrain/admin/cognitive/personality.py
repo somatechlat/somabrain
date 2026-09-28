@@ -9,10 +9,9 @@ Personality store for SomaBrain.
 from __future__ import annotations
 
 from threading import RLock
-from typing import Dict
 
-from somabrain.schemas import PersonalityState
 from somabrain.aaas.logic.tenant_manager import get_tenant_manager
+from somabrain.schemas import PersonalityState
 
 
 class PersonalityStore:
@@ -22,7 +21,7 @@ class PersonalityStore:
         """Initialize the instance."""
 
         self._lock = RLock()
-        self._states: Dict[str, PersonalityState] = {}
+        self._states: dict[str, PersonalityState] = {}
 
     def get(self, tenant: str | None = None) -> PersonalityState:
         """Execute get.
@@ -62,7 +61,7 @@ class PersonalityStore:
             self._states[t] = updated
             return updated
 
-    def all(self) -> Dict[str, PersonalityState]:
+    def all(self) -> dict[str, PersonalityState]:
         """Execute all."""
 
         with self._lock:

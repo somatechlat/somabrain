@@ -17,14 +17,16 @@ from __future__ import annotations
 
 import argparse
 import json
-from django.conf import settings
-from somabrain.infrastructure import get_api_base_url
 import sys
-from typing import Any, Dict, Iterable
-
-import requests
 import time
 from collections import defaultdict
+from collections.abc import Iterable
+from typing import Any
+
+import requests
+from django.conf import settings
+
+from somabrain.infrastructure import get_api_base_url
 
 
 def _default_base_url() -> str:
@@ -70,7 +72,7 @@ def _fetch_page(
     tenant: str | None,
     limit: int,
     offset: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Execute fetch page.
 
     Args:
@@ -92,7 +94,7 @@ def _fetch_page(
     return resp.json()
 
 
-def _print_events(events: Iterable[Dict[str, Any]], as_json: bool) -> None:
+def _print_events(events: Iterable[dict[str, Any]], as_json: bool) -> None:
     """Execute print events.
 
     Args:
@@ -179,7 +181,7 @@ def cmd_tail(args: argparse.Namespace) -> None:
                     if isinstance(ev_id, int):
                         seen.add(ev_id)
                 if len(seen) > 5000:
-                    seen = set(list(sorted(seen))[-2000:])
+                    seen = set(sorted(seen)[-2000:])
             time.sleep(args.interval)
     except KeyboardInterrupt:
         return
@@ -303,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         args.func(args)
         return 0
-    except requests.RequestException as exc:  # noqa: BLE001
+    except requests.RequestException as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 

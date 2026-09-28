@@ -11,13 +11,14 @@ Architecture:
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from threading import Lock
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any
 
 from somabrain.core.container import container
 
-_CacheKey = Tuple[str, str]
-_CandidateRecord = Dict[str, Any]
+_CacheKey = tuple[str, str]
+_CandidateRecord = dict[str, Any]
 _log = logging.getLogger(__name__)
 
 
@@ -31,7 +32,7 @@ class RetrievalCache:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self._cache: Dict[_CacheKey, List[_CandidateRecord]] = {}
+        self._cache: dict[_CacheKey, list[_CandidateRecord]] = {}
         self._lock = Lock()
 
     def _normalize(self, namespace: str | None, query: str | None) -> _CacheKey:
@@ -63,7 +64,7 @@ class RetrievalCache:
             len(self._cache.get(key, [])),
         )
 
-    def get(self, namespace: str | None, query: str | None) -> List[_CandidateRecord]:
+    def get(self, namespace: str | None, query: str | None) -> list[_CandidateRecord]:
         """Return a copy of the cached candidates for (namespace, query)."""
         key = self._normalize(namespace, query)
         with self._lock:
@@ -77,10 +78,10 @@ class RetrievalCache:
         )
         return out
 
-    def get_any(self, namespace: str | None) -> List[_CandidateRecord]:
+    def get_any(self, namespace: str | None) -> list[_CandidateRecord]:
         """Return a merged copy of all cached candidates for a namespace."""
         ns, _ = self._normalize(namespace, None)
-        out: List[_CandidateRecord] = []
+        out: list[_CandidateRecord] = []
         with self._lock:
             for (n, q), entries in self._cache.items():
                 if n == ns and entries:
@@ -116,11 +117,11 @@ def store_candidates(
     get_cache().store(namespace, query, candidates)
 
 
-def get_candidates(namespace: str | None, query: str | None) -> List[_CandidateRecord]:
+def get_candidates(namespace: str | None, query: str | None) -> list[_CandidateRecord]:
     """Return a copy of the cached candidates for (namespace, query)."""
     return get_cache().get(namespace, query)
 
 
-def get_candidates_any(namespace: str | None) -> List[_CandidateRecord]:
+def get_candidates_any(namespace: str | None) -> list[_CandidateRecord]:
     """Return a merged copy of all cached candidates for a namespace."""
     return get_cache().get_any(namespace)

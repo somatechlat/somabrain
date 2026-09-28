@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-from somabrain.infrastructure import get_api_base_url
 import pathlib
 import time
 import uuid
-from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import requests
+
+from somabrain.infrastructure import get_api_base_url
 
 BASE_URL = get_api_base_url().rstrip("/")
 OUTPUT_PATH = pathlib.Path("artifacts/plots/learning_curve.png")
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-TENANT_HEADERS: Dict[str, str] = {
+TENANT_HEADERS: dict[str, str] = {
     "X-Model-Confidence": "8.5",
 }
 
@@ -33,7 +33,7 @@ def _get(path: str) -> requests.Response:
 
 
 def _post(
-    path: str, payload: dict, headers: Dict[str, str] | None = None
+    path: str, payload: dict, headers: dict[str, str] | None = None
 ) -> requests.Response:
     """Execute post.
 
@@ -88,9 +88,9 @@ def run_learning_iterations(iterations: int = 6) -> dict:
     eval_payload = {"session_id": session_id, "query": query, "top_k": 3}
     eval_resp = _post("context/evaluate", eval_payload, headers=headers).json()
 
-    lambda_vals: List[float] = []
-    alpha_vals: List[float] = []
-    history: List[int] = []
+    lambda_vals: list[float] = []
+    alpha_vals: list[float] = []
+    history: list[int] = []
 
     def record_state(state: dict) -> None:
         """Execute record state.

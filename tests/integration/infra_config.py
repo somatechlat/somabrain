@@ -40,6 +40,7 @@ URLS = {
     "postgres": f"postgresql://{_POSTGRES_AUTH}127.0.0.1:{PORTS['postgres']}/{_POSTGRES_DB}",
 }
 
+
 # Authentication
 # ---------------------------------------------------------------------------
 # Treat empty strings as unset so a deliberately empty SOMABRAIN_API_TOKEN

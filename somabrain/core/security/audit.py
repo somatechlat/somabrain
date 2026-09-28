@@ -11,8 +11,9 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -22,7 +23,7 @@ from somabrain.db.outbox import enqueue_event
 LOGGER = logging.getLogger("somabrain.core.security.audit")
 
 
-def _schema_path() -> Optional[Path]:
+def _schema_path() -> Path | None:
     """Return path to docs audit schema if present (optional)."""
     try:
         here = Path(__file__).resolve().parent.parent
@@ -34,7 +35,7 @@ def _schema_path() -> Optional[Path]:
     return None
 
 
-def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
+def publish_event(event: dict[str, Any], topic: str | None = None) -> bool:
     """Enqueue an audit event to the DB outbox for Kafka publishing.
 
     Returns True if enqueued; False on any error. No local alternative path.
@@ -81,11 +82,11 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
 
 
 def log_admin_action(
-    request: HttpRequest, action: str, details: Optional[Dict[str, Any]] = None
+    request: HttpRequest, action: str, details: dict[str, Any] | None = None
 ) -> None:
     """Publish an admin audit event; never raises."""
     try:
-        ev: Dict[str, Any] = {
+        ev: dict[str, Any] = {
             "type": "admin_action",
             "path": str(request.path),
             "method": request.method,
@@ -103,7 +104,7 @@ def log_admin_action(
         LOGGER.debug("log_admin_action failed", exc_info=True)
 
 
-__all__ = ["publish_event", "log_admin_action"]
+__all__ = ["log_admin_action", "publish_event"]
 
 # ------------------------
 # Sanitization utilities
@@ -161,7 +162,7 @@ def _mask_value(v: Any) -> Any:
         return _MASK
 
 
-def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+def _sanitize_event(ev: dict[str, Any] | None) -> dict[str, Any] | None:
     """Recursively sanitize a mapping by masking sensitive fields.
 
     - Keys matching _SENSITIVE_KEYS (case-insensitive) are masked.
@@ -180,7 +181,7 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
             """
 
             if isinstance(obj, dict):
-                out: Dict[str, Any] = {}
+                out: dict[str, Any] = {}
                 for k, v in obj.items():
                     lk = str(k).lower()
                     if lk in _SENSITIVE_KEYS:

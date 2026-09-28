@@ -10,19 +10,19 @@ across all request handlers.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 if TYPE_CHECKING:
-    from somabrain.admin.core.quantum import QuantumLayer
     from somabrain.admin.core.learning.scoring import UnifiedScorer
+    from somabrain.admin.core.quantum import QuantumLayer
 
 logger = logging.getLogger("somabrain.bootstrap.core_singletons")
 
 
-def create_mt_wm(cfg, scorer: "UnifiedScorer"):
+def create_mt_wm(cfg, scorer: UnifiedScorer):
     """Create the MultiTenantWM singleton.
 
     Args:
@@ -51,7 +51,7 @@ def create_mt_wm(cfg, scorer: "UnifiedScorer"):
     )
 
 
-def create_mc_wm(cfg, scorer: "UnifiedScorer"):
+def create_mc_wm(cfg, scorer: UnifiedScorer):
     """Create the MultiColumnWM singleton.
 
     Args:
@@ -85,7 +85,7 @@ def create_mc_wm(cfg, scorer: "UnifiedScorer"):
     )
 
 
-def create_mt_ctx(cfg, quantum: Optional["QuantumLayer"]):
+def create_mt_ctx(cfg, quantum: QuantumLayer | None):
     """Create the MultiTenantHRRContext singleton.
 
     Args:

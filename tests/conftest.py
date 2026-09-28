@@ -14,6 +14,7 @@ Test Structure:
 """
 
 import os
+
 import pytest
 
 # ===========================================================================
@@ -121,7 +122,7 @@ def postgres_available():
     try:
         with socket.create_connection((host, port), timeout=2):
             return True
-    except (socket.error, socket.timeout):
+    except (TimeoutError, OSError):
         pytest.skip(f"PostgreSQL not available at {host}:{port}")
 
 
@@ -135,7 +136,7 @@ def milvus_available():
     try:
         with socket.create_connection((host, port), timeout=2):
             return True
-    except (socket.error, socket.timeout):
+    except (TimeoutError, OSError):
         pytest.skip(f"Milvus not available at {host}:{port}")
 
 
@@ -149,7 +150,7 @@ def redis_available():
     try:
         with socket.create_connection((host, port), timeout=2):
             return True
-    except (socket.error, socket.timeout):
+    except (TimeoutError, OSError):
         pytest.skip(f"Redis not available at {host}:{port}")
 
 
@@ -161,5 +162,5 @@ def kafka_available():
     try:
         with socket.create_connection(("127.0.0.1", 63992), timeout=2):
             return True
-    except (socket.error, socket.timeout):
+    except (TimeoutError, OSError):
         pytest.skip("Kafka not available at 127.0.0.1:63992")

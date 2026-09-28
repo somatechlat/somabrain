@@ -28,9 +28,7 @@ SOMABRAIN_TOPIC_ACTION_UPDATES = env.str(
 SOMABRAIN_TOPIC_CONFIG_UPDATES = env.str(
     "SOMABRAIN_TOPIC_CONFIG_UPDATES", default="cog.config.updates"
 )
-SOMABRAIN_TOPIC_SEGMENTS = env.str(
-    "SOMABRAIN_TOPIC_SEGMENTS", default="cog.segments"
-)
+SOMABRAIN_TOPIC_SEGMENTS = env.str("SOMABRAIN_TOPIC_SEGMENTS", default="cog.segments")
 
 # Lowercase aliases used by several cognitive service modules
 kafka_bootstrap_servers = _INFRA_KAFKA_BOOTSTRAP_SERVERS

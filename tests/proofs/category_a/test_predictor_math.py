@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # ---------------------------------------------------------------------------
 # Hypothesis Strategies
@@ -175,7 +176,7 @@ class TestUncertaintyMonotonicity:
         sigma_0 = 1.0
         alpha = 0.1
 
-        horizons = list(range(0, 100))
+        horizons = list(range(100))
         uncertainties = [sigma_0 * np.sqrt(1 + alpha * t) for t in horizons]
 
         # Verify monotonicity

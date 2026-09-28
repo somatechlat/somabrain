@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 import time as _t
 import types
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 
@@ -40,7 +40,7 @@ class CognitiveLoopState:
         """Initialize the instance."""
 
         self._bu_publisher = None
-        self._sleep_state_cache: Dict[str, tuple[SleepState, float]] = {}
+        self._sleep_state_cache: dict[str, tuple[SleepState, float]] = {}
         self._sleep_cache_ttl = 5.0
 
         if feature_enabled("integrator"):
@@ -120,11 +120,11 @@ def eval_step(
     predictor,
     neuromods,
     personality_store,
-    supervisor: Optional[object],
+    supervisor: object | None,
     amygdala,
     tenant_id: str,
-    previous_focus_vec: Optional[np.ndarray] = None,
-) -> Dict[str, Any]:
+    previous_focus_vec: np.ndarray | None = None,
+) -> dict[str, Any]:
     """Evaluate one /act step: predictor, neuromod modulation, salience, gates.
 
     Args:
@@ -165,7 +165,7 @@ def eval_step(
         }
 
     t0 = _t.perf_counter()
-    result_extras: Dict[str, Any] = {}
+    result_extras: dict[str, Any] = {}
 
     # FIX: Compare previous_focus_vec to current wm_vec (NOT wm_vec to itself!)
     # Requirements: 3.1, 3.2, 3.3, 3.4
@@ -177,9 +177,7 @@ def eval_step(
             PREDICT_COMPARE_MISSING_PREV.inc()
         except Exception:
             pass
-        pred = types.SimpleNamespace(
-            predicted_vec=wm_vec, actual_vec=wm_vec, error=0.0
-        )
+        pred = types.SimpleNamespace(predicted_vec=wm_vec, actual_vec=wm_vec, error=0.0)
         result_extras["no_prev_focus"] = True
     else:
         try:

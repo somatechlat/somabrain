@@ -1,11 +1,11 @@
-from typing import List, Tuple, Dict, Any
+from typing import Any
 
 
 class HistoryManager:
     """Manages history of weight updates for rollback support."""
 
     def __init__(self, max_history: int):
-        self._history: List[Tuple[Dict[str, float], Dict[str, float]]] = []
+        self._history: list[tuple[dict[str, float], dict[str, float]]] = []
         self._max_history = max_history
 
     def save(self, retrieval: Any, utility: Any) -> None:

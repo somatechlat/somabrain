@@ -5,38 +5,26 @@ Pydantic models for API requests and responses used throughout SomaBrain.
 """
 
 # Common
-from .common import normalize_vector
-
-# Cognitive (Nano Profile)
-from .cognitive import (
-    Action,
-    Feedback,
-    Memory,
-    Metric,
-    Observation,
-    PlanStep,
-    Thought,
-    ToolCall,
-)
-
-# Memory operations
-from .memory import (
-    DeleteRequest,
-    DeleteResponse,
-    GraphLinksRequest,
-    GraphLinksResponse,
-    LinkRequest,
-    LinkResponse,
-    MemoryPayload,
-    RecallRequest,
-    RecallResponse,
-    RememberRequest,
-    RememberResponse,
-    RetrievalCandidate,
-    RetrievalRequest,
-    RetrievalResponse,
-    TimestampInput,
-    WMHit,
+# Admin operations
+from .admin import (
+    FeatureFlagsResponse,
+    FeatureFlagsUpdateRequest,
+    FeatureFlagsUpdateResponse,
+    OutboxEventModel,
+    OutboxListResponse,
+    OutboxReplayRequest,
+    OutboxReplayResponse,
+    OutboxSummaryResponse,
+    OutboxTenantListResponse,
+    OutboxTenantReplayRequest,
+    OutboxTenantReplayResponse,
+    OutboxTenantSummary,
+    QuotaAdjustRequest,
+    QuotaAdjustResponse,
+    QuotaListResponse,
+    QuotaResetRequest,
+    QuotaResetResponse,
+    QuotaStatus,
 )
 
 # API operations
@@ -61,26 +49,37 @@ from .api import (
     SleepStatusResponse,
 )
 
-# Admin operations
-from .admin import (
-    FeatureFlagsResponse,
-    FeatureFlagsUpdateRequest,
-    FeatureFlagsUpdateResponse,
-    OutboxEventModel,
-    OutboxListResponse,
-    OutboxReplayRequest,
-    OutboxReplayResponse,
-    OutboxSummaryResponse,
-    OutboxTenantListResponse,
-    OutboxTenantReplayRequest,
-    OutboxTenantReplayResponse,
-    OutboxTenantSummary,
-    QuotaAdjustRequest,
-    QuotaAdjustResponse,
-    QuotaListResponse,
-    QuotaResetRequest,
-    QuotaResetResponse,
-    QuotaStatus,
+# Cognitive (Nano Profile)
+from .cognitive import (
+    Action,
+    Feedback,
+    Memory,
+    Metric,
+    Observation,
+    PlanStep,
+    Thought,
+    ToolCall,
+)
+from .common import normalize_vector
+
+# Memory operations
+from .memory import (
+    DeleteRequest,
+    DeleteResponse,
+    GraphLinksRequest,
+    GraphLinksResponse,
+    LinkRequest,
+    LinkResponse,
+    MemoryPayload,
+    RecallRequest,
+    RecallResponse,
+    RememberRequest,
+    RememberResponse,
+    RetrievalCandidate,
+    RetrievalRequest,
+    RetrievalResponse,
+    TimestampInput,
+    WMHit,
 )
 
 # Oak

@@ -23,18 +23,19 @@ Strict posture: no silent alternatives; if any component is unavailable the scri
 """
 
 from __future__ import annotations
-from django.conf import settings
-import sys
+
 import socket
-from dataclasses import dataclass
-from typing import List
-from pathlib import Path
 import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+import psycopg
+import redis
 
 # External deps (all required in project dependencies)
 import requests
-import redis
-import psycopg
+from django.conf import settings
 
 REQUIRED_TOPIC_ENV_VARS = [
     "SOMABRAIN_TOPIC_REWARD_EVENTS",
@@ -122,10 +123,10 @@ def _socket_connect(host: str, port: int, timeout: float = 3.0) -> bool:
         return False
 
 
-def check_kafka() -> List[CheckResult]:
+def check_kafka() -> list[CheckResult]:
     """Execute check kafka."""
 
-    results: List[CheckResult] = []
+    results: list[CheckResult] = []
     bootstrap = _env("SOMA_KAFKA_BOOTSTRAP") or _env("SOMABRAIN_KAFKA_URL")
     if not bootstrap:
         return [
@@ -259,7 +260,7 @@ def check_outbox_pending() -> CheckResult:
 def main() -> int:
     """Execute main."""
 
-    checks: List[CheckResult] = []
+    checks: list[CheckResult] = []
     checks.append(check_postgres())
     checks.append(check_redis())
     checks.extend(check_kafka())

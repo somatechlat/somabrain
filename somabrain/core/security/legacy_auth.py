@@ -15,14 +15,13 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
-
-from django.conf import settings
-from django.http import HttpRequest
-from ninja.errors import HttpError
+from typing import Any
 
 import jwt
+from django.conf import settings
+from django.http import HttpRequest
 from jwt.exceptions import PyJWTError
+from ninja.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ class JWTKeyCache:
         - Managed via DI container instead of global state
     """
 
-    key: Optional[str] = None
+    key: str | None = None
     loaded_at: float = 0.0
     ttl_seconds: int = _JWT_CACHE_TTL_SECONDS
 
@@ -83,7 +82,7 @@ def _auth_disabled() -> bool:
     return False
 
 
-def _get_jwt_key() -> Optional[str]:
+def _get_jwt_key() -> str | None:
     """Get JWT key with TTL-based caching.
 
     VIBE Compliance:

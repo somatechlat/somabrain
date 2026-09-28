@@ -1,7 +1,7 @@
 """Module client."""
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
@@ -78,7 +78,7 @@ class OPAClient:
             "OPA client initialized: %s (policy %s)", self.base_url, self.policy_path
         )
 
-    def evaluate(self, input_data: Dict[str, Any]) -> bool:
+    def evaluate(self, input_data: dict[str, Any]) -> bool:
         """Evaluate policy with ``input_data``.
 
         Returns True if allowed, False otherwise. Any transport, server, or
@@ -159,4 +159,4 @@ class _OPAClientProxy:
 
 opa_client = _OPAClientProxy()
 
-__all__ = ["OPAClient", "opa_client", "get_opa_client"]
+__all__ = ["OPAClient", "get_opa_client", "opa_client"]

@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from datetime import timedelta
-from typing import List
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -60,7 +59,7 @@ class TenantQuotas(Schema):
 
     tenant_id: str
     tier_name: str
-    quotas: List[QuotaStatus]
+    quotas: list[QuotaStatus]
     last_updated: str
 
 
@@ -105,7 +104,7 @@ def calculate_quota(used: int, limit: int) -> QuotaStatus:
     )
 
 
-def get_tenant_quotas_real(tenant: Tenant) -> List[QuotaStatus]:
+def get_tenant_quotas_real(tenant: Tenant) -> list[QuotaStatus]:
     """Get ALL quotas using REAL Django ORM counts."""
     tier = tenant.subscription_tier
     if not tier:
@@ -212,7 +211,7 @@ def get_resource_quota(
     raise HttpError(404, f"Unknown resource: {resource}")
 
 
-@router.get("/{tenant_id}/alerts", response=List[QuotaAlert])
+@router.get("/{tenant_id}/alerts", response=list[QuotaAlert])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_quota_alerts(
     request: AuthenticatedRequest,
@@ -287,7 +286,7 @@ def get_exceeded_quotas(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/history", response=List[QuotaHistory])
+@router.get("/{tenant_id}/history", response=list[QuotaHistory])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_quota_history(
     request: AuthenticatedRequest,

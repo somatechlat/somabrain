@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.conf import settings
 from django.db import transaction
@@ -30,11 +30,11 @@ LOGGER = logging.getLogger("somabrain.constitution.storage")
 class ConstitutionRecord:
     """Constitutionrecord class implementation."""
 
-    document: Dict[str, Any]
+    document: dict[str, Any]
     checksum: str
     created_at: dt.datetime
-    metadata: Optional[Dict[str, Any]] = None
-    signatures: Optional[List[Dict[str, str]]] = None
+    metadata: dict[str, Any] | None = None
+    signatures: list[dict[str, str]] | None = None
 
 
 class ConstitutionStorageError(RuntimeError):
@@ -46,11 +46,11 @@ class ConstitutionStorage:
 
     def __init__(
         self,
-        redis_url: Optional[str] = None,
-        redis_client: Optional[Any] = None,
+        redis_url: str | None = None,
+        redis_client: Any | None = None,
         redis_key: str = "soma:constitution",
         redis_sig_key: str = "soma:constitution:signatures",
-        db_url: Optional[str] = None,  # Ignored, Django uses settings.DATABASES
+        db_url: str | None = None,  # Ignored, Django uses settings.DATABASES
     ) -> None:
         """Initialize the instance."""
 
@@ -65,7 +65,7 @@ class ConstitutionStorage:
     # ------------------------------------------------------------------
     @transaction.atomic
     def save_new(
-        self, document: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None
+        self, document: dict[str, Any], metadata: dict[str, Any] | None = None
     ) -> str:
         """Execute save new.
 
@@ -76,7 +76,7 @@ class ConstitutionStorage:
 
         checksum = self._compute_checksum(document)
         metadata = metadata or {}
-        now = dt.datetime.now(dt.timezone.utc)
+        now = dt.datetime.now(dt.UTC)
 
         # Deactivate all existing versions
         ConstitutionVersion.objects.update(is_active=False)
@@ -138,7 +138,7 @@ class ConstitutionStorage:
             signature: The signature.
         """
 
-        now = dt.datetime.now(dt.timezone.utc)
+        now = dt.datetime.now(dt.UTC)
         sig_id = f"{checksum}:{signer_id}"
 
         try:
@@ -156,7 +156,7 @@ class ConstitutionStorage:
 
         self._sync_redis_signatures(checksum)
 
-    def get_signatures(self, checksum: str) -> List[Dict[str, str]]:
+    def get_signatures(self, checksum: str) -> list[dict[str, str]]:
         """Retrieve signatures.
 
         Args:
@@ -200,15 +200,15 @@ class ConstitutionStorage:
 
     def snapshot(
         self,
-        document: Dict[str, Any],
+        document: dict[str, Any],
         checksum: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        metadata: dict[str, Any] | None = None,
+    ) -> str | None:
         """
         Write a constitution snapshot to local dir (if set) and/or S3 (if configured).
         Returns the local file path or S3 URI, whichever is used/preferred.
         """
-        timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
         payload = {
             "checksum": checksum,
             "document": document,
@@ -263,9 +263,9 @@ class ConstitutionStorage:
 
     def _write_redis(
         self,
-        document: Dict[str, Any],
+        document: dict[str, Any],
         checksum: str,
-        signatures: Optional[List[Dict[str, str]]] = None,
+        signatures: list[dict[str, str]] | None = None,
     ) -> None:
         """Execute write redis.
 
@@ -288,7 +288,7 @@ class ConstitutionStorage:
             LOGGER.debug("Failed to write constitution cache to redis: %s", exc)
 
     def _write_redis_metadata(
-        self, metadata: Dict[str, Any], created_at: dt.datetime
+        self, metadata: dict[str, Any], created_at: dt.datetime
     ) -> None:
         """Execute write redis metadata.
 
@@ -310,7 +310,7 @@ class ConstitutionStorage:
         except Exception as exc:
             LOGGER.debug("Failed to write constitution metadata to redis: %s", exc)
 
-    def _load_from_redis(self) -> Optional[ConstitutionRecord]:
+    def _load_from_redis(self) -> ConstitutionRecord | None:
         """Execute load from redis."""
 
         client = self._connect_redis()
@@ -331,8 +331,8 @@ class ConstitutionStorage:
             else self._compute_checksum(document)
         )
         raw_meta = client.get(self._redis_meta_key)
-        metadata: Optional[Dict[str, Any]] = None
-        created_at = dt.datetime.now(dt.timezone.utc)
+        metadata: dict[str, Any] | None = None
+        created_at = dt.datetime.now(dt.UTC)
         if raw_meta:
             try:
                 meta_payload = json.loads(raw_meta)
@@ -370,7 +370,7 @@ class ConstitutionStorage:
             LOGGER.debug("Failed to sync signatures to redis: %s", exc)
 
     @staticmethod
-    def _compute_checksum(document: Dict[str, Any]) -> str:
+    def _compute_checksum(document: dict[str, Any]) -> str:
         """Execute compute checksum.
 
         Args:
@@ -392,17 +392,17 @@ class ConstitutionStorage:
 
         if isinstance(value, dt.datetime):
             if value.tzinfo is None:
-                return value.replace(tzinfo=dt.timezone.utc)
-            return value.astimezone(dt.timezone.utc)
+                return value.replace(tzinfo=dt.UTC)
+            return value.astimezone(dt.UTC)
         if isinstance(value, str):
             try:
                 parsed = dt.datetime.fromisoformat(value)
                 if parsed.tzinfo is None:
-                    parsed = parsed.replace(tzinfo=dt.timezone.utc)
-                return parsed.astimezone(dt.timezone.utc)
+                    parsed = parsed.replace(tzinfo=dt.UTC)
+                return parsed.astimezone(dt.UTC)
             except ValueError:
                 pass
-        return dt.datetime.now(dt.timezone.utc)
+        return dt.datetime.now(dt.UTC)
 
 
-__all__ = ["ConstitutionStorage", "ConstitutionRecord", "ConstitutionStorageError"]
+__all__ = ["ConstitutionRecord", "ConstitutionStorage", "ConstitutionStorageError"]

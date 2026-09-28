@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import given, settings, strategies as st, assume
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
 # ---------------------------------------------------------------------------
 # Salience Computation Functions

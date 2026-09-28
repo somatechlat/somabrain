@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from django.conf import settings
-from typing import List
-
 from kafka import KafkaAdminClient
 from kafka.admin import NewTopic
 
@@ -21,7 +19,7 @@ def _bootstrap() -> str:
     return str(url).replace("kafka://", "")
 
 
-def _topics() -> List[NewTopic]:
+def _topics() -> list[NewTopic]:
     # Retention: updates 3d, frames/segments 30d
     """Execute topics."""
 

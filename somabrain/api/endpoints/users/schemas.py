@@ -9,7 +9,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 📚 Docs: Comprehensive docstrings
 """
 
-from typing import List, Optional
 from uuid import UUID
 
 from ninja import Schema
@@ -19,19 +18,19 @@ class UserCreate(Schema):
     """Schema for creating a user."""
 
     email: str
-    display_name: Optional[str] = None
-    external_id: Optional[str] = None
+    display_name: str | None = None
+    external_id: str | None = None
     is_active: bool = True
     is_primary: bool = False
-    roles: List[str] = []
+    roles: list[str] = []
 
 
 class UserUpdate(Schema):
     """Schema for updating a user."""
 
-    display_name: Optional[str] = None
-    is_active: Optional[bool] = None
-    is_primary: Optional[bool] = None
+    display_name: str | None = None
+    is_active: bool | None = None
+    is_primary: bool | None = None
 
 
 class UserOut(Schema):
@@ -40,13 +39,13 @@ class UserOut(Schema):
     id: UUID
     tenant_id: UUID
     email: str
-    display_name: Optional[str]
-    external_id: Optional[str]
+    display_name: str | None
+    external_id: str | None
     is_active: bool
     is_primary: bool
     created_at: str
-    last_login_at: Optional[str]
-    roles: List[dict] = []
+    last_login_at: str | None
+    roles: list[dict] = []
 
     @staticmethod
     def resolve_created_at(obj):
@@ -77,11 +76,11 @@ class UserListOut(Schema):
 
     id: UUID
     email: str
-    display_name: Optional[str]
+    display_name: str | None
     is_active: bool
     is_primary: bool
     tenant_name: str
-    roles: List[str] = []
+    roles: list[str] = []
 
     @staticmethod
     def resolve_tenant_name(obj):
@@ -109,13 +108,13 @@ class UserInvite(Schema):
     """Schema for inviting a user."""
 
     email: str
-    roles: List[str] = []
-    message: Optional[str] = None
+    roles: list[str] = []
+    message: str | None = None
 
 
 class UserFilters(Schema):
     """Filters for user list."""
 
-    search: Optional[str] = None
-    role: Optional[str] = None
-    status: Optional[str] = None
+    search: str | None = None
+    role: str | None = None
+    status: str | None = None

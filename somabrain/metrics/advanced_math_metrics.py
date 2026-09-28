@@ -3,7 +3,6 @@ Advanced mathematical metrics for quantum operations monitoring.
 Provides detailed mathematical verification and monitoring.
 """
 
-from typing import List
 
 import numpy as np
 from prometheus_client import Counter, Gauge, Histogram
@@ -98,7 +97,7 @@ class AdvancedMathematicalMetrics:
             spectral_gap.set(gap)
 
     @staticmethod
-    def measure_frame_properties(frame_vectors: List[np.ndarray]) -> None:
+    def measure_frame_properties(frame_vectors: list[np.ndarray]) -> None:
         """Measure and record frame properties."""
         if not frame_vectors:
             return

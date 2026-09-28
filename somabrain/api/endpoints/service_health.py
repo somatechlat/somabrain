@@ -19,7 +19,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 
 import time
 from datetime import datetime, timedelta
-from typing import List, Optional
 
 from django.core.cache import cache
 from django.db import connection
@@ -45,7 +44,7 @@ class ServiceStatus(Schema):
     name: str
     status: str  # healthy, degraded, unhealthy
     response_time_ms: float
-    message: Optional[str]
+    message: str | None
     last_check: str
 
 
@@ -53,7 +52,7 @@ class HealthSummary(Schema):
     """Overall health summary."""
 
     status: str
-    services: List[ServiceStatus]
+    services: list[ServiceStatus]
     timestamp: str
     uptime_seconds: int
 
@@ -240,7 +239,7 @@ def readiness_check():
 # =============================================================================
 
 
-@router.get("/services", response=List[ServiceStatus])
+@router.get("/services", response=list[ServiceStatus])
 @require_auth(roles=["super-admin"])
 def list_service_status(request: AuthenticatedRequest):
     """
@@ -276,7 +275,7 @@ def get_service_status(
     return checks[service_name]()
 
 
-@router.get("/history/{service_name}", response=List[HealthHistory])
+@router.get("/history/{service_name}", response=list[HealthHistory])
 @require_auth(roles=["super-admin"])
 def get_health_history(
     request: AuthenticatedRequest,

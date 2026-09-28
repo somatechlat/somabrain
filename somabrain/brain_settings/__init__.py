@@ -32,6 +32,6 @@ def initialize_defaults(tenant: str = "default") -> int:
 # that triggers AppRegistryNotReady during early app discovery.
 __all__ = [
     "get",
-    "set",
     "initialize_defaults",
+    "set",
 ]

@@ -19,7 +19,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 
 import hashlib
 from datetime import timedelta
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -102,12 +101,12 @@ def create_session(
     return session
 
 
-def get_session(session_id: str) -> Optional[dict]:
+def get_session(session_id: str) -> dict | None:
     """Get session from REAL Django cache."""
     return cache.get(get_session_key(session_id))
 
 
-def get_user_sessions(user_id: str) -> List[dict]:
+def get_user_sessions(user_id: str) -> list[dict]:
     """Get all sessions for a user from REAL cache."""
     session_ids = cache.get(get_sessions_key(user_id), [])
     sessions = []
@@ -143,8 +142,8 @@ class SessionOut(Schema):
     created_at: str
     last_activity_at: str
     is_current: bool
-    device_type: Optional[str]
-    location: Optional[str]
+    device_type: str | None
+    location: str | None
 
 
 class SessionDetailOut(Schema):
@@ -175,7 +174,7 @@ class SessionStats(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/sessions", response=List[SessionOut])
+@router.get("/{tenant_id}/sessions", response=list[SessionOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_my_sessions(
     request: AuthenticatedRequest,
@@ -348,13 +347,13 @@ def revoke_all_sessions(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/admin/sessions", response=List[SessionDetailOut])
+@router.get("/{tenant_id}/admin/sessions", response=list[SessionDetailOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.USERS_LIST.value)
 def list_tenant_sessions(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    user_id: Optional[str] = None,
+    user_id: str | None = None,
 ):
     """
     List all sessions for a tenant (admin only).

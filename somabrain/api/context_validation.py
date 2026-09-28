@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ninja.errors import HttpError
 
@@ -18,10 +18,10 @@ from somabrain.context.builder import ContextBundle
 
 def validate_evaluate_response(
     bundle: ContextBundle,
-    memories: List[MemoryItem],
+    memories: list[MemoryItem],
     prompt: str,
-    residual_vector: List[float],
-    working_memory: List[Dict],
+    residual_vector: list[float],
+    working_memory: list[dict],
 ) -> None:
     """Validate evaluate response payload sizes.
 
@@ -45,7 +45,7 @@ def validate_evaluate_response(
         raise HttpError(400, "working memory exceeds 10 items")
 
 
-def validate_evaluate_response_size(response_dict: Dict[str, Any]) -> None:
+def validate_evaluate_response_size(response_dict: dict[str, Any]) -> None:
     """Validate total response size.
 
     Args:
@@ -59,10 +59,10 @@ def validate_evaluate_response_size(response_dict: Dict[str, Any]) -> None:
 
 
 def validate_feedback_fields(
-    session_id: Optional[str],
-    query: Optional[str],
-    prompt: Optional[str],
-    response_text: Optional[str],
+    session_id: str | None,
+    query: str | None,
+    prompt: str | None,
+    response_text: str | None,
 ) -> None:
     """Validate feedback request field lengths.
 
@@ -80,7 +80,7 @@ def validate_feedback_fields(
             raise HttpError(400, "input field exceeds 1024 characters")
 
 
-def validate_feedback_metadata(metadata: Optional[Dict[str, Any]]) -> None:
+def validate_feedback_metadata(metadata: dict[str, Any] | None) -> None:
     """Validate feedback metadata size.
 
     Args:
@@ -99,8 +99,8 @@ def validate_feedback_metadata(metadata: Optional[Dict[str, Any]]) -> None:
 
 
 def validate_feedback_reward_utility(
-    reward: Optional[float],
-    utility: Optional[float],
+    reward: float | None,
+    utility: float | None,
 ) -> tuple[float, float]:
     """Validate and parse reward and utility values.
 

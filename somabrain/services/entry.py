@@ -18,7 +18,7 @@ from __future__ import annotations
 import signal
 import threading
 import time
-from typing import Callable
+from collections.abc import Callable
 
 
 def _start_thread(target: Callable[[], None], name: str) -> threading.Thread:

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
 
 from django.conf import settings
 
@@ -22,10 +21,10 @@ class CalibrationService:
     enabled: bool = field(
         default_factory=lambda: getattr(settings, "CALIBRATION_ENABLED", False)
     )
-    trackers: Dict[str, CalibrationTracker] = field(default_factory=dict)
+    trackers: dict[str, CalibrationTracker] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
-    _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)
-    _temperature: Dict[Tuple[str, str], float] = field(default_factory=dict, init=False)
+    _counts: dict[tuple[str, str], int] = field(default_factory=dict, init=False)
+    _temperature: dict[tuple[str, str], float] = field(default_factory=dict, init=False)
 
     def record_prediction(
         self, domain: str, tenant: str, confidence: float, correct: bool

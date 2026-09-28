@@ -1,13 +1,14 @@
 """Quick smoke tests for core math primitives: QuantumLayer bind/unbind/unitary roles and numerics."""
 
-from somabrain.admin.core.quantum import HRRConfig, make_quantum_layer
+import numpy as np
+
 from somabrain.admin.core.numerics import (
-    normalize_array,
     compute_tiny_floor,
+    normalize_array,
     rfft_norm,
     spectral_floor_from_tiny,
 )
-import numpy as np
+from somabrain.admin.core.quantum import HRRConfig, make_quantum_layer
 
 
 def approx_equal(a, b, tol=1e-6):

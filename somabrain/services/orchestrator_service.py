@@ -27,7 +27,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Strict mode: use confluent-kafka Consumer
 from confluent_kafka import Consumer as CKConsumer
@@ -62,8 +62,8 @@ class GlobalFrameCtx:
     ts: str
     tenant: str
     leader: str
-    weights: Dict[str, float] = field(default_factory=dict)
-    frame: Dict[str, str] = field(default_factory=dict)
+    weights: dict[str, float] = field(default_factory=dict)
+    frame: dict[str, str] = field(default_factory=dict)
     rationale: str = ""
     count: int = 0
 
@@ -80,8 +80,8 @@ def _bootstrap() -> str:
 
 
 def _parse_global_frame(
-    raw: bytes, serde: Optional[AvroSerde]
-) -> Optional[GlobalFrameCtx]:
+    raw: bytes, serde: AvroSerde | None
+) -> GlobalFrameCtx | None:
     """Execute parse global frame.
 
     Args:
@@ -90,7 +90,7 @@ def _parse_global_frame(
     """
 
     try:
-        data: Dict[str, Any]
+        data: dict[str, Any]
         if serde is not None:
             data = serde.deserialize(raw)
         else:
@@ -120,8 +120,8 @@ def _parse_global_frame(
 
 
 def _parse_segment_boundary(
-    raw: bytes, serde: Optional[AvroSerde]
-) -> Optional[Dict[str, Any]]:
+    raw: bytes, serde: AvroSerde | None
+) -> dict[str, Any] | None:
     """Execute parse segment boundary.
 
     Args:
@@ -144,8 +144,8 @@ class OrchestratorService:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self._serde_gf: Optional[AvroSerde] = None
-        self._serde_sb: Optional[AvroSerde] = None
+        self._serde_gf: AvroSerde | None = None
+        self._serde_sb: AvroSerde | None = None
         if load_schema is not None and AvroSerde is not None:
             try:
                 self._serde_gf = AvroSerde(load_schema("global_frame"))
@@ -166,7 +166,7 @@ class OrchestratorService:
             logger.warning("Failed to parse orchestrator routing config: %s", e)
             self._routing = {}
         # per-tenant rolling context for current segment
-        self._ctx: Dict[str, GlobalFrameCtx] = {}
+        self._ctx: dict[str, GlobalFrameCtx] = {}
         # Optional health / metrics server
         try:
             from django.conf import settings as _settings
@@ -199,7 +199,7 @@ class OrchestratorService:
                     payload = {"ok": True, "service": "orchestrator"}
                     self.wfile.write(json.dumps(payload).encode("utf-8"))
 
-                def log_message(self, format, *args):  # noqa: N802
+                def log_message(self, format, *args):
                     """Execute log message.
 
                     Args:
@@ -216,7 +216,7 @@ class OrchestratorService:
         except Exception as e:
             logger.warning("Failed to start health server: %s", e)
 
-    def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
+    def _remember_snapshot(self, tenant: str, boundary: dict[str, Any]) -> None:
         """Execute remember snapshot.
 
         Args:
@@ -227,7 +227,7 @@ class OrchestratorService:
         gf = self._ctx.get(tenant)
         # Compose a minimal episodic payload for memory
         key = f"segment:{boundary.get('boundary_ts') or int(time.time() * 1000)}"
-        value: Dict[str, Any] = {
+        value: dict[str, Any] = {
             "memory_type": "episodic",
             "segment": {
                 "domain": boundary.get("domain"),

@@ -239,7 +239,7 @@ LEARNING_REGRET = get_histogram(
     "somabrain_learning_regret",
     "Regret distribution per tenant",
     labelnames=["tenant_id"],
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
 )
 
 LEARNING_REGRET_EWMA = get_gauge(

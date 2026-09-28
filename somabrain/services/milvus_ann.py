@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from django.conf import settings
@@ -85,11 +84,11 @@ class MilvusAnnIndex(CleanupIndex):
         self._port = settings.MILVUS_PORT or 19530
 
         # Local ID mapping for anchor_id -> Milvus internal ID
-        self._anchor_to_id: Dict[str, int] = {}
+        self._anchor_to_id: dict[str, int] = {}
         self._id_counter = 0
 
         # Initialize connection and collection
-        self._collection: Optional[Collection] = None
+        self._collection: Collection | None = None
         self._connect()
 
     def _connect(self) -> None:
@@ -218,7 +217,7 @@ class MilvusAnnIndex(CleanupIndex):
             except MilvusException as exc:
                 logger.warning("Failed to remove vector for %s: %s", anchor_id, exc)
 
-    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
+    def search(self, query: np.ndarray, top_k: int) -> list[tuple[str, float]]:
         """Search for similar vectors and return (anchor_id, score) pairs."""
         if self._collection is None:
             return []
@@ -243,7 +242,7 @@ class MilvusAnnIndex(CleanupIndex):
             logger.error("Milvus search failed: %s", exc)
             return []
 
-        output: List[Tuple[str, float]] = []
+        output: list[tuple[str, float]] = []
         if results and len(results) > 0:
             for hit in results[0]:
                 anchor = hit.entity.get("anchor_id")
@@ -262,8 +261,8 @@ class MilvusAnnIndex(CleanupIndex):
     def configure(
         self,
         *,
-        top_k: Optional[int] = None,
-        ef_search: Optional[int] = None,
+        top_k: int | None = None,
+        ef_search: int | None = None,
     ) -> None:
         """Update search parameters."""
         if top_k is not None:
@@ -282,7 +281,7 @@ class MilvusAnnIndex(CleanupIndex):
             )
         return normalize_vector(arr, dtype=np.float32)
 
-    def stats(self) -> Dict[str, object]:
+    def stats(self) -> dict[str, object]:
         """Return index statistics."""
         return {
             "backend": "milvus",

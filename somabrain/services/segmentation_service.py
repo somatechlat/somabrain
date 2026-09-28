@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import List
+from datetime import UTC, datetime
 
 import numpy as np
 
@@ -25,8 +24,8 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from django.conf import settings
 
-import somabrain.metrics as metrics
 from common.kafka_utils import encode, make_producer
+from somabrain import metrics
 from somabrain.runtime.modes import feature_enabled
 from somabrain.segmentation.evaluator import evaluate_boundaries, update_metrics
 from somabrain.segmentation.hmm import (
@@ -145,7 +144,7 @@ class SegmentationService:
         c.subscribe([CONSUME_TOPIC])
         return c
 
-    def _gradient_boundaries(self, values: List[float]) -> List[int]:
+    def _gradient_boundaries(self, values: list[float]) -> list[int]:
         """Detect boundaries where the salience gradient crosses the threshold."""
 
         if len(values) < 2:
@@ -155,7 +154,7 @@ class SegmentationService:
         thresh = float(getattr(settings, "segment_grad_threshold", self._grad_thresh))
         return [i + 1 for i, g in enumerate(grad) if g >= thresh]
 
-    def _run_hmm(self, values: List[float]) -> List[int]:
+    def _run_hmm(self, values: list[float]) -> list[int]:
         """Run the online two-state HMM smoother over the salience series."""
 
         if not values:
@@ -193,7 +192,7 @@ class SegmentationService:
                 payload = {"ok": True, "hmm_enabled": HMM_ENABLED}
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
 
-            def log_message(self, format, *args):  # noqa: N802
+            def log_message(self, format, *args):
                 """Suppress the default per-request stderr logging."""
 
                 return
@@ -236,7 +235,7 @@ class SegmentationService:
                     evt = {
                         "tenant": self.tenant,
                         "domain": "cognitive",
-                        "boundary_ts": datetime.now(timezone.utc).isoformat(),
+                        "boundary_ts": datetime.now(UTC).isoformat(),
                         "dwell_ms": 0,
                         "evidence": "hmm" if HMM_ENABLED else "gradient",
                     }

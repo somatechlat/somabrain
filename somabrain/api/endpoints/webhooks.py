@@ -19,7 +19,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 import hashlib
 import hmac
 import secrets
-from typing import List, Optional
 from uuid import UUID
 
 from django.db import models
@@ -76,19 +75,19 @@ class WebhookCreate(Schema):
     """Schema for creating a webhook."""
 
     url: str
-    name: Optional[str] = None
-    event_types: List[str]
+    name: str | None = None
+    event_types: list[str]
     is_active: bool = True
-    secret: Optional[str] = None  # Auto-generated if not provided
+    secret: str | None = None  # Auto-generated if not provided
 
 
 class WebhookUpdate(Schema):
     """Schema for updating a webhook."""
 
-    url: Optional[str] = None
-    name: Optional[str] = None
-    event_types: Optional[List[str]] = None
-    is_active: Optional[bool] = None
+    url: str | None = None
+    name: str | None = None
+    event_types: list[str] | None = None
+    is_active: bool | None = None
 
 
 class WebhookOut(Schema):
@@ -97,11 +96,11 @@ class WebhookOut(Schema):
     id: UUID
     tenant_id: UUID
     url: str
-    name: Optional[str]
-    event_types: List[str]
+    name: str | None
+    event_types: list[str]
     is_active: bool
     secret_prefix: str  # First 8 chars only
-    last_triggered_at: Optional[str]
+    last_triggered_at: str | None
     failure_count: int
     created_at: str
 
@@ -113,20 +112,20 @@ class WebhookDeliveryOut(Schema):
     webhook_id: UUID
     event_type: str
     payload_preview: str
-    status_code: Optional[int]
+    status_code: int | None
     success: bool
-    error_message: Optional[str]
+    error_message: str | None
     delivered_at: str
-    response_time_ms: Optional[int]
+    response_time_ms: int | None
 
 
 class WebhookTestResult(Schema):
     """Result of webhook test."""
 
     success: bool
-    status_code: Optional[int]
+    status_code: int | None
     response_time_ms: int
-    error: Optional[str]
+    error: str | None
 
 
 class EventTypesOut(Schema):
@@ -162,7 +161,7 @@ def get_webhook_model():
 # =============================================================================
 
 
-@router.get("/event-types", response=List[EventTypesOut])
+@router.get("/event-types", response=list[EventTypesOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_event_types(request: AuthenticatedRequest):
     """List all available webhook event types."""
@@ -176,7 +175,7 @@ def list_event_types(request: AuthenticatedRequest):
     ]
 
 
-@router.get("/{tenant_id}/webhooks", response=List[WebhookOut])
+@router.get("/{tenant_id}/webhooks", response=list[WebhookOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.WEBHOOKS_READ.value)
 def list_webhooks(
@@ -528,7 +527,7 @@ def rotate_webhook_secret(
 
 
 @router.get(
-    "/{tenant_id}/webhooks/{webhook_id}/deliveries", response=List[WebhookDeliveryOut]
+    "/{tenant_id}/webhooks/{webhook_id}/deliveries", response=list[WebhookDeliveryOut]
 )
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.WEBHOOKS_READ.value)

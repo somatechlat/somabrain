@@ -1,10 +1,9 @@
 """Module constitution."""
 
-from typing import Optional
 
 from somabrain.constitution import ConstitutionEngine
 
-_engine: Optional[ConstitutionEngine] = None
+_engine: ConstitutionEngine | None = None
 
 
 def get_constitution_engine() -> ConstitutionEngine:

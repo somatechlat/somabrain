@@ -7,7 +7,7 @@ feature flags, migration, outbox management, and quota operations.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,41 +19,41 @@ class HealthResponse(BaseModel):
 
     ok: bool
     components: dict
-    namespace: Optional[str] = None
-    trace_id: Optional[str] = None
-    deadline_ms: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    constitution_version: Optional[str] = None
-    constitution_status: Optional[str] = None
-    minimal_public_api: Optional[bool] = None
-    external_backends_required: Optional[bool] = None
-    predictor_provider: Optional[str] = None
-    full_stack: Optional[bool] = None
-    embedder: Optional[Dict[str, Any]] = None
+    namespace: str | None = None
+    trace_id: str | None = None
+    deadline_ms: str | None = None
+    idempotency_key: str | None = None
+    constitution_version: str | None = None
+    constitution_status: str | None = None
+    minimal_public_api: bool | None = None
+    external_backends_required: bool | None = None
+    predictor_provider: str | None = None
+    full_stack: bool | None = None
+    embedder: dict[str, Any] | None = None
 
-    ready: Optional[bool] = None
-    memory_items: Optional[int] = None
-    predictor_ok: Optional[bool] = None
-    memory_ok: Optional[bool] = None
-    embedder_ok: Optional[bool] = None
-    retrieval_ready: Optional[bool] = None
-    opa_ok: Optional[bool] = None
-    opa_required: Optional[bool] = None
-    kafka_ok: Optional[bool] = None
-    postgres_ok: Optional[bool] = None
-    metrics_ready: Optional[bool] = None
-    metrics_required: Optional[list[str]] = None
-    alerts: Optional[list[str]] = None
-    memory_circuit_open: Optional[bool] = None
-    milvus_metrics: Optional[Dict[str, Any]] = None
-    fd_trace_norm_error: Optional[float] = None
-    fd_psd_ok: Optional[bool] = None
-    fd_capture_ratio: Optional[float] = None
-    scorer: Optional[Dict[str, Any]] = None
-    tau: Optional[float] = None
-    entropy_cap_enabled: Optional[bool] = None
-    entropy_cap: Optional[float] = None
-    retrieval_entropy: Optional[float] = None
+    ready: bool | None = None
+    memory_items: int | None = None
+    predictor_ok: bool | None = None
+    memory_ok: bool | None = None
+    embedder_ok: bool | None = None
+    retrieval_ready: bool | None = None
+    opa_ok: bool | None = None
+    opa_required: bool | None = None
+    kafka_ok: bool | None = None
+    postgres_ok: bool | None = None
+    metrics_ready: bool | None = None
+    metrics_required: list[str] | None = None
+    alerts: list[str] | None = None
+    memory_circuit_open: bool | None = None
+    milvus_metrics: dict[str, Any] | None = None
+    fd_trace_norm_error: float | None = None
+    fd_psd_ok: bool | None = None
+    fd_capture_ratio: float | None = None
+    scorer: dict[str, Any] | None = None
+    tau: float | None = None
+    entropy_cap_enabled: bool | None = None
+    entropy_cap: float | None = None
+    retrieval_entropy: float | None = None
 
 
 # === Sleep Schemas ===
@@ -62,15 +62,15 @@ class HealthResponse(BaseModel):
 class SleepRunRequest(BaseModel):
     """Request for sleep run operations."""
 
-    nrem: Optional[bool] = True
-    rem: Optional[bool] = True
+    nrem: bool | None = True
+    rem: bool | None = True
 
 
 class SleepRunResponse(BaseModel):
     """Response for sleep run operations."""
 
     ok: bool = Field(..., description="Whether the sleep run started successfully")
-    run_id: Optional[str] = Field(
+    run_id: str | None = Field(
         None, description="Identifier for the initiated sleep run"
     )
 
@@ -80,7 +80,7 @@ class SleepStatusResponse(BaseModel):
 
     enabled: bool
     interval_seconds: int
-    last: Dict[str, Optional[float]]
+    last: dict[str, float | None]
 
 
 class SleepStatusAllResponse(BaseModel):
@@ -88,7 +88,7 @@ class SleepStatusAllResponse(BaseModel):
 
     enabled: bool
     interval_seconds: int
-    tenants: Dict[str, Dict[str, Optional[float]]]
+    tenants: dict[str, dict[str, float | None]]
 
 
 # === Feature Flag Schemas ===
@@ -97,25 +97,25 @@ class SleepStatusAllResponse(BaseModel):
 class FeatureFlagsResponse(BaseModel):
     """Response model for feature flags status."""
 
-    status: Dict[str, Any]
-    overrides: List[str]
+    status: dict[str, Any]
+    overrides: list[str]
 
 
 class FeatureFlagsUpdateRequest(BaseModel):
     """Request model for updating feature flag overrides."""
 
-    disabled: List[str]
+    disabled: list[str]
 
 
 class FeatureFlagsUpdateResponse(BaseModel):
     """Response model after updating feature flag overrides."""
 
-    overrides: List[str]
-    started_at_ms: Optional[int] = Field(
+    overrides: list[str]
+    started_at_ms: int | None = Field(
         None, description="Epoch ms when the run started"
     )
-    mode: Optional[str] = Field(None, description="Sleep mode executed")
-    details: Optional[Dict[str, Any]] = Field(
+    mode: str | None = Field(None, description="Sleep mode executed")
+    details: dict[str, Any] | None = Field(
         None, description="Optional additional runtime details"
     )
 
@@ -158,7 +158,7 @@ class ReflectResponse(BaseModel):
     """Response for reflect operations."""
 
     created: int
-    summaries: List[str]
+    summaries: list[str]
 
 
 # === Outbox/Admin Schemas ===
@@ -172,16 +172,16 @@ class OutboxEventModel(BaseModel):
     id: int
     topic: str
     status: str
-    tenant_id: Optional[str] = None
+    tenant_id: str | None = None
 
 
 class NeuromodAdjustRequest(BaseModel):
     """Request schema for adjusting neuromodulator levels."""
 
-    dopamine: Optional[float] = Field(None, ge=0.0, le=1.0)
-    serotonin: Optional[float] = Field(None, ge=0.0, le=1.0)
-    noradrenaline: Optional[float] = Field(None, ge=0.0, le=1.0)
-    acetylcholine: Optional[float] = Field(None, ge=0.0, le=1.0)
+    dopamine: float | None = Field(None, ge=0.0, le=1.0)
+    serotonin: float | None = Field(None, ge=0.0, le=1.0)
+    noradrenaline: float | None = Field(None, ge=0.0, le=1.0)
+    acetylcholine: float | None = Field(None, ge=0.0, le=1.0)
 
 
 class ProxyRequest(BaseModel):
@@ -189,8 +189,8 @@ class ProxyRequest(BaseModel):
 
     service: str
     endpoint: str
-    target_url: Optional[str] = None
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    target_url: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class ConfigResponse(BaseModel):
@@ -198,33 +198,33 @@ class ConfigResponse(BaseModel):
 
     tenant_id: str
     namespace: str
-    features: Dict[str, bool]
-    limits: Dict[str, Any]
+    features: dict[str, bool]
+    limits: dict[str, Any]
 
 
 class JournalReplayRequest(BaseModel):
     """Request to replay specific journal events."""
 
-    event_ids: List[int] = Field(..., min_length=1, max_length=1000)
-    tenant_id: Optional[str] = None
+    event_ids: list[int] = Field(..., min_length=1, max_length=1000)
+    tenant_id: str | None = None
     dedupe_key: str
-    retries: Optional[int] = None
-    created_at: Optional[datetime] = None
-    last_error: Optional[str] = None
-    payload: Dict[str, Any]
+    retries: int | None = None
+    created_at: datetime | None = None
+    last_error: str | None = None
+    payload: dict[str, Any]
 
 
 class OutboxListResponse(BaseModel):
     """Response for listing outbox events."""
 
-    events: List[OutboxEventModel]
+    events: list[OutboxEventModel]
     count: int
 
 
 class OutboxReplayRequest(BaseModel):
     """Request to replay outbox events."""
 
-    event_ids: List[int] = Field(..., min_length=1, max_length=1000)
+    event_ids: list[int] = Field(..., min_length=1, max_length=1000)
 
 
 class OutboxReplayResponse(BaseModel):
@@ -238,10 +238,10 @@ class OutboxTenantReplayRequest(BaseModel):
 
     tenant_id: str = Field(..., description="Tenant ID to replay events for")
     status: str = Field("failed", description="Status to filter: pending|failed|sent")
-    topic_filter: Optional[str] = Field(
+    topic_filter: str | None = Field(
         None, description="Optional topic pattern filter"
     )
-    before_timestamp: Optional[datetime] = Field(
+    before_timestamp: datetime | None = Field(
         None, description="Only replay events before this time"
     )
     limit: int = Field(
@@ -261,7 +261,7 @@ class OutboxTenantListResponse(BaseModel):
     """Response for tenant-specific outbox event listing."""
 
     tenant_id: str
-    events: List[OutboxEventModel]
+    events: list[OutboxEventModel]
     count: int
     status: str
 
@@ -279,7 +279,7 @@ class OutboxTenantSummary(BaseModel):
 class OutboxSummaryResponse(BaseModel):
     """Summary statistics for outbox events across all tenants."""
 
-    tenants: List[OutboxTenantSummary]
+    tenants: list[OutboxTenantSummary]
     total_tenants: int
     total_pending: int
     total_failed: int
@@ -296,21 +296,21 @@ class QuotaStatus(BaseModel):
     daily_limit: int
     remaining: int | float  # Allow float('inf') for exempt tenants
     used_today: int
-    reset_at: Optional[datetime] = None
+    reset_at: datetime | None = None
     is_exempt: bool = False
 
 
 class QuotaListResponse(BaseModel):
     """Response for listing all tenant quotas."""
 
-    quotas: List[QuotaStatus]
+    quotas: list[QuotaStatus]
     total_tenants: int
 
 
 class QuotaResetRequest(BaseModel):
     """Request to reset a tenant's quota."""
 
-    reason: Optional[str] = Field(None, description="Reason for quota reset")
+    reason: str | None = Field(None, description="Reason for quota reset")
 
 
 class QuotaResetResponse(BaseModel):
@@ -326,7 +326,7 @@ class QuotaAdjustRequest(BaseModel):
     """Request to adjust a tenant's quota limit."""
 
     new_limit: int = Field(..., gt=0, description="New daily quota limit")
-    reason: Optional[str] = Field(None, description="Reason for quota adjustment")
+    reason: str | None = Field(None, description="Reason for quota adjustment")
 
 
 class QuotaAdjustResponse(BaseModel):

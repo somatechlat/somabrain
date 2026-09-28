@@ -17,15 +17,16 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-from somabrain.infrastructure import get_api_base_url
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
+from somabrain.infrastructure import get_api_base_url
 
-def post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+
+def post_json(url: str, payload: dict[str, Any]) -> dict[str, Any]:
     """Execute post json.
 
     Args:

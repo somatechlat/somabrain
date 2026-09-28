@@ -17,7 +17,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 import time
-from typing import Optional, Tuple
 
 from django.conf import settings
 from django.core.cache import cache
@@ -94,9 +93,9 @@ class TokenBucketRateLimiter:
     def check_and_consume(
         self,
         identifier: str,
-        rps: Optional[int] = None,
-        burst: Optional[int] = None,
-    ) -> Tuple[bool, int, int, int]:
+        rps: int | None = None,
+        burst: int | None = None,
+    ) -> tuple[bool, int, int, int]:
         """
         Check and consume a token from the bucket.
 
@@ -236,7 +235,7 @@ class QuotaTracker:
         tenant_id: str,
         metric: str,
         quota_limit: int,
-    ) -> Tuple[bool, int, int]:
+    ) -> tuple[bool, int, int]:
         """
         Check if quota allows the operation.
 
@@ -328,7 +327,7 @@ class RateLimitMiddleware:
 
         return response
 
-    def _get_identifier(self, request) -> Optional[str]:
+    def _get_identifier(self, request) -> str | None:
         """Get rate limit identifier from request."""
         # Try tenant_id from auth
         if hasattr(request, "tenant_id") and request.tenant_id:
@@ -348,7 +347,7 @@ class RateLimitMiddleware:
 
         return f"ip:{ip}"
 
-    def _get_limits(self, request) -> Tuple[int, int]:
+    def _get_limits(self, request) -> tuple[int, int]:
         """Get tier-based rate limits."""
         # Default limits
         default_rps = getattr(settings, "RATE_LIMIT_DEFAULT_RPS", 10)
@@ -492,8 +491,8 @@ def check_quota(metric: str, amount: int = 1):
 # SINGLETONS
 # =============================================================================
 
-_rate_limiter: Optional[TokenBucketRateLimiter] = None
-_quota_tracker: Optional[QuotaTracker] = None
+_rate_limiter: TokenBucketRateLimiter | None = None
+_quota_tracker: QuotaTracker | None = None
 
 
 def get_rate_limiter() -> TokenBucketRateLimiter:

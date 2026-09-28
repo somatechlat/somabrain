@@ -1,9 +1,11 @@
 """Module __init__."""
 
 from __future__ import annotations
+
 import json
 from pathlib import Path
 from typing import Any, Dict, Optional
+
 import requests
 
 
@@ -16,7 +18,7 @@ class SomaBrainClient:
     and an optional ``api_token`` for bearer‑token authentication.
     """
 
-    def __init__(self, base_url: str, api_token: Optional[str] = None) -> None:
+    def __init__(self, base_url: str, api_token: str | None = None) -> None:
         """Create a new :class:`SomaBrainClient`.
 
         Parameters
@@ -58,7 +60,7 @@ class SomaBrainClient:
 
             logger.exception("Failed to load ports from ports.json: %s", exc)
 
-    def evaluate(self, session_id: str, query: str, top_k: int = 5) -> Dict[str, Any]:
+    def evaluate(self, session_id: str, query: str, top_k: int = 5) -> dict[str, Any]:
         """Send an evaluation request to the SomaBrain service.
 
         Parameters
@@ -82,9 +84,9 @@ class SomaBrainClient:
         prompt: str,
         response_text: str,
         utility: float,
-        reward: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        reward: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Submit feedback about a previous prediction.
 
         Parameters

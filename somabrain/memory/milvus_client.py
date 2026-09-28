@@ -17,7 +17,7 @@ import math
 import threading
 import time
 from collections import defaultdict, deque
-from typing import Any, Deque, Dict, List, Tuple
+from typing import Any
 
 from django.conf import settings
 
@@ -72,7 +72,7 @@ logger = logging.getLogger(__name__)
 _LATENCY_WINDOW_SIZE = max(
     1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW", 50))
 )
-_LATENCY_WINDOWS: Dict[str, Dict[str, Deque[float]]] = {
+_LATENCY_WINDOWS: dict[str, dict[str, deque[float]]] = {
     "ingest": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
     "search": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
 }
@@ -113,7 +113,7 @@ def _set_latency_gauge(gauge, tenant_id: str, seconds: float) -> None:
         pass
 
 
-def _set_segment_load(collection: str, value: int | float) -> None:
+def _set_segment_load(collection: str, value: float) -> None:
     """Execute set segment load.
 
     Args:
@@ -127,11 +127,11 @@ def _set_segment_load(collection: str, value: int | float) -> None:
         pass
 
 
-def _vector_from_payload(payload: bytes, dim: int = 128) -> List[float]:
+def _vector_from_payload(payload: bytes, dim: int = 128) -> list[float]:
     """Convert a payload blob into a deterministic float vector."""
 
     digest = hashlib.sha256(payload).digest()
-    floats: List[float] = []
+    floats: list[float] = []
     for i in range(0, len(digest), 4):
         chunk = int.from_bytes(digest[i : i + 4], "big", signed=False)
         floats.append(chunk / 2**32)
@@ -145,7 +145,7 @@ def _vector_from_payload(payload: bytes, dim: int = 128) -> List[float]:
 class MilvusClient:
     """Convenient wrapper for Milvus used by the Oak option subsystem."""
 
-    collection: "Collection | None"
+    collection: Collection | None
 
     def __init__(self) -> None:
         """Initialize the instance."""
@@ -420,7 +420,7 @@ class MilvusClient:
         payload: bytes,
         top_k: int | None = None,
         similarity_threshold: float | None = None,
-    ) -> List[Tuple[str, float]]:
+    ) -> list[tuple[str, float]]:
         """Execute search similar.
 
         Args:
@@ -455,7 +455,7 @@ class MilvusClient:
             expr=f"tenant_id == '{tenant_id}'",
             output_fields=["option_id"],
         )
-        hits: List[Tuple[str, float]] = []
+        hits: list[tuple[str, float]] = []
         for hit in results[0]:
             score = 1.0 / (1.0 + hit.distance)
             if score >= similarity_threshold:

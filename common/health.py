@@ -22,7 +22,6 @@ library.
 """
 
 import urllib.request
-from typing import Optional
 
 try:
     import requests
@@ -30,7 +29,7 @@ except Exception:  # pragma: no cover – ``requests`` may be unavailable in min
     requests = None
 
 
-def _http_get(url: str, timeout: float) -> Optional[int]:
+def _http_get(url: str, timeout: float) -> int | None:
     """Perform a ``GET`` request and return the HTTP status code.
 
     The helper abstracts the difference between ``requests`` and ``urllib`` so
@@ -49,7 +48,7 @@ def _http_get(url: str, timeout: float) -> Optional[int]:
     try:
         with urllib.request.urlopen(
             url, timeout=timeout
-        ) as resp:  # noqa: S310 – URL is provided by caller.
+        ) as resp:
             return resp.getcode()
     except Exception:
         return None

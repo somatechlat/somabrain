@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 _logger = logging.getLogger("somabrain.lifecycle")
 """Module-level fallback logger used by startup handlers that accept an optional logger arg."""
@@ -190,7 +190,7 @@ async def init_health_watchdog(
         health_watchdog_task_holder["task"] = task
 
 
-async def init_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
+async def init_tenant_manager(logger: logging.Logger | None = None) -> None:
     """Initialize centralized tenant management system.
 
     Skipped in Standalone mode (somabrain.aaas not in INSTALLED_APPS).
@@ -217,7 +217,7 @@ async def init_tenant_manager(logger: Optional[logging.Logger] = None) -> None:
         # Don't fail startup - tenant management can be initialized lazily
 
 
-async def start_outbox_sync(logger: Optional[logging.Logger] = None) -> None:
+async def start_outbox_sync(logger: logging.Logger | None = None) -> None:
     """Launch the background outbox synchronization worker.
 
     The worker runs forever, polling the ``outbox_events`` table and attempting

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from typing import Any, Callable, Generator, Optional
+from typing import Any
 
 # Track import error for optional dependency
 _import_error: Exception | None = None
@@ -26,7 +27,7 @@ class EtcdClient:
             ) from _import_error
         self._client = etcd3.client(host=host, port=port, timeout=timeout)
 
-    def get_flag(self, key: str) -> Optional[str]:
+    def get_flag(self, key: str) -> str | None:
         """Retrieve flag.
 
         Args:
@@ -59,7 +60,7 @@ class EtcdClient:
 
     @contextmanager
     def watch_prefix(
-        self, prefix: str, callback: Callable[[str, Optional[str]], Any]
+        self, prefix: str, callback: Callable[[str, str | None], Any]
     ) -> Generator[None, None, None]:
         """Watch a prefix and invoke ``callback`` for every update."""
 

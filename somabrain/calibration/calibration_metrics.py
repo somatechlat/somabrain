@@ -9,7 +9,6 @@ import threading
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Dict
 
 from .temperature_scaling import TemperatureScaler, compute_brier_score, compute_ece
 
@@ -39,10 +38,10 @@ class CalibrationTracker:
         """Initialize the instance."""
 
         self.window_size = window_size
-        self.calibration_data: Dict[str, Dict[str, deque]] = defaultdict(
+        self.calibration_data: dict[str, dict[str, deque]] = defaultdict(
             lambda: defaultdict(lambda: deque(maxlen=window_size))
         )
-        self.temperature_scalers: Dict[str, Dict[str, TemperatureScaler]] = defaultdict(
+        self.temperature_scalers: dict[str, dict[str, TemperatureScaler]] = defaultdict(
             lambda: defaultdict(lambda: TemperatureScaler())
         )
         self.lock = threading.RLock()
@@ -71,7 +70,7 @@ class CalibrationTracker:
             self.calibration_data[key]["confidences"].append(confidence)
             self.calibration_data[key]["accuracies"].append(accuracy)
 
-    def get_calibration_metrics(self, domain: str, tenant: str) -> Dict[str, float]:
+    def get_calibration_metrics(self, domain: str, tenant: str) -> dict[str, float]:
         """
         Get current calibration metrics for a domain and tenant.
 
@@ -109,7 +108,7 @@ class CalibrationTracker:
                 "samples": len(confidences),
             }
 
-    def get_all_metrics(self) -> Dict[str, Dict[str, float]]:
+    def get_all_metrics(self) -> dict[str, dict[str, float]]:
         """Get calibration metrics for all domains and tenants."""
         with self.lock:
             result = {}
@@ -128,7 +127,7 @@ class CalibrationTracker:
         """
         import os
 
-        data: Dict[str, Dict[str, float]] = {}
+        data: dict[str, dict[str, float]] = {}
         with self.lock:
             for key in self.calibration_data.keys():
                 domain, tenant = key.split(":", 1)
@@ -194,7 +193,7 @@ class CalibrationTracker:
         metrics = self.get_calibration_metrics(domain, tenant)
         return metrics["ece"] > ece_threshold and metrics["samples"] >= 100
 
-    def export_reliability_data(self, domain: str, tenant: str) -> Dict:
+    def export_reliability_data(self, domain: str, tenant: str) -> dict:
         """
         Export reliability diagram data for visualization.
 
@@ -229,6 +228,6 @@ class CalibrationTracker:
 calibration_tracker = CalibrationTracker()
 
 
-def get_calibration_endpoint_data() -> Dict:
+def get_calibration_endpoint_data() -> dict:
     """Get calibration data for API endpoints."""
     return calibration_tracker.get_all_metrics()

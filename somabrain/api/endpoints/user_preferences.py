@@ -16,7 +16,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Default configuration
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
 
 from django.core.cache import cache
@@ -78,7 +78,7 @@ def get_user_prefs_key(user_id: str) -> str:
     return f"user_prefs:{user_id}"
 
 
-def get_user_preferences(user_id: str) -> Dict[str, Any]:
+def get_user_preferences(user_id: str) -> dict[str, Any]:
     """Get user preferences with defaults."""
     key = get_user_prefs_key(user_id)
     prefs = cache.get(key)
@@ -88,7 +88,7 @@ def get_user_preferences(user_id: str) -> Dict[str, Any]:
     return prefs
 
 
-def set_user_preferences(user_id: str, prefs: Dict[str, Any]):
+def set_user_preferences(user_id: str, prefs: dict[str, Any]):
     """Set user preferences."""
     key = get_user_prefs_key(user_id)
     cache.set(key, prefs, timeout=86400)
@@ -104,21 +104,21 @@ class UserProfileOut(Schema):
 
     id: str
     email: str
-    display_name: Optional[str]
-    avatar_url: Optional[str]
-    bio: Optional[str]
+    display_name: str | None
+    avatar_url: str | None
+    bio: str | None
     role: str
     is_active: bool
     created_at: str
-    last_login_at: Optional[str]
+    last_login_at: str | None
 
 
 class UserProfileUpdate(Schema):
     """Update user profile."""
 
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    bio: Optional[str] = None
+    display_name: str | None = None
+    avatar_url: str | None = None
+    bio: str | None = None
 
 
 class PreferencesOut(Schema):
@@ -129,24 +129,24 @@ class PreferencesOut(Schema):
     timezone: str
     date_format: str
     time_format: str
-    notifications: Dict[str, Any]
-    privacy: Dict[str, Any]
-    accessibility: Dict[str, Any]
-    dashboard: Dict[str, Any]
+    notifications: dict[str, Any]
+    privacy: dict[str, Any]
+    accessibility: dict[str, Any]
+    dashboard: dict[str, Any]
 
 
 class PreferencesUpdate(Schema):
     """Update preferences."""
 
-    theme: Optional[str] = None
-    language: Optional[str] = None
-    timezone: Optional[str] = None
-    date_format: Optional[str] = None
-    time_format: Optional[str] = None
-    notifications: Optional[Dict[str, Any]] = None
-    privacy: Optional[Dict[str, Any]] = None
-    accessibility: Optional[Dict[str, Any]] = None
-    dashboard: Optional[Dict[str, Any]] = None
+    theme: str | None = None
+    language: str | None = None
+    timezone: str | None = None
+    date_format: str | None = None
+    time_format: str | None = None
+    notifications: dict[str, Any] | None = None
+    privacy: dict[str, Any] | None = None
+    accessibility: dict[str, Any] | None = None
+    dashboard: dict[str, Any] | None = None
 
 
 class NotificationPrefs(Schema):

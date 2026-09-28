@@ -8,9 +8,9 @@ behavior.
 
 from __future__ import annotations
 
-from typing import Any, List, Optional, Protocol, Tuple
+from typing import Any, Protocol
 
-Coordinate = Tuple[float, float, float]
+Coordinate = tuple[float, float, float]
 
 
 class MemoryBackend(Protocol):
@@ -38,7 +38,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def recall(self, query: str, *args, **kwargs) -> List[Any]:
+    def recall(self, query: str, *args, **kwargs) -> list[Any]:
         """Execute recall.
 
         Args:
@@ -46,7 +46,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    async def arecall(self, query: str, *args, **kwargs) -> List[Any]:
+    async def arecall(self, query: str, *args, **kwargs) -> list[Any]:
         """Execute arecall.
 
         Args:
@@ -54,7 +54,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def coord_for_key(self, key: str, universe: Optional[str] = None) -> Coordinate:
+    def coord_for_key(self, key: str, universe: str | None = None) -> Coordinate:
         """Execute coord for key.
 
         Args:
@@ -64,8 +64,8 @@ class MemoryBackend(Protocol):
         ...
 
     def fetch_by_coord(
-        self, coord: Coordinate, universe: Optional[str] = None
-    ) -> List[Any]:
+        self, coord: Coordinate, universe: str | None = None
+    ) -> list[Any]:
         """Execute fetch by coord.
 
         Args:

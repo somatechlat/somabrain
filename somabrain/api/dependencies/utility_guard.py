@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from django.conf import settings
 from django.http import HttpRequest
 from ninja.errors import HttpError
@@ -37,7 +35,7 @@ def compute_utility(
     )
 
 
-def _get_constitution_engine() -> Optional[ConstitutionEngine]:
+def _get_constitution_engine() -> ConstitutionEngine | None:
     """Get the ConstitutionEngine singleton."""
     try:
         from somabrain.app import app
@@ -99,7 +97,7 @@ async def utility_guard(request: HttpRequest) -> None:
         state.utility_value = u
     else:
         # Fallback if no state container
-        setattr(request, "utility_value", u)
+        request.utility_value = u
 
     try:
         M.UTILITY_VALUE.set(u)
@@ -119,4 +117,4 @@ async def utility_guard(request: HttpRequest) -> None:
         if state:
             state.utility_value = 0.0
         else:
-            setattr(request, "utility_value", 0.0)
+            request.utility_value = 0.0

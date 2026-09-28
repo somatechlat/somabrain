@@ -16,7 +16,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Environment variable overrides
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from django.core.cache import cache
@@ -114,8 +114,8 @@ class SettingOut(Schema):
     value: Any
     category: str
     is_default: bool
-    updated_at: Optional[str]
-    updated_by: Optional[str]
+    updated_at: str | None
+    updated_by: str | None
 
 
 class SettingUpdate(Schema):
@@ -127,7 +127,7 @@ class SettingUpdate(Schema):
 class SettingsBulkUpdate(Schema):
     """Bulk update settings."""
 
-    settings: Dict[str, Any]
+    settings: dict[str, Any]
 
 
 class CategorySettingsOut(Schema):
@@ -136,7 +136,7 @@ class CategorySettingsOut(Schema):
     category: str
     name: str
     description: str
-    settings: List[SettingOut]
+    settings: list[SettingOut]
 
 
 # =============================================================================
@@ -149,7 +149,7 @@ def get_settings_key(tenant_id: str) -> str:
     return f"settings:tenant:{tenant_id}"
 
 
-def get_tenant_settings(tenant_id: str) -> Dict[str, Any]:
+def get_tenant_settings(tenant_id: str) -> dict[str, Any]:
     """Get tenant settings with defaults."""
     key = get_settings_key(tenant_id)
     stored = cache.get(key, {})
@@ -161,7 +161,7 @@ def get_tenant_settings(tenant_id: str) -> Dict[str, Any]:
     return settings
 
 
-def get_setting_metadata(tenant_id: str) -> Dict[str, Dict]:
+def get_setting_metadata(tenant_id: str) -> dict[str, dict]:
     """Get metadata (updated_at, updated_by) for settings."""
     key = get_settings_key(tenant_id)
     stored = cache.get(key, {})
@@ -182,7 +182,7 @@ def save_tenant_setting(tenant_id: str, key: str, value: Any, user_id: str):
     cache.set(cache_key, stored, timeout=86400 * 30)
 
 
-def save_tenant_settings_bulk(tenant_id: str, settings: Dict[str, Any], user_id: str):
+def save_tenant_settings_bulk(tenant_id: str, settings: dict[str, Any], user_id: str):
     """Save multiple tenant settings."""
     cache_key = get_settings_key(tenant_id)
     stored = cache.get(cache_key, {"values": {}, "metadata": {}})
@@ -211,7 +211,7 @@ def mask_sensitive_value(key: str, value: Any) -> Any:
 # =============================================================================
 
 
-@router.get("/{tenant_id}", response=List[CategorySettingsOut])
+@router.get("/{tenant_id}", response=list[CategorySettingsOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_all_settings(
     request: AuthenticatedRequest,

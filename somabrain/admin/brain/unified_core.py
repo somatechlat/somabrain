@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Dict
+from typing import Any
 
 from somabrain.admin.brain.neuromodulators import NeuromodState
 
@@ -21,8 +21,8 @@ class UnifiedBrainCore:
         self.serotonin_baseline = 0.5
 
     def process_memory(
-        self, content: Dict[str, Any], importance: float = 0.8
-    ) -> Dict[str, Any]:
+        self, content: dict[str, Any], importance: float = 0.8
+    ) -> dict[str, Any]:
         """Single entry point for memory processing."""
         neuro_state = self.neuromods.get_state()
         adjusted_importance = importance * (0.7 + 0.3 * neuro_state.dopamine)
@@ -42,7 +42,7 @@ class UnifiedBrainCore:
             "unified": True,
         }
 
-    def retrieve_memory(self, query: Dict[str, Any], top_k: int = 3) -> Dict[str, Any]:
+    def retrieve_memory(self, query: dict[str, Any], top_k: int = 3) -> dict[str, Any]:
         """Single entry point for memory retrieval."""
         fractal_results = self.fractal.retrieve_fractal(query, top_k=top_k)
         fnom_results = self.fnom.retrieve(query, top_k=top_k)

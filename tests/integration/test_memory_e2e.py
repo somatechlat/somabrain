@@ -1,11 +1,13 @@
 """Module test_memory_e2e."""
 
 import time
-import pytest
-from somabrain.memory.client import MemoryClient, RecallHit
-from django.conf import settings
-from common.logging import logger
+
 import httpx
+import pytest
+from django.conf import settings
+
+from common.logging import logger
+from somabrain.memory.client import MemoryClient, RecallHit
 
 """Integration test for the real memory service.
 

@@ -146,7 +146,7 @@ class TestSerializationForSFM:
         """
         from somabrain.memory.serialization import serialize_for_sfm
 
-        dt = datetime.datetime(2024, 1, 15, 12, 0, 0, tzinfo=datetime.timezone.utc)
+        dt = datetime.datetime(2024, 1, 15, 12, 0, 0, tzinfo=datetime.UTC)
         date_only = datetime.date(2024, 1, 15)
 
         payload = {
@@ -422,8 +422,8 @@ class TestCoordinateSerialization:
         **Validates: Requirements G1.1**
         """
         from somabrain.memory.serialization import (
-            serialize_coordinate,
             deserialize_coordinate,
+            serialize_coordinate,
         )
 
         original = (1.5, 2.5, 3.5)

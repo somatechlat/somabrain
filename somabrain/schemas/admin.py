@@ -7,7 +7,7 @@ Request/response schemas for admin endpoints.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -15,27 +15,27 @@ from pydantic import BaseModel, ConfigDict, Field
 class FeatureFlagsResponse(BaseModel):
     """Response model for the admin feature-flags status endpoint."""
 
-    status: Dict[str, Any]
-    overrides: List[str]
+    status: dict[str, Any]
+    overrides: list[str]
 
 
 class FeatureFlagsUpdateRequest(BaseModel):
     """Request model for updating feature-flag overrides."""
 
-    disabled: List[str]
+    disabled: list[str]
 
 
 class FeatureFlagsUpdateResponse(BaseModel):
     """Response model after attempting to update feature-flag overrides."""
 
-    overrides: List[str]
-    started_at_ms: Optional[int] = Field(
+    overrides: list[str]
+    started_at_ms: int | None = Field(
         None, description="Epoch ms when the run started"
     )
-    mode: Optional[str] = Field(
+    mode: str | None = Field(
         None, description="Sleep mode executed, e.g. 'nrem' or 'rem'"
     )
-    details: Optional[Dict[str, Any]] = Field(
+    details: dict[str, Any] | None = Field(
         None, description="Optional additional runtime details"
     )
 
@@ -48,25 +48,25 @@ class OutboxEventModel(BaseModel):
     id: int
     topic: str
     status: str
-    tenant_id: Optional[str] = None
+    tenant_id: str | None = None
     dedupe_key: str
-    retries: Optional[int] = None
-    created_at: Optional[datetime] = None
-    last_error: Optional[str] = None
-    payload: Dict[str, Any]
+    retries: int | None = None
+    created_at: datetime | None = None
+    last_error: str | None = None
+    payload: dict[str, Any]
 
 
 class OutboxListResponse(BaseModel):
     """List of outbox events."""
 
-    events: List[OutboxEventModel]
+    events: list[OutboxEventModel]
     count: int
 
 
 class OutboxReplayRequest(BaseModel):
     """Request to replay outbox events."""
 
-    event_ids: List[int] = Field(..., min_length=1, max_length=1000)
+    event_ids: list[int] = Field(..., min_length=1, max_length=1000)
 
 
 class OutboxReplayResponse(BaseModel):
@@ -80,10 +80,10 @@ class OutboxTenantReplayRequest(BaseModel):
 
     tenant_id: str = Field(..., description="Tenant ID to replay events for")
     status: str = Field("failed", description="Status to filter: pending|failed|sent")
-    topic_filter: Optional[str] = Field(
+    topic_filter: str | None = Field(
         None, description="Optional topic pattern filter"
     )
-    before_timestamp: Optional[datetime] = Field(
+    before_timestamp: datetime | None = Field(
         None, description="Only replay events before this time"
     )
     limit: int = Field(
@@ -103,7 +103,7 @@ class OutboxTenantListResponse(BaseModel):
     """Response for tenant-specific outbox event listing."""
 
     tenant_id: str
-    events: List[OutboxEventModel]
+    events: list[OutboxEventModel]
     count: int
     status: str
 
@@ -121,7 +121,7 @@ class OutboxTenantSummary(BaseModel):
 class OutboxSummaryResponse(BaseModel):
     """Summary statistics for outbox events across all tenants."""
 
-    tenants: List[OutboxTenantSummary]
+    tenants: list[OutboxTenantSummary]
     total_tenants: int
     total_pending: int
     total_failed: int
@@ -133,23 +133,23 @@ class QuotaStatus(BaseModel):
 
     tenant_id: str
     daily_limit: int
-    remaining: Union[int, float]
+    remaining: int | float
     used_today: int
-    reset_at: Optional[datetime] = None
+    reset_at: datetime | None = None
     is_exempt: bool = False
 
 
 class QuotaListResponse(BaseModel):
     """Response for listing all tenant quotas."""
 
-    quotas: List[QuotaStatus]
+    quotas: list[QuotaStatus]
     total_tenants: int
 
 
 class QuotaResetRequest(BaseModel):
     """Request to reset a tenant's quota."""
 
-    reason: Optional[str] = Field(None, description="Reason for quota reset")
+    reason: str | None = Field(None, description="Reason for quota reset")
 
 
 class QuotaResetResponse(BaseModel):
@@ -165,7 +165,7 @@ class QuotaAdjustRequest(BaseModel):
     """Request to adjust a tenant's quota limit."""
 
     new_limit: int = Field(..., gt=0, description="New daily quota limit")
-    reason: Optional[str] = Field(None, description="Reason for quota adjustment")
+    reason: str | None = Field(None, description="Reason for quota adjustment")
 
 
 class QuotaAdjustResponse(BaseModel):

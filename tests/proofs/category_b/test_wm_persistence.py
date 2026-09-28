@@ -16,7 +16,7 @@ import asyncio
 import os
 import time
 import uuid
-from typing import Any, Dict, List
+from typing import Any
 
 import numpy as np
 import pytest
@@ -56,11 +56,11 @@ class TestWMPersistence:
 
         This test verifies the WMRestorer correctly restores WM state.
         """
+        from somabrain.memory.wm.core import WorkingMemory
         from somabrain.memory.wm_persistence import (
             WMPersister,
             WMRestorer,
         )
-        from somabrain.memory.wm.core import WorkingMemory
 
         # Create a mock memory client for testing
         # Note: This is a minimal implementation, not a mock
@@ -70,9 +70,9 @@ class TestWMPersistence:
             def __init__(self):
                 """Initialize the instance."""
 
-                self._stored: Dict[str, Dict[str, Any]] = {}
+                self._stored: dict[str, dict[str, Any]] = {}
 
-            async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
+            async def aremember(self, key: str, payload: dict[str, Any]) -> bool:
                 """Execute aremember.
 
                 Args:
@@ -85,7 +85,7 @@ class TestWMPersistence:
 
             async def arecall(
                 self, query: str, top_k: int = 10
-            ) -> List[tuple[float, Dict[str, Any]]]:
+            ) -> list[tuple[float, dict[str, Any]]]:
                 # Return all stored items that match the query criteria
                 """Execute arecall.
 
@@ -168,8 +168,8 @@ class TestWMPersistence:
         WHEN WM item is admitted THEN it SHALL be asynchronously
         persisted to SFM within 1 second.
         """
-        from somabrain.memory.wm_persistence import WMPersister
         from somabrain.memory.wm.core import WMItem
+        from somabrain.memory.wm_persistence import WMPersister
 
         # Create test memory client
         class TestMemoryClient:
@@ -181,7 +181,7 @@ class TestWMPersistence:
                 self._stored = {}
                 self._store_times = []
 
-            async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
+            async def aremember(self, key: str, payload: dict[str, Any]) -> bool:
                 """Execute aremember.
 
                 Args:
@@ -252,7 +252,7 @@ class TestWMPersistence:
 
                 self._stored = {}
 
-            async def aremember(self, key: str, payload: Dict[str, Any]) -> bool:
+            async def aremember(self, key: str, payload: dict[str, Any]) -> bool:
                 """Execute aremember.
 
                 Args:
@@ -337,8 +337,8 @@ class TestWMRestorerTimeout:
         **Feature: deep-memory-integration**
         **Validates: Requirements A1.2**
         """
-        from somabrain.memory.wm_persistence import WMRestorer
         from somabrain.memory.wm.core import WorkingMemory
+        from somabrain.memory.wm_persistence import WMRestorer
 
         # Create a slow memory client
         class SlowMemoryClient:
@@ -346,7 +346,7 @@ class TestWMRestorerTimeout:
 
             async def arecall(
                 self, query: str, top_k: int = 10
-            ) -> List[tuple[float, Dict[str, Any]]]:
+            ) -> list[tuple[float, dict[str, Any]]]:
                 # Simulate slow response
                 """Execute arecall.
 

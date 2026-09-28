@@ -17,15 +17,16 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from hypothesis import given, settings, strategies as st, assume
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
-from somabrain.math.similarity import (
-    cosine_similarity,
-    cosine_error,
-    cosine_distance,
-    batch_cosine_similarity,
-)
 from somabrain.admin.core.numerics import normalize_array
+from somabrain.math.similarity import (
+    batch_cosine_similarity,
+    cosine_distance,
+    cosine_error,
+    cosine_similarity,
+)
 
 # ---------------------------------------------------------------------------
 # Hypothesis Strategies

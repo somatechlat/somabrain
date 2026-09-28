@@ -14,20 +14,18 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from typing import Dict
 
-import pytest
 import httpx
-
-from common.logging import logger
+import pytest
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-
 # SomaBrain app endpoint (default to local docker-compose port)
 # Port 30101 is the standardized SomaBrain cluster port
 from django.conf import settings
+
+from common.logging import logger
 
 # Use centralized Settings for test configuration
 SOMABRAIN_APP_URL = settings.SOMABRAIN_API_URL or "http://localhost:30101"
@@ -82,9 +80,9 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _get_test_headers(tenant_id: str = TEST_TENANT_ID) -> Dict[str, str]:
+def _get_test_headers(tenant_id: str = TEST_TENANT_ID) -> dict[str, str]:
     """Get headers for test requests."""
-    headers: Dict[str, str] = {
+    headers: dict[str, str] = {
         "X-Tenant-ID": tenant_id,
         "X-Namespace": TEST_NAMESPACE,
         "Content-Type": "application/json",
@@ -221,9 +219,7 @@ class TestE2EMemoryFlow:
                 )
 
             remember_data = remember_resp.json()
-            assert (
-                "coordinate" in remember_data
-            ), "Remember response missing coordinate"
+            assert "coordinate" in remember_data, "Remember response missing coordinate"
 
             # Step 2: Recall
             recall_resp = client.post(

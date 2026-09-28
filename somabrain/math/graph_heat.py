@@ -4,7 +4,7 @@ Provides utilities to apply heat diffusion to a vector on a graph given a
 sparse adjacency apply function.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 

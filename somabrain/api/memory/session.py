@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import time
 from threading import RLock
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from somabrain.core.container import container
 
@@ -27,7 +27,7 @@ class RecallSessionStore:
     def __init__(self, ttl_seconds: int = 900) -> None:
         """Initialize the instance."""
 
-        self._sessions: Dict[str, Dict[str, Any]] = {}
+        self._sessions: dict[str, dict[str, Any]] = {}
         self._lock = RLock()
         self._ttl_seconds = ttl_seconds
 
@@ -36,9 +36,9 @@ class RecallSessionStore:
         session_id: str,
         tenant: str,
         namespace: str,
-        conversation_id: Optional[str],
-        scoring_mode: Optional[str],
-        results: List[Any],
+        conversation_id: str | None,
+        scoring_mode: str | None,
+        results: list[Any],
     ) -> None:
         """Store a recall session with results."""
         payload = {
@@ -55,7 +55,7 @@ class RecallSessionStore:
         with self._lock:
             self._sessions[session_id] = payload
 
-    def get(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, session_id: str) -> dict[str, Any] | None:
         """Get a session by ID, or None if not found."""
         with self._lock:
             return self._sessions.get(session_id)

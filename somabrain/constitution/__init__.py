@@ -36,7 +36,6 @@ LOGGER = logging.getLogger("somabrain.constitution")
 class ConstitutionError(Exception):
     """Exception raised for ConstitutionError."""
 
-    pass
 
 
 def _decode_signature(sig: str) -> bytes:
@@ -65,10 +64,10 @@ class ConstitutionEngine:
 
     def __init__(
         self,
-        redis_url: Optional[str] = None,
-        redis_client: Optional[Any] = None,
-        storage: Optional[ConstitutionStorage] = None,
-        db_url: Optional[str] = None,
+        redis_url: str | None = None,
+        redis_client: Any | None = None,
+        storage: ConstitutionStorage | None = None,
+        db_url: str | None = None,
     ):
         """Initialize the instance."""
 
@@ -77,23 +76,23 @@ class ConstitutionEngine:
             redis_client=redis_client,
             db_url=db_url,
         )
-        self._constitution: Optional[Dict[str, Any]] = None
-        self._checksum: Optional[str] = None
-        self._signature: Optional[str] = None
-        self._signatures: List[Dict[str, str]] = []
-        self._metadata: Optional[Dict[str, Any]] = None
+        self._constitution: dict[str, Any] | None = None
+        self._checksum: str | None = None
+        self._signature: str | None = None
+        self._signatures: list[dict[str, str]] = []
+        self._metadata: dict[str, Any] | None = None
         self._pubkey_map = self._load_pubkey_map()
         # legacy attributes for compatibility with tests/scripts
         self._key = self._storage._redis_key
         self._sig_key = self._storage._redis_sig_key
 
-    def _load_pubkey_map(self) -> Dict[str, str]:
+    def _load_pubkey_map(self) -> dict[str, str]:
         """
         Load public key map for signature verification.
         If Vault integration is enabled (VAULT_ADDR, VAULT_TOKEN, SOMABRAIN_VAULT_PUBKEY_PATH),
         fetch keys from Vault. Otherwise, use env/PATH as before.
         """
-        mapping: Dict[str, str] = {}
+        mapping: dict[str, str] = {}
         # Use Settings attributes instead of legacy getenv calls
         vault_addr = getattr(settings, "SOMABRAIN_VAULT_ADDR", None)
         vault_token = getattr(settings, "SOMABRAIN_VAULT_TOKEN", None)
@@ -129,7 +128,7 @@ class ConstitutionEngine:
                 mapping["default"] = single
         return mapping
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load the constitution JSON from Redis. Raises ConstitutionError on failure.
 
         If Redis is unavailable, raises ConstitutionError to avoid silently using an empty constitution.
@@ -142,7 +141,7 @@ class ConstitutionEngine:
         LOGGER.info("Loaded constitution version %s", self._checksum[:8])
         return self._constitution
 
-    def save(self, constitution: Dict[str, Any]) -> None:
+    def save(self, constitution: dict[str, Any]) -> None:
         """Save a constitution dict to Redis and update internal state.
 
         This writes the JSON representation to the configured Redis key, recomputes the
@@ -163,21 +162,21 @@ class ConstitutionEngine:
         self._storage.snapshot(constitution, checksum, metadata=self._metadata)
         LOGGER.info("Saved constitution version %s", self._checksum[:8])
 
-    def get_checksum(self) -> Optional[str]:
+    def get_checksum(self) -> str | None:
         """Retrieve checksum."""
 
         return self._checksum
 
-    def get_signature(self) -> Optional[str]:
+    def get_signature(self) -> str | None:
         """Return the optional signature associated with the loaded constitution (if any)."""
         return self._signature
 
-    def get_signatures(self) -> List[Dict[str, str]]:
+    def get_signatures(self) -> list[dict[str, str]]:
         """Retrieve signatures."""
 
         return list(self._signatures)
 
-    def verify_signature(self, pubkey_path: Optional[str] = None) -> bool:
+    def verify_signature(self, pubkey_path: str | None = None) -> bool:
         """Attempt to verify the stored signature using a PEM public key at `pubkey_path`,
         or a PEM string from Vault if configured.
         """
@@ -202,7 +201,7 @@ class ConstitutionEngine:
 
         required = int(getattr(settings, "SOMABRAIN_CONSTITUTION_THRESHOLD", 1))
         valid = 0
-        errors: List[str] = []
+        errors: list[str] = []
         for sig in signatures:
             signer_id = sig.get("signer_id") or "default"
             signature = sig.get("signature")
@@ -239,7 +238,7 @@ class ConstitutionEngine:
         self._signature = signatures[0]["signature"] if signatures else None
         return True
 
-    def sign(self, private_key_path: Optional[str] = None) -> Optional[str]:
+    def sign(self, private_key_path: str | None = None) -> str | None:
         """Sign the current constitution checksum using a PEM private key and store the signature.
 
         Returns the signature encoded as hex string, or None on failure.
@@ -284,12 +283,12 @@ class ConstitutionEngine:
             LOGGER.debug("Constitution signing failed: %s", e)
             return None
 
-    def get_constitution(self) -> Optional[Dict[str, Any]]:
+    def get_constitution(self) -> dict[str, Any] | None:
         """Retrieve constitution."""
 
         return self._constitution
 
-    def validate(self, instance: Dict[str, Any]) -> Dict[str, Any]:
+    def validate(self, instance: dict[str, Any]) -> dict[str, Any]:
         """Validate an instance against the constitution.
 
         If an OPA endpoint is configured via SOMA_OPA_URL, the engine will proxy the validation

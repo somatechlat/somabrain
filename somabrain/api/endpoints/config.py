@@ -7,23 +7,22 @@ Configuration management endpoints.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest
-from typing import Dict, Any
 from ninja import Router
 from pydantic import BaseModel
 
-from somabrain.api.auth import api_key_auth
-from somabrain.api.auth import require_auth
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.tenant import get_tenant_sync as get_tenant
 
 
 class ConfigResponse(BaseModel):
     tenant_id: str
     namespace: str
-    features: Dict[str, Any]
-    limits: Dict[str, Any]
+    features: dict[str, Any]
+    limits: dict[str, Any]
 
 
 logger = logging.getLogger("somabrain.api.endpoints.config")

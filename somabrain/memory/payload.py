@@ -7,15 +7,15 @@ before storage.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, Tuple
+from typing import Any
 
 
 def enrich_payload(
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     coord_key: str,
     namespace: str | None = None,
     tenant: str | None = None,
-) -> Tuple[Dict[str, Any], str, Dict[str, str]]:
+) -> tuple[dict[str, Any], str, dict[str, str]]:
     """Enrich a payload with common fields for memory storage.
 
     Ensures downstream HTTP memory services receive common fields that many
@@ -66,7 +66,7 @@ def enrich_payload(
     return p, universe, headers
 
 
-def normalize_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_metadata(payload: dict[str, Any]) -> dict[str, Any]:
     """Normalize optional metadata fields in a payload.
 
     Handles normalization of:
@@ -129,11 +129,11 @@ def normalize_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def prepare_memory_payload(
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     coord_key: str,
     universe: str,
     memory_type: str = "episodic",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Prepare a payload for memory storage with all required fields.
 
     Per Requirement G1: Uses serialize_for_sfm to ensure JSON compatibility.

@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 # Unified Settings instance
 from django.conf import settings
@@ -29,8 +29,8 @@ class TenantManager:
         """Initialize the instance."""
 
         self.registry = tenant_registry
-        self._default_tenant_id: Optional[str] = None
-        self._system_tenant_ids: Dict[str, str] = {}
+        self._default_tenant_id: str | None = None
+        self._system_tenant_ids: dict[str, str] = {}
         self._initialized = False
 
     async def initialize(self) -> None:
@@ -127,7 +127,7 @@ class TenantManager:
             expires_at=expires_at,
         )
 
-    async def get_system_tenant_id(self, name: str) -> Optional[str]:
+    async def get_system_tenant_id(self, name: str) -> str | None:
         """Get system tenant ID by name (e.g., 'agent_zero')."""
         if not self._initialized:
             await self.initialize()
@@ -141,14 +141,14 @@ class TenantManager:
 
         return self.registry.is_exempt(tenant_id)
 
-    async def get_tenant_config(self, tenant_id: str) -> Dict[str, Any]:
+    async def get_tenant_config(self, tenant_id: str) -> dict[str, Any]:
         """Get tenant-specific configuration."""
         metadata = await self.registry.get_tenant(tenant_id)
         if metadata:
             return metadata.config
         return {}
 
-    async def get_tenant_metadata(self, tenant_id: str) -> Optional[TenantMetadata]:
+    async def get_tenant_metadata(self, tenant_id: str) -> TenantMetadata | None:
         """Get complete tenant metadata."""
         if not self._initialized:
             await self.initialize()
@@ -158,12 +158,12 @@ class TenantManager:
     async def create_tenant(
         self,
         display_name: str,
-        tier: Union[TenantTier, str] = TenantTier.ENTERPRISE,
+        tier: TenantTier | str = TenantTier.ENTERPRISE,
         is_exempt: bool = False,
-        exempt_reason: Optional[str] = None,
-        created_by: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
-        expires_at: Optional[datetime] = None,
+        exempt_reason: str | None = None,
+        created_by: str | None = None,
+        config: dict[str, Any] | None = None,
+        expires_at: datetime | None = None,
     ) -> str:
         """Create a new tenant with validation."""
         if not self._initialized:
@@ -188,7 +188,7 @@ class TenantManager:
         )
 
     async def update_tenant_config(
-        self, tenant_id: str, config: Dict[str, Any]
+        self, tenant_id: str, config: dict[str, Any]
     ) -> bool:
         """Update tenant-specific configuration."""
         if not self._initialized:
@@ -244,10 +244,10 @@ class TenantManager:
 
     async def list_tenants(
         self,
-        tier: Optional[Union[TenantTier, str]] = None,
-        status: Optional[Union[TenantStatus, str]] = None,
+        tier: TenantTier | str | None = None,
+        status: TenantStatus | str | None = None,
         exempt_only: bool = False,
-    ) -> List[TenantMetadata]:
+    ) -> list[TenantMetadata]:
         """List tenants with optional filtering."""
         if not self._initialized:
             await self.initialize()
@@ -277,7 +277,7 @@ class TenantManager:
 
         return filtered_tenants
 
-    async def get_tenant_stats(self) -> Dict[str, Any]:
+    async def get_tenant_stats(self) -> dict[str, Any]:
         """Get tenant management statistics."""
         if not self._initialized:
             await self.initialize()
@@ -310,7 +310,7 @@ class TenantManager:
 
         return True
 
-    async def get_tenant_quota_config(self, tenant_id: str) -> Dict[str, Any]:
+    async def get_tenant_quota_config(self, tenant_id: str) -> dict[str, Any]:
         """Get tenant-specific quota configuration."""
         default_config = {
             "daily_quota": 10000,
@@ -334,7 +334,7 @@ class TenantManager:
 
         return quota_config
 
-    async def resolve_tenant_alias(self, tenant_id: Optional[str] = None) -> str:
+    async def resolve_tenant_alias(self, tenant_id: str | None = None) -> str:
         """Resolve tenant ID alias."""
         if not self._initialized:
             await self.initialize()
@@ -364,7 +364,7 @@ class TenantManager:
         # Create temporary tenant
         return await self.create_temporary_tenant()
 
-    async def _get_tenant_by_tier(self, tier: TenantTier) -> Optional[TenantMetadata]:
+    async def _get_tenant_by_tier(self, tier: TenantTier) -> TenantMetadata | None:
         """Get first tenant of specified tier."""
         tenants = await self.registry.get_all_tenants(tier)
         return tenants[0] if tenants else None
@@ -380,7 +380,7 @@ class TenantManager:
 
 
 # Global tenant manager instance
-_tenant_manager: Optional[TenantManager] = None
+_tenant_manager: TenantManager | None = None
 
 
 async def get_tenant_manager() -> TenantManager:

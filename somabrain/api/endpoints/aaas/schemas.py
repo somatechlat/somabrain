@@ -5,7 +5,6 @@ Pydantic Schema models for tenant, API key, subscription operations.
 """
 
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID
 
 from ninja import Schema
@@ -22,18 +21,18 @@ class TenantCreateSchema(Schema):
     slug: str
     tier_slug: str = "free"
     admin_email: str
-    billing_email: Optional[str] = None
-    config: Optional[dict] = None
+    billing_email: str | None = None
+    config: dict | None = None
 
 
 class TenantUpdateSchema(Schema):
     """Update tenant request."""
 
-    name: Optional[str] = None
-    admin_email: Optional[str] = None
-    billing_email: Optional[str] = None
-    config: Optional[dict] = None
-    quota_overrides: Optional[dict] = None
+    name: str | None = None
+    admin_email: str | None = None
+    billing_email: str | None = None
+    config: dict | None = None
+    quota_overrides: dict | None = None
 
 
 class TenantResponseSchema(Schema):
@@ -45,14 +44,14 @@ class TenantResponseSchema(Schema):
     status: str
     tier_name: str
     tier_slug: str
-    admin_email: Optional[str]
+    admin_email: str | None
     created_at: datetime
 
 
 class TenantListSchema(Schema):
     """Paginated tenant list."""
 
-    tenants: List[TenantResponseSchema]
+    tenants: list[TenantResponseSchema]
     total: int
     page: int
     page_size: int
@@ -67,8 +66,8 @@ class APIKeyCreateSchema(Schema):
     """Create API key request."""
 
     name: str
-    scopes: List[str] = ["read:memory", "write:memory"]
-    expires_days: Optional[int] = None
+    scopes: list[str] = ["read:memory", "write:memory"]
+    expires_days: int | None = None
     is_test: bool = False
 
 
@@ -81,7 +80,7 @@ class APIKeyResponseSchema(Schema):
     scopes: list
     is_active: bool
     is_test: bool
-    last_used_at: Optional[datetime]
+    last_used_at: datetime | None
     created_at: datetime
 
 
@@ -106,22 +105,22 @@ class SubscriptionTierCreateSchema(Schema):
     name: str
     slug: str
     price_monthly: float
-    price_yearly: Optional[float] = 0.0
-    features: Optional[dict] = {}
-    api_calls_limit: Optional[int] = 1000
-    memory_ops_limit: Optional[int] = 500
-    storage_limit_mb: Optional[int] = 100
+    price_yearly: float | None = 0.0
+    features: dict | None = {}
+    api_calls_limit: int | None = 1000
+    memory_ops_limit: int | None = 500
+    storage_limit_mb: int | None = 100
     is_active: bool = True
 
 
 class SubscriptionTierUpdateSchema(Schema):
     """Update subscription tier request."""
 
-    name: Optional[str] = None
-    price_monthly: Optional[float] = None
-    features: Optional[dict] = None
-    api_calls_limit: Optional[int] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    price_monthly: float | None = None
+    features: dict | None = None
+    api_calls_limit: int | None = None
+    is_active: bool | None = None
 
 
 class SubscriptionTierResponseSchema(Schema):
@@ -148,8 +147,8 @@ class SubscriptionResponseSchema(Schema):
     tier_name: str
     tier_slug: str
     status: str
-    current_period_start: Optional[datetime]
-    current_period_end: Optional[datetime]
+    current_period_start: datetime | None
+    current_period_end: datetime | None
 
 
 class SubscriptionChangeSchema(Schema):
@@ -176,4 +175,4 @@ class UsageReportSchema(Schema):
 
     tenant_id: str
     source: str
-    events: List[UsageEventSchema]
+    events: list[UsageEventSchema]

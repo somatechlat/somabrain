@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import datetime
 import logging
-from typing import Optional
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -21,8 +20,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import api_key_auth
-from somabrain.api.auth import require_auth
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.infrastructure.cb_registry import get_cb
 from somabrain.opa.client import opa_client
 from somabrain.sleep import SleepState, SleepStateManager
@@ -90,8 +88,8 @@ def _process_sleep_transition(
     request: HttpRequest,
     mode: str,
     target_state_str: str,
-    ttl_seconds: Optional[int] = None,
-    trace_id: Optional[str] = None,
+    ttl_seconds: int | None = None,
+    trace_id: str | None = None,
 ):
     """Execute process sleep transition.
 

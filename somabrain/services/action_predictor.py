@@ -18,8 +18,8 @@ import asyncio
 import json
 import logging
 import time
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import numpy as np
 from django.conf import settings
@@ -116,8 +116,8 @@ class ActionPredictorService:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
     def _extract_action_vector(
-        self, message_data: Dict[str, Any]
-    ) -> Optional[np.ndarray]:
+        self, message_data: dict[str, Any]
+    ) -> np.ndarray | None:
         """Extract action vector from next event message."""
         try:
             # Assuming next events contain action-related predictions
@@ -162,7 +162,7 @@ class ActionPredictorService:
         prediction_result: PredictionResult,
         latency_ms: float,
         domain: str = "action",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create PredictorUpdate event from prediction result."""
         err = float(prediction_result.error)
         conf = float(np.exp(-PREDICTOR_ALPHA * max(0.0, err)))
@@ -173,14 +173,14 @@ class ActionPredictorService:
             "error_metric": err,
             "prediction_latency_ms": float(latency_ms),
             "model_version": "1.0",
-            "vector_dim": int(len(prediction_result.predicted_vec)),
+            "vector_dim": len(prediction_result.predicted_vec),
             "confidence": conf,
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts": datetime.now(UTC).isoformat(),
         }
 
     def _extract_actual_action_vector(
-        self, message_data: Dict[str, Any]
-    ) -> Optional[np.ndarray]:
+        self, message_data: dict[str, Any]
+    ) -> np.ndarray | None:
         """Extract the observed/actual action vector from a next event message."""
         try:
             action_data = (
@@ -208,7 +208,7 @@ class ActionPredictorService:
             logger.error(f"Failed to extract actual action vector: {e}")
             return None
 
-    async def process_message(self, message_data: Dict[str, Any]) -> None:
+    async def process_message(self, message_data: dict[str, Any]) -> None:
         """Process a single next event message and publish prediction update."""
         action_vector = self._extract_action_vector(message_data)
         if action_vector is None:

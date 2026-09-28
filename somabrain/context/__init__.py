@@ -6,7 +6,7 @@ from .planner import ContextPlanner, PlanResult
 __all__ = [
     "ContextBuilder",
     "ContextBundle",
-    "RetrievalWeights",
     "ContextPlanner",
     "PlanResult",
+    "RetrievalWeights",
 ]

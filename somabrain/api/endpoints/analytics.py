@@ -17,7 +17,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 from datetime import timedelta
-from typing import List, Optional
 from uuid import UUID
 
 from django.db.models import Count, Max, Min, Q, Sum
@@ -58,7 +57,7 @@ class UsageSummaryOut(Schema):
     period_end: str
 
     # Trends
-    vs_last_period_pct: Optional[float]
+    vs_last_period_pct: float | None
 
 
 class MetricBreakdownOut(Schema):
@@ -90,9 +89,9 @@ class APIKeyUsageOut(Schema):
 
     key_id: UUID
     key_prefix: str
-    key_name: Optional[str]
+    key_name: str | None
     request_count: int
-    last_used: Optional[str]
+    last_used: str | None
 
 
 class TopEndpointOut(Schema):
@@ -110,7 +109,7 @@ class UsageQuotaOut(Schema):
     current_usage: int
     quota_limit: int
     usage_percent: float
-    reset_date: Optional[str]
+    reset_date: str | None
 
 
 # =============================================================================
@@ -184,7 +183,7 @@ def get_usage_summary(
     )
 
 
-@router.get("/{tenant_id}/usage/breakdown", response=List[MetricBreakdownOut])
+@router.get("/{tenant_id}/usage/breakdown", response=list[MetricBreakdownOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.BILLING_READ.value)
 def get_usage_breakdown(
@@ -226,7 +225,7 @@ def get_usage_breakdown(
     ]
 
 
-@router.get("/{tenant_id}/usage/hourly", response=List[HourlyUsageOut])
+@router.get("/{tenant_id}/usage/hourly", response=list[HourlyUsageOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.BILLING_READ.value)
 def get_hourly_usage(
@@ -261,7 +260,7 @@ def get_hourly_usage(
     ]
 
 
-@router.get("/{tenant_id}/usage/daily", response=List[DailyUsageOut])
+@router.get("/{tenant_id}/usage/daily", response=list[DailyUsageOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.BILLING_READ.value)
 def get_daily_usage(
@@ -296,7 +295,7 @@ def get_daily_usage(
     ]
 
 
-@router.get("/{tenant_id}/api-keys/usage", response=List[APIKeyUsageOut])
+@router.get("/{tenant_id}/api-keys/usage", response=list[APIKeyUsageOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.API_KEYS_READ.value)
 def get_api_key_usage(
@@ -342,7 +341,7 @@ def get_api_key_usage(
     ]
 
 
-@router.get("/{tenant_id}/quota", response=List[UsageQuotaOut])
+@router.get("/{tenant_id}/quota", response=list[UsageQuotaOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.BILLING_READ.value)
 def get_usage_quota(

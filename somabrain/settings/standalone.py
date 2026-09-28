@@ -1,4 +1,3 @@
-# ruff: noqa: F403,F405
 
 """Standalone settings profile with AAAS features stripped at import time.
 
@@ -9,9 +8,9 @@ removing AAAS apps/middleware and pinning the default tenant identity.
 
 import environ  # type: ignore[import-untyped]
 
+from .cognitive import *
 from .django_core import *
 from .infra import *
-from .cognitive import *
 from .neuro import *
 
 env = environ.Env()

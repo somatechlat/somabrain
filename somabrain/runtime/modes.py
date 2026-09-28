@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
 
 # Import central settings to respect runtime feature flag overrides
 from django.conf import settings
@@ -51,7 +50,7 @@ class ModeConfig:
     # Master switch for all cognitive sub‑services (integrator, segmentation, etc.)
     enable_cog_threads: bool
 
-    def as_dict(self) -> Dict[str, bool]:  # convenience for logging/metrics
+    def as_dict(self) -> dict[str, bool]:  # convenience for logging/metrics
         """Return the boolean feature flags without the mode name."""
 
         return {k: getattr(self, k) for k in self.__dataclass_fields__ if k != "name"}
@@ -98,7 +97,7 @@ def _resolve_mode() -> str:
     return "prod"
 
 
-def _load_overrides() -> List[str]:
+def _load_overrides() -> list[str]:
     """Load disabled feature keys from the overrides file.
 
     File format (JSON): {"disabled": ["calibration", "fusion_normalization", ...]}

@@ -16,7 +16,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 - 🛠️ DevOps: Default branding fallback
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
 
 from django.core.cache import cache
@@ -88,7 +88,7 @@ def get_branding_key(tenant_id: str) -> str:
     return f"branding:tenant:{tenant_id}"
 
 
-def get_tenant_branding(tenant_id: str) -> Dict[str, Any]:
+def get_tenant_branding(tenant_id: str) -> dict[str, Any]:
     """Get tenant branding with defaults."""
     key = get_branding_key(tenant_id)
     branding = cache.get(key)
@@ -98,7 +98,7 @@ def get_tenant_branding(tenant_id: str) -> Dict[str, Any]:
     return branding
 
 
-def set_tenant_branding(tenant_id: str, branding: Dict[str, Any]):
+def set_tenant_branding(tenant_id: str, branding: dict[str, Any]):
     """Set tenant branding."""
     key = get_branding_key(tenant_id)
     cache.set(key, branding, timeout=86400)
@@ -112,74 +112,74 @@ def set_tenant_branding(tenant_id: str, branding: Dict[str, Any]):
 class ColorsSchema(Schema):
     """Color scheme."""
 
-    primary: Optional[str] = None
-    secondary: Optional[str] = None
-    accent: Optional[str] = None
-    background: Optional[str] = None
-    text: Optional[str] = None
-    error: Optional[str] = None
-    success: Optional[str] = None
-    warning: Optional[str] = None
+    primary: str | None = None
+    secondary: str | None = None
+    accent: str | None = None
+    background: str | None = None
+    text: str | None = None
+    error: str | None = None
+    success: str | None = None
+    warning: str | None = None
 
 
 class FontsSchema(Schema):
     """Font configuration."""
 
-    heading: Optional[str] = None
-    body: Optional[str] = None
+    heading: str | None = None
+    body: str | None = None
 
 
 class CompanySchema(Schema):
     """Company information."""
 
-    name: Optional[str] = None
-    tagline: Optional[str] = None
-    support_email: Optional[str] = None
-    support_url: Optional[str] = None
-    privacy_url: Optional[str] = None
-    terms_url: Optional[str] = None
+    name: str | None = None
+    tagline: str | None = None
+    support_email: str | None = None
+    support_url: str | None = None
+    privacy_url: str | None = None
+    terms_url: str | None = None
 
 
 class LoginPageSchema(Schema):
     """Login page customization."""
 
-    background_image: Optional[str] = None
-    welcome_message: Optional[str] = None
-    show_social_login: Optional[bool] = None
+    background_image: str | None = None
+    welcome_message: str | None = None
+    show_social_login: bool | None = None
 
 
 class EmailBrandingSchema(Schema):
     """Email branding."""
 
-    from_name: Optional[str] = None
-    reply_to: Optional[str] = None
-    footer_text: Optional[str] = None
+    from_name: str | None = None
+    reply_to: str | None = None
+    footer_text: str | None = None
 
 
 class BrandingOut(Schema):
     """Full branding output."""
 
-    logo_url: Optional[str]
-    favicon_url: Optional[str]
-    colors: Dict[str, str]
-    fonts: Dict[str, str]
-    company: Dict[str, Any]
-    login_page: Dict[str, Any]
-    email: Dict[str, Any]
-    custom_css: Optional[str]
+    logo_url: str | None
+    favicon_url: str | None
+    colors: dict[str, str]
+    fonts: dict[str, str]
+    company: dict[str, Any]
+    login_page: dict[str, Any]
+    email: dict[str, Any]
+    custom_css: str | None
 
 
 class BrandingUpdate(Schema):
     """Update branding request."""
 
-    logo_url: Optional[str] = None
-    favicon_url: Optional[str] = None
-    colors: Optional[Dict[str, str]] = None
-    fonts: Optional[Dict[str, str]] = None
-    company: Optional[Dict[str, str]] = None
-    login_page: Optional[Dict[str, Any]] = None
-    email: Optional[Dict[str, str]] = None
-    custom_css: Optional[str] = None
+    logo_url: str | None = None
+    favicon_url: str | None = None
+    colors: dict[str, str] | None = None
+    fonts: dict[str, str] | None = None
+    company: dict[str, str] | None = None
+    login_page: dict[str, Any] | None = None
+    email: dict[str, str] | None = None
+    custom_css: str | None = None
 
 
 # =============================================================================
@@ -295,7 +295,7 @@ def update_logo(
     request: AuthenticatedRequest,
     tenant_id: UUID,
     logo_url: str,
-    favicon_url: Optional[str] = None,
+    favicon_url: str | None = None,
 ):
     """
     Update logo and favicon.
@@ -435,7 +435,7 @@ def get_custom_css(
     }
 
 
-def _generate_css_vars(colors: Dict[str, str]) -> str:
+def _generate_css_vars(colors: dict[str, str]) -> str:
     """Generate CSS variables from colors."""
     css_lines = [":root {"]
     for name, value in colors.items():

@@ -9,16 +9,17 @@ applied only in `full-local` mode.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
+
+from django.conf import settings
 
 from somabrain.runtime.modes import feature_enabled, mode_config
-from django.conf import settings
 
 
 class FeatureFlags:
     """Computed feature flag status."""
 
-    KEYS: List[str] = [
+    KEYS: list[str] = [
         "hmm_segmentation",
         "fusion_normalization",
         "calibration",
@@ -28,7 +29,7 @@ class FeatureFlags:
     ]
 
     @staticmethod
-    def _load_overrides() -> List[str]:
+    def _load_overrides() -> list[str]:
         # Use the centralized Settings path to avoid direct os.getenv access.
         """Execute load overrides."""
 
@@ -46,7 +47,7 @@ class FeatureFlags:
         return []
 
     @classmethod
-    def get_status(cls) -> Dict[str, Any]:
+    def get_status(cls) -> dict[str, Any]:
         """Retrieve status."""
 
         cfg = mode_config()
@@ -74,7 +75,7 @@ class FeatureFlags:
         return {k: resolved(k) for k in cls.KEYS}
 
     @classmethod
-    def set_overrides(cls, disabled: List[str]) -> None:
+    def set_overrides(cls, disabled: list[str]) -> None:
         """Persist disabled keys to overrides file (full-local only)."""
         cfg = mode_config()
         if cfg.name != "full-local":

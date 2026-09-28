@@ -22,8 +22,9 @@ from __future__ import annotations
 import asyncio
 import math
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 from django.conf import settings
@@ -119,13 +120,13 @@ class WorkingMemory:
         gamma: float | None = None,
         min_capacity: int | None = None,
         max_capacity: int | None = None,
-        scorer: "UnifiedScorer | None" = None,
+        scorer: UnifiedScorer | None = None,
         recency_time_scale: float | None = None,
         recency_max_steps: float | None = None,
         now_fn: Callable[[], float] | None = None,
         salience_threshold: float | None = None,
-        persister: "Optional[WMPersister]" = None,
-        promoter: "Optional[WMLTMPromoter]" = None,
+        persister: WMPersister | None = None,
+        promoter: WMLTMPromoter | None = None,
     ):
         """
         Initialize working memory with specified capacity and vector dimension.
@@ -143,7 +144,7 @@ class WorkingMemory:
         # Keep the private alias that some capacity/throughput tests expect.
         self._capacity = self.capacity
         self.dim = int(dim)
-        self._items: List[WMItem] = []
+        self._items: list[WMItem] = []
         # salience weights and capacity bounds
         self.alpha = float(settings.SOMABRAIN_WM_ALPHA if alpha is None else alpha)
         self.beta = float(settings.SOMABRAIN_WM_BETA if beta is None else beta)
@@ -175,11 +176,11 @@ class WorkingMemory:
             else salience_threshold
         )
         # WM Persistence (A1.3): Optional persister for async SFM persistence
-        self._persister: Optional["WMPersister"] = persister
+        self._persister: WMPersister | None = persister
         # Track item IDs for eviction marking
-        self._item_ids: List[str] = []
+        self._item_ids: list[str] = []
         # WM-LTM Promotion (A2.1-A2.5): Optional promoter for salient items
-        self._promoter: Optional["WMLTMPromoter"] = promoter
+        self._promoter: WMLTMPromoter | None = promoter
         # B1.3: Exponential decay rate for recency (per second)
         self._recency_decay_rate: float = 0.1  # Decay constant (higher = faster decay)
         # B1.4: Duplicate detection threshold (cosine similarity)
@@ -340,7 +341,7 @@ class WorkingMemory:
 
         return True  # New item added
 
-    def _find_duplicate(self, item_id: str, vector: np.ndarray) -> Optional[int]:
+    def _find_duplicate(self, item_id: str, vector: np.ndarray) -> int | None:
         """Find an existing item that is a duplicate of the given vector.
 
         Delegates to wm_eviction module for the actual duplicate detection.
@@ -398,7 +399,7 @@ class WorkingMemory:
             return True
         return False
 
-    def recall(self, query_vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dict]]:
+    def recall(self, query_vec: np.ndarray, top_k: int = 3) -> list[tuple[float, dict]]:
         """
         Recall most similar items from working memory using cosine similarity.
 
@@ -422,7 +423,7 @@ class WorkingMemory:
             >>> for score, payload in results:
             ...     print(f"Similarity: {score:.3f}, Data: {payload}")
         """
-        scored: List[Tuple[float, dict]] = []
+        scored: list[tuple[float, dict]] = []
         now = self._now()
         for idx, it in enumerate(self._items):
             cos = cosine_similarity(query_vec, it.vector)
@@ -498,7 +499,7 @@ class WorkingMemory:
             return 0.0
         return min(steps, self._recency_cap)
 
-    def set_promoter(self, promoter: "WMLTMPromoter") -> None:
+    def set_promoter(self, promoter: WMLTMPromoter) -> None:
         """Set the WM-LTM promoter for this working memory instance.
 
         Per Requirement A2.1: Enables WM→LTM promotion for salient items.
@@ -568,7 +569,7 @@ class WorkingMemory:
             # Apply decay, ensuring recency stays in [0, 1]
             item.recency = max(0.0, min(1.0, item.recency * decay))
 
-    def get_item_recency(self, item_id: str) -> Optional[float]:
+    def get_item_recency(self, item_id: str) -> float | None:
         """Get the current recency score for an item by ID.
 
         Per Requirement B1.3: Returns the exponentially decaying recency value.

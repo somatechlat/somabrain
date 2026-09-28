@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from django.conf import settings
 
 
-def _strip(url: Optional[str]) -> str:
+def _strip(url: str | None) -> str:
     """Execute strip.
 
     Args:
@@ -18,7 +16,7 @@ def _strip(url: Optional[str]) -> str:
     return u.split("://", 1)[1] if "://" in u else u
 
 
-def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
+def check_kafka(bootstrap: str | None, timeout_s: float = 2.0) -> bool:
     """Execute check kafka.
 
     Args:
@@ -52,7 +50,7 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
         return False
 
 
-def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
+def check_redis(redis_url: str | None, timeout_s: float = 2.0) -> bool:
     """Check Redis connectivity using the centralized ``Settings``.
 
     Preference is given to the explicit ``redis_url`` argument; if omitted we
@@ -73,7 +71,7 @@ def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
         return False
 
 
-def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
+def check_postgres(dsn: str | None, timeout_s: float = 2.0) -> bool:
     """Validate Postgres connectivity using the centralized ``Settings``.
 
     The function prefers an explicit ``dsn`` argument; if ``None`` it reads the
@@ -102,7 +100,7 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
         return False
 
 
-def check_opa(opa_url: Optional[str], timeout_s: float = 2.0) -> bool:
+def check_opa(opa_url: str | None, timeout_s: float = 2.0) -> bool:
     """Check OPA health using the centralized configuration.
 
     If no URL is configured we treat OPA as optional (return ``True``) to keep
@@ -184,9 +182,9 @@ def assert_ready(
 
 
 __all__ = [
-    "check_kafka",
-    "check_redis",
-    "check_postgres",
-    "check_opa",
     "assert_ready",
+    "check_kafka",
+    "check_opa",
+    "check_postgres",
+    "check_redis",
 ]

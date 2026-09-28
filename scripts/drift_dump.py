@@ -10,8 +10,8 @@ If the detector is not enabled, it will still attempt to read the persistence fi
 """
 
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from somabrain.monitoring.drift_detector import drift_detector
 

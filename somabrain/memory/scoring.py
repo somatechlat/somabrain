@@ -7,8 +7,8 @@ adjustments to memory recall hits.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
-from typing import Any, List, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from django.conf import settings
 
@@ -66,9 +66,9 @@ def parse_payload_timestamp(raw: Any) -> float | None:
                     txt_norm = txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
                     dt = datetime.fromisoformat(txt_norm)
                     if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
+                        dt = dt.replace(tzinfo=UTC)
                     else:
-                        dt = dt.astimezone(timezone.utc)
+                        dt = dt.astimezone(UTC)
                     return float(dt.timestamp())
                 except Exception:
                     return None
@@ -84,7 +84,7 @@ def parse_payload_timestamp(raw: Any) -> float | None:
     return value
 
 
-def get_recency_normalisation(cfg: Any) -> Tuple[float, float]:
+def get_recency_normalisation(cfg: Any) -> tuple[float, float]:
     """Get recency normalization parameters from config.
 
     Args:
@@ -102,7 +102,7 @@ def get_recency_normalisation(cfg: Any) -> Tuple[float, float]:
     return float(scale), float(cap)
 
 
-def get_recency_profile(cfg: Any) -> Tuple[float, float, float, float]:
+def get_recency_profile(cfg: Any) -> tuple[float, float, float, float]:
     """Get full recency profile parameters from config.
 
     Args:
@@ -133,7 +133,7 @@ def get_recency_profile(cfg: Any) -> Tuple[float, float, float, float]:
 
 def compute_recency_features(
     ts_epoch: float | None, now_ts: float, cfg: Any
-) -> Tuple[float | None, float]:
+) -> tuple[float | None, float]:
     """Compute recency features for a timestamp.
 
     Args:
@@ -188,8 +188,7 @@ def compute_density_factor(margin: float | None, cfg: Any) -> float:
         floor = 0.6
     if not math.isfinite(floor) or floor < 0:
         floor = 0.0
-    if floor > 1.0:
-        floor = 1.0
+    floor = min(floor, 1.0)
     try:
         weight = float(weight)
     except Exception:
@@ -225,7 +224,7 @@ def extract_cleanup_margin(hit: RecallHit) -> float | None:
     return coerce_float(margin)
 
 
-def rank_hits(hits: List[RecallHit], query: str) -> List[RecallHit]:
+def rank_hits(hits: list[RecallHit], query: str) -> list[RecallHit]:
     """Rank hits by score and lexical bonus.
 
     Args:
@@ -235,7 +234,7 @@ def rank_hits(hits: List[RecallHit], query: str) -> List[RecallHit]:
     Returns:
         Sorted list of RecallHit objects (highest score first).
     """
-    ranked: List[Tuple[float, float, float, int, RecallHit]] = []
+    ranked: list[tuple[float, float, float, int, RecallHit]] = []
     for idx, hit in enumerate(hits):
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         lex_bonus = lexical_bonus(payload, query)
@@ -267,7 +266,7 @@ def rank_hits(hits: List[RecallHit], query: str) -> List[RecallHit]:
     return [item[-1] for item in ranked]
 
 
-def apply_weighting_to_hits(hits: List[RecallHit]) -> None:
+def apply_weighting_to_hits(hits: list[RecallHit]) -> None:
     """Apply phase and quality weighting to hits in-place.
 
     This function modifies hits by adding _weight_factor to their payloads
@@ -348,12 +347,12 @@ def apply_weighting_to_hits(hits: List[RecallHit]) -> None:
 
 
 def rescore_and_rank_hits(
-    hits: List[RecallHit],
+    hits: list[RecallHit],
     query: str,
     cfg: Any,
     scorer: Any | None = None,
     embedder: Any | None = None,
-) -> List[RecallHit]:
+) -> list[RecallHit]:
     """Rescore and rank hits using scorer/embedder or fallback logic.
 
     Args:
@@ -377,7 +376,7 @@ def rescore_and_rank_hits(
             ) from exc
 
     query_vec = embedder.embed(query)
-    now_ts = datetime.now(timezone.utc).timestamp()
+    now_ts = datetime.now(UTC).timestamp()
 
     def _text_of(p: dict) -> str:
         """Canonical text for embedding — must include the seam `text` field."""

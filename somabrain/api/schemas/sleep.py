@@ -9,7 +9,6 @@ avoid circular imports.
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -36,7 +35,7 @@ class SleepRequest(BaseModel):
     """
 
     target_state: SleepTargetState = Field(..., description="Desired sleep state")
-    ttl_seconds: Optional[int] = Field(
+    ttl_seconds: int | None = Field(
         None,
         ge=1,
         description="Optional TTL in seconds after which the state auto‑resets to ACTIVE",
@@ -48,7 +47,7 @@ class SleepRequest(BaseModel):
         description="If true, perform the sleep asynchronously (non‑blocking)",
     )
     # Optional trace identifier for observability pipelines (SRS U‑1).
-    trace_id: Optional[str] = Field(
+    trace_id: str | None = Field(
         None,
         description="Arbitrary trace identifier propagated to logs/metrics",
     )

@@ -18,7 +18,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 import os
-from typing import Any, List
+from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
@@ -115,7 +115,7 @@ def get_environment_info():
     )
 
 
-@router.get("/features", response=List[FeatureFlag])
+@router.get("/features", response=list[FeatureFlag])
 def list_feature_flags():
     """
     List feature flags.
@@ -159,7 +159,7 @@ def list_feature_flags():
 # =============================================================================
 
 
-@router.get("/config", response=List[ConfigItem])
+@router.get("/config", response=list[ConfigItem])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def list_configuration(request: AuthenticatedRequest):

@@ -9,18 +9,15 @@ These tests run against REAL Docker infrastructure - NO mocks.
 
 from __future__ import annotations
 
-import time
-import uuid
-from typing import Dict
-
-import httpx
-import pytest
-
 # ---------------------------------------------------------------------------
 # Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
-
 import os
+import time
+import uuid
+
+import httpx
+import pytest
 
 APP_PORT = int(os.getenv("SOMABRAIN_PORT", "30101"))
 APP_URL = f"http://localhost:{APP_PORT}/api"
@@ -51,7 +48,7 @@ def _api_token() -> str:
     return token
 
 
-def get_tenant_headers(tenant_id: str) -> Dict[str, str]:
+def get_tenant_headers(tenant_id: str) -> dict[str, str]:
     """Get HTTP headers for a specific tenant."""
     return {
         "X-Tenant-ID": tenant_id,

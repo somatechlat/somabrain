@@ -10,7 +10,7 @@ Changes should be tested thoroughly before deployment.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 
@@ -26,7 +26,7 @@ logger = logging.getLogger("somabrain.bootstrap.singletons")
 # ---------------------------------------------------------------------------
 
 
-def make_predictor(cfg) -> "BudgetedPredictor":
+def make_predictor(cfg) -> BudgetedPredictor:
     """Create the configured predictor.
 
     Disabled toy providers are no longer permitted. The default provider is
@@ -50,11 +50,11 @@ def make_predictor(cfg) -> "BudgetedPredictor":
 
     provider_override = settings.SOMABRAIN_PREDICTOR_PROVIDER
     provider = str(
-        (
+        
             provider_override
             or getattr(settings, "SOMABRAIN_PREDICTOR_PROVIDER", "mahal")
             or "mahal"
-        )
+        
     ).lower()
 
     if provider in ("stub", "baseline"):
@@ -95,7 +95,7 @@ def make_predictor(cfg) -> "BudgetedPredictor":
 # ---------------------------------------------------------------------------
 
 
-def make_quantum_layer(cfg) -> Optional["QuantumLayer"]:
+def make_quantum_layer(cfg) -> QuantumLayer | None:
     """Create the optional quantum layer for HRR-based operations.
 
     Args:
@@ -158,7 +158,7 @@ def make_embedder_with_dim(cfg, quantum=None):
 
     # Determine embedding dimension
     try:
-        embed_dim = int(getattr(embedder, "dim"))
+        embed_dim = int(embedder.dim)
     except Exception:
         try:
             embed_dim = int(

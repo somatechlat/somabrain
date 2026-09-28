@@ -10,16 +10,16 @@ import hashlib
 import json
 import math
 import re
-from datetime import datetime, timezone
-from typing import Any, List
+from datetime import UTC, datetime
+from typing import Any
 
 from somabrain.memory.normalization import _extract_memory_coord
 from somabrain.memory.types import RecallHit
 
 
-def normalize_recall_hits(data: Any) -> List[RecallHit]:
+def normalize_recall_hits(data: Any) -> list[RecallHit]:
     """Normalize raw recall response data into RecallHit objects."""
-    hits: List[RecallHit] = []
+    hits: list[RecallHit] = []
     if isinstance(data, dict):
         items = None
         for key in ("matches", "results", "items", "memories", "entries", "hits"):
@@ -86,7 +86,7 @@ def hit_identity(hit: RecallHit) -> str:
         coord = _extract_memory_coord(hit.payload) or _extract_memory_coord(hit.raw)
     if coord:
         try:
-            return "coord:{:.6f},{:.6f},{:.6f}".format(coord[0], coord[1], coord[2])
+            return f"coord:{coord[0]:.6f},{coord[1]:.6f},{coord[2]:.6f}"
         except Exception:
             pass
     payload = hit.payload if isinstance(hit.payload, dict) else {}
@@ -149,7 +149,7 @@ def coerce_timestamp_value(value: Any) -> float | None:
                 return None
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         return value.timestamp()
     return None
 
@@ -198,10 +198,10 @@ def prefer_candidate_hit(current: RecallHit, candidate: RecallHit) -> bool:
     return False
 
 
-def deduplicate_hits(hits: List[RecallHit]) -> List[RecallHit]:
+def deduplicate_hits(hits: list[RecallHit]) -> list[RecallHit]:
     """Deduplicate hits by identity, keeping the best version of each."""
     winners: dict[str, RecallHit] = {}
-    order: List[str] = []
+    order: list[str] = []
     for hit in hits:
         ident = hit_identity(hit)
         existing = winners.get(ident)

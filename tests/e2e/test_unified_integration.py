@@ -9,14 +9,15 @@ Verifies:
 4. Automated Degradation (Killing Milvus/Redis)
 """
 
-import time
 import asyncio
+import time
+
 import pytest
 from asgiref.sync import sync_to_async
-from somabrain.controls.memory_client import MemoryClient
-from somabrain.controls.degradation import degradation_manager, HealthStatus
-from somabrain.brain_settings.models import BrainSetting
 
+from somabrain.brain_settings.models import BrainSetting
+from somabrain.controls.degradation import HealthStatus, degradation_manager
+from somabrain.controls.memory_client import MemoryClient
 
 # Async-safe wrappers for the synchronous BrainSetting API.
 _init_defaults = sync_to_async(BrainSetting.initialize_defaults)

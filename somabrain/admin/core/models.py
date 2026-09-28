@@ -191,8 +191,7 @@ class CognitiveThread(models.Model):
         """
         if not self.thread_id:
             self.thread_id = uuid4().hex
-        if self.cursor < 0:
-            self.cursor = 0
+        self.cursor = max(self.cursor, 0)
         super().save(*args, **kwargs)
 
     def get_options(self) -> list[str]:

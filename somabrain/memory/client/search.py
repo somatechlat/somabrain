@@ -1,8 +1,8 @@
 from __future__ import annotations
-from typing import List
-from .types import RecallHit
-from .serialization import _compat_enrich_payload, _normalize_recall_hits
+
 from .ranking import _deduplicate_hits, _rescore_and_rank_hits
+from .serialization import _compat_enrich_payload, _normalize_recall_hits
+from .types import RecallHit
 
 
 class SearchMixin:
@@ -14,7 +14,7 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         if self._http is None:
             raise RuntimeError("HTTP memory service required but not configured")
 
@@ -79,7 +79,7 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         if self._http_async is None:
             raise RuntimeError("Async HTTP memory service required but not configured")
 
@@ -144,7 +144,7 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         return self._memories_search_sync(query, top_k, universe, request_id)
 
     async def _http_recall_aggregate_async(
@@ -153,5 +153,5 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
-    ) -> List[RecallHit]:
+    ) -> list[RecallHit]:
         return await self._memories_search_async(query, top_k, universe, request_id)

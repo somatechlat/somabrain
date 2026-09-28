@@ -161,9 +161,9 @@ class BHDCEncoder:
         self,
         *,
         dim: int,
-        sparsity: Union[int, float],
+        sparsity: float,
         base_seed: int,
-        dtype: Union[str, np.dtype] = "float32",
+        dtype: str | np.dtype = "float32",
         extra_seed: _SeedLike = None,
         tenant_id: _SeedLike = None,
         model_version: _SeedLike = None,
@@ -221,7 +221,7 @@ class PermutationBinder:
         *,
         dim: int,
         seed: int,
-        dtype: Union[str, np.dtype] = "float32",
+        dtype: str | np.dtype = "float32",
         mix: str = "none",
         lambda_reg: float = 2.05e-5,  # GMD Theorem 3: λ* = (2/255)²/3
     ) -> None:

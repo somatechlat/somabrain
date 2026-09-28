@@ -15,7 +15,8 @@ from __future__ import annotations
 import os
 
 import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # Skip all tests in this module if infrastructure is not available
 pytestmark = pytest.mark.skipif(

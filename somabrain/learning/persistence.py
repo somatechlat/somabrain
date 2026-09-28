@@ -20,7 +20,7 @@ except Exception:  # pragma: no cover - optional dependency
 from somabrain.core.infrastructure_defs import get_redis_url
 
 
-def get_redis() -> "Redis | None":
+def get_redis() -> Redis | None:
     """Get Redis client for per-tenant state persistence.
 
     Strict mode: requires real Redis (SOMABRAIN_REDIS_URL).
@@ -73,7 +73,7 @@ def is_persistence_enabled() -> bool:
 
 
 def persist_state(
-    redis_client: "Redis | None",
+    redis_client: Redis | None,
     tenant_id: str,
     retrieval: dict[str, float],
     utility: dict[str, float],
@@ -115,7 +115,7 @@ def persist_state(
     redis_client.setex(state_key, ttl_seconds, state_data)
 
 
-def load_state(redis_client: "Redis | None", tenant_id: str) -> dict[str, Any] | None:
+def load_state(redis_client: Redis | None, tenant_id: str) -> dict[str, Any] | None:
     """Load adaptation state from Redis.
 
     Args:

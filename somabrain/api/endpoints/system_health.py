@@ -17,7 +17,7 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import django
 from django.conf import settings
@@ -37,9 +37,9 @@ class ServiceHealth(Schema):
 
     name: str
     status: str  # healthy, degraded, unhealthy, unavailable
-    response_time_ms: Optional[int]
-    details: Optional[Dict[str, Any]]
-    error: Optional[str]
+    response_time_ms: int | None
+    details: dict[str, Any] | None
+    error: str | None
 
 
 class SystemHealthResponse(Schema):
@@ -51,13 +51,13 @@ class SystemHealthResponse(Schema):
     uptime_seconds: int
 
     # Infrastructure Services
-    infrastructure: Dict[str, Any]
+    infrastructure: dict[str, Any]
 
     # Internal Services
-    internal_services: Dict[str, Any]
+    internal_services: dict[str, Any]
 
     # Django Stats
-    django: Dict[str, Any]
+    django: dict[str, Any]
 
     # Summary
     healthy_count: int
@@ -87,7 +87,7 @@ def timed_check(check_func) -> tuple:
 # =============================================================================
 
 
-def check_postgresql() -> Dict[str, Any]:
+def check_postgresql() -> dict[str, Any]:
     """Check PostgreSQL database health."""
     from django.db import connection
 
@@ -124,7 +124,7 @@ def check_postgresql() -> Dict[str, Any]:
     }
 
 
-def check_redis() -> Dict[str, Any]:
+def check_redis() -> dict[str, Any]:
     """Check Redis cache health."""
     from django.core.cache import cache
 
@@ -159,7 +159,7 @@ def check_redis() -> Dict[str, Any]:
     }
 
 
-def check_kafka() -> Dict[str, Any]:
+def check_kafka() -> dict[str, Any]:
     """Check Kafka broker health."""
     import socket
 
@@ -198,7 +198,7 @@ def check_kafka() -> Dict[str, Any]:
     }
 
 
-def check_milvus() -> Dict[str, Any]:
+def check_milvus() -> dict[str, Any]:
     """Check Milvus vector database health."""
 
     def _check():
@@ -235,7 +235,7 @@ def check_milvus() -> Dict[str, Any]:
     }
 
 
-def check_opa() -> Dict[str, Any]:
+def check_opa() -> dict[str, Any]:
     """Check OPA policy engine health."""
     import httpx
 
@@ -265,7 +265,7 @@ def check_opa() -> Dict[str, Any]:
     }
 
 
-def check_minio() -> Dict[str, Any]:
+def check_minio() -> dict[str, Any]:
     """Check MinIO object storage health."""
     import httpx
 
@@ -295,7 +295,7 @@ def check_minio() -> Dict[str, Any]:
     }
 
 
-def check_schema_registry() -> Dict[str, Any]:
+def check_schema_registry() -> dict[str, Any]:
     """Check Kafka Schema Registry health."""
     import httpx
 
@@ -330,7 +330,7 @@ def check_schema_registry() -> Dict[str, Any]:
     }
 
 
-def check_keycloak() -> Dict[str, Any]:
+def check_keycloak() -> dict[str, Any]:
     """Check Keycloak identity provider health."""
     import httpx
 
@@ -367,7 +367,7 @@ def check_keycloak() -> Dict[str, Any]:
     }
 
 
-def check_lago() -> Dict[str, Any]:
+def check_lago() -> dict[str, Any]:
     """Check Lago billing service health."""
 
     def _check():
@@ -406,7 +406,7 @@ def check_lago() -> Dict[str, Any]:
 # =============================================================================
 
 
-def check_soma_fractal_memory() -> Dict[str, Any]:
+def check_soma_fractal_memory() -> dict[str, Any]:
     """Check SomaFractalMemory service health."""
     import httpx
 
@@ -442,7 +442,7 @@ def check_soma_fractal_memory() -> Dict[str, Any]:
     }
 
 
-def check_cognitive_service() -> Dict[str, Any]:
+def check_cognitive_service() -> dict[str, Any]:
     """Check internal cognitive service status."""
 
     def _check():
@@ -471,7 +471,7 @@ def check_cognitive_service() -> Dict[str, Any]:
     }
 
 
-def check_embedder_service() -> Dict[str, Any]:
+def check_embedder_service() -> dict[str, Any]:
     """Check embedder service status."""
 
     def _check():
@@ -615,12 +615,14 @@ def get_database_health(request):
     try:
         with connection.cursor() as cursor:
             # Table counts
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT schemaname, relname, n_live_tup 
                 FROM pg_stat_user_tables 
                 ORDER BY n_live_tup DESC 
                 LIMIT 10
-            """)
+            """
+            )
             tables = [
                 {"schema": r[0], "table": r[1], "rows": r[2]} for r in cursor.fetchall()
             ]

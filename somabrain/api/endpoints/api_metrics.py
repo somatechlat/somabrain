@@ -17,7 +17,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from django.core.cache import cache
@@ -46,7 +46,7 @@ def get_metrics_key(tenant_id: str, metric_type: str) -> str:
     return f"metrics:{tenant_id}:{metric_type}"
 
 
-def record_metric(tenant_id: str, metric_type: str, value: float, tags: Dict = None):
+def record_metric(tenant_id: str, metric_type: str, value: float, tags: dict = None):
     """Record a metric value."""
     key = get_metrics_key(tenant_id, metric_type)
     metrics = cache.get(key, [])
@@ -64,7 +64,7 @@ def record_metric(tenant_id: str, metric_type: str, value: float, tags: Dict = N
     cache.set(key, metrics, timeout=86400)
 
 
-def get_metrics(tenant_id: str, metric_type: str, limit: int = 100) -> List[dict]:
+def get_metrics(tenant_id: str, metric_type: str, limit: int = 100) -> list[dict]:
     """Get recent metrics."""
     key = get_metrics_key(tenant_id, metric_type)
     metrics = cache.get(key, [])
@@ -81,7 +81,7 @@ class MetricPoint(Schema):
 
     value: float
     timestamp: str
-    tags: Optional[Dict[str, str]]
+    tags: dict[str, str] | None
 
 
 class MetricSummary(Schema):
@@ -93,8 +93,8 @@ class MetricSummary(Schema):
     avg: float
     min: float
     max: float
-    last_value: Optional[float]
-    last_updated: Optional[str]
+    last_value: float | None
+    last_updated: str | None
 
 
 class EndpointMetrics(Schema):
@@ -118,8 +118,8 @@ class TenantMetricsSummary(Schema):
     requests_today: int
     avg_latency_ms: float
     error_rate: float
-    top_endpoints: List[Dict[str, Any]]
-    errors_by_type: Dict[str, int]
+    top_endpoints: list[dict[str, Any]]
+    errors_by_type: dict[str, int]
 
 
 class SLOStatus(Schema):
@@ -305,7 +305,7 @@ def get_error_metrics(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/slo", response=List[SLOStatus])
+@router.get("/{tenant_id}/slo", response=list[SLOStatus])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_slo_status(
     request: AuthenticatedRequest,

@@ -176,8 +176,8 @@ class TestOutboxReplay:
         """
         from somabrain.db.outbox import (
             enqueue_memory_event,
-            mark_event_sent,
             get_event_by_dedupe_key,
+            mark_event_sent,
         )
 
         tenant_id = f"test_sent_{uuid.uuid4().hex[:8]}"
@@ -212,8 +212,8 @@ class TestOutboxReplay:
         """
         from somabrain.db.outbox import (
             enqueue_memory_event,
-            mark_event_failed,
             get_event_by_dedupe_key,
+            mark_event_failed,
         )
 
         tenant_id = f"test_fail_{uuid.uuid4().hex[:8]}"
@@ -250,8 +250,8 @@ class TestOutboxReplay:
         """
         from somabrain.db.outbox import (
             _idempotency_key,
-            is_duplicate_event,
             enqueue_memory_event,
+            is_duplicate_event,
         )
 
         tenant_id = f"test_dup_{uuid.uuid4().hex[:8]}"
@@ -291,11 +291,11 @@ class TestOutboxReplay:
         3. On replay, idempotency key prevents duplicates
         """
         from somabrain.db.outbox import (
+            _idempotency_key,
             enqueue_memory_event,
             get_event_by_dedupe_key,
-            mark_event_sent,
             is_duplicate_event,
-            _idempotency_key,
+            mark_event_sent,
         )
 
         tenant_id = f"test_replay_{uuid.uuid4().hex[:8]}"

@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 
 @dataclass
@@ -32,7 +31,7 @@ class UCB1Bandit:
     def __init__(self):
         """Initialize the instance."""
 
-        self._arms: Dict[str, Arm] = {}
+        self._arms: dict[str, Arm] = {}
         self._n: int = 0
 
     def add_arm(self, name: str) -> None:
@@ -45,7 +44,7 @@ class UCB1Bandit:
         if name not in self._arms:
             self._arms[name] = Arm(name)
 
-    def select(self) -> Optional[str]:
+    def select(self) -> str | None:
         """Execute select."""
 
         if not self._arms:

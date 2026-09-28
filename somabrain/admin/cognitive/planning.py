@@ -10,7 +10,7 @@ NO STUBS. NO MOCKS. NO HARDCODED RETURNS.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from somabrain.memory.client import MemoryClient
@@ -27,7 +27,7 @@ class Planner:
 
     def __init__(
         self,
-        graph_client: Optional["MemoryClient"] = None,
+        graph_client: MemoryClient | None = None,
         max_steps: int = 5,
     ) -> None:
         """Initialize the cognitive planner.
@@ -40,12 +40,12 @@ class Planner:
         self._max_steps = max_steps
 
     @property
-    def graph_client(self) -> Optional["MemoryClient"]:
+    def graph_client(self) -> MemoryClient | None:
         """Get the graph client."""
         return self._graph_client
 
     @graph_client.setter
-    def graph_client(self, client: Optional["MemoryClient"]) -> None:
+    def graph_client(self, client: MemoryClient | None) -> None:
         """Set the graph client."""
         self._graph_client = client
 
@@ -53,10 +53,10 @@ class Planner:
         self,
         task_key: str,
         mem=None,
-        max_steps: Optional[int] = None,
-        rel_types: Optional[List[str]] = None,
-        universe: Optional[str] = None,
-    ) -> List[str]:
+        max_steps: int | None = None,
+        rel_types: list[str] | None = None,
+        universe: str | None = None,
+    ) -> list[str]:
         """Generate a plan for the given task.
 
         Uses BFS graph traversal to find related tasks/steps.
@@ -88,10 +88,10 @@ class Planner:
         self,
         task_key: str,
         mem=None,
-        max_steps: Optional[int] = None,
-        rel_types: Optional[List[str]] = None,
-        universe: Optional[str] = None,
-    ) -> List[str]:
+        max_steps: int | None = None,
+        rel_types: list[str] | None = None,
+        universe: str | None = None,
+    ) -> list[str]:
         """Alias for plan() - suggest next steps for a task.
 
         Args:

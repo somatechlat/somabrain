@@ -14,7 +14,7 @@ Key Functions:
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 def compute_salience(
     query_vec: np.ndarray,
-    items: List["WMItem"],
+    items: list[WMItem],
     alpha: float,
     beta: float,
     gamma: float,
@@ -58,7 +58,7 @@ def compute_salience(
     return float(max(0.0, min(1.0, s)))
 
 
-def compute_novelty(query_vec: np.ndarray, items: List["WMItem"]) -> float:
+def compute_novelty(query_vec: np.ndarray, items: list[WMItem]) -> float:
     """Calculate novelty score for a query vector relative to working memory contents.
 
     Novelty is defined as 1.0 minus the highest cosine similarity to any existing
@@ -79,7 +79,7 @@ def compute_novelty(query_vec: np.ndarray, items: List["WMItem"]) -> float:
 _EPS = 1e-12
 
 
-def _min_novelty_against(query_vec: np.ndarray, others: List["WMItem"]) -> float:
+def _min_novelty_against(query_vec: np.ndarray, others: list[WMItem]) -> float:
     """Vectorized novelty of ``query_vec`` against a list of WM items.
 
     Novelty is defined as ``1 - max_similarity``. A vectorized implementation
@@ -106,8 +106,8 @@ def _min_novelty_against(query_vec: np.ndarray, others: List["WMItem"]) -> float
 
 
 def compute_item_salience(
-    item: "WMItem",
-    items: List["WMItem"],
+    item: WMItem,
+    items: list[WMItem],
     alpha: float,
     gamma: float,
 ) -> float:
@@ -141,8 +141,8 @@ def compute_item_salience(
 
 
 def compute_eviction_salience(
-    item: "WMItem",
-    items: List["WMItem"],
+    item: WMItem,
+    items: list[WMItem],
     alpha: float,
     gamma: float,
     now: float,

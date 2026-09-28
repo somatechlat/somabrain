@@ -5,7 +5,7 @@ via a short Lanczos run and then apply a Chebyshev polynomial approximation
 of exp(-t L) to a vector using that interval.
 """
 
-from typing import Callable, Optional, Tuple
+from collections.abc import Callable
 
 import numpy as np
 
@@ -16,7 +16,7 @@ from django.conf import settings
 
 def estimate_spectral_interval(
     apply_A: Callable[[np.ndarray], np.ndarray], n: int, m: int = 16
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """Run m-step Lanczos to estimate the spectral interval of A on n-dim space.
 
     apply_A: function that applies A to a vector
@@ -58,7 +58,7 @@ def chebyshev_heat_apply(
     apply_A: Callable[[np.ndarray], np.ndarray],
     x: np.ndarray,
     t: float,
-    K: Optional[int],
+    K: int | None,
     a: float,
     b: float,
 ) -> np.ndarray:

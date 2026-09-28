@@ -64,7 +64,6 @@ class NullMetrics:
             value: The value.
         """
 
-        pass
 
     def observe_histogram(
         self, name: str, value: float, labels: dict[str, str] | None = None
@@ -77,7 +76,6 @@ class NullMetrics:
             labels: The labels.
         """
 
-        pass
 
     def set_gauge(
         self, name: str, value: float, labels: dict[str, str] | None = None
@@ -90,7 +88,6 @@ class NullMetrics:
             labels: The labels.
         """
 
-        pass
 
 
 # Singleton null metrics instance

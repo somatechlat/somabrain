@@ -11,10 +11,13 @@ mathematical verification against known exact solutions.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
-from hypothesis import given, settings as hyp_settings, strategies as st
+from hypothesis import given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 from scipy.linalg import expm
-from typing import Callable
 
 # ---------------------------------------------------------------------------
 # Strategies for generating test data

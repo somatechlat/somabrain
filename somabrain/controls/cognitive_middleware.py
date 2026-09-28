@@ -122,7 +122,7 @@ class CognitiveMiddleware:
             )
 
             logger.error(
-                f"🧠 Request {request_id}: {method} {path} - Error after {processing_time:.4f}s: {str(e)}"
+                f"🧠 Request {request_id}: {method} {path} - Error after {processing_time:.4f}s: {e!s}"
             )
 
             return JsonResponse(

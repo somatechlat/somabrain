@@ -17,7 +17,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -51,9 +50,9 @@ def log_request(
     path: str,
     status_code: int,
     response_time_ms: int,
-    user_id: Optional[str] = None,
-    api_key_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
+    user_id: str | None = None,
+    api_key_id: str | None = None,
+    ip_address: str | None = None,
 ):
     """Log an API request."""
     log_id = str(uuid4())
@@ -82,9 +81,9 @@ def log_request(
 def get_request_logs(
     tenant_id: str,
     limit: int = 100,
-    method: Optional[str] = None,
-    status_code: Optional[int] = None,
-) -> List[dict]:
+    method: str | None = None,
+    status_code: int | None = None,
+) -> list[dict]:
     """Get request logs with optional filters."""
     key = get_logs_key(tenant_id)
     logs = cache.get(key, [])
@@ -112,9 +111,9 @@ class RequestLogOut(Schema):
     path: str
     status_code: int
     response_time_ms: int
-    user_id: Optional[str]
-    api_key_id: Optional[str]
-    ip_address: Optional[str]
+    user_id: str | None
+    api_key_id: str | None
+    ip_address: str | None
     timestamp: str
 
 
@@ -126,8 +125,8 @@ class RequestStats(Schema):
     requests_week: int
     avg_response_time_ms: float
     error_rate: float
-    requests_by_method: Dict[str, int]
-    requests_by_status: Dict[str, int]
+    requests_by_method: dict[str, int]
+    requests_by_status: dict[str, int]
 
 
 class EndpointStats(Schema):
@@ -162,15 +161,15 @@ class TopUser(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/logs", response=List[RequestLogOut])
+@router.get("/{tenant_id}/logs", response=list[RequestLogOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def list_request_logs(
     request: AuthenticatedRequest,
     tenant_id: UUID,
     limit: int = 100,
-    method: Optional[str] = None,
-    status_code: Optional[int] = None,
+    method: str | None = None,
+    status_code: int | None = None,
 ):
     """
     List API request logs for a tenant.
@@ -286,7 +285,7 @@ def get_request_stats(
     )
 
 
-@router.get("/{tenant_id}/endpoints", response=List[EndpointStats])
+@router.get("/{tenant_id}/endpoints", response=list[EndpointStats])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def get_endpoint_stats(
@@ -341,7 +340,7 @@ def get_endpoint_stats(
     return stats[:limit]
 
 
-@router.get("/{tenant_id}/hourly", response=List[HourlyStats])
+@router.get("/{tenant_id}/hourly", response=list[HourlyStats])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def get_hourly_stats(
@@ -397,7 +396,7 @@ def get_hourly_stats(
     return stats
 
 
-@router.get("/{tenant_id}/top-users", response=List[TopUser])
+@router.get("/{tenant_id}/top-users", response=list[TopUser])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def get_top_users(

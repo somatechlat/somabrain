@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from datetime import timedelta
-from typing import List
 from uuid import UUID
 
 from django.core.cache import cache
@@ -169,7 +168,7 @@ def get_rate_limit_status(
     )
 
 
-@router.get("/{tenant_id}/endpoints", response=List[RateLimitEndpoint])
+@router.get("/{tenant_id}/endpoints", response=list[RateLimitEndpoint])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def get_endpoint_limits(
     request: AuthenticatedRequest,
@@ -256,7 +255,7 @@ def get_rate_limit_config(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/violations", response=List[RateLimitViolation])
+@router.get("/{tenant_id}/violations", response=list[RateLimitViolation])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_rate_limit_violations(
     request: AuthenticatedRequest,

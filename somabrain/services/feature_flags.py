@@ -6,7 +6,7 @@ Replaces the legacy Pydantic base-settings and compatibility shims.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from django.conf import settings
 
@@ -35,7 +35,7 @@ class FeatureFlags:
     ]
 
     @classmethod
-    def get_status(cls) -> Dict[str, bool]:
+    def get_status(cls) -> dict[str, bool]:
         """Return the current status of all feature flags."""
         return {
             "minimal_public_api": getattr(
@@ -75,11 +75,11 @@ class FeatureFlags:
         }
 
     @classmethod
-    def get_overrides(cls) -> Dict[str, Any]:
+    def get_overrides(cls) -> dict[str, Any]:
         """Return dynamic overrides (currently disabled in enterprise mode)."""
         return {}
 
     @classmethod
-    def set_overrides(cls, disabled: List[str]) -> bool:
+    def set_overrides(cls, disabled: list[str]) -> bool:
         """Set dynamic overrides (currently disabled)."""
         return False

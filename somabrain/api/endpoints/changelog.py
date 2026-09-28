@@ -17,7 +17,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
 from django.core.cache import cache
@@ -88,7 +88,7 @@ def create_release(
     version: str,
     title: str,
     description: str,
-    changes: List[dict],
+    changes: list[dict],
     created_by: str,
 ) -> dict:
     """Create a new changelog release."""
@@ -115,7 +115,7 @@ def create_release(
     return release
 
 
-def get_release(release_id: str) -> Optional[dict]:
+def get_release(release_id: str) -> dict | None:
     """Retrieve release.
 
     Args:
@@ -125,7 +125,7 @@ def get_release(release_id: str) -> Optional[dict]:
     return cache.get(get_release_key(release_id))
 
 
-def update_release(release_id: str, **updates) -> Optional[dict]:
+def update_release(release_id: str, **updates) -> dict | None:
     """Execute update release.
 
     Args:
@@ -140,7 +140,7 @@ def update_release(release_id: str, **updates) -> Optional[dict]:
     return release
 
 
-def get_all_releases() -> List[dict]:
+def get_all_releases() -> list[dict]:
     """Retrieve all releases."""
 
     release_ids = cache.get(get_releases_key(), [])
@@ -162,8 +162,8 @@ class ChangeEntry(Schema):
 
     type: str  # feature, improvement, fix, deprecation, breaking, security
     title: str
-    description: Optional[str] = None
-    link: Optional[str] = None
+    description: str | None = None
+    link: str | None = None
 
 
 class ReleaseOut(Schema):
@@ -174,7 +174,7 @@ class ReleaseOut(Schema):
     title: str
     status: str
     created_at: str
-    published_at: Optional[str]
+    published_at: str | None
     change_count: int
 
 
@@ -185,11 +185,11 @@ class ReleaseDetailOut(Schema):
     version: str
     title: str
     description: str
-    changes: List[Dict[str, Any]]
+    changes: list[dict[str, Any]]
     status: str
     created_at: str
-    created_by: Optional[str]
-    published_at: Optional[str]
+    created_by: str | None
+    published_at: str | None
 
 
 class ReleaseCreate(Schema):
@@ -197,16 +197,16 @@ class ReleaseCreate(Schema):
 
     version: str
     title: str
-    description: Optional[str] = None
-    changes: List[ChangeEntry]
+    description: str | None = None
+    changes: list[ChangeEntry]
 
 
 class ReleaseUpdate(Schema):
     """Update release request."""
 
-    title: Optional[str] = None
-    description: Optional[str] = None
-    changes: Optional[List[ChangeEntry]] = None
+    title: str | None = None
+    description: str | None = None
+    changes: list[ChangeEntry] | None = None
 
 
 class UnreadChangelog(Schema):
@@ -214,7 +214,7 @@ class UnreadChangelog(Schema):
 
     has_unread: bool
     unread_count: int
-    latest_version: Optional[str]
+    latest_version: str | None
 
 
 # =============================================================================
@@ -222,9 +222,9 @@ class UnreadChangelog(Schema):
 # =============================================================================
 
 
-@router.get("/releases", response=List[ReleaseOut])
+@router.get("/releases", response=list[ReleaseOut])
 def list_releases(
-    status: Optional[str] = "published",
+    status: str | None = "published",
     limit: int = 10,
 ):
     """
@@ -452,7 +452,7 @@ def get_unread_changelog(request: AuthenticatedRequest):
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def mark_changelog_read(
     request: AuthenticatedRequest,
-    release_id: Optional[str] = None,
+    release_id: str | None = None,
 ):
     """
     Mark changelog entries as read.
@@ -484,7 +484,7 @@ def mark_changelog_read(
 @router.get("/search")
 def search_changelog(
     q: str,
-    change_type: Optional[str] = None,
+    change_type: str | None = None,
     limit: int = 20,
 ):
     """

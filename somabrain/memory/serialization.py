@@ -8,10 +8,10 @@ Per Requirements G1.1-G1.5:
 from __future__ import annotations
 
 import datetime
-from typing import Any, Dict
+from typing import Any
 
 
-def serialize_for_sfm(payload: Dict[str, Any]) -> Dict[str, Any]:
+def serialize_for_sfm(payload: dict[str, Any]) -> dict[str, Any]:
     """Serialize a payload dict for SFM communication.
 
     Per Requirements G1.1-G1.5:
@@ -85,7 +85,7 @@ def _serialize_value(value: Any) -> Any:
         if 1_000_000_000 < value < 20_000_000_000:
             # Likely an epoch timestamp - convert to ISO 8601
             try:
-                dt = datetime.datetime.fromtimestamp(value, tz=datetime.timezone.utc)
+                dt = datetime.datetime.fromtimestamp(value, tz=datetime.UTC)
                 return dt.isoformat()
             except (ValueError, OSError, OverflowError):
                 # Not a valid timestamp, return as-is
@@ -107,7 +107,7 @@ def _serialize_value(value: Any) -> Any:
         return None
 
 
-def deserialize_from_sfm(payload: Dict[str, Any]) -> Dict[str, Any]:
+def deserialize_from_sfm(payload: dict[str, Any]) -> dict[str, Any]:
     """Deserialize a payload from SFM response.
 
     Converts ISO 8601 strings back to datetime objects where appropriate.

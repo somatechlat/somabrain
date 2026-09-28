@@ -39,13 +39,13 @@ def coerce_to_epoch_seconds(value: Any) -> float:
                 "Unsupported timestamp format; expected seconds since epoch or ISO 8601"
             ) from exc
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
+            dt = dt.replace(tzinfo=datetime.UTC)
         return dt.timestamp()
 
     if isinstance(value, datetime.datetime):
         dt = value
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=datetime.timezone.utc)
+            dt = dt.replace(tzinfo=datetime.UTC)
         return dt.timestamp()
 
     raise ValueError(

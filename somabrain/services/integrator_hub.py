@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 # Re‑export the main hub implementation
-from .integrator_hub_triplet import IntegratorHub  # noqa: F401
+from .integrator_hub_triplet import IntegratorHub
 
-__all__ = ["IntegratorHub", "SoftmaxIntegrator", "DomainObs"]
+__all__ = ["DomainObs", "IntegratorHub", "SoftmaxIntegrator"]
 
 
 @dataclass
@@ -50,7 +49,7 @@ class SoftmaxIntegrator:
 
         self.tau = max(tau, 1e-9)  # avoid division by zero
         self.stale_seconds = stale_seconds
-        self._data: Dict[str, Dict[str, DomainObs]] = {}
+        self._data: dict[str, dict[str, DomainObs]] = {}
 
     def update(self, tenant: str, domain: str, obs: DomainObs) -> None:
         """Record an observation for *tenant*/*domain*.
@@ -61,7 +60,7 @@ class SoftmaxIntegrator:
 
     def _evict_stale(self, tenant: str, now: float) -> None:
         """Remove observations older than ``stale_seconds`` for *tenant*."""
-        recent: Dict[str, DomainObs] = {}
+        recent: dict[str, DomainObs] = {}
         for dom, obs in self._data.get(tenant, {}).items():
             if now - obs.ts <= self.stale_seconds:
                 recent[dom] = obs
@@ -69,7 +68,7 @@ class SoftmaxIntegrator:
 
     def snapshot(
         self, tenant: str
-    ) -> Tuple[str, Dict[str, float], Dict[str, DomainObs]]:
+    ) -> tuple[str, dict[str, float], dict[str, DomainObs]]:
         """Return ``(leader, weights, raw)`` for *tenant*.
 
         *leader* – domain with highest softmax weight (or ``"state"`` if no data).

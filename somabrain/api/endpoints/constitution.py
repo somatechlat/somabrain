@@ -2,7 +2,7 @@
 
 import logging
 import time
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 from django.http import HttpRequest
@@ -89,7 +89,7 @@ def validate(request: HttpRequest, req: ValidateRequest):
 
 
 @router.post("/load")
-def load_constitution(request: HttpRequest, payload: Dict[str, Any]):
+def load_constitution(request: HttpRequest, payload: dict[str, Any]):
     """Save a new constitution JSON to Redis."""
     engine = get_constitution_engine()
     if not engine:

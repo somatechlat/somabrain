@@ -30,7 +30,9 @@ except ImportError:  # pragma: no cover - dotenv is a project dependency
 
 from tests.integration.infra_config import AUTH, URLS
 
-BASE_URL = os.getenv("SOMABRAIN_API_BASE", URLS.get("somabrain") or "http://127.0.0.1:30101")
+BASE_URL = os.getenv(
+    "SOMABRAIN_API_BASE", URLS.get("somabrain") or "http://127.0.0.1:30101"
+)
 # infra_config URLS has no somabrain key in older revisions; fall back explicitly.
 if "somabrain" not in URLS:
     BASE_URL = os.getenv("SOMABRAIN_API_BASE", "http://127.0.0.1:30101")
@@ -64,7 +66,8 @@ def _service_available() -> bool:
 
 pytestmark = pytest.mark.skipif(
     not _service_available(),
-    reason="SomaBrain API not reachable at %s or SOMABRAIN_API_TOKEN missing" % BASE_URL,
+    reason="SomaBrain API not reachable at %s or SOMABRAIN_API_TOKEN missing"
+    % BASE_URL,
 )
 
 
@@ -106,13 +109,20 @@ def test_seam_remember_recall_roundtrip_returns_hit_with_score() -> None:
 
         # Read-your-writes: brief settle then recall.
         time.sleep(0.4)
-        r2 = _post(client, "/memory/recall", {"query": "sky is blue", "k": 5, "tenant_id": tenant}, tenant)
+        r2 = _post(
+            client,
+            "/memory/recall",
+            {"query": "sky is blue", "k": 5, "tenant_id": tenant},
+            tenant,
+        )
         assert r2.status_code == 200, r2.text
         result = r2.json()
         hits = result.get("results") or []
         assert hits, f"recall returned nothing: {result}"
         top = hits[0]
-        assert text in str(top.get("text") or top.get("payload", {}).get("text") or ""), top
+        assert text in str(
+            top.get("text") or top.get("payload", {}).get("text") or ""
+        ), top
         assert top.get("score") is not None and float(top["score"]) > 0, top
         # MemoryHit shape / legacy aliases
         assert top.get("store") in (None, "somafractalmemory", "somabrain"), top
@@ -141,7 +151,12 @@ def test_rich_write_shape_is_recalled_by_same_text() -> None:
         r2 = _post(
             client,
             "/memory/recall",
-            {"query": "revenue increased", "top_k": 5, "tenant": tenant, "namespace": "test"},
+            {
+                "query": "revenue increased",
+                "top_k": 5,
+                "tenant": tenant,
+                "namespace": "test",
+            },
             tenant,
         )
         assert r2.status_code == 200, r2.text
@@ -152,8 +167,17 @@ def test_rich_write_shape_is_recalled_by_same_text() -> None:
             if isinstance(seq, list):
                 for h in seq:
                     if isinstance(h, dict):
-                        texts.append(str(h.get("text") or h.get("task") or h.get("payload", {}).get("task") or ""))
-        assert any("quarterly revenue" in t or task_text[:20] in t for t in texts), texts
+                        texts.append(
+                            str(
+                                h.get("text")
+                                or h.get("task")
+                                or h.get("payload", {}).get("task")
+                                or ""
+                            )
+                        )
+        assert any(
+            "quarterly revenue" in t or task_text[:20] in t for t in texts
+        ), texts
 
 
 def test_cross_tenant_recall_is_isolated() -> None:
@@ -164,19 +188,30 @@ def test_cross_tenant_recall_is_isolated() -> None:
     text = f"tenant A private note {uuid.uuid4().hex[:8]}"
 
     with httpx.Client(base_url=BASE_URL, timeout=TIMEOUT) as client:
-        r = _post(client, "/memory/remember", {"text": text, "tenant_id": tenant_a, "coord": coord}, tenant_a)
+        r = _post(
+            client,
+            "/memory/remember",
+            {"text": text, "tenant_id": tenant_a, "coord": coord},
+            tenant_a,
+        )
         assert r.status_code == 200, r.text
         assert r.json().get("ok") is True
 
         time.sleep(0.3)
-        r2 = _post(client, "/memory/recall", {"query": "private note", "tenant_id": tenant_b}, tenant_b)
+        r2 = _post(
+            client,
+            "/memory/recall",
+            {"query": "private note", "tenant_id": tenant_b},
+            tenant_b,
+        )
         assert r2.status_code == 200, r2.text
         result = r2.json()
         hits = result.get("results") or []
         leaked = [
             h
             for h in hits
-            if isinstance(h, dict) and text in str(h.get("text") or h.get("payload", {}) or "")
+            if isinstance(h, dict)
+            and text in str(h.get("text") or h.get("payload", {}) or "")
         ]
         assert not leaked, f"cross-tenant leak: {leaked}"
 
@@ -188,18 +223,27 @@ def test_forget_removes_the_memory() -> None:
     text = f"temporary scratch note {uuid.uuid4().hex[:8]}"
 
     with httpx.Client(base_url=BASE_URL, timeout=TIMEOUT) as client:
-        r = _post(client, "/memory/remember", {"text": text, "tenant_id": tenant, "coord": coord}, tenant)
+        r = _post(
+            client,
+            "/memory/remember",
+            {"text": text, "tenant_id": tenant, "coord": coord},
+            tenant,
+        )
         assert r.status_code == 200, r.text
         assert r.json().get("ok") is True
 
         time.sleep(0.3)
-        r_forget = _post(client, "/memory/forget", {"coord": coord, "tenant_id": tenant}, tenant)
+        r_forget = _post(
+            client, "/memory/forget", {"coord": coord, "tenant_id": tenant}, tenant
+        )
         assert r_forget.status_code == 200, r_forget.text
         res = r_forget.json()
         assert res.get("ok") is True, res
 
         # Second forget reports absence rather than pretending to succeed.
-        r2 = _post(client, "/memory/forget", {"coord": coord, "tenant_id": tenant}, tenant)
+        r2 = _post(
+            client, "/memory/forget", {"coord": coord, "tenant_id": tenant}, tenant
+        )
         assert r2.status_code in (200, 404), r2.text
         res2 = r2.json()
         assert res2.get("ok") is False, res2
@@ -242,8 +286,14 @@ def test_brainbridge_dialect_content_memory_type_metadata() -> None:
             if isinstance(seq, list):
                 for h in seq:
                     if isinstance(h, dict):
-                        texts.append(str(h.get("text") or h.get("content") or h.get("task") or ""))
-        assert any("Bridge verification" in t or content[:20] in t for t in texts), texts
+                        texts.append(
+                            str(
+                                h.get("text") or h.get("content") or h.get("task") or ""
+                            )
+                        )
+        assert any(
+            "Bridge verification" in t or content[:20] in t for t in texts
+        ), texts
 
 
 def test_write_without_tenant_is_rejected() -> None:
@@ -255,7 +305,9 @@ def test_write_without_tenant_is_rejected() -> None:
             "X-Request-ID": f"seam-{uuid.uuid4().hex[:12]}",
             "Content-Type": "application/json",
         }
-        r = client.post("/memory/remember", json={"text": "orphan note"}, headers=headers)
+        r = client.post(
+            "/memory/remember", json={"text": "orphan note"}, headers=headers
+        )
         assert r.status_code in (400, 401, 403), r.text
 
 

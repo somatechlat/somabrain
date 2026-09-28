@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from cachetools import TTLCache
@@ -43,8 +44,8 @@ class MemoryRecord:
 
     id: str
     score: float
-    metadata: Dict
-    embedding: Optional[List[float]] = None
+    metadata: dict
+    embedding: list[float] | None = None
 
 
 @dataclass
@@ -53,10 +54,10 @@ class ContextBundle:
 
     query: str
     prompt: str
-    memories: List[MemoryRecord]
-    weights: List[float]
-    residual_vector: List[float]
-    working_memory_snapshot: List[Dict]
+    memories: list[MemoryRecord]
+    weights: list[float]
+    residual_vector: list[float]
+    working_memory_snapshot: list[dict]
 
 
 class ContextBuilder:
@@ -65,17 +66,17 @@ class ContextBuilder:
     def __init__(
         self,
         embed_fn: Callable[[str], Iterable[float]],
-        memory: Optional[object] = None,
-        memory_backend: Optional[MultiTenantMemory] = None,
-        weights: Optional[RetrievalWeights] = None,
-        working_memory: Optional["WorkingMemoryBuffer"] = None,
+        memory: object | None = None,
+        memory_backend: MultiTenantMemory | None = None,
+        weights: RetrievalWeights | None = None,
+        working_memory: WorkingMemoryBuffer | None = None,
     ) -> None:
         """Initialize the instance."""
 
         self._embed_fn = embed_fn
         self._memory = memory
         self._memory_backend = memory_backend
-        self._memory_service: Optional[MemoryService] = None
+        self._memory_service: MemoryService | None = None
         if self._memory is None and self._memory_backend is None:
             self._memory_backend = MultiTenantMemory(cfg=settings)
         self._weights = weights or RetrievalWeights(
@@ -102,7 +103,7 @@ class ContextBuilder:
         # Per-tenant overrides cache (learning.tenants.yaml)
         # Uses somabrain.context.tenant_overrides for loading
         # Bounded TTLCache: max 1000 tenants, 5 minute TTL for config reload
-        self._tenant_overrides_cache: TTLCache[str, Dict] = TTLCache(
+        self._tenant_overrides_cache: TTLCache[str, dict] = TTLCache(
             maxsize=1000, ttl=300
         )
 
@@ -176,11 +177,11 @@ class ContextBuilder:
             namespace = self._namespace_for_tenant(self._tenant_id)
             self._memory_service = MemoryService(self._memory_backend, namespace)
 
-    def build(  # noqa: PLR0914
+    def build(
         self,
         query: str,
         top_k: int = 5,
-        session_id: Optional[str] = None,
+        session_id: str | None = None,
     ) -> ContextBundle:
         """Execute build.
 
@@ -192,7 +193,7 @@ class ContextBuilder:
 
         embedding = self._embed(query)
         results = self._search(query, embedding, top_k)
-        memories: List[MemoryRecord] = [
+        memories: list[MemoryRecord] = [
             MemoryRecord(
                 id=r.get("id", ""),
                 score=float(r.get("score", 0.0)),
@@ -204,7 +205,7 @@ class ContextBuilder:
         weights = self._compute_weights(embedding, memories)
         prompt = self._build_prompt(query, memories)
         residual = self._build_residual(weights, memories)
-        wm_snapshot: List[Dict] = []
+        wm_snapshot: list[dict] = []
         if self._working_memory and session_id:
             item = {
                 "ts": time.time(),
@@ -230,7 +231,7 @@ class ContextBuilder:
         return self._weights
 
     # ------------------------------------------------------------------
-    def _embed(self, text: str) -> List[float]:
+    def _embed(self, text: str) -> list[float]:
         """Execute embed.
 
         Args:
@@ -266,8 +267,8 @@ class ContextBuilder:
         return self._memory_service
 
     def _search(
-        self, query_text: str, embedding: List[float], top_k: int
-    ) -> List[Dict[str, Any]]:
+        self, query_text: str, embedding: list[float], top_k: int
+    ) -> list[dict[str, Any]]:
         """Execute search.
 
         Args:
@@ -286,7 +287,7 @@ class ContextBuilder:
         except Exception:
             return []
 
-    def _hits_to_results(self, hits: Iterable[RecallHit]) -> List[Dict[str, Any]]:
+    def _hits_to_results(self, hits: Iterable[RecallHit]) -> list[dict[str, Any]]:
         """Execute hits to results.
 
         Args:
@@ -294,7 +295,7 @@ class ContextBuilder:
         """
 
         tenant = getattr(self, "_tenant_id", None) or None
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for idx, hit in enumerate(hits):
             payload = hit.payload if isinstance(hit.payload, dict) else {}
             if tenant and payload.get("tenant") not in (tenant, None):
@@ -313,9 +314,9 @@ class ContextBuilder:
 
     def _compute_weights(
         self,
-        query_vec: List[float],
-        memories: List[MemoryRecord],
-    ) -> List[float]:
+        query_vec: list[float],
+        memories: list[MemoryRecord],
+    ) -> list[float]:
         """Execute compute weights.
 
         Args:
@@ -332,7 +333,7 @@ class ContextBuilder:
         query = np.array(query_vec, dtype="float32")
         if np.linalg.norm(query) == 0:
             query = np.ones_like(query)
-        raw_scores: List[float] = []
+        raw_scores: list[float] = []
         for mem in memories:
             vec = np.array(mem.embedding or [], dtype="float32")
             cos = cosine_similarity(query, vec)
@@ -463,13 +464,13 @@ class ContextBuilder:
         return normalized.tolist()
 
     # ---------------- Tenant overrides helpers ----------------
-    def _get_entropy_cap_for_tenant(self, tenant_id: str) -> Optional[float]:
+    def _get_entropy_cap_for_tenant(self, tenant_id: str) -> float | None:
         """Read entropy_cap from SOMABRAIN_LEARNING_TENANTS_FILE or env overrides."""
         from somabrain.context.tenant_overrides import get_entropy_cap_for_tenant
 
         return get_entropy_cap_for_tenant(tenant_id, self._tenant_overrides_cache)
 
-    def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
+    def _build_prompt(self, query: str, memories: list[MemoryRecord]) -> str:
         """Execute build prompt.
 
         Args:
@@ -477,7 +478,7 @@ class ContextBuilder:
             memories: The memories.
         """
 
-        context_blocks: List[str] = []
+        context_blocks: list[str] = []
         for mem in memories:
             meta = mem.metadata or {}
             text = meta.get("text") or meta.get("content")
@@ -491,9 +492,9 @@ class ContextBuilder:
 
     def _build_residual(
         self,
-        weights: List[float],
-        memories: List[MemoryRecord],
-    ) -> List[float]:
+        weights: list[float],
+        memories: list[MemoryRecord],
+    ) -> list[float]:
         """Execute build residual.
 
         Args:
@@ -535,7 +536,7 @@ class ContextBuilder:
             damp = 0.0
         return float(max(self._recency_floor, min(1.0, damp)))
 
-    def _density_factor(self, metadata: Dict) -> float:
+    def _density_factor(self, metadata: dict) -> float:
         """Execute density factor.
 
         Args:

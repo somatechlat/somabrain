@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 
 from datetime import timedelta
 from enum import Enum
-from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -117,7 +116,7 @@ DEFAULT_POLICIES = [
 ]
 
 
-def get_tenant_policies(tenant_id: str) -> List[dict]:
+def get_tenant_policies(tenant_id: str) -> list[dict]:
     """Get tenant retention policies with defaults."""
     key = get_policies_key(tenant_id)
     policies = cache.get(key)
@@ -147,7 +146,7 @@ def get_tenant_policies(tenant_id: str) -> List[dict]:
     return policies
 
 
-def update_policy(policy_id: str, **updates) -> Optional[dict]:
+def update_policy(policy_id: str, **updates) -> dict | None:
     """Execute update policy.
 
     Args:
@@ -175,16 +174,16 @@ class RetentionPolicyOut(Schema):
     retention_days: int
     action: str
     enabled: bool
-    last_run_at: Optional[str]
+    last_run_at: str | None
     last_run_deleted: int
 
 
 class RetentionPolicyUpdate(Schema):
     """Update retention policy."""
 
-    retention_days: Optional[int] = None
-    action: Optional[str] = None
-    enabled: Optional[bool] = None
+    retention_days: int | None = None
+    action: str | None = None
+    enabled: bool | None = None
 
 
 class RetentionStats(Schema):
@@ -192,10 +191,10 @@ class RetentionStats(Schema):
 
     total_policies: int
     enabled_policies: int
-    last_cleanup_at: Optional[str]
+    last_cleanup_at: str | None
     data_deleted_today: int
     data_deleted_week: int
-    upcoming_deletions: Dict[str, int]
+    upcoming_deletions: dict[str, int]
 
 
 class CleanupResult(Schema):
@@ -213,7 +212,7 @@ class CleanupResult(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/policies", response=List[RetentionPolicyOut])
+@router.get("/{tenant_id}/policies", response=list[RetentionPolicyOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def list_retention_policies(
@@ -345,7 +344,7 @@ def update_retention_policy(
 # =============================================================================
 
 
-@router.post("/{tenant_id}/cleanup/run", response=List[CleanupResult])
+@router.post("/{tenant_id}/cleanup/run", response=list[CleanupResult])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_UPDATE.value)
 def run_cleanup(

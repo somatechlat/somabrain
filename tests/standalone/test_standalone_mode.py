@@ -107,7 +107,7 @@ class TestStandaloneImports:
     def test_schemas_importable(self):
         """Verify schemas package can be imported."""
         try:
-            from somabrain.schemas import RecallRequest, MemoryPayload
+            from somabrain.schemas import MemoryPayload, RecallRequest
 
             assert RecallRequest is not None
             assert MemoryPayload is not None

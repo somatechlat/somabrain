@@ -9,15 +9,13 @@ VIBE requirement for a single source of truth.
 
 from __future__ import annotations
 
-from typing import Tuple
-
 import numpy as np
 from django.conf import settings
 
 from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
 
 
-def _load_action_operator() -> Tuple[callable, int]:
+def _load_action_operator() -> tuple[callable, int]:
     """Load the Laplacian operator for the *action* domain.
 
     The environment variable ``SOMABRAIN_GRAPH_FILE_ACTION`` is consulted first;
@@ -58,7 +56,7 @@ class ActionPredictor(HeatDiffusionPredictor):
 
     def predict(
         self, source_idx: int, observed: np.ndarray
-    ) -> Tuple[np.ndarray, float, float]:
+    ) -> tuple[np.ndarray, float, float]:
         """Run a single prediction step for the action domain.
 
         Parameters

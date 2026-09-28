@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 def _repo_root() -> Path:
@@ -16,7 +16,7 @@ def _repo_root() -> Path:
     return here.parent.parent.parent
 
 
-def load_schema(name: str) -> Dict[str, Any]:
+def load_schema(name: str) -> dict[str, Any]:
     """Strict Avro schema loader.
 
     Resolves `proto/cog/<name>.avsc` and returns JSON dict. Raises if the file
@@ -39,7 +39,7 @@ def load_schema(name: str) -> Dict[str, Any]:
     return data
 
 
-def load_all() -> Dict[str, Dict[str, Any]]:
+def load_all() -> dict[str, dict[str, Any]]:
     """Load a fixed set of required schemas only.
 
     Strict mode: no optional suppression; missing required schema raises.
@@ -55,10 +55,10 @@ def load_all() -> Dict[str, Dict[str, Any]]:
         "option_created",
         "option_updated",
     ]
-    out: Dict[str, Dict[str, Any]] = {}
+    out: dict[str, dict[str, Any]] = {}
     for name in required:
         out[name] = load_schema(name)
     return out
 
 
-__all__ = ["load_schema", "load_all"]
+__all__ = ["load_all", "load_schema"]

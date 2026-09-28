@@ -10,7 +10,7 @@ the full AAAS schema.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -20,7 +20,6 @@ from somabrain.aaas.auth import APIKeyAuth as _APIKeyAuth
 from somabrain.aaas.auth import GoogleOAuth, JWTAuth
 from somabrain.api.standalone_auth import StandaloneAPIKeyAuth
 from somabrain.core.security import legacy_auth as _legacy_auth
-
 
 # Canonical defense-in-depth auth helpers used by endpoints.
 require_auth = _legacy_auth.require_auth
@@ -42,7 +41,7 @@ class _AdaptiveAPIKeyAuth(HttpBearer):
 
     def authenticate(
         self, request: HttpRequest, token: str
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         if getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None) == "standalone":
             return self._standalone.authenticate(request, token)
         return self._aaas.authenticate(request, token)

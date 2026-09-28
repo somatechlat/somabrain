@@ -23,13 +23,12 @@ operators can alert on the failure.
 from __future__ import annotations
 
 import logging
-from typing import List
 
+from somabrain.memory.milvus_client import MilvusClient
 from somabrain.metrics import (
     MILVUS_RECONCILE_MISSING,
     MILVUS_RECONCILE_ORPHAN,
 )
-from somabrain.memory.milvus_client import MilvusClient
 from somabrain.oak.option_manager import option_manager
 
 logger = logging.getLogger(__name__)
@@ -80,13 +79,13 @@ def _memory_pool():
         pool = MultiTenantMemory(cfg)
         if runtime_mod is not None:
             try:
-                setattr(runtime_mod, "mt_memory", pool)
+                runtime_mod.mt_memory = pool
             except Exception as exc:
                 logger.debug("Failed to cache mt_memory on runtime module: %s", exc)
     return pool
 
 
-def _tenant_list() -> List[str]:
+def _tenant_list() -> list[str]:
     """Return a list of tenant identifiers known to the memory pool.
 
     The memory pool (``mt_memory``) exposes a ``_pool`` attribute mapping
@@ -94,7 +93,7 @@ def _tenant_list() -> List[str]:
     present we fall back to the public ``tenants()`` helper.
     """
     mt_memory = _memory_pool()
-    if hasattr(mt_memory, "_pool") and getattr(mt_memory, "_pool"):
+    if hasattr(mt_memory, "_pool") and mt_memory._pool:
         return list(mt_memory._pool.keys())
     if hasattr(mt_memory, "tenants"):
         return mt_memory.tenants() or []

@@ -9,4 +9,4 @@ from .collaboration import CollaborationManager
 from .emotion import EmotionModel
 from .planning import Planner
 
-__all__ = ["Planner", "EmotionModel", "CollaborationManager"]
+__all__ = ["CollaborationManager", "EmotionModel", "Planner"]

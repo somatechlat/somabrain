@@ -8,17 +8,17 @@ artifacts.
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 # import the project's metrics module (already registers metrics into a registry)
 from somabrain import metrics as _m
 
 
-def snapshot() -> Dict[str, Any]:
+def snapshot() -> dict[str, Any]:
     # Build a small mapping of metric name -> {type, value}
     """Execute snapshot."""
 
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     # The metrics module exposes objects; we access them directly
     try:
         out["unbind_path_total"] = {

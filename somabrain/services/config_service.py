@@ -12,8 +12,9 @@ from __future__ import annotations
 import asyncio
 import copy
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any
 
 # The original Config model was removed; use the unified Settings for type hints.
 from django.conf import settings as Config
@@ -26,7 +27,7 @@ class ConfigEvent:
     version: int
     tenant: str
     namespace: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -39,9 +40,9 @@ class AuditRecord:
     namespace: str
     actor: str
     timestamp: float
-    patch: Dict[str, Any]
-    before: Dict[str, Any]
-    after: Dict[str, Any]
+    patch: dict[str, Any]
+    before: dict[str, Any]
+    after: dict[str, Any]
 
 
 class ConfigMergeError(RuntimeError):
@@ -61,18 +62,18 @@ class ConfigService:
 
         self._base_supplier = base_supplier
         self._clock = clock or time.time
-        self._global_layer: Dict[str, Any] = {}
-        self._tenant_layer: Dict[str, Dict[str, Any]] = {}
-        self._namespace_layer: Dict[Tuple[str, str], Dict[str, Any]] = {}
+        self._global_layer: dict[str, Any] = {}
+        self._tenant_layer: dict[str, dict[str, Any]] = {}
+        self._namespace_layer: dict[tuple[str, str], dict[str, Any]] = {}
         self._version = 0
-        self._audit_log: List[AuditRecord] = []
-        self._subscribers: List[asyncio.Queue[ConfigEvent]] = []
+        self._audit_log: list[AuditRecord] = []
+        self._subscribers: list[asyncio.Queue[ConfigEvent]] = []
         self._lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    async def patch_global(self, patch: Dict[str, Any], *, actor: str) -> ConfigEvent:
+    async def patch_global(self, patch: dict[str, Any], *, actor: str) -> ConfigEvent:
         """Execute patch global.
 
         Args:
@@ -82,7 +83,7 @@ class ConfigService:
         return await self._apply_patch("global", patch, actor, "", "")
 
     async def patch_tenant(
-        self, tenant: str, patch: Dict[str, Any], *, actor: str
+        self, tenant: str, patch: dict[str, Any], *, actor: str
     ) -> ConfigEvent:
         """Execute patch tenant.
 
@@ -99,7 +100,7 @@ class ConfigService:
         self,
         tenant: str,
         namespace: str,
-        patch: Dict[str, Any],
+        patch: dict[str, Any],
         *,
         actor: str,
     ) -> ConfigEvent:
@@ -122,7 +123,7 @@ class ConfigService:
         self._subscribers.append(queue)
         return queue
 
-    def audit_log(self, limit: Optional[int] = None) -> List[AuditRecord]:
+    def audit_log(self, limit: int | None = None) -> list[AuditRecord]:
         """Execute audit log.
 
         Args:
@@ -133,7 +134,7 @@ class ConfigService:
             return list(self._audit_log)
         return self._audit_log[-limit:]
 
-    def effective_config(self, tenant: str, namespace: str) -> Dict[str, Any]:
+    def effective_config(self, tenant: str, namespace: str) -> dict[str, Any]:
         """Execute effective config.
 
         Args:
@@ -160,7 +161,7 @@ class ConfigService:
     async def _apply_patch(
         self,
         scope: str,
-        patch: Dict[str, Any],
+        patch: dict[str, Any],
         actor: str,
         tenant: str,
         namespace: str,
@@ -210,7 +211,7 @@ class ConfigService:
 
     def _target_and_before(
         self, scope: str, tenant: str, namespace: str
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """Execute target and before.
 
         Args:
@@ -231,7 +232,7 @@ class ConfigService:
         raise ConfigMergeError(f"unknown scope: {scope}")
 
     def _set_layer(
-        self, scope: str, tenant: str, namespace: str, data: Dict[str, Any]
+        self, scope: str, tenant: str, namespace: str, data: dict[str, Any]
     ) -> None:
         """Execute set layer.
 
@@ -250,7 +251,7 @@ class ConfigService:
             self._namespace_layer[(tenant, namespace)] = data
 
     @staticmethod
-    def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
+    def _deep_merge(base: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
         """Execute deep merge.
 
         Args:
@@ -268,7 +269,7 @@ class ConfigService:
         return base
 
     @staticmethod
-    def _config_to_dict(cfg: Config) -> Dict[str, Any]:
+    def _config_to_dict(cfg: Config) -> dict[str, Any]:
         """Execute config to dict.
 
         Args:
@@ -281,7 +282,7 @@ class ConfigService:
             return copy.deepcopy(cfg.__dict__)
 
     @staticmethod
-    def _validate(data: Dict[str, Any]) -> None:
+    def _validate(data: dict[str, Any]) -> None:
         # Minimal validation: ensure numeric values are finite when present.
         """Execute validate.
 
@@ -308,8 +309,8 @@ class ConfigService:
 
 
 __all__ = [
-    "ConfigEvent",
     "AuditRecord",
+    "ConfigEvent",
     "ConfigMergeError",
     "ConfigService",
 ]

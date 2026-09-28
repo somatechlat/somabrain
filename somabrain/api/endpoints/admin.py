@@ -7,7 +7,6 @@ Service management, outbox, quota, and feature flag endpoints.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 from xmlrpc.client import Error as XMLRPCError
 from xmlrpc.client import ServerProxy
 
@@ -133,8 +132,8 @@ def service_restart(request: HttpRequest, name: str):
 def admin_list_outbox(
     request: HttpRequest,
     status: str = "pending",
-    tenant: Optional[str] = None,
-    topic_filter: Optional[str] = None,
+    tenant: str | None = None,
+    topic_filter: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
@@ -202,7 +201,7 @@ def admin_list_quotas(
     request: HttpRequest,
     limit: int = 100,
     offset: int = 0,
-    tenant_filter: Optional[str] = None,
+    tenant_filter: str | None = None,
 ):
     """List quota status for all tenants."""
     from somabrain.quotas import QuotaConfig, QuotaManager

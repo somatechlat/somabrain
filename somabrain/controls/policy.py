@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from django.conf import settings
 
@@ -46,7 +46,7 @@ class PolicyDecision:
 
     decision: str  # allow|deny|review
     reason: str
-    hints: Dict[str, Any]
+    hints: dict[str, Any]
 
 
 class PolicyEngine:
@@ -68,7 +68,7 @@ class PolicyEngine:
             return False
         return bool(getattr(settings, "SOMABRAIN_KILL_SWITCH", False))
 
-    def evaluate(self, ctx: Dict[str, Any]) -> PolicyDecision:
+    def evaluate(self, ctx: dict[str, Any]) -> PolicyDecision:
         # Global kill switch
         """Execute evaluate.
 

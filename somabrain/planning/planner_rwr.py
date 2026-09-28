@@ -11,7 +11,7 @@ Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 def rwr_plan(
     task_key: str,
     mem,
-    steps: Optional[int] = None,
-    restart: Optional[float] = None,
-    universe: Optional[str] = None,
-    max_items: Optional[int] = None,
-    graph_client: Optional["MemoryClient"] = None,
-) -> List[str]:
+    steps: int | None = None,
+    restart: float | None = None,
+    universe: str | None = None,
+    max_items: int | None = None,
+    graph_client: MemoryClient | None = None,
+) -> list[str]:
     """
     Random Walk with Restart planning using EXISTING MemoryClient.
 
@@ -112,7 +112,7 @@ def rwr_plan(
     )
 
     # Extract task strings
-    results: List[str] = []
+    results: list[str] = []
     for idx, prob in ranked[:max_items]:
         coord_str = node_list[idx]
         node_data = nodes[coord_str]
@@ -123,10 +123,10 @@ def rwr_plan(
 
 
 def _build_local_subgraph(
-    graph: "MemoryClient",
-    start_coord: Tuple[float, ...],
+    graph: MemoryClient,
+    start_coord: tuple[float, ...],
     max_nodes: int,
-) -> Tuple[Dict[str, Dict], List[Tuple[str, str, float]]]:
+) -> tuple[dict[str, dict], list[tuple[str, str, float]]]:
     """Build local subgraph using MemoryClient.get_neighbors().
 
     Returns:
@@ -134,8 +134,8 @@ def _build_local_subgraph(
         - nodes: {coord_str: {coord, task, ...}}
         - edges: [(from_str, to_str, strength), ...]
     """
-    nodes: Dict[str, Dict] = {}
-    edges: List[Tuple[str, str, float]] = []
+    nodes: dict[str, dict] = {}
+    edges: list[tuple[str, str, float]] = []
     queue = [start_coord]
 
     while queue and len(nodes) < max_nodes:
@@ -172,9 +172,9 @@ def _build_local_subgraph(
 
 
 def _build_transition_matrix(
-    nodes: Dict[str, Dict],
-    edges: List[Tuple[str, str, float]],
-    node_list: List[str],
+    nodes: dict[str, dict],
+    edges: list[tuple[str, str, float]],
+    node_list: list[str],
 ) -> np.ndarray:
     """Build row-stochastic transition matrix for RWR.
 

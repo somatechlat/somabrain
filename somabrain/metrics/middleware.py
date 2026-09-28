@@ -9,8 +9,9 @@ This module provides Django Ninja integration for metrics:
 from __future__ import annotations
 
 import time
+from collections.abc import Callable, Iterable
 from threading import Lock
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from somabrain.metrics.core import (
     CONTENT_TYPE_LATEST,

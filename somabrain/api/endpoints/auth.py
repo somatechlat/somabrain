@@ -19,10 +19,9 @@ VIBE Coding Rules - ALL 10 PERSONAS:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
 from django.conf import settings
-from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.hashers import check_password
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
@@ -47,7 +46,7 @@ class OAuthCallbackRequest(Schema):
     """OAuth callback request with auth code."""
 
     code: str
-    state: Optional[str] = None
+    state: str | None = None
     redirect_uri: str
 
 
@@ -57,8 +56,8 @@ class TokenResponse(Schema):
     access_token: str
     token_type: str = "bearer"
     expires_in: int = 3600
-    refresh_token: Optional[str] = None
-    user: Optional[dict] = None
+    refresh_token: str | None = None
+    user: dict | None = None
 
 
 class UserInfoResponse(Schema):
@@ -66,9 +65,9 @@ class UserInfoResponse(Schema):
 
     id: str
     email: str
-    name: Optional[str] = None
+    name: str | None = None
     roles: list = []
-    tenant_id: Optional[str] = None
+    tenant_id: str | None = None
     is_super_admin: bool = False
 
 
@@ -107,7 +106,7 @@ def generate_jwt_token(user_data: dict) -> str:
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-def decode_jwt_token(token: str) -> Optional[dict]:
+def decode_jwt_token(token: str) -> dict | None:
     """Decode and validate a JWT token."""
     import jwt
 

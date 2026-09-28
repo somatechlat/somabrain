@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 from django.conf import settings
 
@@ -72,7 +71,7 @@ class EmotionModel:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def update(self, stimulus: Tuple[float, float, float]) -> None:
+    def update(self, stimulus: tuple[float, float, float]) -> None:
         """Apply a stimulus to the current emotional vector.
 
         ``stimulus`` is a ``(valence, arousal, dominance)`` tuple where each
@@ -106,7 +105,7 @@ class EmotionModel:
             self.state.dominance = 0.0
         logger.debug("Emotion decay – after: %s", self.state)
 
-    def as_dict(self) -> Dict[str, float]:
+    def as_dict(self) -> dict[str, float]:
         """Return the current state as a serialisable ``dict``."""
         return {
             "valence": self.state.valence,

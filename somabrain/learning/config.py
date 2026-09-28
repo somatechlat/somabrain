@@ -9,10 +9,6 @@ This module contains the configuration dataclasses used by the AdaptationEngine:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
 
 try:
     from django.conf import settings
@@ -94,7 +90,7 @@ class AdaptationGains:
     )
 
     @classmethod
-    def from_settings(cls) -> "AdaptationGains":
+    def from_settings(cls) -> AdaptationGains:
         """Construct gains from centralized settings only."""
         return cls(
             alpha=float(
@@ -172,7 +168,7 @@ class AdaptationConstraints:
     )
 
     @classmethod
-    def from_settings(cls) -> "AdaptationConstraints":
+    def from_settings(cls) -> AdaptationConstraints:
         """Construct constraints from centralized settings only."""
         return cls(
             alpha_min=float(

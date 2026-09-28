@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from django.conf import settings
 
@@ -65,7 +65,7 @@ def _redis_client():
         return None
 
 
-def _serde() -> Optional[AvroSerde]:
+def _serde() -> AvroSerde | None:
     """Execute serde."""
 
     if load_schema is None or AvroSerde is None:
@@ -76,7 +76,7 @@ def _serde() -> Optional[AvroSerde]:
         return None
 
 
-def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
+def _decode(payload: bytes, serde: AvroSerde | None) -> dict[str, Any] | None:
     """Execute decode.
 
     Args:

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import threading
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 
@@ -30,13 +30,13 @@ class AnnConfig:
     hnsw_ef_construction: int = 200
     hnsw_ef_search: int = 128
 
-    def with_updates(self, **kwargs: object) -> "AnnConfig":
+    def with_updates(self, **kwargs: object) -> AnnConfig:
         """Execute with updates."""
 
         return replace(self, **kwargs)
 
     @classmethod
-    def from_settings(cls) -> "AnnConfig":
+    def from_settings(cls) -> AnnConfig:
         """Create AnnConfig from centralized settings."""
         from django.conf import settings
 
@@ -56,7 +56,7 @@ class SimpleAnnIndex(CleanupIndex):
         """Initialize the instance."""
 
         self._dim = int(dim)
-        self._vectors: Dict[str, np.ndarray] = {}
+        self._vectors: dict[str, np.ndarray] = {}
         self._lock = threading.Lock()
 
     def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
@@ -81,7 +81,7 @@ class SimpleAnnIndex(CleanupIndex):
         with self._lock:
             self._vectors.pop(anchor_id, None)
 
-    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
+    def search(self, query: np.ndarray, top_k: int) -> list[tuple[str, float]]:
         """Execute search.
 
         Args:
@@ -99,12 +99,12 @@ class SimpleAnnIndex(CleanupIndex):
         return scores[: max(0, int(top_k))]
 
     def configure(
-        self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
+        self, *, top_k: int | None = None, ef_search: int | None = None
     ) -> None:
         # Simple backend does not require tuning.
         """Execute configure."""
 
-        return None
+        return
 
 
 class HNSWAnnIndex(CleanupIndex):
@@ -125,8 +125,8 @@ class HNSWAnnIndex(CleanupIndex):
         self._index.set_ef(ef_search)
         self._lock = threading.Lock()
         self._id_counter = 0
-        self._ids: Dict[str, int] = {}
-        self._deleted: Dict[str, int] = {}
+        self._ids: dict[str, int] = {}
+        self._deleted: dict[str, int] = {}
 
     def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
         """Execute upsert.
@@ -158,7 +158,7 @@ class HNSWAnnIndex(CleanupIndex):
             if idx is not None:
                 self._index.mark_deleted(idx)
 
-    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
+    def search(self, query: np.ndarray, top_k: int) -> list[tuple[str, float]]:
         """Execute search.
 
         Args:
@@ -175,7 +175,7 @@ class HNSWAnnIndex(CleanupIndex):
             label_list = labels[0]
             dist_list = distances[0]
             inv_map = {idx: anchor for anchor, idx in self._ids.items()}
-            results: List[Tuple[str, float]] = []
+            results: list[tuple[str, float]] = []
             for idx, dist in zip(label_list, dist_list):
                 anchor = inv_map.get(int(idx))
                 if anchor is None:
@@ -187,7 +187,7 @@ class HNSWAnnIndex(CleanupIndex):
         return results[:k]
 
     def configure(
-        self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
+        self, *, top_k: int | None = None, ef_search: int | None = None
     ) -> None:
         """Execute configure."""
 
@@ -206,7 +206,7 @@ class HNSWAnnIndex(CleanupIndex):
 
 def create_cleanup_index(
     dim: int,
-    cfg: Optional[AnnConfig] = None,
+    cfg: AnnConfig | None = None,
     *,
     tenant_id: str = "default",
     namespace: str = "cleanup",
@@ -257,7 +257,7 @@ def _normalize(vec: np.ndarray | Iterable[float], dim: int) -> np.ndarray:
 __all__ = [
     "AnnConfig",
     "CleanupIndex",
-    "SimpleAnnIndex",
     "HNSWAnnIndex",
+    "SimpleAnnIndex",
     "create_cleanup_index",
 ]

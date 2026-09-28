@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Derive repo root by climbing until `proto/cog` exists.
 _here = Path(__file__).resolve()
@@ -21,7 +21,7 @@ for _ in range(10):  # cap climb depth
 _BASE = _root / "proto" / "cog"
 
 
-def load_schema(name: str) -> Dict[str, Any]:
+def load_schema(name: str) -> dict[str, Any]:
     """Execute load schema.
 
     Args:

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import List
 
 import pytest
 
@@ -141,7 +140,7 @@ class TestCoRecalledLinks:
         **Feature: deep-memory-integration**
         **Validates: Requirements B1.4**
         """
-        coords: List[tuple] = []
+        coords: list[tuple] = []
 
         # Calculate expected links
         expected_links = len(coords) * (len(coords) - 1) // 2
@@ -237,12 +236,11 @@ class TestGraphAugmentedRecall:
             assert b_neighbor is not None, "B should be a neighbor of A"
 
         # Now test the boost logic with real RecallHit objects
-        from somabrain.memory.recall_ops import recall_with_graph_boost
-        from somabrain.memory.types import RecallHit
-
         # Create a minimal graph client that queries real SFM
         from somabrain.memory.client import MemoryClient
+        from somabrain.memory.recall_ops import recall_with_graph_boost
         from somabrain.memory.transport import MemoryHTTPTransport
+        from somabrain.memory.types import RecallHit
 
         transport = MemoryHTTPTransport(
             base_url=sfm_url,

@@ -36,7 +36,7 @@ SALIENCE_STORE = Counter(
 SALIENCE_HIST = Histogram(
     "somabrain_salience_score",
     "Salience score distribution",
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
     registry=registry,
 )
 
@@ -78,7 +78,7 @@ FD_ENERGY_CAPTURE = Gauge(
 FD_RESIDUAL = Histogram(
     "somabrain_fd_residual_ratio",
     "Residual energy ratio per vector for FD salience",
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
     registry=registry,
 )
 
@@ -109,7 +109,7 @@ SCORER_COMPONENT = Histogram(
 SCORER_FINAL = Histogram(
     "somabrain_scorer_final",
     "Unified scorer combined score",
-    buckets=[i / 20.0 for i in range(0, 21)],
+    buckets=[i / 20.0 for i in range(21)],
     registry=registry,
 )
 

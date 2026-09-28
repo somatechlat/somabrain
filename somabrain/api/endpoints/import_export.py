@@ -19,7 +19,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 import csv
 import io
 import json
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -88,7 +87,7 @@ def update_job(job_id: str, **updates):
     return job
 
 
-def get_job(job_id: str) -> Optional[dict]:
+def get_job(job_id: str) -> dict | None:
     """Retrieve job.
 
     Args:
@@ -111,8 +110,8 @@ class ExportJobOut(Schema):
     status: str
     progress: int
     created_at: str
-    completed_at: Optional[str]
-    result_url: Optional[str]
+    completed_at: str | None
+    result_url: str | None
 
 
 class ImportJobOut(Schema):
@@ -124,9 +123,9 @@ class ImportJobOut(Schema):
     progress: int
     total_items: int
     processed_items: int
-    errors: List[str]
+    errors: list[str]
     created_at: str
-    completed_at: Optional[str]
+    completed_at: str | None
 
 
 class ExportRequest(Schema):
@@ -147,7 +146,7 @@ class ImportPreview(Schema):
     items_count: int
     users_count: int
     webhooks_count: int
-    errors: List[str]
+    errors: list[str]
 
 
 # =============================================================================
@@ -346,11 +345,11 @@ def preview_import(
         items_count = users_count + webhooks_count
 
     except json.JSONDecodeError as e:
-        errors.append(f"Invalid JSON: {str(e)}")
+        errors.append(f"Invalid JSON: {e!s}")
         file_format = "json"
         items_count = 0
     except Exception as e:
-        errors.append(f"Error parsing file: {str(e)}")
+        errors.append(f"Error parsing file: {e!s}")
         file_format = "unknown"
         items_count = 0
 
@@ -428,7 +427,7 @@ def start_import(
                     )
                 processed += 1
             except Exception as e:
-                errors.append(f"Error importing user {email}: {str(e)}")
+                errors.append(f"Error importing user {email}: {e!s}")
 
         # Import webhooks
         webhooks_data = data.get("webhooks", [])
@@ -457,12 +456,12 @@ def start_import(
                 )
                 processed += 1
             except Exception as e:
-                errors.append(f"Error importing webhook: {str(e)}")
+                errors.append(f"Error importing webhook: {e!s}")
 
     except json.JSONDecodeError as e:
-        errors.append(f"Invalid JSON: {str(e)}")
+        errors.append(f"Invalid JSON: {e!s}")
     except Exception as e:
-        errors.append(f"Import error: {str(e)}")
+        errors.append(f"Import error: {e!s}")
 
     # Update job
     status = "completed" if len(errors) == 0 else "completed_with_errors"

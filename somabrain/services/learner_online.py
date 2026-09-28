@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
 from django.conf import settings
@@ -41,7 +41,7 @@ class LearnerService:
         # Load tenant overrides from the optional YAML file.
         """Initialize the instance."""
 
-        self._tenant_overrides: Dict[str, Dict[str, Any]] = {}
+        self._tenant_overrides: dict[str, dict[str, Any]] = {}
         overrides_path = settings.SOMABRAIN_LEARNING_TENANTS_FILE
         if overrides_path:
             try:
@@ -53,9 +53,9 @@ class LearnerService:
         # Producer is set by the run loop or injected by tests.
         self._producer: Any = None
         # Gauge for next‑event regret – created lazily.  Tests may monkey‑patch.
-        self._g_next_regret: Optional[Any] = None
+        self._g_next_regret: Any | None = None
         # Track last processed timestamp per tenant for health/lag metrics
-        self._last_seen_ts: Dict[str, float] = {}
+        self._last_seen_ts: dict[str, float] = {}
 
         # Settings singleton for topic names.
         self._settings = settings
@@ -72,9 +72,9 @@ class LearnerService:
         behavior of earlier fallback implementations.
         """
         # Use centralized Settings for Kafka bootstrap; no env fallback needed.
-        bootstrap = getattr(
-            self._settings, "KAFKA_BOOTSTRAP_SERVERS", ""
-        ) or getattr(self._settings, "SOMA_KAFKA_BOOTSTRAP", "")
+        bootstrap = getattr(self._settings, "KAFKA_BOOTSTRAP_SERVERS", "") or getattr(
+            self._settings, "SOMA_KAFKA_BOOTSTRAP", ""
+        )
         if not bootstrap:
             raise RuntimeError(
                 "LearnerService requires Kafka bootstrap servers "
@@ -144,7 +144,7 @@ class LearnerService:
     # ---------------------------------------------------------------------
     # Internal helpers used by the test suite
     # ---------------------------------------------------------------------
-    def _process_event(self, event: Dict[str, Any]) -> None:
+    def _process_event(self, event: dict[str, Any]) -> None:
         """Validate and process a ``next_event`` payload; emit metrics."""
         t_start = time.perf_counter()
         tenant = str(event.get("tenant") or "default")
@@ -229,7 +229,7 @@ class LearnerService:
             self._settings, "SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates"
         )
 
-        def _delivery_report(err: Optional[Exception], msg: Any) -> None:
+        def _delivery_report(err: Exception | None, msg: Any) -> None:
             """Execute delivery report.
 
             Args:

@@ -19,7 +19,6 @@ from __future__ import annotations
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Tuple
 
 import numpy as np
 import pytest
@@ -58,7 +57,7 @@ class TestThroughputCapacity:
         # Create shared WM (thread-safe operations)
         wm = WorkingMemory(dim=512, capacity=200)
 
-        def admit_item(i: int) -> Tuple[int, bool]:
+        def admit_item(i: int) -> tuple[int, bool]:
             """Execute admit item.
 
             Args:
@@ -103,7 +102,7 @@ class TestThroughputCapacity:
         wm = WorkingMemory(dim=512, capacity=1100)  # Slightly larger than test size
 
         start = time.perf_counter()
-        stored_ids: List[str] = []
+        stored_ids: list[str] = []
 
         # Store 1000 memories
         for i in range(1000):
@@ -169,8 +168,9 @@ class TestThroughputCapacity:
 
         Note: This test runs a shortened version (30 seconds) for CI.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import gc
+
+        from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(dim=512, capacity=100)
 
@@ -215,7 +215,7 @@ class TestThroughputCapacity:
         wm = WorkingMemory(dim=512, capacity=100)
 
         # Normal load
-        normal_latencies: List[float] = []
+        normal_latencies: list[float] = []
         for i in range(50):
             vec = np.random.randn(512).astype(np.float32)
             vec = vec / np.linalg.norm(vec)
@@ -238,7 +238,7 @@ class TestThroughputCapacity:
         _ = time.perf_counter() - spike_start
 
         # Recovery check - latency should return to normal
-        recovery_latencies: List[float] = []
+        recovery_latencies: list[float] = []
         for i in range(50):
             vec = np.random.randn(512).astype(np.float32)
             vec = vec / np.linalg.norm(vec)

@@ -11,7 +11,6 @@ VIBE COMPLIANT:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from django.conf import settings
 
@@ -21,8 +20,8 @@ from somabrain.services.parameter_supervisor import MetricsSnapshot, ParameterSu
 logger = logging.getLogger(__name__)
 
 # Singletons
-_config_service: Optional[ConfigService] = None
-_supervisor: Optional[ParameterSupervisor] = None
+_config_service: ConfigService | None = None
+_supervisor: ParameterSupervisor | None = None
 
 
 def get_config_service() -> ConfigService:

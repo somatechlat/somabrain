@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Optional
+from typing import Any
 
 try:  # pragma: no cover - optional dependency guard
     from redis import Redis
@@ -45,7 +45,7 @@ class RedisCache:
         return key
 
     # Public API -------------------------------------------------------
-    def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> None:
+    def set(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
         """Execute set.
 
         Args:
@@ -60,7 +60,7 @@ class RedisCache:
         else:
             self._redis.set(name=self._key(key), value=payload, ex=int(ttl_seconds))
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """Execute get.
 
         Args:
@@ -84,7 +84,7 @@ class RedisCache:
 
         self._redis.delete(self._key(key))
 
-    def incr(self, key: str, ttl_seconds: Optional[int] = None) -> int:
+    def incr(self, key: str, ttl_seconds: int | None = None) -> int:
         """Execute incr.
 
         Args:

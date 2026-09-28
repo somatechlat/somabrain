@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -47,11 +47,11 @@ class PlanRequestContext:
     task_key: str
     task_vec: np.ndarray
     start_coord: tuple
-    focus_vec: Optional[np.ndarray] = None
+    focus_vec: np.ndarray | None = None
     time_budget_ms: int = 50
     max_steps: int = 5
-    rel_types: List[str] = field(default_factory=list)
-    universe: Optional[str] = None
+    rel_types: list[str] = field(default_factory=list)
+    universe: str | None = None
 
 
 @dataclass
@@ -67,14 +67,14 @@ class CompositePlan:
         elapsed_ms: Time taken in milliseconds
     """
 
-    graph_plan: List[str] = field(default_factory=list)
-    context_plan: List[str] = field(default_factory=list)
-    option_plan: List[str] = field(default_factory=list)
-    action_plan: List[str] = field(default_factory=list)
-    diagnostics: Dict[str, Any] = field(default_factory=dict)
+    graph_plan: list[str] = field(default_factory=list)
+    context_plan: list[str] = field(default_factory=list)
+    option_plan: list[str] = field(default_factory=list)
+    action_plan: list[str] = field(default_factory=list)
+    diagnostics: dict[str, Any] = field(default_factory=dict)
     elapsed_ms: float = 0.0
 
-    def to_legacy_steps(self) -> List[str]:
+    def to_legacy_steps(self) -> list[str]:
         """Backward-compatible flat list (Requirement 6.5).
 
         Returns the first non-empty plan in priority order:
@@ -102,7 +102,7 @@ class PlanEngine:
         self,
         cfg: Any,
         mem_client: Any = None,
-        graph_client: Optional["MemoryClient"] = None,
+        graph_client: MemoryClient | None = None,
     ):
         """Initialize PlanEngine.
 
@@ -158,7 +158,7 @@ class PlanEngine:
 
         return result
 
-    def _execute_bfs(self, ctx: PlanRequestContext) -> List[str]:
+    def _execute_bfs(self, ctx: PlanRequestContext) -> list[str]:
         """Execute BFS planning using REAL implementation."""
         return plan_from_graph(
             task_key=ctx.task_key,
@@ -169,7 +169,7 @@ class PlanEngine:
             graph_client=self._graph,
         )
 
-    def _execute_rwr(self, ctx: PlanRequestContext) -> List[str]:
+    def _execute_rwr(self, ctx: PlanRequestContext) -> list[str]:
         """Execute RWR planning using REAL implementation."""
         return rwr_plan(
             task_key=ctx.task_key,

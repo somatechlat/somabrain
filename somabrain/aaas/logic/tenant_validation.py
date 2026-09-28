@@ -7,10 +7,9 @@ Provides tenant ID validation and normalization functions.
 from __future__ import annotations
 
 import re
-from typing import Set
 
 # Invalid characters for tenant IDs (security-sensitive)
-INVALID_TENANT_CHARS: Set[str] = {
+INVALID_TENANT_CHARS: set[str] = {
     "<",
     ">",
     '"',

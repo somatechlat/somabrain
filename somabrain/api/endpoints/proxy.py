@@ -7,23 +7,22 @@ Proxy endpoints for external service integration.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest
-from typing import Optional, Dict, Any
 from ninja import Router
 from pydantic import BaseModel
 
-from somabrain.api.auth import api_key_auth
-from somabrain.api.auth import require_auth
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.tenant import get_tenant_sync as get_tenant
 
 
 class ProxyRequest(BaseModel):
     service: str
     endpoint: str
-    target_url: Optional[str] = None
-    payload: Optional[Dict[str, Any]] = None
+    target_url: str | None = None
+    payload: dict[str, Any] | None = None
 
 
 logger = logging.getLogger("somabrain.api.endpoints.proxy")

@@ -14,4 +14,3 @@ class AaasConfig(AppConfig):
 
     def ready(self):
         """Run on app ready - import signals if needed."""
-        pass

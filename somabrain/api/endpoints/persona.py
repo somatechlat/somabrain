@@ -4,16 +4,16 @@ import hashlib
 import json
 import time
 from types import SimpleNamespace
-from typing import Any, Dict
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from ninja import Router
 from ninja.errors import HttpError
 
+from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 from somabrain.api.auth import require_auth
 from somabrain.schemas import Persona
-from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 
 # Note: Ideally move these imports to top-level if dependencies allow,
 # but keeping structure similar to original for safety during rapid migration.
@@ -27,7 +27,7 @@ except ImportError:
 router = Router(tags=["persona"])
 
 
-def _compute_etag(payload: Dict[str, Any]) -> str:
+def _compute_etag(payload: dict[str, Any]) -> str:
     """Execute compute etag.
 
     Args:

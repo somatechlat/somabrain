@@ -12,11 +12,12 @@ with no mocks.
 from __future__ import annotations
 
 import numpy as np
-import pytest
-from hypothesis import given, settings as hyp_settings, strategies as st
+from hypothesis import given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 
-from somabrain.admin.core.quantum import QuantumLayer, HRRConfig
 from somabrain.admin.core.numerics import compute_tiny_floor
+from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 from somabrain.math.bhdc_encoder import BHDCEncoder
 
 # ---------------------------------------------------------------------------

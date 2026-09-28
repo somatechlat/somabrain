@@ -19,7 +19,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 import csv
 import io
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from django.db.models import Count, Q, Sum
@@ -60,7 +60,7 @@ class UsageReportOut(Schema):
     total_queries: int
     unique_users: int
     unique_keys: int
-    daily_breakdown: List[Dict[str, Any]]
+    daily_breakdown: list[dict[str, Any]]
 
 
 class TenantReportOut(Schema):
@@ -75,7 +75,7 @@ class TenantReportOut(Schema):
     api_keys_count: int
     api_calls_this_month: int
     created_at: str
-    last_activity: Optional[str]
+    last_activity: str | None
 
 
 class PlatformReportOut(Schema):
@@ -89,8 +89,8 @@ class PlatformReportOut(Schema):
     total_api_keys: int
     total_api_calls: int
     revenue_estimate: float
-    tier_distribution: Dict[str, int]
-    growth_metrics: Dict[str, Any]
+    tier_distribution: dict[str, int]
+    growth_metrics: dict[str, Any]
 
 
 class ExportJobOut(Schema):
@@ -99,9 +99,9 @@ class ExportJobOut(Schema):
     job_id: str
     status: str
     format: str
-    download_url: Optional[str]
+    download_url: str | None
     created_at: str
-    completed_at: Optional[str]
+    completed_at: str | None
 
 
 # =============================================================================
@@ -407,13 +407,13 @@ def get_platform_report(
     )
 
 
-@router.get("/platform/tenants", response=List[TenantReportOut])
+@router.get("/platform/tenants", response=list[TenantReportOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def list_tenant_reports(
     request: AuthenticatedRequest,
-    status: Optional[str] = None,
-    tier: Optional[str] = None,
+    status: str | None = None,
+    tier: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ):

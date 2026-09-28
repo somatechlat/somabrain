@@ -13,7 +13,7 @@ VIBE COMPLIANT:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from somabrain.memory.client import MemoryClient
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def get_graph_client(mem) -> Optional["MemoryClient"]:
+def get_graph_client(mem) -> MemoryClient | None:
     """
     Extract MemoryClient from memory client.
 
@@ -61,8 +61,8 @@ def get_graph_client(mem) -> Optional["MemoryClient"]:
 
 
 def task_key_to_coord(
-    task_key: str, mem, universe: Optional[str]
-) -> Optional[Tuple[float, ...]]:
+    task_key: str, mem, universe: str | None
+) -> tuple[float, ...] | None:
     """
     Convert task_key to coordinate.
 
@@ -104,7 +104,7 @@ def task_key_to_coord(
     return None
 
 
-def coord_to_str(coord: Tuple[float, ...]) -> str:
+def coord_to_str(coord: tuple[float, ...]) -> str:
     """
     Convert coordinate tuple to string for set membership.
 

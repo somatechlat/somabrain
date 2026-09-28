@@ -6,7 +6,7 @@ Request/response schemas for general API endpoints.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -16,7 +16,7 @@ class ActRequest(BaseModel):
 
     task: str
     top_k: int = 3
-    universe: Optional[str] = None
+    universe: str | None = None
 
 
 class ActStepResult(BaseModel):
@@ -29,16 +29,16 @@ class ActStepResult(BaseModel):
     stored: bool
     wm_hits: int
     memory_hits: int
-    policy: Optional[dict] = None
+    policy: dict | None = None
 
 
 class ActResponse(BaseModel):
     """Schema for action execution responses."""
 
     task: str
-    results: List[ActStepResult]
-    plan: Optional[List[str]] = None
-    plan_universe: Optional[str] = None
+    results: list[ActStepResult]
+    plan: list[str] | None = None
+    plan_universe: str | None = None
 
 
 class HealthResponse(BaseModel):
@@ -46,42 +46,42 @@ class HealthResponse(BaseModel):
 
     ok: bool
     components: dict
-    namespace: Optional[str] = None
-    trace_id: Optional[str] = None
-    deadline_ms: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    constitution_version: Optional[str] = None
-    constitution_status: Optional[str] = None
-    minimal_public_api: Optional[bool] = None
-    external_backends_required: Optional[bool] = None
-    predictor_provider: Optional[str] = None
-    full_stack: Optional[bool] = None
-    embedder: Optional[Dict[str, Any]] = None
-    component_counts: Optional[Dict[str, int]] = None
-    ready: Optional[bool] = None
-    memory_items: Optional[int] = None
-    predictor_ok: Optional[bool] = None
-    memory_ok: Optional[bool] = None
-    embedder_ok: Optional[bool] = None
-    retrieval_ready: Optional[bool] = None
-    opa_ok: Optional[bool] = None
-    opa_required: Optional[bool] = None
-    kafka_ok: Optional[bool] = None
-    postgres_ok: Optional[bool] = None
-    metrics_ready: Optional[bool] = None
-    metrics_required: Optional[list[str]] = None
-    alerts: Optional[list[str]] = None
-    memory_circuit_open: Optional[bool] = None
-    fd_trace_norm_error: Optional[float] = None
-    fd_psd_ok: Optional[bool] = None
-    fd_capture_ratio: Optional[float] = None
-    scorer: Optional[Dict[str, Any]] = None
+    namespace: str | None = None
+    trace_id: str | None = None
+    deadline_ms: str | None = None
+    idempotency_key: str | None = None
+    constitution_version: str | None = None
+    constitution_status: str | None = None
+    minimal_public_api: bool | None = None
+    external_backends_required: bool | None = None
+    predictor_provider: str | None = None
+    full_stack: bool | None = None
+    embedder: dict[str, Any] | None = None
+    component_counts: dict[str, int] | None = None
+    ready: bool | None = None
+    memory_items: int | None = None
+    predictor_ok: bool | None = None
+    memory_ok: bool | None = None
+    embedder_ok: bool | None = None
+    retrieval_ready: bool | None = None
+    opa_ok: bool | None = None
+    opa_required: bool | None = None
+    kafka_ok: bool | None = None
+    postgres_ok: bool | None = None
+    metrics_ready: bool | None = None
+    metrics_required: list[str] | None = None
+    alerts: list[str] | None = None
+    memory_circuit_open: bool | None = None
+    fd_trace_norm_error: float | None = None
+    fd_psd_ok: bool | None = None
+    fd_capture_ratio: float | None = None
+    scorer: dict[str, Any] | None = None
 
 
 class PersonalityState(BaseModel):
     """Schema for personality trait states."""
 
-    traits: Dict[str, float] = Field(default_factory=dict)
+    traits: dict[str, float] = Field(default_factory=dict)
 
 
 class Persona(BaseModel):
@@ -105,15 +105,15 @@ class NeuromodStateModel(BaseModel):
 class SleepRunRequest(BaseModel):
     """Sleep run request schema."""
 
-    nrem: Optional[bool] = True
-    rem: Optional[bool] = True
+    nrem: bool | None = True
+    rem: bool | None = True
 
 
 class SleepRunResponse(BaseModel):
     """Sleep run response schema."""
 
     ok: bool = Field(..., description="Whether the sleep run started successfully")
-    run_id: Optional[str] = Field(
+    run_id: str | None = Field(
         None, description="Identifier for the initiated sleep run"
     )
 
@@ -123,7 +123,7 @@ class SleepStatusResponse(BaseModel):
 
     enabled: bool
     interval_seconds: int
-    last: Dict[str, Optional[float]]
+    last: dict[str, float | None]
 
 
 class SleepStatusAllResponse(BaseModel):
@@ -131,29 +131,29 @@ class SleepStatusAllResponse(BaseModel):
 
     enabled: bool
     interval_seconds: int
-    tenants: Dict[str, Dict[str, Optional[float]]]
+    tenants: dict[str, dict[str, float | None]]
 
 
 class PlanSuggestRequest(BaseModel):
     """Plan suggestion request."""
 
     task_key: str
-    max_steps: Optional[int] = None
-    rel_types: Optional[List[str]] = None
-    universe: Optional[str] = None
+    max_steps: int | None = None
+    rel_types: list[str] | None = None
+    universe: str | None = None
 
 
 class PlanSuggestResponse(BaseModel):
     """Plan suggestion response."""
 
-    plan: List[str]
+    plan: list[str]
 
 
 class ReflectResponse(BaseModel):
     """Reflect operation response."""
 
     created: int
-    summaries: List[str]
+    summaries: list[str]
 
 
 class MigrateExportRequest(BaseModel):

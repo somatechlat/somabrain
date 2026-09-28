@@ -7,7 +7,6 @@ Requires the Rust AdaptationEngine. No Python fallback permitted.
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,7 @@ class AdaptationEngineBridge:
 
     def __init__(
         self,
-        learning_rate: Optional[float] = None,
+        learning_rate: float | None = None,
         tenant_id: str = "default",
     ) -> None:
         """Initialize bridge with required Rust backend."""
@@ -63,7 +62,7 @@ class AdaptationEngineBridge:
         """Set retrieval weights."""
         self._rust_engine.set_retrieval(alpha, beta, gamma, tau)
 
-    def get_retrieval(self) -> Tuple[float, float, float, float]:
+    def get_retrieval(self) -> tuple[float, float, float, float]:
         """Get retrieval weights."""
         return self._rust_engine.get_retrieval()
 
@@ -71,7 +70,7 @@ class AdaptationEngineBridge:
         """Set utility weights."""
         self._rust_engine.set_utility(lambda_, mu, nu)
 
-    def get_utility(self) -> Tuple[float, float, float]:
+    def get_utility(self) -> tuple[float, float, float]:
         """Get utility weights."""
         return self._rust_engine.get_utility()
 

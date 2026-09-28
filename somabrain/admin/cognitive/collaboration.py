@@ -20,7 +20,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class Message:
     """
 
     sender: str
-    recipient: Optional[str]
+    recipient: str | None
     timestamp: datetime
     payload: str
 
@@ -65,7 +64,7 @@ class CollaborationManager:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self._agents: Dict[str, List[Message]] = {}
+        self._agents: dict[str, list[Message]] = {}
         logger.info("CollaborationManager initialised")
 
     # ------------------------------------------------------------------
@@ -122,21 +121,21 @@ class CollaborationManager:
     # ------------------------------------------------------------------
     # Inbox handling
     # ------------------------------------------------------------------
-    def receive_all(self, agent_id: str) -> List[Message]:
+    def receive_all(self, agent_id: str) -> list[Message]:
         """Return **and clear** all pending messages for ``agent_id``."""
         inbox = self._agents.get(agent_id, [])
         self._agents[agent_id] = []
         logger.debug("Agent %s retrieved %d messages", agent_id, len(inbox))
         return inbox
 
-    def peek(self, agent_id: str) -> List[Message]:
+    def peek(self, agent_id: str) -> list[Message]:
         """Return a copy of the inbox without clearing it."""
         return list(self._agents.get(agent_id, []))
 
     # ------------------------------------------------------------------
     # Introspection helpers (useful for debugging or UI)
     # ------------------------------------------------------------------
-    def list_agents(self) -> List[str]:
+    def list_agents(self) -> list[str]:
         """Return a list of currently registered agent identifiers."""
         return list(self._agents.keys())
 

@@ -5,6 +5,7 @@ This module is the SINGLE SOURCE OF TRUTH for all SomaBrain messages.
 """
 
 from enum import Enum
+
 from django.utils.translation import gettext_lazy as _
 
 

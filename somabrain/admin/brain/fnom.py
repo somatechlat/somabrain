@@ -16,7 +16,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -27,15 +27,15 @@ logger = logging.getLogger("somabrain.brain.fnom")
 class FNOMResult:
     """Result object compatible with UnifiedBrainCore expectations."""
 
-    frequency_spectrum: List[float]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    frequency_spectrum: list[float]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class FNOMTrace:
     """Trace object for retrieval results."""
 
-    content: Dict[str, Any]
+    content: dict[str, Any]
     similarity: float
 
 
@@ -66,7 +66,7 @@ class PersistentFNOM:
         self.namespace = namespace
         self.embedder = embedder
 
-    def encode(self, content: Dict[str, Any], importance: float = 1.0) -> FNOMResult:
+    def encode(self, content: dict[str, Any], importance: float = 1.0) -> FNOMResult:
         """Encode and persist content using a spectral representation.
 
         In a full implementation, this might involve FFT on embedding dimensions.
@@ -115,8 +115,8 @@ class PersistentFNOM:
         return FNOMResult(frequency_spectrum=spectrum)
 
     def retrieve(
-        self, query: str | Dict[str, Any], top_k: int = 3
-    ) -> List[Tuple[FNOMTrace, float]]:
+        self, query: str | dict[str, Any], top_k: int = 3
+    ) -> list[tuple[FNOMTrace, float]]:
         """Retrieve traces matching the query.
 
         Args:

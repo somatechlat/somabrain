@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 _settings: Any | None
 
@@ -20,7 +20,7 @@ else:
 settings = _settings
 
 
-def _clean(value: Optional[str]) -> Optional[str]:
+def _clean(value: str | None) -> str | None:
     """Execute clean.
 
     Args:
@@ -36,7 +36,7 @@ def _clean(value: Optional[str]) -> Optional[str]:
     return text or None
 
 
-def _first_non_empty(*values: Optional[str]) -> Optional[str]:
+def _first_non_empty(*values: str | None) -> str | None:
     """Execute first non empty."""
 
     for value in values:
@@ -46,7 +46,7 @@ def _first_non_empty(*values: Optional[str]) -> Optional[str]:
     return None
 
 
-def _from_settings(attr: str) -> Optional[str]:
+def _from_settings(attr: str) -> str | None:
     """Execute from settings.
 
     Args:
@@ -61,7 +61,7 @@ def _from_settings(attr: str) -> Optional[str]:
         return None
 
 
-def get_redis_url(default: Optional[str] = None) -> Optional[str]:
+def get_redis_url(default: str | None = None) -> str | None:
     """Return the Redis connection URL from environment or shared settings."""
 
     url = _first_non_empty(
@@ -91,11 +91,11 @@ class MemoryEndpoint:
 
     scheme: str
     host: str
-    port: Optional[int]
+    port: int | None
     url: str
 
 
-def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
+def resolve_memory_endpoint(default: str | None = None) -> MemoryEndpoint:
     """Return the canonical memory endpoint configuration.
 
     The resolver prefers explicit URLs (``memory_http_endpoint``) but can also
@@ -136,7 +136,7 @@ def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
     raise RuntimeError("Memory HTTP endpoint is not configured")
 
 
-def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
+def get_memory_http_endpoint(default: str | None = None) -> str | None:
     """Compatibility wrapper returning the resolved memory endpoint URL."""
 
     try:
@@ -145,7 +145,7 @@ def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
         return default
 
 
-def _parse_url(value: str) -> tuple[str, str, Optional[int]]:
+def _parse_url(value: str) -> tuple[str, str, int | None]:
     """Parse *value* into ``(scheme, host, port)`` with basic validation."""
 
     from urllib.parse import urlparse
@@ -157,7 +157,7 @@ def _parse_url(value: str) -> tuple[str, str, Optional[int]]:
     return parsed.scheme or "http", parsed.hostname, port
 
 
-def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
+def get_kafka_bootstrap(default: str | None = None) -> str | None:
     """Return the Kafka bootstrap server list."""
 
     bootstrap = _first_non_empty(
@@ -180,7 +180,7 @@ def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def get_opa_url(default: Optional[str] = None) -> Optional[str]:
+def get_opa_url(default: str | None = None) -> str | None:
     """Return the Open Policy Agent endpoint."""
 
     url = _first_non_empty(
@@ -203,7 +203,7 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
+def get_api_base_url(default: str | None = None) -> str | None:
     """Return the primary SomaBrain API base URL."""
 
     url = _first_non_empty(
@@ -226,7 +226,7 @@ def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
+def get_postgres_dsn(default: str | None = None) -> str | None:
     """Return the Postgres DSN."""
 
     dsn = _first_non_empty(
@@ -238,7 +238,7 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def require(value: Optional[str], *, message: str) -> str:
+def require(value: str | None, *, message: str) -> str:
     """Ensure a configuration value exists, raising a RuntimeError otherwise."""
 
     if value:

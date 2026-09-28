@@ -32,14 +32,14 @@ Classes:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from .metrics import REALITY_LOW, REALITY_OK
 
 
 def assess_reality(
-    mem_payloads: List[Dict[str, Any]], min_sources: int = 1
-) -> Dict[str, Any]:
+    mem_payloads: list[dict[str, Any]], min_sources: int = 1
+) -> dict[str, Any]:
     """Simple truthfulness check: count sources and emit a confidence heuristic.
 
     - ok: True if len(mem_payloads) >= min_sources

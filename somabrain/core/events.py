@@ -18,10 +18,9 @@ Functions:
 from __future__ import annotations
 
 import re
-from typing import Dict
 
 
-def extract_event_fields(text: str) -> Dict[str, str]:
+def extract_event_fields(text: str) -> dict[str, str]:
     """
     Extract structured event fields from natural language text.
 
@@ -52,7 +51,7 @@ def extract_event_fields(text: str) -> Dict[str, str]:
         - Falls back to naive token splitting for who/did/what when patterns don't match
         - Designed for short, simple sentences; may not work well with complex text
     """
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     t = (text or "").strip()
     if not t:
         return out

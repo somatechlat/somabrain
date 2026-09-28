@@ -17,7 +17,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Environment-based
 """
 
-from typing import List, Optional
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -46,13 +45,13 @@ class TenantAuthConfigOut(Schema):
 
     id: UUID
     tenant_id: UUID
-    preferred_provider_id: Optional[UUID]
-    preferred_provider_name: Optional[str]
-    custom_redirect_uris: List[str]
+    preferred_provider_id: UUID | None
+    preferred_provider_name: str | None
+    custom_redirect_uris: list[str]
     mfa_required: bool
     session_timeout_minutes: int
     allow_registration: bool
-    allowed_domains: List[str]
+    allowed_domains: list[str]
 
     @staticmethod
     def resolve_preferred_provider_name(obj):
@@ -68,12 +67,12 @@ class TenantAuthConfigOut(Schema):
 class TenantAuthConfigUpdate(Schema):
     """Schema for updating tenant auth config."""
 
-    preferred_provider_id: Optional[UUID] = None
-    custom_redirect_uris: Optional[List[str]] = None
-    mfa_required: Optional[bool] = None
-    session_timeout_minutes: Optional[int] = None
-    allow_registration: Optional[bool] = None
-    allowed_domains: Optional[List[str]] = None
+    preferred_provider_id: UUID | None = None
+    custom_redirect_uris: list[str] | None = None
+    mfa_required: bool | None = None
+    session_timeout_minutes: int | None = None
+    allow_registration: bool | None = None
+    allowed_domains: list[str] | None = None
 
 
 class EffectiveProviderOut(Schema):
@@ -207,7 +206,7 @@ def update_tenant_auth_config(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/providers", response=List[EffectiveProviderOut])
+@router.get("/{tenant_id}/providers", response=list[EffectiveProviderOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.IDP_LIST.value)
 def get_effective_providers(

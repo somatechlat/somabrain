@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Callable, Iterable, List, Optional, Tuple
+from collections.abc import Callable, Iterable
+from typing import TYPE_CHECKING, Any
 
 from somabrain.memory.normalization import _extract_memory_coord, _stable_coord
 from somabrain.memory.payload import enrich_payload
@@ -27,11 +28,11 @@ logger = logging.getLogger(__name__)
 
 
 def _record_to_outbox(
-    coord: Tuple[float, float, float],
+    coord: tuple[float, float, float],
     payload: dict,
     tenant: str,
     request_id: str,
-) -> Optional[int]:
+) -> int | None:
     """Record memory operation to outbox before SFM call.
 
     Per Requirement E2.1: Record to outbox before SFM call.
@@ -125,13 +126,13 @@ def _get_tenant_namespace(cfg: Any, payload: dict | None = None) -> tuple[str, s
 
 
 def remember_sync_persist(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     cfg: Any,
     coord_key: str,
     payload: dict,
     request_id: str | None,
     store_http_sync_fn: Callable,
-) -> Tuple[float, float, float] | None:
+) -> tuple[float, float, float] | None:
     """Synchronous persistence implementation for remember operations.
 
     Per Requirements E2.1-E2.4:
@@ -171,7 +172,7 @@ def remember_sync_persist(
     except Exception:
         stored = False
 
-    server_coord: Tuple[float, float, float] | None = None
+    server_coord: tuple[float, float, float] | None = None
     if stored and response_payload is not None:
         try:
             server_coord = _extract_memory_coord(response_payload, idempotency_key=rid)
@@ -190,7 +191,7 @@ def remember_sync_persist(
 
 
 async def aremember_background(
-    transport: "MemoryHTTPTransport",
+    transport: MemoryHTTPTransport,
     cfg: Any,
     coord_key: str,
     payload: dict,
@@ -256,7 +257,7 @@ async def aremember_background(
 def prepare_bulk_items(
     cfg: Any,
     items: Iterable[tuple[str, dict[str, Any]]],
-) -> tuple[List[dict], List[str], List[Tuple[float, float, float]], str, str]:
+) -> tuple[list[dict], list[str], list[tuple[float, float, float]], str, str]:
     """Prepare bulk items for remember_bulk operations.
 
     Returns: (prepared, universes, coords, tenant, namespace)
@@ -265,9 +266,9 @@ def prepare_bulk_items(
     if not records:
         return [], [], [], "", ""
 
-    prepared: List[dict[str, Any]] = []
-    universes: List[str] = []
-    coords: List[Tuple[float, float, float]] = []
+    prepared: list[dict[str, Any]] = []
+    universes: list[str] = []
+    coords: list[tuple[float, float, float]] = []
     tenant, namespace = _get_tenant_namespace(cfg, payload)
     cfg_namespace = getattr(cfg, "namespace", None)
 
@@ -312,12 +313,12 @@ def prepare_bulk_items(
 
 def process_bulk_response(
     response: Any,
-    prepared: List[dict],
-    coords: List[Tuple[float, float, float]],
+    prepared: list[dict],
+    coords: list[tuple[float, float, float]],
     rid: str,
-) -> List[Tuple[float, float, float]]:
+) -> list[tuple[float, float, float]]:
     """Process bulk response and update coords with server coordinates."""
-    returned: List[Any] = []
+    returned: list[Any] = []
     if isinstance(response, dict):
         for key in ("items", "results", "memories", "entries"):
             seq = response.get(key)
@@ -344,7 +345,7 @@ async def aremember_single(
     store_http_async_fn: Callable,
     enrich_payload_fn: Callable,
     has_async_transport: bool,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """Async variant of remember for HTTP mode.
 
     Args:

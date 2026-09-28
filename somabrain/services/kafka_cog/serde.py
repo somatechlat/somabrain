@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import io
-from typing import Any, Dict
+from typing import Any
 
 try:
     from fastavro import parse_schema, schemaless_reader, schemaless_writer
@@ -20,7 +20,7 @@ class AvroSerde:
     integration can be added later using Confluent serializers with magic bytes.
     """
 
-    def __init__(self, schema: Dict[str, Any]):
+    def __init__(self, schema: dict[str, Any]):
         """Initialize the serde with a parsed Avro schema."""
         if parse_schema is None:
             raise RuntimeError(
@@ -28,7 +28,7 @@ class AvroSerde:
             )
         self._schema = parse_schema(schema)
 
-    def serialize(self, record: Dict[str, Any]) -> bytes:
+    def serialize(self, record: dict[str, Any]) -> bytes:
         """Serialize a record to Avro bytes using the configured schema."""
         if schemaless_writer is None:
             raise RuntimeError("fastavro not available for serialization")
@@ -37,7 +37,7 @@ class AvroSerde:
         schemaless_writer(buf, self._schema, record)
         return buf.getvalue()
 
-    def deserialize(self, payload: bytes) -> Dict[str, Any]:
+    def deserialize(self, payload: bytes) -> dict[str, Any]:
         """Deserialize Avro bytes into a record using the configured schema."""
         if schemaless_reader is None:
             raise RuntimeError("fastavro not available for deserialization")

@@ -54,11 +54,11 @@ class _MetricProtocol(Protocol):
     type‑checker can validate calls such as ``metric.labels(...).inc()``.
     """
 
-    def labels(self, *args: Any, **kwargs: Any) -> "_MetricProtocol":
+    def labels(self, *args: Any, **kwargs: Any) -> _MetricProtocol:
         """Execute labels."""
         ...
 
-    def inc(self, amount: float = 1) -> None:  # noqa: D401
+    def inc(self, amount: float = 1) -> None:
         """Execute inc.
 
         Args:
@@ -92,13 +92,13 @@ MetricT = _PromCounter | _PromGauge | _PromHistogram | _PromSummary
 
 # Share a single registry across module reloads/process components.
 try:
-    _reg = getattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY")
+    _reg = _builtins._SOMABRAIN_METRICS_REGISTRY
 except Exception:
     _reg = None
 if not _reg:
     _reg = CollectorRegistry()
     try:
-        setattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY", _reg)
+        _builtins._SOMABRAIN_METRICS_REGISTRY = _reg
     except Exception:
         pass
 registry = _reg

@@ -17,10 +17,11 @@ than silently succeeding.
 from __future__ import annotations
 
 import json
-from django.conf import settings
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
+
+from django.conf import settings
 
 try:
     import requests
@@ -46,7 +47,7 @@ def post_reward() -> None:
     """
     # Use centralized Settings for reward port and API URL
     url = f"{settings.api_url}/reward"
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "tenant": settings.default_tenant,
         "r_task": 0.5,
         "r_user": 0.5,
@@ -63,7 +64,7 @@ def post_reward() -> None:
         sys.exit(1)
 
 
-def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
+def consume_config_update(timeout: float = 10.0) -> dict[str, Any] | None:
     """Consume a single ``cog.config.updates`` record.
 
     Returns the decoded JSON dict or ``None`` if the timeout expires.

@@ -23,10 +23,9 @@ from __future__ import annotations
 
 import pathlib
 import re
-from typing import Dict, List
 
 # Mapping from legacy environment variable names to Settings attribute names.
-ENV_TO_ATTR: Dict[str, str] = {
+ENV_TO_ATTR: dict[str, str] = {
     "SOMABRAIN_POSTGRES_DSN": "postgres_dsn",
     "SOMABRAIN_REDIS_URL": "redis_url",
     "REDIS_URL": "redis_url",
@@ -166,8 +165,8 @@ def main() -> None:
     """Execute main."""
 
     repo_root = pathlib.Path(__file__).resolve().parent.parent
-    py_files: List[pathlib.Path] = list(repo_root.rglob("*.py"))
-    modified: List[pathlib.Path] = []
+    py_files: list[pathlib.Path] = list(repo_root.rglob("*.py"))
+    modified: list[pathlib.Path] = []
     for file_path in py_files:
         if process_file(file_path):
             modified.append(file_path)

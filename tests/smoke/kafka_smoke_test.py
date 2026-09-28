@@ -23,8 +23,7 @@ def main():
     args = p.parse_args()
 
     bs = args.bootstrap_server
-    if bs.startswith("kafka://"):
-        bs = bs[len("kafka://") :]
+    bs = bs.removeprefix("kafka://")
 
     key = str(uuid.uuid4())
     payload = {"smoke": True, "id": key, "ts": time.time()}

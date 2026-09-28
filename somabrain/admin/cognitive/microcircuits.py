@@ -33,18 +33,18 @@ import logging
 import math
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
 import numpy as np
 from django.conf import settings
+
+from somabrain.memory.wm.core import WorkingMemory
 from somabrain.metrics.executive import (
     MICRO_COLUMN_ADMIT,
     MICRO_COLUMN_BEST,
     MICRO_VOTE_ENTROPY,
 )
-from somabrain.memory.wm.core import WorkingMemory
 
 
 @dataclass
@@ -88,10 +88,10 @@ class MultiColumnWM:
 
         self.dim = int(dim)
         self.cfg = cfg
-        self._tenants: OrderedDict[str, List[WorkingMemory]] = OrderedDict()
+        self._tenants: OrderedDict[str, list[WorkingMemory]] = OrderedDict()
         self._scorer = scorer
 
-    def _ensure(self, tenant_id: str) -> List[WorkingMemory]:
+    def _ensure(self, tenant_id: str) -> list[WorkingMemory]:
         """Return the tenant's column set, creating it on first access."""
 
         cols = self._tenants.get(tenant_id)
@@ -156,12 +156,12 @@ class MultiColumnWM:
 
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
-    ) -> List[Tuple[float, dict]]:
+    ) -> list[tuple[float, dict]]:
         """Recall top matches by combining per-column results with vote weights."""
 
         cols = self._ensure(tenant_id)
-        per_col: List[List[Tuple[float, dict]]] = []
-        bests: List[float] = []
+        per_col: list[list[tuple[float, dict]]] = []
+        bests: list[float] = []
         for wm in cols:
             hits = wm.recall(vec, top_k=top_k)
             per_col.append(hits)
@@ -188,7 +188,7 @@ class MultiColumnWM:
         ent = -sum(w * math.log(max(eps, w)) for w in weights if w > 0.0)
         MICRO_VOTE_ENTROPY.observe(max(0.0, float(ent)))
         # aggregate
-        combined: List[Tuple[float, dict]] = []
+        combined: list[tuple[float, dict]] = []
         for w, hits in zip(weights, per_col):
             for s, p in hits:
                 combined.append((float(w) * float(s), p))
@@ -206,18 +206,18 @@ class MultiColumnWM:
             )  # wm.novelty returns 1 - best_cosine
         return max(0.0, 1.0 - best)
 
-    def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
+    def items(self, tenant_id: str, limit: int | None = None) -> list[dict]:
         """Return the tenant payloads flattened across all columns."""
 
         cols = self._ensure(tenant_id)
-        data: List[dict] = []
+        data: list[dict] = []
         for wm in cols:
             data.extend([it.payload for it in wm._items])
         if limit is not None and limit > 0:
             return data[-limit:]
         return data
 
-    def stats(self, tenant_id: str) -> Dict[str, int]:
+    def stats(self, tenant_id: str) -> dict[str, int]:
         """Return per-column occupancy for the tenant."""
 
         cols = self._ensure(tenant_id)

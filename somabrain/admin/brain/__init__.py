@@ -13,13 +13,13 @@ from somabrain.admin.brain.neuromodulators import (
 from somabrain.admin.brain.unified_core import UnifiedBrainCore
 
 __all__ = [
-    "UnifiedBrainCore",
+    "AdaptiveNeuromodulators",
+    "AdaptivePerTenantNeuromodulators",
     "ComplexityDetector",
     "FocusState",
     "NeuromodState",
     "Neuromodulators",
     "PerTenantNeuromodulators",
-    "AdaptiveNeuromodulators",
-    "AdaptivePerTenantNeuromodulators",
+    "UnifiedBrainCore",
     "adaptive_per_tenant_neuromods",
 ]

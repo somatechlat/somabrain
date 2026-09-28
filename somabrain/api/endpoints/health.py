@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict
+from typing import Any
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
@@ -35,7 +35,7 @@ from somabrain.health.helpers import (
 
 
 @router.get("/health", response=HealthResponse)
-def health(request: HttpRequest) -> Dict[str, Any]:
+def health(request: HttpRequest) -> dict[str, Any]:
     """Public health endpoint with CB + sleep degradation semantics.
 
     Converted from async to sync for Django Ninja compatibility.
@@ -166,7 +166,7 @@ def health(request: HttpRequest) -> Dict[str, Any]:
 
 
 @router.get("/")
-def health_check(request: HttpRequest) -> Dict[str, Any]:
+def health_check(request: HttpRequest) -> dict[str, Any]:
     """Main health endpoint with detailed component status.
 
     Returns status of all critical components: postgres, kafka, redis, embedder, predictor.
@@ -217,13 +217,13 @@ def health_check(request: HttpRequest) -> Dict[str, Any]:
 
 
 @router.get("/healthz")
-def healthz(request: HttpRequest) -> Dict[str, str]:
+def healthz(request: HttpRequest) -> dict[str, str]:
     """Minimal health check for k8s liveness probes."""
     return {"status": "ok"}
 
 
-@router.get("/diagnostics", response=Dict[str, Any])
-def diagnostics(request: HttpRequest) -> Dict[str, Any]:
+@router.get("/diagnostics", response=dict[str, Any])
+def diagnostics(request: HttpRequest) -> dict[str, Any]:
     """Detailed diagnostics endpoint."""
     cfg = _get_app_config()
     mt_memory = _get_mt_memory()

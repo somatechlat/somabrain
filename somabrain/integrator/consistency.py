@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-
 # Simple feasibility table mapping agent intent -> allowed next actions
-_ALLOWED: Dict[str, set[str]] = {
+_ALLOWED: dict[str, set[str]] = {
     "browse": {"search", "quote"},
     "purchase": {"checkout", "cancel", "quote"},
     "support": {"cancel", "quote"},
@@ -13,9 +11,9 @@ _ALLOWED: Dict[str, set[str]] = {
 
 
 def consistency_score(
-    agent_posterior: Dict[str, object] | None,
-    action_posterior: Dict[str, object] | None,
-) -> Optional[float]:
+    agent_posterior: dict[str, object] | None,
+    action_posterior: dict[str, object] | None,
+) -> float | None:
     """Return 1.0 if action is feasible for intent, 0.0 if infeasible, None if unknown.
 
     - agent_posterior is expected to contain key "intent" (str)

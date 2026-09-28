@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class DegradationState:
     """State for a single tenant's degradation."""
 
-    degraded_since: Optional[float] = None
+    degraded_since: float | None = None
     alert_triggered: bool = False
     last_check: float = field(default_factory=time.time)
 
@@ -39,7 +39,7 @@ class DegradationManager:
 
     def __init__(
         self,
-        circuit_breaker: Optional["CircuitBreaker"] = None,
+        circuit_breaker: CircuitBreaker | None = None,
         alert_threshold_seconds: float = 300.0,  # 5 minutes per E1.5
     ):
         """Initialize DegradationManager.
@@ -50,7 +50,7 @@ class DegradationManager:
         """
         self._circuit_breaker = circuit_breaker
         self._alert_threshold_seconds = alert_threshold_seconds
-        self._tenant_states: Dict[str, DegradationState] = {}
+        self._tenant_states: dict[str, DegradationState] = {}
 
     def _get_state(self, tenant: str) -> DegradationState:
         """Get or create state for tenant."""
@@ -180,7 +180,7 @@ class DegradationManager:
 
         return False
 
-    def get_degraded_duration(self, tenant: str) -> Optional[float]:
+    def get_degraded_duration(self, tenant: str) -> float | None:
         """Get how long tenant has been degraded in seconds.
 
         Returns None if not degraded.
@@ -190,7 +190,7 @@ class DegradationManager:
             return None
         return time.time() - state.degraded_since
 
-    def get_all_degraded_tenants(self) -> Dict[str, float]:
+    def get_all_degraded_tenants(self) -> dict[str, float]:
         """Get all degraded tenants and their durations.
 
         Returns:

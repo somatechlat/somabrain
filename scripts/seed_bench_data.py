@@ -9,12 +9,12 @@ to `artifacts/benchmarks/seed_manifest_{timestamp}.json` with the inserted keys.
 """
 
 import argparse
-from django.conf import settings
 import json
 import os
 from datetime import datetime
 
 import httpx
+from django.conf import settings
 
 
 def main(count: int, base_url: str, namespace: str | None = None):

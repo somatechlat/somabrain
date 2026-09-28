@@ -18,7 +18,6 @@ from __future__ import annotations
 import hashlib
 import os
 from pathlib import Path
-from typing import Optional, Tuple
 
 import numpy as np
 from django.conf import settings
@@ -53,7 +52,7 @@ def _token_to_filename(token: str) -> str:
     return f"role_{h}.npz"
 
 
-def get_role(token: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+def get_role(token: str) -> tuple[np.ndarray, np.ndarray] | None:
     """Return (role_time, role_fft) for token if present, otherwise None.
 
     role_time is a real-valued time-domain vector (dtype float32/64 depending

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import socket
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
 import requests

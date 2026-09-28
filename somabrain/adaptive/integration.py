@@ -8,8 +8,6 @@ stats; callers can extend it with richer logic.
 
 from __future__ import annotations
 
-from typing import Dict, List
-
 from .core import AdaptiveParameter, PerformanceMetrics
 
 
@@ -19,10 +17,10 @@ class AdaptiveIntegrator:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self.params: Dict[str, AdaptiveParameter] = {
+        self.params: dict[str, AdaptiveParameter] = {
             "alpha": AdaptiveParameter("alpha", 1.0, 0.1, 5.0, learning_rate=0.05),
         }
-        self.history: List[PerformanceMetrics] = []
+        self.history: list[PerformanceMetrics] = []
 
     def observe(self, perf: PerformanceMetrics, delta: float = 0.0) -> None:
         """Execute observe.
@@ -36,7 +34,7 @@ class AdaptiveIntegrator:
         self.history.append(perf)
         self.params["alpha"].update(perf, delta)
 
-    def get_system_stats(self) -> Dict:
+    def get_system_stats(self) -> dict:
         """Retrieve system stats."""
 
         return {

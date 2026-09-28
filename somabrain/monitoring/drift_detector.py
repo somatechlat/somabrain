@@ -31,7 +31,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from threading import Lock
-from typing import Any, Dict
+from typing import Any
 
 from django.conf import settings
 
@@ -56,7 +56,7 @@ class DriftDetector:
             getattr(settings, "SOMABRAIN_USE_DRIFT_MONITOR", False)
         )
         # Internal mutable state – protected by a lock for thread safety.
-        self._state: Dict[str, Any] = {}
+        self._state: dict[str, Any] = {}
         self._lock = Lock()
         # Load persisted state if the file exists.
         if self.enabled:
@@ -81,7 +81,7 @@ class DriftDetector:
         if not self.enabled:
             return
         key = f"{domain}:{tenant}"
-        entry: Dict[str, Any] = {
+        entry: dict[str, Any] = {
             "last_drift_time": Path().stat().st_mtime if Path().exists() else 0.0,
             "metric": metric,
         }
@@ -89,7 +89,7 @@ class DriftDetector:
             self._state[key] = entry
             self._persist_to_disk()
 
-    def export_state(self) -> Dict[str, Any]:
+    def export_state(self) -> dict[str, Any]:
         """Return a copy of the current drift state.
 
         The returned dictionary matches the structure used by ``scripts/drift_dump``

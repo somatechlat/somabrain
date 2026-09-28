@@ -10,13 +10,15 @@ implementation. All tests run against REAL implementations with no mocks.
 from __future__ import annotations
 
 import numpy as np
-from hypothesis import given, settings as hyp_settings, strategies as st
+from hypothesis import given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 
 from somabrain.math.normalize import (
+    ensure_unit_norm,
+    normalize_batch,
     normalize_vector,
     safe_normalize,
-    normalize_batch,
-    ensure_unit_norm,
 )
 from somabrain.math.similarity import cosine_similarity
 

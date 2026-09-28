@@ -6,12 +6,13 @@ Agent brain observation, thought, memory, action, and feedback schemas.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from pydantic import BaseModel, model_validator
 
 from somabrain.core.utils.nano_profile import HRR_DIM
+
 from .common import normalize_vector
 
 
@@ -23,8 +24,8 @@ class Observation(BaseModel):
     when: str  # ISO 8601
     channel: str
     content: str
-    embeddings: List[float]
-    tags: List[str] = []
+    embeddings: list[float]
+    tags: list[str] = []
     traceId: str
 
     @model_validator(mode="after")
@@ -37,12 +38,12 @@ class Thought(BaseModel):
     """Agent thought schema."""
 
     id: str
-    causeIds: List[str] = []
+    causeIds: list[str] = []
     text: str
-    vector: List[float]
+    vector: list[float]
     uncertainty: float = 0.0
-    citations: List[str] = []
-    policyState: Dict[str, Any] = {}
+    citations: list[str] = []
+    policyState: dict[str, Any] = {}
 
     @model_validator(mode="after")
     def _validate_vector(self):
@@ -55,9 +56,9 @@ class Memory(BaseModel):
 
     id: str
     type: str  # "episodic"|"semantic"|"procedural"
-    vector: List[float]
-    graphRefs: List[str] = []
-    payload: Dict[str, Any] = {}
+    vector: list[float]
+    graphRefs: list[str] = []
+    payload: dict[str, Any] = {}
     strength: float = 1.0
 
     @model_validator(mode="after")
@@ -71,21 +72,21 @@ class ToolCall(BaseModel):
 
     toolId: str
     schemaVersion: str
-    args: Dict[str, Any]
+    args: dict[str, Any]
     budget: float = 0.0
     retry: int = 0
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
 
 
 class PlanStep(BaseModel):
     """Planning step schema."""
 
     id: str
-    preconds: List[str] = []
+    preconds: list[str] = []
     action: str
-    expected: Dict[str, Any] = {}
-    deadline: Optional[str] = None  # ISO 8601
+    expected: dict[str, Any] = {}
+    deadline: str | None = None  # ISO 8601
     risk: float = 0.0
 
 
@@ -95,9 +96,9 @@ class Action(BaseModel):
     channel: str
     toolId: str
     content: str
-    args: Dict[str, Any] = {}
-    constraints: Dict[str, Any] = {}
-    outcome: Optional[Dict[str, Any]] = None
+    args: dict[str, Any] = {}
+    constraints: dict[str, Any] = {}
+    outcome: dict[str, Any] | None = None
 
 
 class Feedback(BaseModel):
@@ -105,7 +106,7 @@ class Feedback(BaseModel):
 
     signal: str  # "success"|"fail"|"reward"
     reason: str
-    metrics: Dict[str, Any] = {}
+    metrics: dict[str, Any] = {}
 
     class Observation(BaseModel):
         """Nested observation for feedback."""

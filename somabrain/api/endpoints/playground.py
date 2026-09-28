@@ -17,7 +17,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -54,7 +54,7 @@ def save_request_history(user_id: str, request_entry: dict):
     cache.set(key, history, timeout=86400 * 7)
 
 
-def get_request_history(user_id: str, limit: int = 20) -> List[dict]:
+def get_request_history(user_id: str, limit: int = 20) -> list[dict]:
     """Get user's request history."""
     key = get_history_key(user_id)
     history = cache.get(key, [])
@@ -71,9 +71,9 @@ class PlaygroundRequest(Schema):
 
     method: str
     path: str
-    headers: Optional[Dict[str, str]] = None
-    body: Optional[Dict[str, Any]] = None
-    params: Optional[Dict[str, str]] = None
+    headers: dict[str, str] | None = None
+    body: dict[str, Any] | None = None
+    params: dict[str, str] | None = None
 
 
 class PlaygroundResponse(Schema):
@@ -81,7 +81,7 @@ class PlaygroundResponse(Schema):
 
     id: str
     status_code: int
-    headers: Dict[str, str]
+    headers: dict[str, str]
     body: Any
     response_time_ms: int
     timestamp: str
@@ -94,8 +94,8 @@ class SavedRequest(Schema):
     name: str
     method: str
     path: str
-    headers: Optional[Dict[str, str]]
-    body: Optional[Dict[str, Any]]
+    headers: dict[str, str] | None
+    body: dict[str, Any] | None
     created_at: str
 
 
@@ -105,9 +105,9 @@ class EndpointDoc(Schema):
     method: str
     path: str
     summary: str
-    parameters: List[Dict[str, Any]]
-    request_body: Optional[Dict[str, Any]]
-    responses: Dict[str, Any]
+    parameters: list[dict[str, Any]]
+    request_body: dict[str, Any] | None
+    responses: dict[str, Any]
 
 
 # =============================================================================
@@ -176,9 +176,9 @@ def _execute_internal_request(
     tenant_id: str,
     method: str,
     path: str,
-    headers: Dict[str, str],
-    body: Optional[Dict],
-    params: Dict[str, str],
+    headers: dict[str, str],
+    body: dict | None,
+    params: dict[str, str],
 ) -> dict:
     """Execute internal API request with real data."""
 
@@ -296,7 +296,7 @@ def clear_history(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/saved", response=List[SavedRequest])
+@router.get("/{tenant_id}/saved", response=list[SavedRequest])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_saved_requests(
     request: AuthenticatedRequest,

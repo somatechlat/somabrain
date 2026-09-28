@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 try:
     import yaml
@@ -32,7 +32,7 @@ def _sub_env_vars(s: str) -> str:
     return out
 
 
-def _load_yaml(path: Path) -> Dict[str, Any]:
+def _load_yaml(path: Path) -> dict[str, Any]:
     """Execute load yaml.
 
     Args:
@@ -46,7 +46,7 @@ def _load_yaml(path: Path) -> Dict[str, Any]:
     return yaml.safe_load(text) or {}
 
 
-def _load_json(path: Path) -> Dict[str, Any]:
+def _load_json(path: Path) -> dict[str, Any]:
     """Execute load json.
 
     Args:
@@ -57,7 +57,7 @@ def _load_json(path: Path) -> Dict[str, Any]:
     return json.loads(text) or {}
 
 
-def discover_providers(path: str | None = None) -> Dict[str, Any]:
+def discover_providers(path: str | None = None) -> dict[str, Any]:
     """Discover and load provider configuration.
 
     Order of resolution:

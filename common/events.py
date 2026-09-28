@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 def build_next_event(
@@ -11,8 +11,8 @@ def build_next_event(
     tenant: str,
     confidence: float,
     predicted_state: str,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, object]:
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, object]:
     """
     Build a NextEvent record for learner consumption.
 
@@ -42,10 +42,10 @@ def build_next_event(
 
 def build_reward_event(
     total: float,
-    components: Optional[Dict[str, float]] = None,
+    components: dict[str, float] | None = None,
     tenant: str = "public",
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Build a reward event for the learner.
 

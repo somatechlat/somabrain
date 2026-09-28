@@ -28,10 +28,11 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from django.conf import settings
 
@@ -78,44 +79,44 @@ class TransactionEvent:
     # Identity
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     trace_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    correlation_id: Optional[str] = None
-    parent_event_id: Optional[str] = None
+    correlation_id: str | None = None
+    parent_event_id: str | None = None
 
     # Transaction metadata
     transaction_type: TransactionType = TransactionType.CUSTOM
     status: TransactionStatus = TransactionStatus.PENDING
 
     # Context
-    tenant_id: Optional[str] = None
-    persona_id: Optional[str] = None
-    session_id: Optional[str] = None
+    tenant_id: str | None = None
+    persona_id: str | None = None
+    session_id: str | None = None
 
     # Payload
     operation: str = ""
-    input_data: Dict[str, Any] = field(default_factory=dict)
-    output_data: Dict[str, Any] = field(default_factory=dict)
+    input_data: dict[str, Any] = field(default_factory=dict)
+    output_data: dict[str, Any] = field(default_factory=dict)
 
     # Compensation
-    compensating_action: Optional[str] = None
-    compensation_data: Dict[str, Any] = field(default_factory=dict)
+    compensating_action: str | None = None
+    compensation_data: dict[str, Any] = field(default_factory=dict)
 
     # Timing
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    completed_at: Optional[datetime] = None
-    duration_ms: Optional[float] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+    duration_ms: float | None = None
 
     # Error handling
-    error: Optional[str] = None
-    error_code: Optional[str] = None
+    error: str | None = None
+    error_code: str | None = None
     retry_count: int = 0
     max_retries: int = 3
 
     # Metadata
     version: str = "1.0"
     source_service: str = "somabrain"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize event to dictionary."""
         data = asdict(self)
         data["transaction_type"] = self.transaction_type.value
@@ -130,7 +131,7 @@ class TransactionEvent:
         return json.dumps(self.to_dict(), ensure_ascii=False, default=str)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> TransactionEvent:
+    def from_dict(cls, data: dict[str, Any]) -> TransactionEvent:
         """Deserialize event from dictionary."""
         # Handle enum conversion
         if "transaction_type" in data:
@@ -146,10 +147,10 @@ class TransactionEvent:
 
         return cls(**data)
 
-    def mark_committed(self, output_data: Optional[Dict[str, Any]] = None) -> None:
+    def mark_committed(self, output_data: dict[str, Any] | None = None) -> None:
         """Mark transaction as successfully committed."""
         self.status = TransactionStatus.COMMITTED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         if output_data:
             self.output_data = output_data
         if self.created_at:
@@ -157,10 +158,10 @@ class TransactionEvent:
                 self.completed_at - self.created_at
             ).total_seconds() * 1000
 
-    def mark_failed(self, error: str, error_code: Optional[str] = None) -> None:
+    def mark_failed(self, error: str, error_code: str | None = None) -> None:
         """Mark transaction as failed."""
         self.status = TransactionStatus.FAILED
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         self.error = error
         self.error_code = error_code
         if self.created_at:
@@ -171,7 +172,7 @@ class TransactionEvent:
     def mark_rolled_back(self) -> None:
         """Mark transaction as rolled back via compensation."""
         self.status = TransactionStatus.ROLLED_BACK
-        self.completed_at = datetime.now(timezone.utc)
+        self.completed_at = datetime.now(UTC)
         if self.created_at:
             self.duration_ms = (
                 self.completed_at - self.created_at
@@ -206,7 +207,7 @@ class TransactionEventStore:
 
         self._producer = None
         self._initialized = False
-        self._event_handlers: List[Callable[[TransactionEvent], None]] = []
+        self._event_handlers: list[Callable[[TransactionEvent], None]] = []
 
     def _ensure_producer(self) -> None:
         """Lazily initialize Kafka producer."""
@@ -320,14 +321,14 @@ class TransactionEventStore:
 
     def query(
         self,
-        trace_id: Optional[str] = None,
-        tenant_id: Optional[str] = None,
-        transaction_type: Optional[TransactionType] = None,
-        status: Optional[TransactionStatus] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        trace_id: str | None = None,
+        tenant_id: str | None = None,
+        transaction_type: TransactionType | None = None,
+        status: TransactionStatus | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         limit: int = 100,
-    ) -> List[TransactionEvent]:
+    ) -> list[TransactionEvent]:
         """Query transaction events from PostgreSQL using Django ORM.
 
         Args:

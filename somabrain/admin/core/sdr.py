@@ -24,7 +24,6 @@ Classes:
 from __future__ import annotations
 
 import hashlib
-from typing import Dict, List, Set, Tuple
 
 from django.conf import settings
 
@@ -68,7 +67,7 @@ class SDREncoder:
         )
 
     @staticmethod
-    def _tokens(text: str) -> List[str]:
+    def _tokens(text: str) -> list[str]:
         """
         Tokenize text into alphanumeric tokens for encoding.
 
@@ -90,7 +89,7 @@ class SDREncoder:
             t for t in re.findall(r"[A-Za-z0-9_]+", (text or "").lower()) if len(t) >= 2
         ]
 
-    def encode(self, text: str) -> Set[int]:
+    def encode(self, text: str) -> set[int]:
         """
         Encode text into a sparse distributed representation.
 
@@ -112,7 +111,7 @@ class SDREncoder:
         toks = self._tokens(text)
         if not toks:
             return set()
-        idx: Set[int] = set()
+        idx: set[int] = set()
         # hash each token with multiple salts until k bits set
         salt = 0
         h = hashlib.blake2b
@@ -165,11 +164,11 @@ class LSHIndex:
         self.bands = int(bands)
         self.rows = int(rows)
         self.dim = int(dim if dim is not None else settings.SOMABRAIN_SDR_DIM)
-        self.tables: List[Dict[int, Set[Tuple[float, float, float]]]] = [
+        self.tables: list[dict[int, set[tuple[float, float, float]]]] = [
             dict() for _ in range(self.bands)
         ]
 
-    def _band_hashes(self, bits: Set[int]) -> List[int]:
+    def _band_hashes(self, bits: set[int]) -> list[int]:
         """
         Compute band hashes for an SDR using the banding technique.
 
@@ -189,7 +188,7 @@ class LSHIndex:
         """
         # Represent SDR as sorted indices; compute band hashes by chunking ranges
         band_size = max(1, self.dim // (self.bands * self.rows))
-        hashes: List[int] = []
+        hashes: list[int] = []
         for b in range(self.bands):
             start = b * band_size * self.rows
             end = min(self.dim, start + band_size * self.rows)
@@ -201,7 +200,7 @@ class LSHIndex:
             hashes.append(acc)
         return hashes
 
-    def add(self, coord: Tuple[float, float, float], bits: Set[int]) -> None:
+    def add(self, coord: tuple[float, float, float], bits: set[int]) -> None:
         """
         Add a coordinate-SDR pair to the LSH index.
 
@@ -220,8 +219,8 @@ class LSHIndex:
             bucket.add(coord)
 
     def query(
-        self, bits: Set[int], limit: int = 100
-    ) -> List[Tuple[float, float, float]]:
+        self, bits: set[int], limit: int = 100
+    ) -> list[tuple[float, float, float]]:
         """
         Query the index for coordinates with similar SDRs.
 
@@ -240,7 +239,7 @@ class LSHIndex:
             Results are deduplicated across bands to avoid duplicate coordinates.
             Early termination occurs when the limit is reached.
         """
-        seen: Set[Tuple[float, float, float]] = set()
+        seen: set[tuple[float, float, float]] = set()
         for b, hv in enumerate(self._band_hashes(bits)):
             bucket = self.tables[b].get(hv)
             if not bucket:

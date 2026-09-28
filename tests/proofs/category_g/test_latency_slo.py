@@ -19,7 +19,6 @@ from __future__ import annotations
 import os
 import statistics
 import time
-from typing import List
 
 import numpy as np
 import pytest
@@ -31,7 +30,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def percentile(data: List[float], p: float) -> float:
+def percentile(data: list[float], p: float) -> float:
     """Calculate percentile of data."""
     if not data:
         return 0.0
@@ -67,7 +66,7 @@ class TestLatencySLOs:
         from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(dim=512, capacity=100)
-        latencies: List[float] = []
+        latencies: list[float] = []
 
         # Run multiple remember operations
         for i in range(50):
@@ -107,7 +106,7 @@ class TestLatencySLOs:
             vec = vec / np.linalg.norm(vec)
             wm.admit(f"item_{i}", vec, {"index": i})
 
-        latencies: List[float] = []
+        latencies: list[float] = []
 
         # Run multiple recall operations
         for _ in range(50):
@@ -139,7 +138,7 @@ class TestLatencySLOs:
         from somabrain.admin.cognitive.planning import Planner
 
         planner = Planner(max_depth=3)
-        latencies: List[float] = []
+        latencies: list[float] = []
 
         # Run multiple planning operations
         for i in range(30):
@@ -176,7 +175,7 @@ class TestLatencySLOs:
         )
         dm = DegradationManager(cb)
 
-        latencies: List[float] = []
+        latencies: list[float] = []
 
         # Run multiple health checks
         for i in range(100):
@@ -210,7 +209,7 @@ class TestLatencySLOs:
         )
 
         per_tenant = PerTenantNeuromodulators()
-        latencies: List[float] = []
+        latencies: list[float] = []
 
         # Run multiple neuromodulator operations
         for i in range(100):
@@ -262,7 +261,7 @@ class TestLatencyStatistics:
         from somabrain.memory.wm.core import WorkingMemory
 
         wm = WorkingMemory(dim=512, capacity=100)
-        latencies: List[float] = []
+        latencies: list[float] = []
 
         # Run operations
         for i in range(100):

@@ -4,11 +4,11 @@ Defines high-level operational modes that override low-level knobs.
 Reference: GMD Theorem 5 (Sensitivity & Robustness).
 """
 
-from typing import Any, Dict
+from typing import Any
 
 # GMD Parameter Presets for each Mode
 # Personas: GMD Analyst, UX Consultant, SRE
-BRAIN_MODES: Dict[str, Dict[str, Any]] = {
+BRAIN_MODES: dict[str, dict[str, Any]] = {
     "TRAINING": {
         "description": "High-Velocity Learning (Max Plasticity)",
         "overrides": {
@@ -55,7 +55,7 @@ BRAIN_MODES: Dict[str, Dict[str, Any]] = {
 }
 
 
-def get_mode_overrides(mode_name: str) -> Dict[str, Any]:
+def get_mode_overrides(mode_name: str) -> dict[str, Any]:
     """Get the parameter overrides for a given mode."""
     mode = BRAIN_MODES.get(mode_name, BRAIN_MODES["ANALYTIC"])
     return mode.get("overrides", {})

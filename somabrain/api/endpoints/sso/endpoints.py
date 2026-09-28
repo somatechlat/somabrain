@@ -17,7 +17,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 import time
-from typing import List
 from uuid import UUID
 
 import httpx
@@ -57,7 +56,7 @@ router = Router(tags=["SSO"])
 # =============================================================================
 
 
-@router.get("/{tenant_id}/providers", response=List[IdPOut])
+@router.get("/{tenant_id}/providers", response=list[IdPOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.IDP_LIST.value)
 def list_identity_providers(request: AuthenticatedRequest, tenant_id: UUID):
@@ -294,7 +293,7 @@ def test_identity_provider(request: AuthenticatedRequest, tenant_id: UUID, idp_i
             (time.time() - start_time) * 1000
         )
     except httpx.RequestError as e:
-        test_result["message"] = f"Connection failed: {str(e)}"
+        test_result["message"] = f"Connection failed: {e!s}"
         test_result["details"]["error"] = str(e)
 
     if test_result["success"]:

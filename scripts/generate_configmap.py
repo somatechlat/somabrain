@@ -10,6 +10,7 @@ included in the Kustomize overlay.
 import pathlib
 import re
 import sys
+
 import yaml
 
 CONFIG_MD = pathlib.Path("docs/operations/configuration.md")
@@ -20,7 +21,7 @@ if not CONFIG_MD.is_file():
 
 content = CONFIG_MD.read_text()
 # Find a fenced env block (```env ... ```). If not present, fall back to any code block.
-match = re.search(r"```env\n(.*?)\n```", content, re.S)
+match = re.search(r"```env\n(.*?)\n```", content, re.DOTALL)
 if not match:
     sys.exit("No env code block found in configuration.md")
 

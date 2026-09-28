@@ -13,9 +13,9 @@ import os
 import socket
 import threading
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Callable, Dict, Optional
 
 # Use the canonical settings import as per Vibe coding rules.
 from django.conf import settings
@@ -36,7 +36,7 @@ except Exception as exc:  # pragma: no cover
 
 import requests
 
-import somabrain.metrics as metrics
+from somabrain import metrics
 from somabrain.core.infrastructure_defs import get_redis_url
 
 
@@ -88,14 +88,14 @@ class IntegratorHub:
 
     def __init__(
         self,
-        alpha: Optional[float] = None,
+        alpha: float | None = None,
         domains=None,
         topic_updates=None,
-        topic_global: Optional[str] = None,
-        bootstrap: Optional[str] = None,
-        producer: Optional[object] = None,
-        redis_client: Optional[object] = None,
-        opa_request: Optional[Callable[[str, Dict[str, float]], bool]] = None,
+        topic_global: str | None = None,
+        bootstrap: str | None = None,
+        producer: object | None = None,
+        redis_client: object | None = None,
+        opa_request: Callable[[str, dict[str, float]], bool] | None = None,
         start_io: bool = True,
         start_health: bool = True,
     ):
@@ -146,7 +146,7 @@ class IntegratorHub:
             )
             self.consumer.subscribe(list(self.topic_updates.values()))
             self.producer = producer or Producer({"bootstrap.servers": self.bootstrap})
-        self._latest: Dict[str, Dict] = {}
+        self._latest: dict[str, dict] = {}
         self._instance_id = socket.gethostname()
         self._redis_client = redis_client
         if self._redis_client is None:
@@ -194,7 +194,7 @@ class IntegratorHub:
                 }
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
 
-            def log_message(self, format, *args):  # noqa: N802
+            def log_message(self, format, *args):
                 """Execute log message.
 
                 Args:
@@ -209,7 +209,7 @@ class IntegratorHub:
         except Exception as exc:  # pragma: no cover
             raise RuntimeError(f"Health server failed: {exc}") from exc
 
-    def _encode(self, record: Dict, schema) -> bytes:
+    def _encode(self, record: dict, schema) -> bytes:
         """Execute encode.
 
         Args:
@@ -223,7 +223,7 @@ class IntegratorHub:
         schemaless_writer(buf, schema, record)
         return buf.getvalue()
 
-    def _effective_cfg(self) -> Dict[str, float | bool | str]:
+    def _effective_cfg(self) -> dict[str, float | bool | str]:
         """Load current config from Django settings."""
         ss = settings
         alpha = float(getattr(ss, "SOMABRAIN_PREDICTOR_ALPHA", self.alpha))
@@ -236,7 +236,7 @@ class IntegratorHub:
         ).strip()
         return {"alpha": alpha, "temperature": temp, "enable": flag, "opa_url": opa_url}
 
-    def _select_leader(self) -> Optional[str]:
+    def _select_leader(self) -> str | None:
         """Execute select leader."""
 
         if not set(self.domains).issubset(self._latest.keys()):
@@ -300,7 +300,7 @@ class IntegratorHub:
 
             logging.getLogger(__name__).debug("Failed to compute entropy: %s", exc)
             entropy = 0.0
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         frame = {
             "ts": now,
             "leader": leader,
@@ -352,7 +352,7 @@ class IntegratorHub:
         self.producer.produce(self.topic_global, payload)
         self.producer.flush()
 
-    def _default_opa_request(self, url: str, context: Dict[str, float]) -> bool:
+    def _default_opa_request(self, url: str, context: dict[str, float]) -> bool:
         """Execute default opa request.
 
         Posts to the canonical integrator policy path unless the configured URL
@@ -429,7 +429,7 @@ if __name__ == "__main__":  # pragma: no cover
     import logging
 
     _main_logger = logging.getLogger(__name__)
-    hub: Optional[IntegratorHub] = None
+    hub: IntegratorHub | None = None
     try:
         hub = IntegratorHub(start_io=True)
         _main_logger.info("IntegratorHub started with Kafka I/O.")

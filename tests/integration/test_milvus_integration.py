@@ -21,9 +21,8 @@ def test_milvus_connection() -> bool:
     """Test basic Milvus connectivity."""
     print("[1/4] Testing Milvus connection...")
     try:
-        from pymilvus import connections, utility
-
         from django.conf import settings
+        from pymilvus import connections, utility
 
         host = getattr(settings, "SOMABRAIN_MILVUS_HOST", "localhost")
         port = getattr(settings, "SOMABRAIN_MILVUS_PORT", 19530)

@@ -7,11 +7,13 @@ Features:
 - Zero-Latency cognitive shifts
 """
 
-from typing import List, Dict, Any
-from ninja import Router, Schema
+from typing import Any
+
 from django.http import HttpRequest
+from ninja import Router, Schema
+
 from somabrain.aaas.auth import api_key_or_jwt
-from somabrain.aaas.granular import require_permission, Permission
+from somabrain.aaas.granular import Permission, require_permission
 from somabrain.aaas.rate_limit import rate_limit
 from somabrain.brain_settings.models import BrainSetting
 from somabrain.brain_settings.modes import BRAIN_MODES
@@ -22,14 +24,14 @@ router = Router(tags=["Brain Settings"])
 class ModeResponse(Schema):
     mode: str
     description: str
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
 
 
 class SetModeSchema(Schema):
     mode: str
 
 
-@router.get("/modes", auth=api_key_or_jwt, response=List[ModeResponse])
+@router.get("/modes", auth=api_key_or_jwt, response=list[ModeResponse])
 @rate_limit(rps=5, burst=10)
 def list_brain_modes(request: HttpRequest):
     """List all available cognitive operational modes."""

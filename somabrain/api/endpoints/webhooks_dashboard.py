@@ -19,7 +19,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 
 import hashlib
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -98,7 +98,7 @@ class WebhookConfig(Schema):
 
     id: str
     url: str
-    events: List[str]
+    events: list[str]
     is_active: bool
     secret_masked: str
     created_at: str
@@ -111,12 +111,12 @@ class WebhookDelivery(Schema):
     event: str
     url: str
     status: str
-    status_code: Optional[int]
+    status_code: int | None
     attempt: int
     max_attempts: int
     created_at: str
-    delivered_at: Optional[str]
-    response_time_ms: Optional[int]
+    delivered_at: str | None
+    response_time_ms: int | None
 
 
 class WebhookStats(Schema):
@@ -135,7 +135,7 @@ class WebhookEvent(Schema):
 
     name: str
     description: str
-    sample_payload: Dict[str, Any]
+    sample_payload: dict[str, Any]
 
 
 # =============================================================================
@@ -143,7 +143,7 @@ class WebhookEvent(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/config", response=List[WebhookConfig])
+@router.get("/{tenant_id}/config", response=list[WebhookConfig])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_webhook_configs(
     request: AuthenticatedRequest,
@@ -185,7 +185,7 @@ def create_webhook_config(
     request: AuthenticatedRequest,
     tenant_id: UUID,
     url: str,
-    events: List[str],
+    events: list[str],
 ):
     """
     Create webhook configuration.
@@ -263,12 +263,12 @@ def delete_webhook_config(
 # =============================================================================
 
 
-@router.get("/{tenant_id}/deliveries", response=List[WebhookDelivery])
+@router.get("/{tenant_id}/deliveries", response=list[WebhookDelivery])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_deliveries(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    status: Optional[str] = None,
+    status: str | None = None,
     limit: int = 50,
 ):
     """
@@ -432,7 +432,7 @@ def get_webhook_stats(
 # =============================================================================
 
 
-@router.get("/events", response=List[WebhookEvent])
+@router.get("/events", response=list[WebhookEvent])
 def list_available_events():
     """
     List available webhook events.

@@ -7,7 +7,7 @@ Request/response schemas for memory operations API.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -21,28 +21,28 @@ class RecallRequest(BaseModel):
 
     query: str
     top_k: int = 3
-    universe: Optional[str] = None
+    universe: str | None = None
 
 
 class MemoryPayload(BaseModel):
     """Schema for episodic memory payloads."""
 
-    task: Optional[str] = None
-    content: Optional[str] = None
-    phase: Optional[str] = None
-    quality_score: Optional[float] = None
-    domains: Optional[Union[List[str], str]] = None
-    reasoning_chain: Optional[Union[List[str], str]] = None
+    task: str | None = None
+    content: str | None = None
+    phase: str | None = None
+    quality_score: float | None = None
+    domains: list[str] | str | None = None
+    reasoning_chain: list[str] | str | None = None
     importance: float = 1.0
     memory_type: str = "episodic"
-    timestamp: Optional[TimestampInput] = None
-    universe: Optional[str] = None
-    who: Optional[str] = None
-    did: Optional[str] = None
-    what: Optional[str] = None
-    where: Optional[str] = None
-    when: Optional[str] = None
-    why: Optional[str] = None
+    timestamp: TimestampInput | None = None
+    universe: str | None = None
+    who: str | None = None
+    did: str | None = None
+    what: str | None = None
+    where: str | None = None
+    when: str | None = None
+    why: str | None = None
 
     @model_validator(mode="after")
     def _normalize_timestamp(self):
@@ -57,7 +57,7 @@ class MemoryPayload(BaseModel):
 class RememberRequest(BaseModel):
     """Schema for memory storage requests."""
 
-    coord: Optional[str] = Field(None, description="x,y,z; optional — auto if omitted")
+    coord: str | None = Field(None, description="x,y,z; optional — auto if omitted")
     payload: MemoryPayload
 
 
@@ -65,22 +65,22 @@ class WMHit(BaseModel):
     """Working memory hit schema."""
 
     score: float
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
 class RecallResponse(BaseModel):
     """Response model for the /recall endpoint."""
 
-    wm: List[WMHit]
-    memory: List[Dict[str, Any]]
+    wm: list[WMHit]
+    memory: list[dict[str, Any]]
     namespace: str
     trace_id: str
-    deadline_ms: Optional[str] = None
-    idempotency_key: Optional[str] = None
-    reality: Optional[Dict[str, Any]] = None
-    drift: Optional[Dict[str, Any]] = None
-    hrr_cleanup: Optional[Dict[str, Any]] = None
-    results: List[Dict[str, Any]] = []
+    deadline_ms: str | None = None
+    idempotency_key: str | None = None
+    reality: dict[str, Any] | None = None
+    drift: dict[str, Any] | None = None
+    hrr_cleanup: dict[str, Any] | None = None
+    results: list[dict[str, Any]] = []
 
 
 class RetrievalRequest(BaseModel):
@@ -88,36 +88,36 @@ class RetrievalRequest(BaseModel):
 
     query: str
     top_k: int = 10
-    retrievers: List[str] = ["vector", "wm", "graph", "lexical"]
+    retrievers: list[str] = ["vector", "wm", "graph", "lexical"]
     rerank: str = "auto"
     persist: bool = True
-    universe: Optional[str] = None
-    mode: Optional[str] = None
-    id: Optional[str] = None
-    key: Optional[str] = None
-    coord: Optional[str] = None
+    universe: str | None = None
+    mode: str | None = None
+    id: str | None = None
+    key: str | None = None
+    coord: str | None = None
 
 
 class RetrievalCandidate(BaseModel):
     """Single retrieval candidate."""
 
-    coord: Optional[str] = None
-    key: Optional[str] = None
+    coord: str | None = None
+    key: str | None = None
     score: float
     retriever: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
 class RetrievalResponse(BaseModel):
     """Response from retrieval operation."""
 
-    candidates: List[RetrievalCandidate]
-    session_coord: Optional[str] = None
+    candidates: list[RetrievalCandidate]
+    session_coord: str | None = None
     namespace: str
     trace_id: str
-    metrics: Optional[Dict[str, Any]] = None
+    metrics: dict[str, Any] | None = None
     degraded: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class RememberResponse(BaseModel):
@@ -127,20 +127,20 @@ class RememberResponse(BaseModel):
     success: bool
     namespace: str
     trace_id: str
-    deadline_ms: Optional[str] = None
-    idempotency_key: Optional[str] = None
+    deadline_ms: str | None = None
+    idempotency_key: str | None = None
 
 
 class LinkRequest(BaseModel):
     """Graph link creation request."""
 
-    from_key: Optional[str] = None
-    to_key: Optional[str] = None
-    from_coord: Optional[str] = None
-    to_coord: Optional[str] = None
-    type: Optional[str] = None
-    weight: Optional[float] = 1.0
-    universe: Optional[str] = None
+    from_key: str | None = None
+    to_key: str | None = None
+    from_coord: str | None = None
+    to_coord: str | None = None
+    type: str | None = None
+    weight: float | None = 1.0
+    universe: str | None = None
 
 
 class LinkResponse(BaseModel):
@@ -152,24 +152,24 @@ class LinkResponse(BaseModel):
 class GraphLinksRequest(BaseModel):
     """Query graph links request."""
 
-    from_key: Optional[str] = None
-    from_coord: Optional[str] = None
-    type: Optional[str] = None
-    limit: Optional[int] = 50
-    universe: Optional[str] = None
+    from_key: str | None = None
+    from_coord: str | None = None
+    type: str | None = None
+    limit: int | None = 50
+    universe: str | None = None
 
 
 class GraphLinksResponse(BaseModel):
     """Graph links query response."""
 
-    edges: List[Dict[str, Any]]
-    universe: Optional[str] = None
+    edges: list[dict[str, Any]]
+    universe: str | None = None
 
 
 class DeleteRequest(BaseModel):
     """Delete memory request."""
 
-    coordinate: List[float]
+    coordinate: list[float]
 
 
 class DeleteResponse(BaseModel):

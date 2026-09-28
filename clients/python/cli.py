@@ -1,7 +1,9 @@
 """Module cli."""
 
 from __future__ import annotations
+
 import argparse
+
 from somabrain_client import SomaBrainClient
 
 

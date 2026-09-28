@@ -146,9 +146,10 @@ class TestStateIsolation:
         WHEN tenant A exhausts quota
         THEN tenant B's quota SHALL be unaffected.
         """
-        from somabrain.aaas.governance.quotas import QuotaManager, QuotaConfig
-        from somabrain.aaas.logic.tenant_manager import get_tenant_manager
         import asyncio
+
+        from somabrain.aaas.governance.quotas import QuotaConfig, QuotaManager
+        from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 
         # Get tenant manager synchronously
         try:
@@ -251,8 +252,9 @@ class TestStateIsolation:
         WHEN tenant A fills WM to capacity
         THEN tenant B's WM capacity SHALL be unaffected.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
+
+        from somabrain.memory.wm.core import WorkingMemory
 
         # Create separate WM instances for each tenant
         wm_a = WorkingMemory(dim=512, capacity=5)

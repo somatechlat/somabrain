@@ -38,7 +38,7 @@ from __future__ import annotations
 import argparse
 import random
 import time as _time
-from typing import Any, List, Tuple
+from typing import Any
 
 from django.conf import settings
 
@@ -53,7 +53,7 @@ from .wm.mt_wm import MultiTenantWM
 
 def _episodics_from_wm(
     mtwm: MultiTenantWM, tenant_id: str, limit: int = 256
-) -> List[dict]:
+) -> list[dict]:
     """Execute episodics from wm.
 
     Args:
@@ -67,8 +67,8 @@ def _episodics_from_wm(
 
 
 def _coords_for_payloads(
-    mem: MemoryClient, payloads: List[dict]
-) -> List[Tuple[float, float, float]]:
+    mem: MemoryClient, payloads: list[dict]
+) -> list[tuple[float, float, float]]:
     """Execute coords for payloads.
 
     Args:
@@ -76,7 +76,7 @@ def _coords_for_payloads(
         payloads: The payloads.
     """
 
-    coords: List[Tuple[float, float, float]] = []
+    coords: list[tuple[float, float, float]] = []
     for p in payloads:
         c = p.get("coordinate")
         if isinstance(c, (list, tuple)) and len(c) == 3:

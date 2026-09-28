@@ -17,7 +17,6 @@ Test Coverage:
 from __future__ import annotations
 
 import os
-from typing import Dict
 
 import pytest
 
@@ -50,8 +49,9 @@ class TestMemoryIsolation:
         WHEN tenant A stores a memory
         THEN tenant B's recall SHALL NOT return it.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
+
+        from somabrain.memory.wm.core import WorkingMemory
 
         # Create separate WM instances for each tenant
         wm_tenant_a = WorkingMemory(dim=512, capacity=10)
@@ -82,8 +82,9 @@ class TestMemoryIsolation:
         WHEN tenant A queries with tenant B's coordinate
         THEN results SHALL be empty.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
+
+        from somabrain.memory.wm.core import WorkingMemory
 
         # Create separate WM instances
         wm_tenant_a = WorkingMemory(dim=512, capacity=10)
@@ -113,8 +114,9 @@ class TestMemoryIsolation:
         WHEN namespace header is set
         THEN all operations SHALL be scoped to that namespace.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
+
+        from somabrain.memory.wm.core import WorkingMemory
 
         # Create WM instances representing different namespaces
         wm_ns1 = WorkingMemory(dim=512, capacity=10)
@@ -142,8 +144,9 @@ class TestMemoryIsolation:
         WHEN tenant header is missing
         THEN SB SHALL use default tenant, NOT leak cross-tenant data.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
+
+        from somabrain.memory.wm.core import WorkingMemory
 
         # Create default WM (simulates missing tenant header)
         wm_default = WorkingMemory(dim=512, capacity=10)
@@ -173,12 +176,13 @@ class TestMemoryIsolation:
         WHEN 100 tenants operate concurrently
         THEN zero cross-tenant leakage SHALL occur.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
 
+        from somabrain.memory.wm.core import WorkingMemory
+
         num_tenants = 20  # Reduced for faster test execution
-        tenant_wms: Dict[str, WorkingMemory] = {}
-        tenant_vecs: Dict[str, np.ndarray] = {}
+        tenant_wms: dict[str, WorkingMemory] = {}
+        tenant_vecs: dict[str, np.ndarray] = {}
 
         # Create WM for each tenant and store unique data
         for i in range(num_tenants):
@@ -239,11 +243,12 @@ class TestPerTenantNeuromodulatorIsolation:
         WHEN tenant A modifies neuromodulators
         THEN tenant B's neuromodulators SHALL be unchanged.
         """
+        import time
+
         from somabrain.admin.brain.neuromodulators import (
             NeuromodState,
             PerTenantNeuromodulators,
         )
-        import time
 
         per_tenant = PerTenantNeuromodulators()
 
@@ -292,8 +297,9 @@ class TestWorkingMemoryTenantIsolation:
         WHEN tenant A fills WM to capacity
         THEN tenant B's WM capacity SHALL be unaffected.
         """
-        from somabrain.memory.wm.core import WorkingMemory
         import numpy as np
+
+        from somabrain.memory.wm.core import WorkingMemory
 
         # Create WM for each tenant with same capacity
         wm_a = WorkingMemory(dim=512, capacity=5)

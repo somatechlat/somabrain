@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import os
 
-import pytest
 import httpx
+import pytest
 
 from common.logging import logger
 
@@ -62,8 +62,9 @@ def _postgres_connect_kwargs(timeout: int = 3) -> dict[str, object]:
 def _redis_available() -> bool:
     """Check if Redis is reachable on SomaBrain cluster."""
     try:
-        import redis
         import os
+
+        import redis
 
         # Default to standalone stack port 30100, allow override via REDIS_URL
         redis_url = os.environ.get("SOMABRAIN_REDIS_URL", "redis://localhost:30100/0")
@@ -77,8 +78,9 @@ def _redis_available() -> bool:
 def _kafka_available() -> bool:
     """Check if Kafka is reachable on SomaBrain cluster."""
     try:
-        from kafka import KafkaAdminClient
         import os
+
+        from kafka import KafkaAdminClient
 
         bootstrap = os.environ.get(
             "KAFKA_BOOTSTRAP_SERVERS",

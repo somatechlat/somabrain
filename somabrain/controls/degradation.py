@@ -8,6 +8,7 @@ graceful degradation states to ensure zero-latency and zero data loss.
 
 import logging
 from enum import Enum
+
 from django.conf import settings
 from django.core.cache import cache
 
@@ -73,7 +74,9 @@ class DegradationManager:
             # 5-minute time-bucket so repeated errors for the same service do not
             # violate the (tenant_id, dedupe_key) unique constraint in OutboxEvent.
             import time
+
             from django.db import IntegrityError
+
             from somabrain.admin.core.models import OutboxEvent
 
             bucket = int(time.time() // 300)  # 5-minute window bucket

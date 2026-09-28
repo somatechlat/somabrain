@@ -10,7 +10,7 @@ import asyncio
 import logging
 import random
 import time
-from typing import Any, Optional, Tuple
+from typing import Any
 
 import httpx
 from django.conf import settings
@@ -77,7 +77,7 @@ class MemoryHTTPTransport:
         *,
         base_url: str,
         headers: dict,
-        limits: Optional[httpx.Limits],
+        limits: httpx.Limits | None,
         retries: int,
         logger: logging.Logger,
     ) -> None:
@@ -95,18 +95,18 @@ class MemoryHTTPTransport:
         self._limits = limits
         self._retries = max(0, int(retries))
         self._logger = logger
-        self._client: Optional[httpx.Client] = None
-        self._async_client: Optional[httpx.AsyncClient] = None
-        self._async_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._client: httpx.Client | None = None
+        self._async_client: httpx.AsyncClient | None = None
+        self._async_loop: asyncio.AbstractEventLoop | None = None
         self._init_clients()
 
     @property
-    def client(self) -> Optional[httpx.Client]:
+    def client(self) -> httpx.Client | None:
         """The synchronous HTTP client."""
         return self._client
 
     @property
-    def async_client(self) -> Optional[httpx.AsyncClient]:
+    def async_client(self) -> httpx.AsyncClient | None:
         """The asynchronous HTTP client, bound to the running event loop.
 
         An ``httpx.AsyncClient`` owns connection-pool state tied to the event
@@ -161,11 +161,13 @@ class MemoryHTTPTransport:
         # Initialize async client for the loop that is current at construction.
         self._async_client = self._new_async_client()
         try:
-            self._async_loop = asyncio.get_running_loop() if self._async_client else None
+            self._async_loop = (
+                asyncio.get_running_loop() if self._async_client else None
+            )
         except RuntimeError:
             self._async_loop = None
 
-    def _new_async_client(self) -> Optional[httpx.AsyncClient]:
+    def _new_async_client(self) -> httpx.AsyncClient | None:
         """Build a fresh async client for the current event loop.
 
         Returns None when no base URL is configured or construction fails; the
@@ -201,7 +203,7 @@ class MemoryHTTPTransport:
         headers: dict,
         *,
         max_retries: int = 2,
-    ) -> Tuple[bool, int, Any]:
+    ) -> tuple[bool, int, Any]:
         """POST request with retry logic (synchronous).
 
         Args:
@@ -242,7 +244,7 @@ class MemoryHTTPTransport:
         headers: dict,
         *,
         max_retries: int = 2,
-    ) -> Tuple[bool, int, Any]:
+    ) -> tuple[bool, int, Any]:
         """POST request with retry logic (asynchronous).
 
         Args:
@@ -358,8 +360,7 @@ def create_memory_transport(
     )
     if not base_url:
         raise RuntimeError("Memory HTTP endpoint required but not configured")
-    if base_url.endswith("/openapi.json"):
-        base_url = base_url[: -len("/openapi.json")]
+    base_url = base_url.removesuffix("/openapi.json")
     base_url = base_url.rstrip("/")
 
     transport = MemoryHTTPTransport(

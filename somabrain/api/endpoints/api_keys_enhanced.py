@@ -19,7 +19,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 import hashlib
 import secrets
 from datetime import timedelta
-from typing import List, Optional
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -61,37 +60,37 @@ class APIKeyDetailOut(Schema):
     id: str
     name: str
     key_prefix: str
-    scopes: List[str]
-    rate_limit: Optional[int]
-    ip_whitelist: Optional[List[str]]
+    scopes: list[str]
+    rate_limit: int | None
+    ip_whitelist: list[str] | None
     is_active: bool
     is_test: bool
-    expires_at: Optional[str]
-    last_used_at: Optional[str]
+    expires_at: str | None
+    last_used_at: str | None
     usage_count: int
     created_at: str
-    created_by: Optional[str]
+    created_by: str | None
 
 
 class APIKeyCreate(Schema):
     """Create API key request."""
 
     name: str
-    scopes: List[str] = ["read"]
-    rate_limit: Optional[int] = None  # Per minute
-    ip_whitelist: Optional[List[str]] = None
-    expires_days: Optional[int] = None
+    scopes: list[str] = ["read"]
+    rate_limit: int | None = None  # Per minute
+    ip_whitelist: list[str] | None = None
+    expires_days: int | None = None
     is_test: bool = False
 
 
 class APIKeyUpdate(Schema):
     """Update API key request."""
 
-    name: Optional[str] = None
-    scopes: Optional[List[str]] = None
-    rate_limit: Optional[int] = None
-    ip_whitelist: Optional[List[str]] = None
-    is_active: Optional[bool] = None
+    name: str | None = None
+    scopes: list[str] | None = None
+    rate_limit: int | None = None
+    ip_whitelist: list[str] | None = None
+    is_active: bool | None = None
 
 
 class APIKeyRotate(Schema):
@@ -110,8 +109,8 @@ class APIKeyUsageStats(Schema):
     total_requests: int
     requests_today: int
     requests_this_week: int
-    last_used_at: Optional[str]
-    last_used_ip: Optional[str]
+    last_used_at: str | None
+    last_used_ip: str | None
     error_rate: float
     avg_latency_ms: float
 
@@ -128,7 +127,7 @@ class ScopeOut(Schema):
 # =============================================================================
 
 
-@router.get("/scopes", response=List[ScopeOut])
+@router.get("/scopes", response=list[ScopeOut])
 def list_available_scopes():
     """
     List all available API key scopes.
@@ -145,7 +144,7 @@ def list_available_scopes():
 # =============================================================================
 
 
-@router.get("/{tenant_id}/keys", response=List[APIKeyDetailOut])
+@router.get("/{tenant_id}/keys", response=list[APIKeyDetailOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.API_KEYS_READ.value)
 def list_api_keys(

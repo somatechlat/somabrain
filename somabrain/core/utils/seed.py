@@ -8,7 +8,6 @@ hashing to produce reproducible uint64 seeds.
 from __future__ import annotations
 
 import hashlib
-from typing import Optional, Union
 
 import numpy as np
 
@@ -24,7 +23,7 @@ def _hash_to_uint64(b: bytes) -> int:
     return int.from_bytes(h.digest(), byteorder="little", signed=False)
 
 
-def seed_to_uint64(seed: Optional[Union[int, str, bytes]]) -> int:
+def seed_to_uint64(seed: int | str | bytes | None) -> int:
     """Convert seed to a deterministic uint64.
 
     - None => 0
@@ -43,14 +42,14 @@ def seed_to_uint64(seed: Optional[Union[int, str, bytes]]) -> int:
     return _hash_to_uint64(str(seed).encode("utf-8"))
 
 
-def rng_from_seed(seed: Optional[Union[int, str, bytes]] = None) -> np.random.Generator:
+def rng_from_seed(seed: int | str | bytes | None = None) -> np.random.Generator:
     """Return a numpy Generator seeded deterministically from `seed`."""
     s64 = seed_to_uint64(seed)
     return np.random.default_rng(s64)
 
 
 def random_unit_vector(
-    dim: int, seed: Optional[Union[int, str, bytes]] = None, dtype=np.float32
+    dim: int, seed: int | str | bytes | None = None, dtype=np.float32
 ) -> np.ndarray:
     """Return a random unit-length vector (L2-normalized) of shape (dim,)."""
     from somabrain.math import normalize_vector

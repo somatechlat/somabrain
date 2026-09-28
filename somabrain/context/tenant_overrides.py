@@ -7,12 +7,12 @@ Provides tenant-specific learning parameter overrides.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from django.conf import settings
 
 
-def load_tenant_overrides() -> Dict[str, Dict[str, Any]]:
+def load_tenant_overrides() -> dict[str, dict[str, Any]]:
     """Load per-tenant overrides from YAML/JSON or env JSON string.
 
     Reads from:
@@ -23,7 +23,7 @@ def load_tenant_overrides() -> Dict[str, Dict[str, Any]]:
         Dict mapping tenant IDs to their override configurations
     """
     path = settings.SOMABRAIN_LEARNING_TENANTS_FILE
-    overrides: Dict[str, Dict[str, Any]] = {}
+    overrides: dict[str, dict[str, Any]] = {}
 
     if path and os.path.exists(path):
         try:
@@ -71,8 +71,8 @@ def load_tenant_overrides() -> Dict[str, Dict[str, Any]]:
 
 def get_entropy_cap_for_tenant(
     tenant_id: str,
-    cache: Optional[Dict[str, Dict[str, Any]]] = None,
-) -> Optional[float]:
+    cache: dict[str, dict[str, Any]] | None = None,
+) -> float | None:
     """Read entropy_cap from tenant overrides.
 
     Args:
@@ -102,8 +102,8 @@ def get_entropy_cap_for_tenant(
 
 def get_tenant_retrieval_weights(
     tenant_id: str,
-    cache: Optional[Dict[str, Dict[str, Any]]] = None,
-) -> Optional[Dict[str, float]]:
+    cache: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, float] | None:
     """Get per-tenant retrieval weight overrides.
 
     Args:
@@ -139,8 +139,8 @@ def get_tenant_retrieval_weights(
 
 def get_tenant_decay_params(
     tenant_id: str,
-    cache: Optional[Dict[str, Dict[str, Any]]] = None,
-) -> Optional[Dict[str, float]]:
+    cache: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, float] | None:
     """Get per-tenant temporal decay parameter overrides.
 
     Args:

@@ -32,7 +32,6 @@ import logging
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import List, Tuple
 
 import numpy as np
 from django.conf import settings
@@ -40,6 +39,7 @@ from django.conf import settings
 # Import metrics for working‑memory instrumentation. The metrics module defines
 # counters such as ``WM_ADMIT``, ``WM_HITS``, ``WM_MISSES`` and ``WM_EVICTIONS``.
 from somabrain.metrics import memory_metrics as M
+
 from .core import WorkingMemory
 
 
@@ -143,7 +143,7 @@ class MultiTenantWM:
 
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
-    ) -> List[Tuple[float, dict]]:
+    ) -> list[tuple[float, dict]]:
         """Retrieve up to *top_k* items for *tenant_id*.
 
         ``WM_HITS`` is incremented when the call returns at least one result;
@@ -173,7 +173,7 @@ class MultiTenantWM:
         with self._lock:
             return self._ensure(tenant_id).novelty(vec)
 
-    def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
+    def items(self, tenant_id: str, limit: int | None = None) -> list[dict]:
         """Execute items.
 
         Args:
@@ -188,7 +188,7 @@ class MultiTenantWM:
             return data[-limit:]
         return data
 
-    def tenants(self) -> List[str]:
+    def tenants(self) -> list[str]:
         """Execute tenants."""
 
         with self._lock:

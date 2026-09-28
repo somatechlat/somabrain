@@ -7,4 +7,4 @@ performance metrics used by neuromodulators and (optionally) adaptive scorers.
 from .core import AdaptiveParameter, PerformanceMetrics
 from .integration import AdaptiveIntegrator
 
-__all__ = ["AdaptiveParameter", "PerformanceMetrics", "AdaptiveIntegrator"]
+__all__ = ["AdaptiveIntegrator", "AdaptiveParameter", "PerformanceMetrics"]

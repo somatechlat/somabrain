@@ -11,8 +11,6 @@ possible. This provides a truthful readiness signal for a real server.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from django.conf import settings
 
 
@@ -32,7 +30,7 @@ def _strip_scheme(url: str) -> str:
         return str(url or "").strip()
 
 
-def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
+def check_kafka(bootstrap: str | None, timeout_s: float = 1.0) -> bool:
     """Return True if we can connect to the Kafka broker and fetch metadata (confluent-kafka).
 
     Uses a metadata-only Consumer subscribe to no topics and polls for cluster metadata.
@@ -66,7 +64,7 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
         return False
 
 
-def check_postgres(dsn: Optional[str], timeout_s: float = 1.0) -> bool:
+def check_postgres(dsn: str | None, timeout_s: float = 1.0) -> bool:
     """Return True if we can connect to Postgres and SELECT 1.
 
     Uses psycopg3 if available. Falls back to False on import or connect errors.
@@ -106,9 +104,7 @@ def check_from_env() -> dict[str, bool]:
 # SFM Integration Health Check (E3)
 # Requirements: E3.1, E3.2, E3.3, E3.4, E3.5
 # ---------------------------------------------------------------------
-import asyncio
 from dataclasses import dataclass, field
-from typing import List
 
 
 @dataclass
@@ -128,13 +124,13 @@ class SFMIntegrationHealth:
     sfm_vector_store: bool = False
     sfm_graph_store: bool = False
     degraded: bool = False
-    degraded_components: List[str] = field(default_factory=list)
+    degraded_components: list[str] = field(default_factory=list)
     outbox_pending: int = 0
-    error: Optional[str] = None
+    error: str | None = None
 
 
 def check_sfm_integration_health(
-    sfm_endpoint: Optional[str] = None,
+    sfm_endpoint: str | None = None,
     timeout_s: float = 2.0,
     tenant: str = "default",
 ) -> SFMIntegrationHealth:
@@ -172,8 +168,7 @@ def check_sfm_integration_health(
 
     # Normalize endpoint
     sfm_endpoint = sfm_endpoint.rstrip("/")
-    if sfm_endpoint.endswith("/openapi.json"):
-        sfm_endpoint = sfm_endpoint[: -len("/openapi.json")]
+    sfm_endpoint = sfm_endpoint.removesuffix("/openapi.json")
 
     try:
         import httpx
@@ -236,7 +231,7 @@ def check_sfm_integration_health(
 
 
 async def check_sfm_integration_health_async(
-    sfm_endpoint: Optional[str] = None,
+    sfm_endpoint: str | None = None,
     timeout_s: float = 2.0,
     tenant: str = "default",
 ) -> SFMIntegrationHealth:
@@ -262,8 +257,7 @@ async def check_sfm_integration_health_async(
 
     # Normalize endpoint
     sfm_endpoint = sfm_endpoint.rstrip("/")
-    if sfm_endpoint.endswith("/openapi.json"):
-        sfm_endpoint = sfm_endpoint[: -len("/openapi.json")]
+    sfm_endpoint = sfm_endpoint.removesuffix("/openapi.json")
 
     try:
         import httpx
@@ -308,7 +302,7 @@ async def check_sfm_integration_health_async(
                 result.degraded_components = ["sfm_api"]
                 result.error = f"SFM returned status {response.status_code}"
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         result.sfm_available = False
         result.degraded = True
         result.degraded_components = ["sfm_timeout"]

@@ -16,15 +16,14 @@ VIBE Coding Rules v5.2 - ALL 7 PERSONAS:
 
 import hashlib
 import logging
-from typing import Optional
 
 from django.http import HttpRequest
 from django.utils import timezone
 from ninja.security import HttpBearer
 
+from somabrain.aaas.logic.tenant_types import TenantStatus
 from somabrain.aaas.models.api import APIKey
 from somabrain.aaas.models.audit import AuditLog
-from somabrain.aaas.logic.tenant_types import TenantStatus
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ class APIKeyAuth(HttpBearer):
             ...
     """
 
-    def authenticate(self, request: HttpRequest, token: str) -> Optional[dict]:
+    def authenticate(self, request: HttpRequest, token: str) -> dict | None:
         """
         Authenticate the API key token.
 
@@ -94,7 +93,7 @@ class APIKeyAuth(HttpBearer):
             "is_test": api_key.is_test,
         }
 
-    def _verify_key(self, token: str) -> Optional[APIKey]:
+    def _verify_key(self, token: str) -> APIKey | None:
         """
         Verify API key using constant-time comparison.
 
@@ -125,7 +124,7 @@ class APIKeyAuth(HttpBearer):
         except APIKey.DoesNotExist:
             return None
 
-    def _get_client_ip(self, request: HttpRequest) -> Optional[str]:
+    def _get_client_ip(self, request: HttpRequest) -> str | None:
         """Extract client IP from request (handles proxies)."""
         x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
         if x_forwarded_for:
@@ -207,7 +206,7 @@ class MultiAuth:
 
         self.auth_classes = auth_classes
 
-    def __call__(self, request: HttpRequest) -> Optional[dict]:
+    def __call__(self, request: HttpRequest) -> dict | None:
         """Try each auth method until one succeeds."""
         for auth_class in self.auth_classes:
             auth_instance = auth_class()

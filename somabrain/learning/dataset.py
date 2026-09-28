@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import asdict, dataclass
-from typing import Callable, Iterable, Iterator, List, Optional, Sequence
 
 
-def _extract_text(payload: dict) -> Optional[str]:
+def _extract_text(payload: dict) -> str | None:
     """Execute extract text.
 
     Args:
@@ -47,7 +47,7 @@ class TrainingExample:
         }
 
 
-def _conversation_from_payload(payload: dict) -> Optional[List[dict]]:
+def _conversation_from_payload(payload: dict) -> list[dict] | None:
     """Execute conversation from payload.
 
     Args:
@@ -56,7 +56,7 @@ def _conversation_from_payload(payload: dict) -> Optional[List[dict]]:
 
     convo = payload.get("conversation")
     if isinstance(convo, list):
-        messages: List[dict] = []
+        messages: list[dict] = []
         for item in convo:
             if not isinstance(item, dict):
                 continue
@@ -69,7 +69,7 @@ def _conversation_from_payload(payload: dict) -> Optional[List[dict]]:
     return None
 
 
-def _build_example(record: dict) -> Optional[TrainingExample]:
+def _build_example(record: dict) -> TrainingExample | None:
     """Execute build example.
 
     Args:
@@ -137,14 +137,14 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
     return None
 
 
-def build_examples(records: Iterable[dict]) -> List[TrainingExample]:
+def build_examples(records: Iterable[dict]) -> list[TrainingExample]:
     """Execute build examples.
 
     Args:
         records: The records.
     """
 
-    examples: List[TrainingExample] = []
+    examples: list[TrainingExample] = []
     for record in records:
         example = _build_example(record)
         if example and example.prompt and example.response:
@@ -155,7 +155,7 @@ def build_examples(records: Iterable[dict]) -> List[TrainingExample]:
 def tokenize_examples(
     examples: Iterable[TrainingExample],
     tokenizer: Callable[[str], Sequence[int]],
-) -> List[dict]:
+) -> list[dict]:
     """Execute tokenize examples.
 
     Args:
@@ -175,8 +175,7 @@ def export_examples(examples: Iterable[TrainingExample], path: str) -> None:
     """
 
     with open(path, "w", encoding="utf-8") as handle:
-        for example in examples:
-            handle.write(json.dumps(asdict(example), ensure_ascii=False) + "\n")
+        handle.writelines(json.dumps(asdict(example), ensure_ascii=False) + "\n" for example in examples)
 
 
 def iter_jsonl(path: str) -> Iterator[dict]:

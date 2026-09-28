@@ -10,10 +10,9 @@ contents.
 from __future__ import annotations
 
 import pathlib
-from typing import Dict
 
 
-def build_policy(constitution: Dict) -> str:
+def build_policy(constitution: dict) -> str:
     """Return a Rego policy string for the given ``constitution``.
 
     The current implementation loads a static template located at

@@ -1,7 +1,8 @@
 """Module test_cognition_workbench."""
 
 import pytest
-from somabrain.planning.exec_controller import ExecutiveController, ExecConfig, Policy
+
+from somabrain.planning.exec_controller import ExecConfig, ExecutiveController, Policy
 
 
 @pytest.fixture

@@ -16,20 +16,20 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from django.db import transaction
 from django.db.models import Count
 
-from somabrain.journal import JournalEvent, get_journal
 from somabrain.admin.core.models import OutboxEvent
+from somabrain.journal import JournalEvent, get_journal
 
 logger = logging.getLogger(__name__)
 
 VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
 
 # Memory operation topics per Task 10.1
-MEMORY_TOPICS: Dict[str, str] = {
+MEMORY_TOPICS: dict[str, str] = {
     "memory.store": "Store memory to SFM",
     "memory.bulk_store": "Bulk store memories to SFM",
     "memory.delete": "Delete memory from SFM",
@@ -64,9 +64,9 @@ class OutboxBackpressureError(Exception):
 
 def _idempotency_key(
     operation: str,
-    coord: Optional[Tuple[float, float, float]] = None,
+    coord: tuple[float, float, float] | None = None,
     tenant: str = "default",
-    extra: Optional[str] = None,
+    extra: str | None = None,
 ) -> str:
     """Generate idempotency key for deduplication.
 
@@ -81,7 +81,7 @@ def _idempotency_key(
     return hashlib.sha256(data.encode()).hexdigest()[:32]
 
 
-def check_backpressure(tenant_id: Optional[str] = None) -> bool:
+def check_backpressure(tenant_id: str | None = None) -> bool:
     """Check if outbox is under backpressure.
 
     Per Requirement E2.5: Returns True if pending count exceeds threshold.
@@ -92,10 +92,10 @@ def check_backpressure(tenant_id: Optional[str] = None) -> bool:
 
 def enqueue_memory_event(
     topic: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     tenant_id: str,
-    coord: Optional[Tuple[float, float, float]] = None,
-    extra_key: Optional[str] = None,
+    coord: tuple[float, float, float] | None = None,
+    extra_key: str | None = None,
     check_backpressure_flag: bool = True,
 ) -> str:
     """Enqueue a memory operation event with idempotency key.
@@ -161,8 +161,8 @@ def mark_event_failed(event_id: int, error: str) -> bool:
 
 def get_event_by_dedupe_key(
     dedupe_key: str,
-    tenant_id: Optional[str] = None,
-) -> Optional[OutboxEvent]:
+    tenant_id: str | None = None,
+) -> OutboxEvent | None:
     """Get an outbox event by its deduplication key.
 
     Per Requirement E2.4: Used for duplicate detection.
@@ -175,7 +175,7 @@ def get_event_by_dedupe_key(
 
 def is_duplicate_event(
     dedupe_key: str,
-    tenant_id: Optional[str] = None,
+    tenant_id: str | None = None,
 ) -> bool:
     """Check if an event with this dedupe_key already exists.
 
@@ -187,9 +187,9 @@ def is_duplicate_event(
 @transaction.atomic
 def enqueue_event(
     topic: str,
-    payload: Dict[str, Any],
-    dedupe_key: Optional[str] = None,
-    tenant_id: Optional[str] = None,
+    payload: dict[str, Any],
+    dedupe_key: str | None = None,
+    tenant_id: str | None = None,
 ) -> OutboxEvent:
     """Enqueue a new event to the outbox.
 
@@ -222,8 +222,8 @@ def enqueue_event(
 
 
 def get_pending_events(
-    limit: int = 100, tenant_id: Optional[str] = None
-) -> List[OutboxEvent]:
+    limit: int = 100, tenant_id: str | None = None
+) -> list[OutboxEvent]:
     """Fetch a batch of pending events from the outbox.
 
     Uses the optimized index ix_outbox_status_tenant_created for efficient queries.
@@ -237,11 +237,11 @@ def get_pending_events(
 
 def list_events_by_status(
     status: str = "pending",
-    tenant_id: Optional[str] = None,
-    topic_filter: Optional[str] = None,
+    tenant_id: str | None = None,
+    topic_filter: str | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> List[OutboxEvent]:
+) -> list[OutboxEvent]:
     """List outbox events by status with filtering options.
 
     Provides comprehensive filtering for admin endpoints.
@@ -264,8 +264,8 @@ def list_events_by_status(
 
 
 def get_pending_events_by_tenant_batch(
-    limit_per_tenant: int = 50, max_tenants: Optional[int] = None
-) -> Dict[str, List[OutboxEvent]]:
+    limit_per_tenant: int = 50, max_tenants: int | None = None
+) -> dict[str, list[OutboxEvent]]:
     """Fetch pending events grouped by tenant.
 
     Enables per-tenant batch processing for the outbox worker.
@@ -304,7 +304,7 @@ def get_pending_events_by_tenant_batch(
     return results
 
 
-def get_pending_count(tenant_id: Optional[str] = None) -> int:
+def get_pending_count(tenant_id: str | None = None) -> int:
     """Return the number of pending outbox events.
 
     If tenant_id is provided, the count is restricted to that tenant.

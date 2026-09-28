@@ -38,7 +38,7 @@ import asyncio
 import threading
 import time
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Protocol
 
 import numpy as np
 
@@ -191,8 +191,8 @@ class BudgetedPredictor:
             TimeoutError: If prediction exceeds timeout.
             Exception: Any exception raised by inner predictor.
         """
-        result: Optional[PredictionResult] = None
-        exc: Optional[BaseException] = None
+        result: PredictionResult | None = None
+        exc: BaseException | None = None
 
         def _run():
             """Execute run."""
@@ -240,7 +240,7 @@ class BudgetedPredictor:
                 ),
                 timeout=self.timeout_ms / 1000.0,
             )
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             raise TimeoutError("predictor timed out") from e
 
 
@@ -269,8 +269,8 @@ class MahalanobisPredictor:
             alpha (float): Learning rate for EWMA updates. Default: 0.01
         """
         self.alpha = float(alpha)
-        self._mean: Optional[np.ndarray] = None
-        self._var: Optional[np.ndarray] = None  # diagonal variance
+        self._mean: np.ndarray | None = None
+        self._var: np.ndarray | None = None  # diagonal variance
 
     def _update_stats(self, x: np.ndarray) -> None:
         """
@@ -362,8 +362,8 @@ class LLMPredictor:
 
     def __init__(
         self,
-        endpoint: Optional[str] = None,
-        token: Optional[str] = None,
+        endpoint: str | None = None,
+        token: str | None = None,
         timeout_ms: int = 250,
     ):
         """

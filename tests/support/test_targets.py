@@ -9,11 +9,14 @@ configs and skip gracefully when a target is unavailable.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
-from typing import Iterable, Iterator
 from urllib.parse import urlparse
 
 import requests
+
+# Default endpoints used when environment variables are absent.
+from django.conf import settings as _settings
 
 from somabrain.core.infrastructure_defs import (
     get_api_base_url,
@@ -21,9 +24,6 @@ from somabrain.core.infrastructure_defs import (
     get_redis_url,
     require,
 )
-
-# Default endpoints used when environment variables are absent.
-from django.conf import settings as _settings
 
 # Alias for compatibility with existing code that expects `settings` directly.
 settings = _settings

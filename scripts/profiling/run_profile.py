@@ -15,12 +15,13 @@ root.
 """
 
 import argparse
-import time
-import httpx
 import cProfile
-import pstats
 import io
 import os
+import pstats
+import time
+
+import httpx
 
 
 def _hit_endpoint(base_url: str, path: str) -> None:

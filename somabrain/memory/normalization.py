@@ -6,11 +6,10 @@ used in the memory system for spatial organization of memories.
 
 from __future__ import annotations
 
-import hashlib
-from typing import Any, Optional, Tuple
+from typing import Any
 
 
-def _stable_coord(key: str) -> Tuple[float, float, float]:
+def _stable_coord(key: str) -> tuple[float, float, float]:
     """Re-export the single coordinate authority (T-2).
 
     Implementation lives in ``somabrain.memory.client.serialization`` so the
@@ -21,7 +20,7 @@ def _stable_coord(key: str) -> Tuple[float, float, float]:
     return _impl(key)
 
 
-def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
+def _parse_coord_string(s: str) -> tuple[float, float, float] | None:
     """Parse a comma-separated coordinate string into a tuple.
 
     Args:
@@ -42,7 +41,7 @@ def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
 def _extract_memory_coord(
     resp: Any,
     idempotency_key: str | None = None,
-) -> Tuple[float, float, float] | None:
+) -> tuple[float, float, float] | None:
     """Try to derive a coordinate tuple from the memory-service response.
 
     This function attempts to extract coordinates from various locations
@@ -73,7 +72,7 @@ def _extract_memory_coord(
         # Check top-level coord/coordinate fields
         for key in ("coord", "coordinate"):
             value = data_dict.get(key)
-            parsed: Optional[Tuple[float, float, float]] = None
+            parsed: tuple[float, float, float] | None = None
             if isinstance(value, str):
                 parsed = _parse_coord_string(value)
             elif isinstance(value, (list, tuple)) and len(value) >= 3:

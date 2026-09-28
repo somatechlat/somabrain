@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Any, Dict
+from typing import Any
 
 import httpx
 import pytest
@@ -61,7 +61,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _get_health() -> Dict[str, Any]:
+def _get_health() -> dict[str, Any]:
     """Get current health status from the app."""
     r = httpx.get(f"http://localhost:{APP_PORT}/health", timeout=NORMAL_TIMEOUT)
     return r.json()

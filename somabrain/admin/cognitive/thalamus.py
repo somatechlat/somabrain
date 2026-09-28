@@ -8,7 +8,8 @@ sensory information before it reaches the cortex.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 
 class ThalamusRouter:
@@ -23,14 +24,14 @@ class ThalamusRouter:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self.routes: List[Tuple[str, Callable[..., Any]]] = []
+        self.routes: list[tuple[str, Callable[..., Any]]] = []
         self._attention_level: float = 1.0
 
     def register(self, path: str, handler: Callable[..., Any]) -> None:
         """Register a route handler."""
         self.routes.append((path, handler))
 
-    def normalize(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def normalize(self, data: dict[str, Any]) -> dict[str, Any]:
         """Normalize input data for consistent processing.
 
         Ensures all expected fields are present with appropriate defaults
@@ -54,9 +55,9 @@ class ThalamusRouter:
 
     def filter_input(
         self,
-        data: Dict[str, Any],
-        neuromodulator_state: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any],
+        neuromodulator_state: Any | None = None,
+    ) -> dict[str, Any]:
         """Apply attention-based filtering to input data.
 
         Uses neuromodulator state (dopamine, noradrenaline, etc.) to

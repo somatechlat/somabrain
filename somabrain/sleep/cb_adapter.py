@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 from somabrain.sleep import SleepState
 
 # Simple hysteresis cache to avoid flapping between states
-_LAST_STATE: Dict[str, SleepState] = {}
+_LAST_STATE: dict[str, SleepState] = {}
 
 
 def map_cb_to_sleep(cb, tenant_id: str, current: SleepState) -> SleepState:

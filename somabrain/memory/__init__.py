@@ -9,7 +9,6 @@ This module provides:
 """
 
 from .client import MemoryClient
-
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
 from .hit_processing import (
     coerce_timestamp_value,
@@ -68,7 +67,6 @@ from .utils import (
     get_tenant_namespace,
     store_from_payload,
 )
-
 
 __all__ = [
     # Hierarchical memory

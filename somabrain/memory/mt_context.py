@@ -29,7 +29,6 @@ Functions:
 from __future__ import annotations
 
 from collections import OrderedDict
-from typing import Tuple
 
 import numpy as np
 from django.conf import settings
@@ -90,7 +89,7 @@ class MultiTenantHRRContext:
 
         return self._ensure(tenant_id).novelty(vec)
 
-    def cleanup(self, tenant_id: str, query: np.ndarray) -> Tuple[str, float]:
+    def cleanup(self, tenant_id: str, query: np.ndarray) -> tuple[str, float]:
         """Execute cleanup.
 
         Args:

@@ -1,8 +1,9 @@
 """Module conftest."""
 
-from hypothesis import settings as _hypothesis_settings
 import os
 import sys
+
+from hypothesis import settings as _hypothesis_settings
 
 if any("tests/standalone" in arg for arg in sys.argv):
     os.environ["DJANGO_SETTINGS_MODULE"] = "somabrain.settings.standalone"

@@ -1,7 +1,6 @@
 """Module check_memory_endpoint."""
 
 #!/usr/bin/env python3
-# ruff: noqa: E402
 import os
 import sys
 
@@ -23,7 +22,7 @@ app_mod = importlib.import_module("somabrain.app")
 print("Imported somabrain.app -> app object:", getattr(app_mod, "app", None))
 # Access runtime mt_memory
 try:
-    mt_memory = getattr(app_mod, "mt_memory")
+    mt_memory = app_mod.mt_memory
     print("mt_memory present:", mt_memory is not None)
     client = mt_memory.for_namespace("public")
     print(
@@ -37,9 +36,9 @@ try:
         # try to inspect base_url attribute if httpx is used
         base = None
         if http_client is not None and hasattr(http_client, "base_url"):
-            base = getattr(http_client, "base_url")
+            base = http_client.base_url
         elif async_client is not None and hasattr(async_client, "base_url"):
-            base = getattr(async_client, "base_url")
+            base = async_client.base_url
         print("Resolved base_url:", base)
     except Exception as e:
         print("Could not read base_url:", e)

@@ -8,7 +8,6 @@ ALL 10 PERSONAS:
 - 🔒 Security: Secure storage
 """
 
-from typing import List, Optional
 from uuid import uuid4
 
 from django.core.cache import cache
@@ -54,12 +53,12 @@ def create_idp(
     return idp
 
 
-def get_idp(idp_id: str) -> Optional[dict]:
+def get_idp(idp_id: str) -> dict | None:
     """Get IdP by ID."""
     return cache.get(get_idp_key(idp_id))
 
 
-def update_idp(idp_id: str, **updates) -> Optional[dict]:
+def update_idp(idp_id: str, **updates) -> dict | None:
     """Update IdP fields."""
     key = get_idp_key(idp_id)
     idp = cache.get(key)
@@ -69,7 +68,7 @@ def update_idp(idp_id: str, **updates) -> Optional[dict]:
     return idp
 
 
-def get_tenant_idps(tenant_id: str) -> List[dict]:
+def get_tenant_idps(tenant_id: str) -> list[dict]:
     """Get all IdPs for a tenant."""
     idp_ids = cache.get(get_idps_key(tenant_id), [])
     idps = []

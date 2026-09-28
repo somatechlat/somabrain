@@ -1,4 +1,3 @@
-# ruff: noqa: F403,F405
 
 from somabrain.settings.base import *
 

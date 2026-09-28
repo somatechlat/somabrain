@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Dict
 
 
 @dataclass
@@ -74,7 +73,7 @@ class RateLimiter:
         """Initialize the instance."""
 
         self.cfg = cfg
-        self._buckets: Dict[str, TokenBucket] = {}
+        self._buckets: dict[str, TokenBucket] = {}
 
     def allow(self, key: str) -> bool:
         """Execute allow.

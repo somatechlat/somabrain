@@ -22,9 +22,9 @@ import logging
 from django.conf import settings
 from django.db import DatabaseError, OperationalError
 
+from somabrain.admin.core.models import OutboxEvent
 from somabrain.memory.client import MemoryClient
 from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL, report_outbox_pending
-from somabrain.admin.core.models import OutboxEvent
 
 logger = logging.getLogger(__name__)
 

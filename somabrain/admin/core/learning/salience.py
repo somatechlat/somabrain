@@ -15,7 +15,6 @@ salience when a vector lies outside the dominant subspace.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
 import numpy as np
 
@@ -64,12 +63,12 @@ class FDSalienceSketch:
         self._fd = FrequentDirections(self.dim, self.rank)
         self._total_energy = 0.0
         self._captured_energy = 0.0
-        self._basis: Optional[np.ndarray] = None
-        self._alpha: Optional[np.ndarray] = None
+        self._basis: np.ndarray | None = None
+        self._alpha: np.ndarray | None = None
         self._trace_norm_error: float = 0.0
         self._psd_ok: bool = True
 
-    def observe(self, vector: np.ndarray) -> Tuple[float, float]:
+    def observe(self, vector: np.ndarray) -> tuple[float, float]:
         """Stream ``vector`` and return (residual_ratio, capture_ratio)."""
 
         v = np.asarray(vector, dtype=float).reshape(-1)
@@ -216,7 +215,7 @@ class FDSalienceSketch:
 
         return bool(self._psd_ok)
 
-    def stats(self) -> Dict[str, float | bool]:
+    def stats(self) -> dict[str, float | bool]:
         """Return a dict of sketch health stats for diagnostics."""
 
         return {

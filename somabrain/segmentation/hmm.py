@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, List, Sequence, Tuple
 
 
 @dataclass
@@ -15,10 +15,10 @@ class HMMParams:
     """
 
     # Transition probabilities A[i][j] = P(s_t=j | s_{t-1}=i)
-    A: Tuple[Tuple[float, float], Tuple[float, float]]
+    A: tuple[tuple[float, float], tuple[float, float]]
     # Gaussian emission parameters per state (mean, std)
-    mu: Tuple[float, float]
-    sigma: Tuple[float, float]
+    mu: tuple[float, float]
+    sigma: tuple[float, float]
 
 
 def _log(x: float) -> float:
@@ -48,8 +48,8 @@ def _log_norm_pdf(x: float, mu: float, sigma: float) -> float:
 def online_viterbi_probs(
     obs_seq: Iterable[float],
     params: HMMParams,
-    prior: Tuple[float, float] = (0.9, 0.1),
-) -> List[Tuple[float, float]]:
+    prior: tuple[float, float] = (0.9, 0.1),
+) -> list[tuple[float, float]]:
     """Compute online Viterbi log-probabilities for a stream of observations.
 
     Returns a list of per-step normalized probabilities over states (stable, transition).
@@ -61,7 +61,7 @@ def online_viterbi_probs(
     # start with log prior
     lp0 = _log(prior[0])
     lp1 = _log(prior[1])
-    out: List[Tuple[float, float]] = []
+    out: list[tuple[float, float]] = []
     for x in obs_seq:
         # emission log-likelihood
         e0 = _log_norm_pdf(x, mu0, s0)
@@ -83,15 +83,15 @@ def online_viterbi_probs(
 
 
 def detect_boundaries(
-    probs: Sequence[Tuple[float, float]],
+    probs: Sequence[tuple[float, float]],
     threshold: float = 0.6,
-) -> List[int]:
+) -> list[int]:
     """Return indices where TRANSITION probability crosses threshold from below.
 
     threshold is applied to P(TRANSITION) (index 1).
     """
 
-    out: List[int] = []
+    out: list[int] = []
     prev = 0.0
     for i, (_, p1) in enumerate(probs):
         if prev < threshold and p1 >= threshold:

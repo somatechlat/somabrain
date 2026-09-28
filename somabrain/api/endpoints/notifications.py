@@ -17,7 +17,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 """
 
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID
 
 from django.db import models, transaction
@@ -71,9 +70,9 @@ class NotificationCreate(Schema):
     message: str
     type: str = "info"
     priority: str = "normal"
-    action_url: Optional[str] = None
-    user_id: Optional[UUID] = None  # None = all tenant users
-    expires_at: Optional[str] = None
+    action_url: str | None = None
+    user_id: UUID | None = None  # None = all tenant users
+    expires_at: str | None = None
 
 
 class NotificationOut(Schema):
@@ -85,9 +84,9 @@ class NotificationOut(Schema):
     type: str
     priority: str
     is_read: bool
-    action_url: Optional[str]
+    action_url: str | None
     created_at: str
-    expires_at: Optional[str]
+    expires_at: str | None
 
 
 class NotificationCountOut(Schema):
@@ -101,7 +100,7 @@ class NotificationCountOut(Schema):
 class BulkMarkReadRequest(Schema):
     """Request to mark multiple notifications as read."""
 
-    notification_ids: List[UUID]
+    notification_ids: list[UUID]
 
 
 # =============================================================================
@@ -124,7 +123,7 @@ def get_notification_model():
 # =============================================================================
 
 
-@router.get("/{tenant_id}/notifications", response=List[NotificationOut])
+@router.get("/{tenant_id}/notifications", response=list[NotificationOut])
 @require_auth(roles=["super-admin", "tenant-admin", "tenant-user"], any_role=True)
 def list_notifications(
     request: AuthenticatedRequest,

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import abc
 import asyncio
-from typing import Iterable, List, Optional, Tuple
+from collections.abc import Iterable
 
 from .types import RecallHit
 
@@ -33,16 +33,16 @@ class AbstractMemoryBackend(abc.ABC):
         self,
         coord_key: str,
         payload: dict,
-        request_id: Optional[str] = None,
-    ) -> Tuple[float, float, float]:
+        request_id: str | None = None,
+    ) -> tuple[float, float, float]:
         """Store a single memory and return its 3-tuple coordinate."""
 
     @abc.abstractmethod
     def remember_bulk(
         self,
-        items: Iterable[Tuple[str, dict]],
-        request_id: Optional[str] = None,
-    ) -> List[Tuple[float, float, float]]:
+        items: Iterable[tuple[str, dict]],
+        request_id: str | None = None,
+    ) -> list[tuple[float, float, float]]:
         """Store many memories in one call and return a list of coordinates."""
 
     @abc.abstractmethod
@@ -50,9 +50,9 @@ class AbstractMemoryBackend(abc.ABC):
         self,
         query: str,
         top_k: int = 3,
-        universe: Optional[str] = None,
-        request_id: Optional[str] = None,
-    ) -> List[RecallHit]:
+        universe: str | None = None,
+        request_id: str | None = None,
+    ) -> list[RecallHit]:
         """Retrieve memories matching query.
 
         Args:
@@ -68,25 +68,25 @@ class AbstractMemoryBackend(abc.ABC):
     @abc.abstractmethod
     def fetch_by_coord(
         self,
-        coord: Tuple[float, float, float],
-        universe: Optional[str] = None,
-        request_id: Optional[str] = None,
-    ) -> List[dict]:
+        coord: tuple[float, float, float],
+        universe: str | None = None,
+        request_id: str | None = None,
+    ) -> list[dict]:
         """Return payloads stored at *coord* (GET /memories/{coord})."""
 
     @abc.abstractmethod
     def delete(
         self,
-        coord: Tuple[float, float, float],
-        universe: Optional[str] = None,
-        request_id: Optional[str] = None,
+        coord: tuple[float, float, float],
+        universe: str | None = None,
+        request_id: str | None = None,
     ) -> bool:
         """Delete a memory coordinate via DELETE /memories/{coord}."""
 
     @abc.abstractmethod
     def coord_for_key(
-        self, key: str, universe: Optional[str] = None
-    ) -> Tuple[float, float, float]:
+        self, key: str, universe: str | None = None
+    ) -> tuple[float, float, float]:
         """Return the deterministic coordinate associated with *key*."""
 
     @abc.abstractmethod
@@ -97,8 +97,8 @@ class AbstractMemoryBackend(abc.ABC):
         self,
         coord_key: str,
         payload: dict,
-        request_id: Optional[str] = None,
-    ) -> Tuple[float, float, float]:
+        request_id: str | None = None,
+    ) -> tuple[float, float, float]:
         """Async wrapper for remember method.
 
         Concrete backends that only implement the sync methods can rely on
@@ -112,9 +112,9 @@ class AbstractMemoryBackend(abc.ABC):
         self,
         query: str,
         top_k: int = 3,
-        universe: Optional[str] = None,
-        request_id: Optional[str] = None,
-    ) -> List[RecallHit]:
+        universe: str | None = None,
+        request_id: str | None = None,
+    ) -> list[RecallHit]:
         """Async wrapper for recall method.
 
         Concrete backends that only implement the sync methods can rely on

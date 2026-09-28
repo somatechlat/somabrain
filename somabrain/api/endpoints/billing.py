@@ -18,7 +18,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 
 from datetime import datetime
 from decimal import Decimal
-from typing import List, Optional
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -50,12 +49,12 @@ class SubscriptionTierOut(Schema):
     id: UUID
     name: str
     slug: str
-    description: Optional[str]
+    description: str | None
     monthly_price: Decimal = None
     annual_price: Decimal = None
     features: dict
     is_active: bool
-    lago_plan_code: Optional[str]
+    lago_plan_code: str | None
 
     @staticmethod
     def resolve_monthly_price(obj):
@@ -82,8 +81,8 @@ class SubscriptionOut(Schema):
     tier_slug: str
     status: str
     started_at: str
-    ends_at: Optional[str]
-    lago_subscription_id: Optional[str]
+    ends_at: str | None
+    lago_subscription_id: str | None
 
     @staticmethod
     def resolve_tier_name(obj):
@@ -143,7 +142,7 @@ class UsageReportEvent(Schema):
 
     event_type: str  # e.g., "api_call", "memory_operation"
     count: int = 1
-    properties: Optional[dict] = None
+    properties: dict | None = None
 
 
 class UsageRecordOut(Schema):
@@ -174,8 +173,8 @@ class InvoiceOut(Schema):
     status: str
     amount_cents: int
     currency: str
-    issuing_date: Optional[str]
-    payment_due_date: Optional[str]
+    issuing_date: str | None
+    payment_due_date: str | None
 
 
 class WalletCreate(Schema):
@@ -197,7 +196,7 @@ class CreditAdd(Schema):
 # =============================================================================
 
 
-@router.get("/tiers", response=List[SubscriptionTierOut])
+@router.get("/tiers", response=list[SubscriptionTierOut])
 def list_subscription_tiers(request):
     """
     List all available subscription tiers.
@@ -483,7 +482,7 @@ def report_usage(
     return {"success": True, "usage_id": str(usage_record.id)}
 
 
-@router.get("/tenant/{tenant_id}/usage", response=List[UsageRecordOut])
+@router.get("/tenant/{tenant_id}/usage", response=list[UsageRecordOut])
 @require_auth(roles=["super-admin", "tenant-admin", "billing-admin"], any_role=True)
 @require_permission(Permission.BILLING_READ.value)
 def get_usage_history(
@@ -511,7 +510,7 @@ def get_usage_history(
 # =============================================================================
 
 
-@router.get("/tenant/{tenant_id}/invoices", response=List[InvoiceOut])
+@router.get("/tenant/{tenant_id}/invoices", response=list[InvoiceOut])
 @require_auth(roles=["super-admin", "tenant-admin", "billing-admin"], any_role=True)
 @require_permission(Permission.INVOICES_READ.value)
 def get_invoices(

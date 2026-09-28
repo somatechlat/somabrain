@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from django.conf import settings
 import sys
 import time
+
+from django.conf import settings
 
 
 def _bootstrap() -> str:

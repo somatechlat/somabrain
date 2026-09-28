@@ -19,6 +19,7 @@ env = environ.Env()
 # INFRASTRUCTURE SETTINGS
 # ============================================================================
 
+
 def _set_env_if_present(name: str, value: object | None) -> None:
     """Set an environment variable only when Vault returned a real value."""
     if value is None:
@@ -101,6 +102,7 @@ def configure_infra_secrets() -> None:
     except (SecretNotFound, VaultNotConfigured):
         # Fallback to pure Env if Vault not configured (e.g. CI without Vault)
         pass
+
 
 SOMABRAIN_POSTGRES_DSN = env.str("SOMABRAIN_POSTGRES_DSN", default="")
 # Remove legacy DATABASE_URL fallback to avoid collisions

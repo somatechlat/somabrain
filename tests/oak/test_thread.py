@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import pytest
-
 from django.conf import settings
+
 from somabrain.admin.core.models import CognitiveThread
 from somabrain.oak import planner as oak_planner
 

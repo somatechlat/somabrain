@@ -17,7 +17,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from django.db.models import Count, Q
@@ -45,7 +45,7 @@ class SearchRequest(Schema):
     """Unified search request."""
 
     query: str
-    types: Optional[List[str]] = None  # users, api_keys, webhooks, audit_logs
+    types: list[str] | None = None  # users, api_keys, webhooks, audit_logs
     limit: int = 20
     offset: int = 0
 
@@ -56,10 +56,10 @@ class SearchResultItem(Schema):
     type: str
     id: str
     title: str
-    subtitle: Optional[str]
+    subtitle: str | None
     relevance: float
-    created_at: Optional[str]
-    metadata: Optional[Dict[str, Any]]
+    created_at: str | None
+    metadata: dict[str, Any] | None
 
 
 class SearchResponse(Schema):
@@ -67,8 +67,8 @@ class SearchResponse(Schema):
 
     query: str
     total_results: int
-    results: List[SearchResultItem]
-    facets: Dict[str, int]
+    results: list[SearchResultItem]
+    facets: dict[str, int]
     search_time_ms: int
 
 
@@ -83,9 +83,9 @@ class FilterRequest(Schema):
 class AdvancedSearchRequest(Schema):
     """Advanced search with filters."""
 
-    query: Optional[str] = None
-    filters: Optional[List[Dict[str, Any]]] = None
-    sort_by: Optional[str] = None
+    query: str | None = None
+    filters: list[dict[str, Any]] | None = None
+    sort_by: str | None = None
     sort_order: str = "desc"
     limit: int = 50
     offset: int = 0
@@ -96,7 +96,7 @@ class AdvancedSearchRequest(Schema):
 # =============================================================================
 
 
-def search_users(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
+def search_users(tenant_id: str, query: str, limit: int = 20) -> list[dict]:
     """Search users within a tenant."""
     users = (
         TenantUser.objects.filter(tenant_id=tenant_id)
@@ -118,7 +118,7 @@ def search_users(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
     ]
 
 
-def search_api_keys(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
+def search_api_keys(tenant_id: str, query: str, limit: int = 20) -> list[dict]:
     """Search API keys within a tenant."""
     keys = (
         APIKey.objects.filter(tenant_id=tenant_id)
@@ -140,7 +140,7 @@ def search_api_keys(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
     ]
 
 
-def search_webhooks(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
+def search_webhooks(tenant_id: str, query: str, limit: int = 20) -> list[dict]:
     """Search webhooks within a tenant."""
     webhooks = (
         Webhook.objects.filter(tenant_id=tenant_id)
@@ -162,7 +162,7 @@ def search_webhooks(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
     ]
 
 
-def search_audit_logs(tenant_id: str, query: str, limit: int = 20) -> List[dict]:
+def search_audit_logs(tenant_id: str, query: str, limit: int = 20) -> list[dict]:
     """Search audit logs within a tenant."""
     logs = (
         AuditLog.objects.filter(tenant_id=tenant_id)
@@ -266,8 +266,8 @@ def search_tenant_users(
     request: AuthenticatedRequest,
     tenant_id: UUID,
     q: str,
-    role: Optional[str] = None,
-    is_active: Optional[bool] = None,
+    role: str | None = None,
+    is_active: bool | None = None,
     limit: int = 20,
 ):
     """
@@ -317,12 +317,12 @@ def search_tenant_users(
 def search_audit_trail(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    q: Optional[str] = None,
-    action: Optional[str] = None,
-    resource_type: Optional[str] = None,
-    actor_id: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    q: str | None = None,
+    action: str | None = None,
+    resource_type: str | None = None,
+    actor_id: str | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     limit: int = 50,
 ):
     """
@@ -395,7 +395,7 @@ def search_audit_trail(
 def platform_search(
     request: AuthenticatedRequest,
     q: str,
-    types: Optional[List[str]] = None,
+    types: list[str] | None = None,
     limit: int = 50,
 ):
     """

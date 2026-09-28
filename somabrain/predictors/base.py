@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC
 from pathlib import Path
-from typing import Callable, Optional, Tuple
 
 import numpy as np
 
 # Import the global Settings instance used throughout the project.
 # ``settings`` provides configuration such as ``heat_method``.
-from django.conf import settings  # noqa: E402
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 from somabrain.math.graph_heat import graph_heat_chebyshev, graph_heat_lanczos
@@ -34,9 +35,9 @@ def _select_heat_method() -> str:
 def _now_ts() -> str:
     """Execute now ts."""
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 ApplyOp = Callable[[np.ndarray], np.ndarray]
@@ -63,7 +64,7 @@ class PredictorBase:
     """
 
     def __init__(
-        self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None
+        self, apply_A: ApplyOp, dim: int, cfg: PredictorConfig | None = None
     ):
         """Initialize the instance."""
 
@@ -109,7 +110,7 @@ class PredictorBase:
 
     def error_and_confidence(
         self, salience: np.ndarray, observed: np.ndarray
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         """Execute error and confidence.
 
         Args:
@@ -130,7 +131,7 @@ class HeatDiffusionPredictor(PredictorBase):
 
     def step(
         self, source_idx: int, observed: np.ndarray
-    ) -> Tuple[np.ndarray, float, float]:
+    ) -> tuple[np.ndarray, float, float]:
         """Execute step.
 
         Args:
@@ -164,7 +165,7 @@ def matvec_from_matrix(M: np.ndarray) -> ApplyOp:
     return _apply
 
 
-def _to_ndarray(obj: object) -> Optional[np.ndarray]:
+def _to_ndarray(obj: object) -> np.ndarray | None:
     """Execute to ndarray.
 
     Args:
@@ -193,7 +194,7 @@ def _laplacian_from_adjacency(A: np.ndarray) -> np.ndarray:
     return L
 
 
-def load_operator_from_file(path: str) -> Tuple[ApplyOp, int]:
+def load_operator_from_file(path: str) -> tuple[ApplyOp, int]:
     """Load a graph operator from a JSON file.
 
     Supported formats:
@@ -206,8 +207,8 @@ def load_operator_from_file(path: str) -> Tuple[ApplyOp, int]:
     """
     with open(path, "r") as f:
         data = json.load(f)
-    L: Optional[np.ndarray] = None
-    A: Optional[np.ndarray] = None
+    L: np.ndarray | None = None
+    A: np.ndarray | None = None
     if isinstance(data, dict):
         # Prefer explicit keys
         if "laplacian" in data:
@@ -237,7 +238,7 @@ def load_operator_from_file(path: str) -> Tuple[ApplyOp, int]:
     return matvec_from_matrix(L), dim
 
 
-def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int]:
+def build_predictor_from_env(domain: str) -> tuple[HeatDiffusionPredictor, int]:
     """Construct a HeatDiffusionPredictor using env configuration.
 
     Env vars consulted (domain-specific preferred):

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Any, Optional
+from typing import Any
 
 from django.conf import settings
 
@@ -142,7 +142,7 @@ class TenantQuotaManager:
 
 
 # Global quota manager instance
-_quota_manager: Optional[TenantQuotaManager] = None
+_quota_manager: TenantQuotaManager | None = None
 
 
 def get_quota_manager() -> TenantQuotaManager:

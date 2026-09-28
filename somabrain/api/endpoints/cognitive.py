@@ -7,7 +7,6 @@ Cognitive processing endpoints: plan suggestion, action execution, personality.
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
 
 import numpy as np
 from cachetools import TTLCache
@@ -16,9 +15,8 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import api_key_auth
-from somabrain.api.auth import require_auth
 from somabrain.admin.brain.focus_state import FocusState
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.schemas import (
     ActRequest,
     ActResponse,
@@ -40,7 +38,7 @@ _LOG_OP_FMT = "op=%s"
 router = Router(tags=["cognitive"])
 
 # Bounded FocusState cache: limits memory growth and evicts stale entries.
-_focus_state_cache: Dict[str, FocusState] = TTLCache(maxsize=10_000, ttl=3600)
+_focus_state_cache: dict[str, FocusState] = TTLCache(maxsize=10_000, ttl=3600)
 
 
 # Real runtime singleton access
@@ -87,7 +85,7 @@ def _get_app_singletons():
 
 def _get_or_create_focus_state(
     session_id: str, tenant_id: str, cfg
-) -> Optional[FocusState]:
+) -> FocusState | None:
     """Get or create FocusState for session."""
     if not getattr(cfg, "USE_FOCUS_STATE", True):
         return None
@@ -206,12 +204,12 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     session_id = request.headers.get("X-Session-ID") or f"{ctx.tenant_id}:default"
     focus_state = _get_or_create_focus_state(session_id, ctx.tenant_id, settings)
 
-    previous_focus_vec: Optional[np.ndarray] = None
+    previous_focus_vec: np.ndarray | None = None
     if focus_state is not None:
         previous_focus_vec = focus_state.previous_focus_vec
 
     if focus_state is not None and wm_vec is not None:
-        recall_hits: List[tuple] = []
+        recall_hits: list[tuple] = []
         focus_state.update(wm_vec, recall_hits)
 
     initial_novelty = float(
@@ -256,7 +254,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
                 universe=getattr(body, "universe", None),
             )
 
-    plan_result: List[str] = []
+    plan_result: list[str] = []
     if getattr(settings, "USE_PLANNER", False):
         try:
             mem_client = mt_memory.for_namespace(ctx.namespace) if mt_memory else None

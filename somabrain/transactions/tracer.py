@@ -28,11 +28,12 @@ from __future__ import annotations
 import functools
 import logging
 import uuid
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, Generator, Optional, TypeVar
+from datetime import UTC, datetime
+from typing import Any, TypeVar
 
 from somabrain.transactions.event_store import (
     TransactionEvent,
@@ -43,10 +44,10 @@ from somabrain.transactions.event_store import (
 logger = logging.getLogger(__name__)
 
 # Context variables for trace propagation
-_current_trace_id: ContextVar[Optional[str]] = ContextVar("trace_id", default=None)
-_current_span_id: ContextVar[Optional[str]] = ContextVar("span_id", default=None)
-_current_tenant_id: ContextVar[Optional[str]] = ContextVar("tenant_id", default=None)
-_current_persona_id: ContextVar[Optional[str]] = ContextVar("persona_id", default=None)
+_current_trace_id: ContextVar[str | None] = ContextVar("trace_id", default=None)
+_current_span_id: ContextVar[str | None] = ContextVar("span_id", default=None)
+_current_tenant_id: ContextVar[str | None] = ContextVar("tenant_id", default=None)
+_current_persona_id: ContextVar[str | None] = ContextVar("persona_id", default=None)
 
 T = TypeVar("T")
 
@@ -60,28 +61,28 @@ class Span:
 
     span_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     trace_id: str = ""
-    parent_span_id: Optional[str] = None
+    parent_span_id: str | None = None
     operation: str = ""
 
-    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    end_time: Optional[datetime] = None
-    duration_ms: Optional[float] = None
+    start_time: datetime = field(default_factory=lambda: datetime.now(UTC))
+    end_time: datetime | None = None
+    duration_ms: float | None = None
 
-    attributes: Dict[str, Any] = field(default_factory=dict)
+    attributes: dict[str, Any] = field(default_factory=dict)
     events: list = field(default_factory=list)
     status: str = "ok"
-    error: Optional[str] = None
+    error: str | None = None
 
     def set_attribute(self, key: str, value: Any) -> None:
         """Set a span attribute."""
         self.attributes[key] = value
 
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         """Add an event to the span."""
         self.events.append(
             {
                 "name": name,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "attributes": attributes or {},
             }
         )
@@ -93,7 +94,7 @@ class Span:
 
     def finish(self) -> None:
         """Finish the span and calculate duration."""
-        self.end_time = datetime.now(timezone.utc)
+        self.end_time = datetime.now(UTC)
         self.duration_ms = (self.end_time - self.start_time).total_seconds() * 1000
 
 
@@ -149,7 +150,7 @@ class TransactionTracer:
         """Generate a new trace ID."""
         return str(uuid.uuid4())
 
-    def get_current_trace_id(self) -> Optional[str]:
+    def get_current_trace_id(self) -> str | None:
         """Get the current trace ID from context."""
         return _current_trace_id.get()
 
@@ -157,7 +158,7 @@ class TransactionTracer:
         """Set the current trace ID in context."""
         _current_trace_id.set(trace_id)
 
-    def get_current_tenant_id(self) -> Optional[str]:
+    def get_current_tenant_id(self) -> str | None:
         """Get the current tenant ID from context."""
         return _current_tenant_id.get()
 
@@ -165,7 +166,7 @@ class TransactionTracer:
         """Set the current tenant ID in context."""
         _current_tenant_id.set(tenant_id)
 
-    def get_current_persona_id(self) -> Optional[str]:
+    def get_current_persona_id(self) -> str | None:
         """Get the current persona ID from context."""
         return _current_persona_id.get()
 
@@ -178,7 +179,7 @@ class TransactionTracer:
         self,
         operation: str,
         transaction_type: TransactionType = TransactionType.CUSTOM,
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: dict[str, Any] | None = None,
     ) -> Generator[Span, None, None]:
         """Create a traced span for an operation.
 
@@ -266,9 +267,9 @@ class TransactionTracer:
 
     def trace_context(
         self,
-        trace_id: Optional[str] = None,
-        tenant_id: Optional[str] = None,
-        persona_id: Optional[str] = None,
+        trace_id: str | None = None,
+        tenant_id: str | None = None,
+        persona_id: str | None = None,
     ):
         """Context manager to set trace context.
 
@@ -304,7 +305,7 @@ class TransactionTracer:
 
         return _context()
 
-    def extract_context(self, headers: Dict[str, str]) -> Dict[str, Optional[str]]:
+    def extract_context(self, headers: dict[str, str]) -> dict[str, str | None]:
         """Extract trace context from HTTP headers.
 
         Args:
@@ -319,7 +320,7 @@ class TransactionTracer:
             "persona_id": headers.get("x-persona-id"),
         }
 
-    def inject_context(self, headers: Dict[str, str]) -> Dict[str, str]:
+    def inject_context(self, headers: dict[str, str]) -> dict[str, str]:
         """Inject trace context into HTTP headers.
 
         Args:
@@ -345,7 +346,7 @@ class TransactionTracer:
 
 def trace_transaction(
     transaction_type: TransactionType = TransactionType.CUSTOM,
-    operation: Optional[str] = None,
+    operation: str | None = None,
     capture_args: bool = True,
     capture_result: bool = True,
 ):

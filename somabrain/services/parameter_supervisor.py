@@ -17,7 +17,6 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
 
 from somabrain.admin.core.presets import get_preset
 from somabrain.services.config_service import ConfigService
@@ -31,7 +30,7 @@ class MetricsSnapshot:
 
     tenant: str
     namespace: str
-    metrics: Dict[str, float]
+    metrics: dict[str, float]
     timestamp_ms: int = field(
         default_factory=lambda: int(time.time() * 1000),
         metadata={"description": "Unix epoch in milliseconds when captured"},
@@ -46,7 +45,7 @@ class ParameterSupervisor:
 
         self._config_service = config_service
         # Keep the latest snapshot per (tenant, namespace) for observability/debugging.
-        self._latest: Dict[Tuple[str, str], MetricsSnapshot] = {}
+        self._latest: dict[tuple[str, str], MetricsSnapshot] = {}
 
     def latest(self, tenant: str, namespace: str) -> MetricsSnapshot | None:
         """Return the most recent snapshot for the given scope."""

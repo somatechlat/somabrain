@@ -16,7 +16,6 @@ ALL 10 PERSONAS per VIBE Coding Rules:
 - 🛠️ DevOps: Environment-based config
 """
 
-from typing import List
 from uuid import UUID
 
 from django.db import transaction
@@ -54,7 +53,7 @@ router = Router(tags=["Users"])
 # =============================================================================
 
 
-@router.get("/", response=List[UserListOut])
+@router.get("/", response=list[UserListOut])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.USERS_LIST.value)
 def list_all_users(request: AuthenticatedRequest, filters: UserFilters = Query(...)):
@@ -84,7 +83,7 @@ def list_all_users(request: AuthenticatedRequest, filters: UserFilters = Query(.
 # =============================================================================
 
 
-@router.get("/tenant/{tenant_id}", response=List[UserListOut])
+@router.get("/tenant/{tenant_id}", response=list[UserListOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.USERS_LIST.value)
 def list_tenant_users(
@@ -344,7 +343,7 @@ def toggle_user_status(request: AuthenticatedRequest, tenant_id: UUID, user_id: 
     return {"success": True, "is_active": user.is_active, "message": f"User {action}"}
 
 
-@router.get("/tenant/{tenant_id}/{user_id}/audit", response=List[dict])
+@router.get("/tenant/{tenant_id}/{user_id}/audit", response=list[dict])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.AUDIT_READ.value)
 def get_user_audit_log(request: AuthenticatedRequest, tenant_id: UUID, user_id: UUID):

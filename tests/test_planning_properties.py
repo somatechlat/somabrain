@@ -12,7 +12,8 @@ Properties tested:
 from __future__ import annotations
 
 import numpy as np
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 # ---------------------------------------------------------------------------
 # Property 5: Deterministic Ordering - BFS Planner

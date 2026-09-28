@@ -20,7 +20,9 @@ import os
 import time
 
 import pytest
-from hypothesis import given, settings as hyp_settings, strategies as st
+from hypothesis import given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 
 # Skip tests if infrastructure is not available
 pytestmark = pytest.mark.skipif(
@@ -498,6 +500,8 @@ class TestNeuromodulatorProperties:
         """
         from somabrain.admin.brain.neuromodulators import (
             NeuromodState as NS,
+        )
+        from somabrain.admin.brain.neuromodulators import (
             Neuromodulators,
         )
 

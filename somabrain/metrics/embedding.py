@@ -61,9 +61,9 @@ AUDIT_KAFKA_PUBLISH = Counter(
 )
 
 __all__ = [
-    "EMBED_LAT",
+    "AUDIT_KAFKA_PUBLISH",
     "EMBED_CACHE_HIT",
+    "EMBED_LAT",
     "INDEX_PROFILE_USE",
     "LINK_DECAY_PRUNED",
-    "AUDIT_KAFKA_PUBLISH",
 ]

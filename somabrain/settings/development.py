@@ -1,6 +1,6 @@
 """Development settings."""
 
-from .base import *  # noqa
+from .base import *
 
 DEBUG = True
 ALLOWED_HOSTS = ["*"]

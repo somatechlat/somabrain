@@ -11,12 +11,14 @@ for the SomaBrain system. All tests use real implementations.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from dataclasses import asdict
-from typing import Any, Dict, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 import pytest
-from hypothesis import given, settings as hyp_settings, strategies as st, assume
+from hypothesis import assume, given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 
 # ---------------------------------------------------------------------------
 # Strategies for generating test data
@@ -288,8 +290,8 @@ class TestSerializationRoundTrip:
     @hyp_settings(max_examples=100, deadline=5000)
     def test_recall_hit_round_trip(
         self,
-        score: Optional[float],
-        coordinate: Optional[Tuple[float, float, float]],
+        score: float | None,
+        coordinate: tuple[float, float, float] | None,
     ) -> None:
         """Verify RecallHit survives JSON round-trip."""
         payload = {"task": "test", "content": "example data", "importance": 5}
@@ -346,7 +348,7 @@ class TestSerializationRoundTrip:
         ),
     )
     @hyp_settings(max_examples=50, deadline=5000)
-    def test_arbitrary_payload_round_trip(self, payload: Dict[str, Any]) -> None:
+    def test_arbitrary_payload_round_trip(self, payload: dict[str, Any]) -> None:
         """Verify arbitrary payloads survive JSON round-trip."""
         original = RecallHit(payload=payload, score=0.5, coordinate=None, raw=None)
 
@@ -449,7 +451,7 @@ class TestTimestampNormalization:
     ) -> None:
         """Verify ISO-8601 strings are parsed correctly."""
         # Create datetime and ISO string
-        dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+        dt = datetime(year, month, day, hour, minute, second, tzinfo=UTC)
         iso_str = dt.isoformat()
 
         result = coerce_to_epoch_seconds(iso_str)
@@ -478,7 +480,7 @@ class TestTimestampNormalization:
         second: int,
     ) -> None:
         """Verify ISO-8601 strings with Z suffix are parsed correctly."""
-        dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+        dt = datetime(year, month, day, hour, minute, second, tzinfo=UTC)
         # Use Z suffix format
         iso_str = (
             f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
@@ -510,7 +512,7 @@ class TestTimestampNormalization:
         second: int,
     ) -> None:
         """Verify datetime objects are converted correctly."""
-        dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
+        dt = datetime(year, month, day, hour, minute, second, tzinfo=UTC)
 
         result = coerce_to_epoch_seconds(dt)
         expected = dt.timestamp()
@@ -528,7 +530,7 @@ class TestTimestampNormalization:
     def test_naive_datetime_assumes_utc(self, year: int, month: int, day: int) -> None:
         """Verify naive datetime objects are treated as UTC."""
         dt_naive = datetime(year, month, day, 12, 0, 0)  # Noon, no timezone
-        dt_utc = datetime(year, month, day, 12, 0, 0, tzinfo=timezone.utc)
+        dt_utc = datetime(year, month, day, 12, 0, 0, tzinfo=UTC)
 
         result = coerce_to_epoch_seconds(dt_naive)
         expected = dt_utc.timestamp()
@@ -560,7 +562,7 @@ class TestTimestampNormalization:
     def test_round_trip_float_to_iso_to_float(self, timestamp: float) -> None:
         """Verify float → ISO → float round-trip preserves value."""
         # Convert float to datetime to ISO string
-        dt = datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        dt = datetime.fromtimestamp(timestamp, tz=UTC)
         iso_str = dt.isoformat()
 
         # Convert back

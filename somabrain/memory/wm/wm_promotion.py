@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from somabrain.memory.promotion import WMLTMPromoter
@@ -27,11 +27,11 @@ logger = logging.getLogger(__name__)
 
 
 def check_promotion(
-    promoter: "WMLTMPromoter",
+    promoter: WMLTMPromoter,
     item_id: str,
     salience: float,
     tick: int,
-    item: "WMItem",
+    item: WMItem,
 ) -> None:
     """Check if item should be promoted to LTM.
 
@@ -96,9 +96,9 @@ def check_promotion(
 
 
 def check_all_items_for_promotion(
-    promoter: "WMLTMPromoter",
-    items: List["WMItem"],
-    item_ids: List[str],
+    promoter: WMLTMPromoter,
+    items: list[WMItem],
+    item_ids: list[str],
     tick: int,
     compute_salience_fn,
 ) -> None:

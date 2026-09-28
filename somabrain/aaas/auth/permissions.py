@@ -263,7 +263,7 @@ class FieldPermissionChecker:
             return
 
         editable = self.get_editable_fields(model, list(data.keys()))
-        forbidden = [k for k in data.keys() if k not in editable]
+        forbidden = [k for k in data if k not in editable]
 
         if forbidden:
             raise HttpError(403, f"Cannot edit fields: {forbidden}")

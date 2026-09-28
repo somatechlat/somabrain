@@ -19,8 +19,8 @@ from .trace import configure_tracing, get_tracer
 
 __all__ = [
     "AuthClient",
-    "RedisCache",
     "EtcdClient",
+    "RedisCache",
     "configure_tracing",
     "get_tracer",
 ]

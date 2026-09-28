@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.conf import settings
 from django.db import models
@@ -104,11 +104,11 @@ class Option:
 
     option_id: str
     tenant_id: str
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     utility: float = 0.0
 
     @classmethod
-    def from_model(cls, model: OAKOption) -> "Option":
+    def from_model(cls, model: OAKOption) -> Option:
         """Create Option from OAKOption model instance."""
         return cls(
             option_id=model.option_id,
@@ -229,7 +229,7 @@ class OptionManager:
         tenant_id: str,
         option_id: str,
         payload: bytes,
-        utility: Optional[float] = None,
+        utility: float | None = None,
     ) -> dict:
         """
         Update an option in the OAK system.
@@ -282,7 +282,7 @@ class OptionManager:
             "updated_at": option.updated_at.isoformat(),
         }
 
-    def get_option(self, tenant_id: str, option_id: str) -> Optional[dict]:
+    def get_option(self, tenant_id: str, option_id: str) -> dict | None:
         """
         Get an option from the OAK system.
 
@@ -341,9 +341,9 @@ class OptionManager:
     def list_options(
         self,
         tenant_id: str,
-        limit: Optional[int] = None,
-        min_utility: Optional[float] = None,
-    ) -> List[Option]:
+        limit: int | None = None,
+        min_utility: float | None = None,
+    ) -> list[Option]:
         """
         List options for a tenant, ordered by utility descending.
 

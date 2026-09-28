@@ -9,7 +9,6 @@ from __future__ import annotations
 import base64
 import logging
 import time
-from typing import List, Optional
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -17,8 +16,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import api_key_auth
-from somabrain.api.auth import require_auth
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.memory.milvus_client import MilvusClient
 from somabrain.oak.option_manager import option_manager
 from somabrain.oak.planner import plan_for_tenant
@@ -48,13 +46,13 @@ class OakOptionCreateRequest(Schema):
     """Data model for OakOptionCreateRequest."""
 
     payload: str  # base64 encoded
-    option_id: Optional[str] = None
+    option_id: str | None = None
 
 
 class OakPlanSuggestResponse(Schema):
     """Data model for OakPlanSuggestResponse."""
 
-    plan: List[str]
+    plan: list[str]
 
 
 @router.post("/option/create", response=OakPlanSuggestResponse, auth=api_key_auth)
@@ -110,7 +108,7 @@ def oak_option_update(
 
 
 @router.get("/plan", response=OakPlanSuggestResponse, auth=api_key_auth)
-def oak_plan(request: HttpRequest, max_options: Optional[int] = None):
+def oak_plan(request: HttpRequest, max_options: int | None = None):
     """Return a ranked list of Oak option identifiers for the tenant."""
     ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)

@@ -14,7 +14,6 @@ VIBE compliance:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from django.conf import settings
 
@@ -40,7 +39,7 @@ def get_entropy_cap() -> float:
 
 
 def should_switch_leader(
-    current_entropy: float, candidate: Optional[str] = None
+    current_entropy: float, candidate: str | None = None
 ) -> bool:
     """Determine whether the leader should be switched.
 

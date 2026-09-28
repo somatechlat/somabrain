@@ -19,7 +19,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 import hashlib
 import secrets
 from datetime import timedelta
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -57,7 +56,7 @@ def store_invitation(token: str, data: dict):
     cache.set(key, data, timeout=INVITATION_EXPIRY_HOURS * 3600)
 
 
-def get_invitation(token: str) -> Optional[dict]:
+def get_invitation(token: str) -> dict | None:
     """Retrieve invitation from cache."""
     key = get_invitation_key(token)
     return cache.get(key)
@@ -82,7 +81,7 @@ def add_to_tenant_invitations(tenant_id: str, invitation_id: str):
     cache.set(key, invitations, timeout=INVITATION_EXPIRY_HOURS * 3600)
 
 
-def get_tenant_invitations(tenant_id: str) -> List[str]:
+def get_tenant_invitations(tenant_id: str) -> list[str]:
     """Get all invitation IDs for a tenant."""
     key = get_tenant_invitations_key(tenant_id)
     return cache.get(key, [])
@@ -100,10 +99,10 @@ class InvitationOut(Schema):
     email: str
     role: str
     status: str
-    invited_by: Optional[str]
+    invited_by: str | None
     created_at: str
     expires_at: str
-    accepted_at: Optional[str]
+    accepted_at: str | None
 
 
 class InvitationCreate(Schema):
@@ -111,32 +110,32 @@ class InvitationCreate(Schema):
 
     email: str
     role: str = "member"
-    message: Optional[str] = None
+    message: str | None = None
 
 
 class InvitationBulkCreate(Schema):
     """Bulk create invitations."""
 
-    emails: List[str]
+    emails: list[str]
     role: str = "member"
-    message: Optional[str] = None
+    message: str | None = None
 
 
 class InvitationAccept(Schema):
     """Accept invitation request."""
 
-    display_name: Optional[str] = None
+    display_name: str | None = None
 
 
 class InvitationVerify(Schema):
     """Verify invitation token response."""
 
     valid: bool
-    email: Optional[str]
-    tenant_name: Optional[str]
-    role: Optional[str]
-    expires_at: Optional[str]
-    error: Optional[str]
+    email: str | None
+    tenant_name: str | None
+    role: str | None
+    expires_at: str | None
+    error: str | None
 
 
 # =============================================================================
@@ -144,13 +143,13 @@ class InvitationVerify(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}", response=List[InvitationOut])
+@router.get("/{tenant_id}", response=list[InvitationOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_UPDATE.value)
 def list_invitations(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    status: Optional[str] = None,
+    status: str | None = None,
 ):
     """
     List all pending invitations for a tenant.
@@ -262,7 +261,7 @@ def create_invitation(
     )
 
 
-@router.post("/{tenant_id}/bulk", response=List[InvitationOut])
+@router.post("/{tenant_id}/bulk", response=list[InvitationOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_UPDATE.value)
 def create_bulk_invitations(

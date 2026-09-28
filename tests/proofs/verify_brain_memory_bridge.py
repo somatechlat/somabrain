@@ -1,8 +1,9 @@
 import os
 import sys
 import time
-import requests
 import uuid
+
+import requests
 
 # Configuration
 BRAIN_HOST = os.getenv("SOMABRAIN_HOST", "localhost")

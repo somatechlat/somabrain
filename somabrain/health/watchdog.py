@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Optional
 
 from django.conf import settings
 
@@ -21,7 +20,7 @@ logger = logging.getLogger("somabrain.health.watchdog")
 _LOG_PREFIX = "[HEALTH]"
 _LOG_TENANT_FMT = "tenant=%s"
 
-_health_watchdog_task: Optional[asyncio.Task] = None
+_health_watchdog_task: asyncio.Task | None = None
 
 
 def _get_runtime():
@@ -121,7 +120,7 @@ async def _health_watchdog_coroutine():
         await asyncio.sleep(poll_interval)
 
 
-def start_health_watchdog() -> Optional[asyncio.Task]:
+def start_health_watchdog() -> asyncio.Task | None:
     """Start the health watchdog background task."""
     global _health_watchdog_task
     if _health_watchdog_task is None:

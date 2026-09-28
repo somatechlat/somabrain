@@ -1,6 +1,7 @@
 """Module record_dependency_install_metrics."""
 
 from __future__ import annotations
+
 import json
 import os
 import subprocess

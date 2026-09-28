@@ -1,12 +1,13 @@
-import os
-import django
 import hashlib
+import os
+
+import django
 
 # Setup Django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
 django.setup()
 
-from somabrain.aaas.models import Tenant, APIKey, TenantStatus
+from somabrain.aaas.models import APIKey, Tenant, TenantStatus
 
 
 def create_key():

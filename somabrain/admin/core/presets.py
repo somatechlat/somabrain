@@ -6,7 +6,7 @@ plasticity and stability without manually tuning hundreds of knobs.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,7 @@ class CognitivePreset:
 
     name: str
     description: str
-    params: Dict[str, Any]
+    params: dict[str, Any]
 
 
 # -----------------------------------------------------------------------------

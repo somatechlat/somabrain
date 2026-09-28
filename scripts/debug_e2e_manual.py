@@ -1,6 +1,7 @@
 """Module debug_e2e_manual."""
 
 import os
+
 import django
 from django.conf import settings
 

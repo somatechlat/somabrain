@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from typing import List
 
 import httpx
 import numpy as np
@@ -19,7 +18,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import api_key_auth
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.api.memory.helpers import (
     _compose_memory_payload,
     _get_embedder,
@@ -35,7 +34,6 @@ from somabrain.api.memory.models import (
     MemoryWriteRequest,
     MemoryWriteResponse,
 )
-from somabrain.api.auth import require_auth
 from somabrain.core.exceptions import CircuitBreakerOpen, MemoryServiceError
 from somabrain.metrics import record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
@@ -74,6 +72,7 @@ async def _persist_ltm_in_background(
         except Exception:
             pass
 
+
 router = Router(tags=["memory"])
 
 
@@ -99,7 +98,6 @@ def _ensure_runtime():
 
     # In sync code we might just rely on side-effects or call async if valid
     # For now, assuming runtime is initialized by WSGI/ASGI entrypoint or middleware
-    pass
 
 
 # Splitting logic to handle async nature properly
@@ -162,11 +160,10 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     persisted_to_ltm = False
     coord = None
-    degraded_warnings: List[str] = []
+    degraded_warnings: list[str] = []
 
-    fast_ack = (
-        request.headers.get("X-Soma-Fast-Ack", "").lower() == "true"
-        or bool(getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK", False))
+    fast_ack = request.headers.get("X-Soma-Fast-Ack", "").lower() == "true" or bool(
+        getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK", False)
     )
 
     if memsvc._is_circuit_open():
@@ -204,7 +201,9 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
                 )
             )
         except Exception as exc:
-            logger.warning("Fast-ack enqueue failed, falling back to sync persist: %s", exc)
+            logger.warning(
+                "Fast-ack enqueue failed, falling back to sync persist: %s", exc
+            )
             try:
                 coord = await memsvc.aremember(payload.key, stored_payload)
                 persisted_to_ltm = True
@@ -220,7 +219,9 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
             memsvc._queue_degraded(
                 "remember", {"key": payload.key, "payload": stored_payload}
             )
-            degraded_warnings.append(f"memory-backend-unavailable:queued-for-replay:{exc}")
+            degraded_warnings.append(
+                f"memory-backend-unavailable:queued-for-replay:{exc}"
+            )
         except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
             raise _map_memory_error(exc) from exc
         except Exception as exc:
@@ -232,7 +233,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         stored_payload["coordinate"] = coordinate_list
 
     promoted_to_wm = False
-    warnings: List[str] = []
+    warnings: list[str] = []
     tiered_vector = None
 
     try:

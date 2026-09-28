@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 try:
     from fastavro import parse_schema, schemaless_reader, schemaless_writer
@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover
 class AvroSerde:
     """Avroserde class implementation."""
 
-    def __init__(self, schema: Dict[str, Any]):
+    def __init__(self, schema: dict[str, Any]):
         """Initialize the instance."""
 
         if parse_schema is None:
@@ -24,7 +24,7 @@ class AvroSerde:
             )
         self._schema = parse_schema(schema)
 
-    def serialize(self, record: Dict[str, Any]) -> bytes:
+    def serialize(self, record: dict[str, Any]) -> bytes:
         """Execute serialize.
 
         Args:
@@ -39,7 +39,7 @@ class AvroSerde:
         schemaless_writer(buf, self._schema, record)
         return buf.getvalue()
 
-    def deserialize(self, payload: bytes) -> Dict[str, Any]:
+    def deserialize(self, payload: bytes) -> dict[str, Any]:
         """Execute deserialize.
 
         Args:

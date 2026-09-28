@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 import logging
-from typing import Any, List
+from typing import Any
+
 from django.conf import settings
+
 from somabrain.core.infrastructure_defs import get_memory_http_endpoint
 from somabrain.memory.transport import MemoryHTTPTransport
 
@@ -104,8 +107,7 @@ class TransportMixin:
                     pass
                 elif "://" not in env_base:
                     env_base = f"http://{env_base}"
-                if env_base.endswith("/openapi.json"):
-                    env_base = env_base[: -len("/openapi.json")]
+                env_base = env_base.removesuffix("/openapi.json")
             except Exception:
                 env_base = None
         base_url = str(getattr(self.cfg, "memory_http_endpoint", "") or "")
@@ -187,7 +189,9 @@ class TransportMixin:
         transport = getattr(self, "_transport", None)
         if transport is None:
             return False, 0, None
-        return transport.post_with_retries_sync(endpoint, body, headers, max_retries=max_retries)
+        return transport.post_with_retries_sync(
+            endpoint, body, headers, max_retries=max_retries
+        )
 
     async def _http_post_with_retries_async(
         self,
@@ -200,7 +204,9 @@ class TransportMixin:
         transport = getattr(self, "_transport", None)
         if transport is None:
             return False, 0, None
-        return await transport.post_with_retries_async(endpoint, body, headers, max_retries=max_retries)
+        return await transport.post_with_retries_async(
+            endpoint, body, headers, max_retries=max_retries
+        )
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         if self._http is None:
@@ -247,12 +253,12 @@ class TransportMixin:
         return False, data
 
     def _store_bulk_http_sync(
-        self, items: List[dict], headers: dict
+        self, items: list[dict], headers: dict
     ) -> tuple[bool, int, Any]:
         if self._http is None:
             return False, 0, None
         all_ok = True
-        responses: List[Any] = []
+        responses: list[Any] = []
         for item in items:
             ok, resp = self._store_http_sync(item, headers)
             all_ok = all_ok and ok
@@ -260,12 +266,12 @@ class TransportMixin:
         return all_ok, 200 if all_ok else 207, responses
 
     async def _store_bulk_http_async(
-        self, items: List[dict], headers: dict
+        self, items: list[dict], headers: dict
     ) -> tuple[bool, int, Any]:
         if self._http_async is None:
             return False, 0, None
         all_ok = True
-        responses: List[Any] = []
+        responses: list[Any] = []
         for item in items:
             ok, resp = await self._store_http_async(item, headers)
             all_ok = all_ok and ok

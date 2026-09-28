@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import logging
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ def generate_synthetic_sequence(
     change_prob: float = 0.05,
     domains: Iterable[str] | None = None,
     seed: int | None = None,
-) -> List[str]:
+) -> list[str]:
     """Generate synthetic leader domain sequence with random changes.
 
     Args:
@@ -117,7 +118,7 @@ def generate_synthetic_sequence(
     """
     rnd = random.Random(seed)
     doms = list(domains or ("state", "agent", "action"))
-    seq: List[str] = []
+    seq: list[str] = []
     cur = rnd.choice(doms)
     for _ in range(length):
         if rnd.random() < change_prob:
@@ -126,9 +127,9 @@ def generate_synthetic_sequence(
     return seq
 
 
-def true_boundaries(sequence: List[str]) -> List[int]:
+def true_boundaries(sequence: list[str]) -> list[int]:
     """Return tick indices where domain changes in the sequence."""
-    out: List[int] = []
+    out: list[int] = []
     prev = None
     for i, d in enumerate(sequence):
         if prev is None:
@@ -141,10 +142,10 @@ def true_boundaries(sequence: List[str]) -> List[int]:
 
 
 def evaluate_boundaries(
-    emitted: List[int],
-    true: List[int],
+    emitted: list[int],
+    true: list[int],
     tolerance: int = 0,
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """Compute F1, false boundary rate, mean dwell latency.
 
     A predicted boundary is a TP if there exists a true boundary within
@@ -209,8 +210,8 @@ def update_metrics(
 
 
 def evaluate_sequence(
-    sequence: List[str], emitted_boundaries: List[int], tenant: str = "public"
-) -> Dict[str, float]:
+    sequence: list[str], emitted_boundaries: list[int], tenant: str = "public"
+) -> dict[str, float]:
     """High-level convenience wrapper: derives true boundaries, evaluates, updates metrics.
 
     Returns dict of metrics for caller assertions/tests.

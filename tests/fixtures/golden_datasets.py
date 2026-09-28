@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -35,8 +35,8 @@ class GoldenMemoryItem:
     content: str
     relevance_score: float
     memory_type: str = "episodic"
-    embedding: Optional[np.ndarray] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    embedding: np.ndarray | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Execute post init  ."""
@@ -57,8 +57,8 @@ class GoldenQuery:
     """
 
     query_text: str
-    expected_top_k: List[str]
-    relevance_judgments: Dict[str, float] = field(default_factory=dict)
+    expected_top_k: list[str]
+    relevance_judgments: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -73,11 +73,11 @@ class GoldenTestSet:
     """
 
     name: str
-    items: List[GoldenMemoryItem]
-    queries: List[GoldenQuery]
-    expected_rankings: Dict[str, List[str]] = field(default_factory=dict)
+    items: list[GoldenMemoryItem]
+    queries: list[GoldenQuery]
+    expected_rankings: dict[str, list[str]] = field(default_factory=dict)
 
-    def get_item_by_id(self, item_id: str) -> Optional[GoldenMemoryItem]:
+    def get_item_by_id(self, item_id: str) -> GoldenMemoryItem | None:
         """Get item by ID."""
         for item in self.items:
             if item.id == item_id:
@@ -86,7 +86,7 @@ class GoldenTestSet:
 
     def get_relevant_items(
         self, query: GoldenQuery, threshold: float = 0.5
-    ) -> List[str]:
+    ) -> list[str]:
         """Get item IDs with relevance above threshold for a query."""
         return [
             item_id
@@ -138,9 +138,9 @@ def _create_golden_corpus_100() -> GoldenTestSet:
 
     Each category has 4 queries with known relevant items.
     """
-    items: List[GoldenMemoryItem] = []
-    queries: List[GoldenQuery] = []
-    expected_rankings: Dict[str, List[str]] = {}
+    items: list[GoldenMemoryItem] = []
+    queries: list[GoldenQuery] = []
+    expected_rankings: dict[str, list[str]] = {}
 
     # Technology items (g001-g020)
     tech_items = [
@@ -407,7 +407,7 @@ def get_golden_corpus() -> GoldenTestSet:
     return GOLDEN_CORPUS_100
 
 
-def get_category_items(category: str) -> List[GoldenMemoryItem]:
+def get_category_items(category: str) -> list[GoldenMemoryItem]:
     """Get items from a specific category."""
     return [
         item

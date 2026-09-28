@@ -1,4 +1,5 @@
 from django.core.management.base import BaseCommand
+
 from somabrain.brain_settings.models import BrainSetting
 
 

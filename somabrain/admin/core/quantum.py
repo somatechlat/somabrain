@@ -14,16 +14,15 @@ Mathematical Properties:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
 
 import numpy as np
 
 from somabrain.admin.core import roles as _roles
+from somabrain.admin.core.numerics import normalize_array
+from somabrain.core.utils.seed import seed_to_uint64
 from somabrain.math import cosine_similarity
 from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
 from somabrain.metrics.math_metrics import MathematicalMetrics
-from somabrain.admin.core.numerics import normalize_array
-from somabrain.core.utils.seed import seed_to_uint64
 
 try:
     from memory.density import DensityMatrix
@@ -47,18 +46,18 @@ class HRRConfig:
     After initialization, all required fields are guaranteed to have non-None values.
     """
 
-    dim: Optional[int] = None
-    seed: Optional[int] = None
-    dtype: Optional[str] = None
-    renorm: Optional[bool] = None
+    dim: int | None = None
+    seed: int | None = None
+    dtype: str | None = None
+    renorm: bool | None = None
     binding_method: str = "bhdc"
-    sparsity: Optional[float] = None
+    sparsity: float | None = None
     binary_mode: str = "pm_one"
     mix: str = "none"
     roles_unitary: bool = True
-    binding_seed: Optional[str] = None
-    binding_tenant: Optional[str] = None
-    binding_model_version: Optional[str] = None
+    binding_seed: str | None = None
+    binding_tenant: str | None = None
+    binding_model_version: str | None = None
 
     def __post_init__(self) -> None:
         # Apply Settings defaults for None values
@@ -124,9 +123,9 @@ class QuantumLayer:
             - Uses numpy's default_rng for reproducible random generation
         """
         self.cfg = cfg
-        self._role_cache: Dict[str, np.ndarray] = {}
+        self._role_cache: dict[str, np.ndarray] = {}
         # Compatibility caches expected by legacy numerics tests
-        self._role_fft_cache: Dict[str, np.ndarray] = {}
+        self._role_fft_cache: dict[str, np.ndarray] = {}
         self._rng = np.random.default_rng(int(cfg.seed))
         self._encoder = BHDCEncoder(
             dim=cfg.dim,
@@ -204,9 +203,9 @@ class QuantumLayer:
             AdvancedMathematicalMetrics,
         )
 
-        acc: Optional[np.ndarray] = None
+        acc: np.ndarray | None = None
 
-        first_component: Optional[np.ndarray] = None
+        first_component: np.ndarray | None = None
 
         for v in vectors:
             items = v if isinstance(v, (list, tuple)) else [v]
@@ -476,10 +475,10 @@ class QuantumLayer:
     def cleanup(
         self,
         q: np.ndarray,
-        anchors: Dict[str, np.ndarray],
+        anchors: dict[str, np.ndarray],
         *,
         use_wiener: bool = True,
-        density_matrix: "DensityMatrix" = None,
+        density_matrix: DensityMatrix = None,
         alpha: float | None = None,
     ) -> tuple[str, float]:
         """Execute cleanup.
@@ -521,7 +520,7 @@ class QuantumLayer:
     # Validation helpers
     # ------------------------------------------------------------------
     def _validate_unitary_role(
-        self, role: np.ndarray, spectrum: Optional[np.ndarray]
+        self, role: np.ndarray, spectrum: np.ndarray | None
     ) -> None:
         """Record invariants that prove a role remains unitary."""
 

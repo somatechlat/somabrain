@@ -22,8 +22,8 @@ import hashlib
 import hmac
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
 
 from django.conf import settings
 from django.db import transaction
@@ -151,7 +151,7 @@ def handle_subscription_started(data: dict) -> None:
                     sub = tenant.subscription
                     sub.status = SubscriptionStatus.ACTIVE
                     sub.lago_subscription_id = subscription.get("lago_id")
-                    sub.current_period_start = datetime.now(timezone.utc)
+                    sub.current_period_start = datetime.now(UTC)
                     sub.save()
 
                 # Ensure tenant is active
@@ -187,7 +187,7 @@ def handle_subscription_terminated(data: dict) -> None:
                 if hasattr(tenant, "subscription"):
                     sub = tenant.subscription
                     sub.status = SubscriptionStatus.CANCELLED
-                    sub.cancelled_at = datetime.now(timezone.utc)
+                    sub.cancelled_at = datetime.now(UTC)
                     sub.save()
 
             AuditLog.log(

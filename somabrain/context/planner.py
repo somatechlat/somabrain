@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
 from django.conf import settings
 
@@ -25,7 +24,7 @@ class PlanResult:
 
     prompt: str
     utility: float
-    candidates: List[PlanCandidate]
+    candidates: list[PlanCandidate]
 
 
 class ContextPlanner:
@@ -67,7 +66,7 @@ class ContextPlanner:
         best = ranked[0] if ranked else PlanCandidate(prompt=bundle.prompt, utility=0.0)
         return PlanResult(prompt=best.prompt, utility=best.utility, candidates=ranked)
 
-    def _generate_candidates(self, bundle) -> List[PlanCandidate]:
+    def _generate_candidates(self, bundle) -> list[PlanCandidate]:
         """Execute generate candidates.
 
         Args:
@@ -82,14 +81,14 @@ class ContextPlanner:
         candidates.extend(summaries)
         return candidates
 
-    def _memory_highlights(self, bundle) -> List[PlanCandidate]:
+    def _memory_highlights(self, bundle) -> list[PlanCandidate]:
         """Execute memory highlights.
 
         Args:
             bundle: The bundle.
         """
 
-        results: List[PlanCandidate] = []
+        results: list[PlanCandidate] = []
         for mem, weight in zip(bundle.memories, bundle.weights, strict=False):
             text = mem.metadata.get("text") or mem.metadata.get("content")
             if not text:

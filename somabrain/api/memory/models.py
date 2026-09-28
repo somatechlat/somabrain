@@ -36,8 +36,8 @@ Models:
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Union
+from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -46,18 +46,18 @@ class MemoryAttachment(BaseModel):
     """Attachment descriptor for memory entries."""
 
     kind: str = Field(..., description="Attachment type identifier")
-    uri: Optional[str] = Field(None, description="External location reference")
-    content_type: Optional[str] = Field(
+    uri: str | None = Field(None, description="External location reference")
+    content_type: str | None = Field(
         None, description="MIME type for the attachment"
     )
-    checksum: Optional[str] = Field(
+    checksum: str | None = Field(
         None, description="Integrity checksum for validation"
     )
-    data: Optional[str] = Field(
+    data: str | None = Field(
         None,
         description="Inline base64-encoded payload; use sparingly for small blobs",
     )
-    meta: Optional[Dict[str, Any]] = Field(
+    meta: dict[str, Any] | None = Field(
         None, description="Attachment metadata annotations"
     )
 
@@ -67,26 +67,26 @@ class MemoryLink(BaseModel):
 
     rel: str = Field(..., description="Relationship descriptor (e.g. causes, follows)")
     target: str = Field(..., description="Target memory key or URI")
-    weight: Optional[float] = Field(None, ge=0.0, description="Optional link strength")
-    meta: Optional[Dict[str, Any]] = Field(None, description="Additional link metadata")
+    weight: float | None = Field(None, ge=0.0, description="Optional link strength")
+    meta: dict[str, Any] | None = Field(None, description="Additional link metadata")
 
 
 class MemorySignalPayload(BaseModel):
     """Agent-provided signals guiding storage priorities."""
 
-    importance: Optional[float] = Field(
+    importance: float | None = Field(
         None, ge=0.0, description="Relative importance weight"
     )
-    novelty: Optional[float] = Field(
+    novelty: float | None = Field(
         None, ge=0.0, description="Novelty score from agent"
     )
-    ttl_seconds: Optional[int] = Field(
+    ttl_seconds: int | None = Field(
         None, ge=0, description="Soft time-to-live for cleanup"
     )
-    reinforcement: Optional[str] = Field(
+    reinforcement: str | None = Field(
         None, description="Working-memory reinforcement hint (e.g. boost, suppress)"
     )
-    recall_bias: Optional[str] = Field(
+    recall_bias: str | None = Field(
         None, description="Preferred recall strategy (explore, exploit, balanced, etc.)"
     )
 
@@ -94,13 +94,13 @@ class MemorySignalPayload(BaseModel):
 class MemorySignalFeedback(BaseModel):
     """Feedback on signal processing results."""
 
-    importance: Optional[float] = None
-    novelty: Optional[float] = None
-    ttl_seconds: Optional[int] = Field(None, ge=0, description="Applied ttl in seconds")
-    reinforcement: Optional[str] = None
-    recall_bias: Optional[str] = None
-    promoted_to_wm: Optional[bool] = None
-    persisted_to_ltm: Optional[bool] = None
+    importance: float | None = None
+    novelty: float | None = None
+    ttl_seconds: int | None = Field(None, ge=0, description="Applied ttl in seconds")
+    reinforcement: str | None = None
+    recall_bias: str | None = None
+    promoted_to_wm: bool | None = None
+    persisted_to_ltm: bool | None = None
 
 
 class MemoryWriteRequest(BaseModel):
@@ -116,40 +116,38 @@ class MemoryWriteRequest(BaseModel):
     """
 
     # --- seam fields (THE SEAM contract) ---
-    text: Optional[str] = Field(
+    text: str | None = Field(
         None, description="Primary memory text (seam). Alias: content"
     )
-    content: Optional[str] = Field(
+    content: str | None = Field(
         None, description="Dialect alias for text (BrainBridge / legacy proofs)"
     )
     kind: str = Field(
         "episodic",
         description="Memory kind: episodic | semantic | belief (seam)",
     )
-    memory_type: Optional[str] = Field(
+    memory_type: str | None = Field(
         None, description="Dialect alias for kind (legacy value.memory_type)"
     )
-    tenant_id: Optional[str] = Field(
+    tenant_id: str | None = Field(
         None, description="Tenant identifier (seam). Alias for tenant"
     )
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None, description="Optional session scope for this memory"
     )
-    coord: Optional[Union[str, List[float]]] = Field(
+    coord: str | list[float] | None = Field(
         None,
         description="Explicit coordinate identity, either 'x,y,z' or [x,y,z]. "
         "When provided it is the single storage identity.",
     )
-    embedding: Optional[List[float]] = Field(
+    embedding: list[float] | None = Field(
         None,
         description="Optional precomputed embedding vector stored with the memory",
     )
-    salience: Optional[float] = Field(
+    salience: float | None = Field(
         None, ge=0.0, le=1.0, description="Salience weight in [0,1] (seam)"
     )
-    source: Optional[str] = Field(
-        "agent-chat", description="Write provenance (seam)"
-    )
+    source: str | None = Field("agent-chat", description="Write provenance (seam)")
 
     # --- rich write shape (still canonical) ---
     tenant: str = Field(
@@ -165,38 +163,38 @@ class MemoryWriteRequest(BaseModel):
         min_length=1,
         description="Stable key used to derive coordinates when coord is absent",
     )
-    value: Dict[str, Any] = Field(..., description="Payload stored in memory")
-    meta: Optional[Dict[str, Any]] = Field(
+    value: dict[str, Any] = Field(..., description="Payload stored in memory")
+    meta: dict[str, Any] | None = Field(
         None, description="Optional metadata blended into the stored payload"
     )
-    universe: Optional[str] = Field(
+    universe: str | None = Field(
         None, description="Universe scope forwarded to the memory backend"
     )
-    ttl_seconds: Optional[int] = Field(
+    ttl_seconds: int | None = Field(
         None, ge=0, description="Desired time-to-live hint for automatic cleanup"
     )
-    tags: List[str] = Field(
+    tags: list[str] = Field(
         default_factory=list, description="Arbitrary agent-supplied tags"
     )
-    policy_tags: List[str] = Field(
+    policy_tags: list[str] = Field(
         default_factory=list, description="Policy or governance tags for this memory"
     )
-    attachments: List[MemoryAttachment] = Field(
+    attachments: list[MemoryAttachment] = Field(
         default_factory=list, description="Optional attachment descriptors"
     )
-    links: List[MemoryLink] = Field(
+    links: list[MemoryLink] = Field(
         default_factory=list, description="Optional outbound links to existing memories"
     )
-    signals: Optional[MemorySignalPayload] = Field(
+    signals: MemorySignalPayload | None = Field(
         None, description="Agent-provided signals guiding storage priorities"
     )
-    importance: Optional[float] = Field(
+    importance: float | None = Field(
         None, ge=0.0, description="Shortcut for signals.importance"
     )
-    novelty: Optional[float] = Field(
+    novelty: float | None = Field(
         None, ge=0.0, description="Shortcut for signals.novelty"
     )
-    trace_id: Optional[str] = Field(
+    trace_id: str | None = Field(
         None, description="Agent correlation identifier for downstream observability"
     )
 
@@ -311,25 +309,25 @@ class MemoryWriteResponse(BaseModel):
     ok: bool
     tenant: str
     namespace: str
-    key: Optional[str] = None
-    coord: Optional[str] = Field(
+    key: str | None = None
+    coord: str | None = Field(
         None, description="Canonical coordinate string 'x,y,z' (seam MemoryAck.coord)"
     )
-    coordinate: Optional[List[float]] = None
+    coordinate: list[float] | None = None
     store: str = Field("somafractalmemory", description="Store that acked the write")
-    kind: Optional[str] = None
-    error: Optional[str] = None
+    kind: str | None = None
+    error: str | None = None
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
     queued_for_ltm: bool = False
     deduplicated: bool = False
-    importance: Optional[float] = None
-    novelty: Optional[float] = None
-    ttl_applied: Optional[int] = None
-    trace_id: Optional[str] = None
-    request_id: Optional[str] = None
-    warnings: List[str] = Field(default_factory=list)
-    signals: Optional[MemorySignalFeedback] = None
+    importance: float | None = None
+    novelty: float | None = None
+    ttl_applied: int | None = None
+    trace_id: str | None = None
+    request_id: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+    signals: MemorySignalFeedback | None = None
 
 
 class MemoryRecallRequest(BaseModel):
@@ -339,36 +337,36 @@ class MemoryRecallRequest(BaseModel):
     namespace: str = Field(..., min_length=1)
     query: str = Field(..., min_length=1)
     top_k: int = Field(3, ge=1, le=50)
-    layer: Optional[str] = Field(
+    layer: str | None = Field(
         None, description="Set to 'wm', 'ltm', or omit for both"
     )
-    universe: Optional[str] = None
-    tags: List[str] = Field(
+    universe: str | None = None
+    tags: list[str] = Field(
         default_factory=list, description="Filter hits containing these tags"
     )
-    min_score: Optional[float] = Field(
+    min_score: float | None = Field(
         None, ge=0.0, description="Drop hits with score below this threshold"
     )
-    max_age_seconds: Optional[int] = Field(
+    max_age_seconds: int | None = Field(
         None,
         ge=0,
         description="Exclude hits older than the specified age when payload timestamps exist",
     )
-    scoring_mode: Optional[str] = Field(
+    scoring_mode: str | None = Field(
         None,
         description="Preferred scoring strategy (explore, exploit, blended, recency, etc.)",
     )
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None, description="Attach to existing recall session to accumulate context"
     )
-    conversation_id: Optional[str] = Field(
+    conversation_id: str | None = Field(
         None, description="Agent-provided conversation identifier"
     )
     pin_results: bool = Field(
         False,
         description="If true, persist results in the session registry for follow-up queries",
     )
-    chunk_size: Optional[int] = Field(
+    chunk_size: int | None = Field(
         None,
         ge=1,
         le=50,
@@ -381,17 +379,17 @@ class MemoryRecallRequest(BaseModel):
     )
 
 
-def _iso_created_at(payload: Dict[str, Any]) -> str:
+def _iso_created_at(payload: dict[str, Any]) -> str:
     """Derive an ISO-8601 ``created_at`` from a stored payload."""
     raw = payload.get("timestamp") or payload.get("created_at")
     if isinstance(raw, (int, float)):
         try:
-            return datetime.fromtimestamp(float(raw), tz=timezone.utc).isoformat()
+            return datetime.fromtimestamp(float(raw), tz=UTC).isoformat()
         except (OverflowError, OSError, ValueError):
             pass
     if isinstance(raw, str) and raw.strip():
         return raw.strip()
-    return datetime.fromtimestamp(time.time(), tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(time.time(), tz=UTC).isoformat()
 
 
 class MemoryRecallItem(BaseModel):
@@ -404,10 +402,10 @@ class MemoryRecallItem(BaseModel):
 
     # --- seam MemoryHit fields ---
     text: str = ""
-    coord: Optional[str] = Field(
+    coord: str | None = Field(
         None, description="Canonical coordinate string 'x,y,z' (MemoryHit.coord)"
     )
-    score: Optional[float] = None
+    score: float | None = None
     store: str = Field(
         "somafractalmemory",
         description="Originating store: somabrain | somafractalmemory",
@@ -418,16 +416,16 @@ class MemoryRecallItem(BaseModel):
 
     # --- legacy aliases ---
     layer: str
-    payload: Dict[str, Any]
-    coordinate: Optional[List[float]] = None
+    payload: dict[str, Any]
+    coordinate: list[float] | None = None
     source: str
-    confidence: Optional[float] = Field(
+    confidence: float | None = Field(
         None, description="Confidence score derived from backend metrics"
     )
-    novelty: Optional[float] = Field(
+    novelty: float | None = Field(
         None, description="Novelty indicator relative to session history"
     )
-    affinity: Optional[float] = Field(
+    affinity: float | None = Field(
         None, description="Affinity to current conversation or goal state"
     )
 
@@ -437,28 +435,28 @@ class MemoryRecallResponse(BaseModel):
 
     tenant: str
     namespace: str
-    results: List[MemoryRecallItem]
+    results: list[MemoryRecallItem]
     wm_hits: int
     ltm_hits: int
     duration_ms: float
     session_id: str
-    scoring_mode: Optional[str] = None
+    scoring_mode: str | None = None
     chunk_index: int = 0
     has_more: bool = False
     total_results: int
-    chunk_size: Optional[int] = None
-    conversation_id: Optional[str] = None
+    chunk_size: int | None = None
+    conversation_id: str | None = None
     degraded: bool = False
 
 
 class ForgetRequest(BaseModel):
     """Request model for forgetting (deleting) a memory by coordinate."""
 
-    coord: Union[str, List[float]] = Field(
+    coord: str | list[float] = Field(
         ..., description="Coordinate identity: 'x,y,z' or [x,y,z]"
     )
-    tenant: Optional[str] = Field(None, description="Tenant identifier (rich name)")
-    tenant_id: Optional[str] = Field(None, description="Tenant identifier (seam name)")
+    tenant: str | None = Field(None, description="Tenant identifier (rich name)")
+    tenant_id: str | None = Field(None, description="Tenant identifier (seam name)")
 
 
 class ForgetResponse(BaseModel):
@@ -468,7 +466,7 @@ class ForgetResponse(BaseModel):
     coord: str
     store: str = "somafractalmemory"
     tenant: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class MemoryMetricsResponse(BaseModel):
@@ -484,20 +482,20 @@ class MemoryBatchWriteItem(BaseModel):
     """Individual item in a batch write request."""
 
     key: str = Field(..., min_length=1)
-    value: Dict[str, Any] = Field(..., description="Payload stored in memory")
-    meta: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
-    ttl_seconds: Optional[int] = Field(
+    value: dict[str, Any] = Field(..., description="Payload stored in memory")
+    meta: dict[str, Any] | None = Field(None, description="Optional metadata")
+    ttl_seconds: int | None = Field(
         None, ge=0, description="TTL override for this item"
     )
-    tags: List[str] = Field(default_factory=list, description="Optional tags")
-    policy_tags: List[str] = Field(default_factory=list, description="Policy tags")
-    attachments: List[MemoryAttachment] = Field(default_factory=list)
-    links: List[MemoryLink] = Field(default_factory=list)
-    signals: Optional[MemorySignalPayload] = None
-    importance: Optional[float] = Field(None, ge=0.0)
-    novelty: Optional[float] = Field(None, ge=0.0)
-    trace_id: Optional[str] = None
-    universe: Optional[str] = None
+    tags: list[str] = Field(default_factory=list, description="Optional tags")
+    policy_tags: list[str] = Field(default_factory=list, description="Policy tags")
+    attachments: list[MemoryAttachment] = Field(default_factory=list)
+    links: list[MemoryLink] = Field(default_factory=list)
+    signals: MemorySignalPayload | None = None
+    importance: float | None = Field(None, ge=0.0)
+    novelty: float | None = Field(None, ge=0.0)
+    trace_id: str | None = None
+    universe: str | None = None
 
 
 class MemoryBatchWriteRequest(BaseModel):
@@ -505,10 +503,10 @@ class MemoryBatchWriteRequest(BaseModel):
 
     tenant: str = Field(..., min_length=1)
     namespace: str = Field(..., min_length=1)
-    items: List[MemoryBatchWriteItem] = Field(
+    items: list[MemoryBatchWriteItem] = Field(
         ..., min_length=1, description="Batch of memories to persist"
     )
-    universe: Optional[str] = Field(
+    universe: str | None = Field(
         None,
         description="Default universe applied when items omit universe; item value wins",
     )
@@ -518,17 +516,17 @@ class MemoryBatchWriteResult(BaseModel):
     """Individual result in a batch write response."""
 
     key: str
-    coordinate: Optional[List[float]] = None
+    coordinate: list[float] | None = None
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
     deduplicated: bool = False
-    importance: Optional[float] = None
-    novelty: Optional[float] = None
-    ttl_applied: Optional[int] = None
-    trace_id: Optional[str] = None
-    request_id: Optional[str] = None
-    warnings: List[str] = Field(default_factory=list)
-    signals: Optional[MemorySignalFeedback] = None
+    importance: float | None = None
+    novelty: float | None = None
+    ttl_applied: int | None = None
+    trace_id: str | None = None
+    request_id: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+    signals: MemorySignalFeedback | None = None
 
 
 class MemoryBatchWriteResponse(BaseModel):
@@ -537,7 +535,7 @@ class MemoryBatchWriteResponse(BaseModel):
     ok: bool
     tenant: str
     namespace: str
-    results: List[MemoryBatchWriteResult]
+    results: list[MemoryBatchWriteResult]
 
 
 class MemoryRecallSessionResponse(BaseModel):
@@ -548,23 +546,23 @@ class MemoryRecallSessionResponse(BaseModel):
 
 
 __all__ = [
-    "MemoryAttachment",
-    "MemoryLink",
-    "MemorySignalPayload",
-    "MemorySignalFeedback",
-    "MemoryWriteRequest",
-    "MemoryWriteResponse",
-    "MemoryRecallRequest",
-    "MemoryRecallItem",
-    "MemoryRecallResponse",
     "ForgetRequest",
     "ForgetResponse",
-    "MemoryMetricsResponse",
+    "MemoryAttachment",
     "MemoryBatchWriteItem",
     "MemoryBatchWriteRequest",
-    "MemoryBatchWriteResult",
     "MemoryBatchWriteResponse",
+    "MemoryBatchWriteResult",
+    "MemoryLink",
+    "MemoryMetricsResponse",
+    "MemoryRecallItem",
+    "MemoryRecallRequest",
+    "MemoryRecallResponse",
     "MemoryRecallSessionResponse",
+    "MemorySignalFeedback",
+    "MemorySignalPayload",
+    "MemoryWriteRequest",
+    "MemoryWriteResponse",
     "_iso_created_at",
 ]
 
@@ -582,28 +580,28 @@ class OutboxEventSummary(BaseModel):
     retries: int
     created_at: float
     dedupe_key: str
-    last_error: Optional[str] = None
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    last_error: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class OutboxReplayRequest(BaseModel):
     """Request to replay specific outbox events."""
 
-    ids: List[int] = Field(..., min_length=1, description="Event IDs to replay")
+    ids: list[int] = Field(..., min_length=1, description="Event IDs to replay")
 
 
 class AnnRebuildRequest(BaseModel):
     """Request to rebuild ANN indexes."""
 
     tenant: str
-    namespace: Optional[str] = None
+    namespace: str | None = None
 
 
 # Update __all__ to include new models
 __all__.extend(
     [
+        "AnnRebuildRequest",
         "OutboxEventSummary",
         "OutboxReplayRequest",
-        "AnnRebuildRequest",
     ]
 )

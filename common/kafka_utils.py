@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from functools import lru_cache
-from typing import Any, Dict, Optional
+from typing import Any
 
 from django.conf import settings
 
@@ -66,7 +66,7 @@ class _KafkaProducerAdapter:
         class _Fut:
             """Fut class implementation."""
 
-            def get(self, timeout: float | int = 5):
+            def get(self, timeout: float = 5):
                 """Execute get.
 
                 Args:
@@ -76,12 +76,11 @@ class _KafkaProducerAdapter:
                 remaining = ck.flush(timeout)
                 if remaining != 0:
                     raise TimeoutError("produce not fully flushed")
-                return None
 
         ck = self._ck
         return _Fut()
 
-    def flush(self, timeout: float | int = 5):
+    def flush(self, timeout: float = 5):
         """Execute flush.
 
         Args:
@@ -108,7 +107,7 @@ def make_producer() -> _KafkaProducerAdapter:  # pragma: no cover - integration 
 
 
 @lru_cache(maxsize=32)
-def get_serde(schema_name: str) -> Optional[AvroSerde]:
+def get_serde(schema_name: str) -> AvroSerde | None:
     """Get Avro serde for schema with caching."""
     if load_schema is None or AvroSerde is None:
         return None
@@ -118,7 +117,7 @@ def get_serde(schema_name: str) -> Optional[AvroSerde]:
         return None
 
 
-def encode(record: Dict[str, Any], schema_name: Optional[str]) -> bytes:
+def encode(record: dict[str, Any], schema_name: str | None) -> bytes:
     """Encode record Avro-only; raise if serde unavailable."""
     if not schema_name:
         raise ValueError("encode: schema_name required in strict mode")
@@ -128,7 +127,7 @@ def encode(record: Dict[str, Any], schema_name: Optional[str]) -> bytes:
     return serde.serialize(record)
 
 
-def decode(data: bytes, schema_name: Optional[str] = None) -> Dict[str, Any]:
+def decode(data: bytes, schema_name: str | None = None) -> dict[str, Any]:
     """Decode data Avro-only; raise if serde unavailable."""
     if not schema_name:
         raise ValueError("decode: schema_name required in strict mode")

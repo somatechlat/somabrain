@@ -10,7 +10,6 @@ import ast
 import re
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 BANNED_KEYWORDS = [
     "fakeredis",
@@ -32,9 +31,9 @@ class RoadmapInvariantScanner:
         """Initialize the instance."""
 
         self.root_path = Path(root_path)
-        self.violations: List[Tuple[str, int, str, str]] = []
+        self.violations: list[tuple[str, int, str, str]] = []
 
-    def scan(self) -> List[Tuple[str, int, str, str]]:
+    def scan(self) -> list[tuple[str, int, str, str]]:
         """Execute scan."""
 
         for file_path in self.root_path.rglob("*.py"):
@@ -82,7 +81,7 @@ class RoadmapInvariantScanner:
         }
         return any(part in skip_parts for part in file_path.parts)
 
-    def _check_banned_keywords(self, file_path: Path, lines: List[str]) -> None:
+    def _check_banned_keywords(self, file_path: Path, lines: list[str]) -> None:
         """Execute check banned keywords.
 
         Args:
@@ -131,7 +130,7 @@ class RoadmapInvariantScanner:
 
                 self.found = False
 
-            def visit_Name(self, node: ast.Name) -> None:  # noqa: N802
+            def visit_Name(self, node: ast.Name) -> None:
                 """Execute visit Name.
 
                 Args:

@@ -15,7 +15,7 @@ by extending the ``process`` method.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from typing import Any
 
 
 @dataclass
@@ -34,9 +34,9 @@ class PrefrontalConfig:
 
     max_neurons: int = 1024
     activation_threshold: float = 0.5
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Return the configuration as a plain dictionary."""
         base = {
             "max_neurons": self.max_neurons,
@@ -65,7 +65,7 @@ class PrefrontalCortex:
         """Initialize the instance."""
 
         self.config = config or PrefrontalConfig()
-        self.state: Dict[str, Any] = {}
+        self.state: dict[str, Any] = {}
 
     def process(self, data: Any) -> Any:
         """Process data through the prefrontal cortex.

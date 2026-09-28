@@ -17,7 +17,7 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from django.core.cache import cache
@@ -127,7 +127,7 @@ class OnboardingStepOut(Schema):
     required: bool
     estimated_minutes: int
     completed: bool
-    completed_at: Optional[str]
+    completed_at: str | None
     skipped: bool
 
 
@@ -136,8 +136,8 @@ class OnboardingProgressOut(Schema):
 
     tenant_id: UUID
     current_step: str
-    completed_steps: List[str]
-    skipped_steps: List[str]
+    completed_steps: list[str]
+    skipped_steps: list[str]
     progress_percentage: int
     started_at: str
     last_activity_at: str
@@ -147,13 +147,13 @@ class OnboardingProgressOut(Schema):
 class StepCompleteRequest(Schema):
     """Request to mark step as complete."""
 
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None
 
 
 class StepSkipRequest(Schema):
     """Request to skip a step."""
 
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 # =============================================================================
@@ -166,7 +166,7 @@ def get_progress_key(tenant_id: str) -> str:
     return f"onboarding:progress:{tenant_id}"
 
 
-def get_onboarding_progress(tenant_id: str) -> Dict[str, Any]:
+def get_onboarding_progress(tenant_id: str) -> dict[str, Any]:
     """Get or create onboarding progress for tenant."""
     key = get_progress_key(tenant_id)
     progress = cache.get(key)
@@ -187,14 +187,14 @@ def get_onboarding_progress(tenant_id: str) -> Dict[str, Any]:
     return progress
 
 
-def save_onboarding_progress(tenant_id: str, progress: Dict[str, Any]):
+def save_onboarding_progress(tenant_id: str, progress: dict[str, Any]):
     """Save onboarding progress to cache."""
     key = get_progress_key(tenant_id)
     progress["last_activity_at"] = timezone.now().isoformat()
     cache.set(key, progress, timeout=86400 * 30)
 
 
-def calculate_progress_percentage(progress: Dict[str, Any]) -> int:
+def calculate_progress_percentage(progress: dict[str, Any]) -> int:
     """Calculate completion percentage."""
     total_required = sum(1 for s in STEP_ORDER if STEP_INFO[s]["required"])
     completed_required = sum(
@@ -210,7 +210,7 @@ def calculate_progress_percentage(progress: Dict[str, Any]) -> int:
 # =============================================================================
 
 
-@router.get("/{tenant_id}/steps", response=List[OnboardingStepOut])
+@router.get("/{tenant_id}/steps", response=list[OnboardingStepOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 def list_onboarding_steps(
     request: AuthenticatedRequest,
@@ -507,10 +507,10 @@ def get_checklist(
 def save_organization_profile(
     request: AuthenticatedRequest,
     tenant_id: UUID,
-    name: Optional[str] = None,
-    industry: Optional[str] = None,
-    size: Optional[str] = None,
-    timezone_str: Optional[str] = None,
+    name: str | None = None,
+    industry: str | None = None,
+    size: str | None = None,
+    timezone_str: str | None = None,
 ):
     """
     Save organization profile during onboarding.

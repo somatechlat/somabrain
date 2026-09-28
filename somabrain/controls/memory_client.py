@@ -11,11 +11,12 @@ from __future__ import annotations
 import logging
 import time
 from importlib import import_module
-from typing import Any, Dict, List, Protocol, cast
+from typing import Any, Protocol, cast
 
 from django.conf import settings
 
 from somabrain.memory.client import MemoryClient as CanonicalMemoryClient
+
 from .degradation import HealthStatus, degradation_manager
 
 logger = logging.getLogger("somabrain.memory")
@@ -27,7 +28,7 @@ class _DirectMemoryService(Protocol):
     def store(
         self,
         coordinate: tuple[float, ...],
-        payload: Dict[str, Any],
+        payload: dict[str, Any],
         *,
         tenant: str,
     ) -> None:
@@ -39,7 +40,7 @@ class _DirectMemoryService(Protocol):
         *,
         top_k: int,
         tenant: str,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search the direct SFM runtime."""
 
 
@@ -63,7 +64,7 @@ class MemoryClient:
         """Initialize direct code access if available."""
         try:
             services_module = import_module("somafractalmemory.services")
-            get_memory_service = getattr(services_module, "get_memory_service")
+            get_memory_service = services_module.get_memory_service
             self._direct_service = cast(_DirectMemoryService, get_memory_service())
             logger.info(
                 "Initialized Unified Memory Client in DIRECT mode (Zero-Latency)."
@@ -81,7 +82,7 @@ class MemoryClient:
         return self._canonical
 
     async def store(
-        self, coordinate: List[float], payload: Dict[str, Any], tenant: str = "default"
+        self, coordinate: list[float], payload: dict[str, Any], tenant: str = "default"
     ) -> bool:
         """Store a memory with automated timing and health reporting."""
         start_time = time.time()
@@ -104,7 +105,7 @@ class MemoryClient:
 
     async def search(
         self, query: str, top_k: int = 5, tenant: str = "default"
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search memories with automated degradation fallbacks."""
         status = degradation_manager.get_status(tenant)
 

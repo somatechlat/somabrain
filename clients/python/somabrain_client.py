@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -48,13 +48,13 @@ class SomaBrainHealth:
     status: str = "unknown"
     last_checked: float = 0.0
     reason: str = ""
-    raw: Optional[Dict[str, Any]] = None
+    raw: dict[str, Any] | None = None
 
 
 class SomaBrainUnavailableError(RuntimeError):
     """Raised when SomaBrain is not in an "up" state for strict callers."""
 
-    def __init__(self, status: str, reason: str, health: Optional[SomaBrainHealth]):
+    def __init__(self, status: str, reason: str, health: SomaBrainHealth | None):
         """Initialize the instance."""
 
         msg = f"SomaBrain status={status!r}: {reason}"
@@ -75,8 +75,8 @@ class SomaBrainClient:
     def __init__(
         self,
         base_url: str,
-        token: Optional[str] = None,
-        tenant: Optional[str] = None,
+        token: str | None = None,
+        tenant: str | None = None,
         *,
         health_ttl_s: float = 5.0,
         timeout_s: float = 10.0,
@@ -84,7 +84,7 @@ class SomaBrainClient:
         """Initialize the instance."""
 
         self.base = base_url.rstrip("/")
-        self.headers: Dict[str, str] = {"Content-Type": "application/json"}
+        self.headers: dict[str, str] = {"Content-Type": "application/json"}
         if token:
             self.headers["Authorization"] = f"Bearer {token}"
         if tenant:
@@ -99,7 +99,7 @@ class SomaBrainClient:
     # Health handling
     # ------------------------------------------------------------------
 
-    def _classify_health(self, body: Dict[str, Any]) -> SomaBrainHealth:
+    def _classify_health(self, body: dict[str, Any]) -> SomaBrainHealth:
         """Classify /health response into up/degraded/down from agent POV."""
 
         ok = bool(body.get("ok", False))
@@ -110,7 +110,7 @@ class SomaBrainClient:
         opa_ok = bool(body.get("opa_ok", True))  # may be optional
 
         status = "up"
-        reasons: List[str] = []
+        reasons: list[str] = []
 
         if not ok or not ready:
             status = "degraded"
@@ -202,8 +202,8 @@ class SomaBrainClient:
     # ------------------------------------------------------------------
 
     def remember(
-        self, payload: Dict[str, Any], coord: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, payload: dict[str, Any], coord: str | None = None
+    ) -> dict[str, Any]:
         """Store a memory payload in SomaBrain.
 
         This method always sends the request to SomaBrain; callers that
@@ -216,15 +216,15 @@ class SomaBrainClient:
         return r.json()
 
     def recall(
-        self, query: str, top_k: int = 3, universe: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, query: str, top_k: int = 3, universe: str | None = None
+    ) -> dict[str, Any]:
         """Recall memories relevant to `query` from SomaBrain.
 
         This method always calls SomaBrain. Agents that must never hit
         SomaBrain while it is unavailable should guard it with
         `ensure_ready()` or `refresh_health()` and their own policy.
         """
-        body: Dict[str, Any] = {"query": query, "top_k": int(top_k)}
+        body: dict[str, Any] = {"query": query, "top_k": int(top_k)}
         if universe:
             body["universe"] = universe
         r = self._http.post("/memory/recall", json=body)
@@ -235,12 +235,12 @@ class SomaBrainClient:
         self,
         task_key: str,
         *,
-        max_steps: Optional[int] = None,
-        rel_types: Optional[List[str]] = None,
-        universe: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        max_steps: int | None = None,
+        rel_types: list[str] | None = None,
+        universe: str | None = None,
+    ) -> dict[str, Any]:
         """Suggest a plan over semantic links starting from `task_key`."""
-        body: Dict[str, Any] = {"task_key": task_key}
+        body: dict[str, Any] = {"task_key": task_key}
         if max_steps is not None:
             body["max_steps"] = int(max_steps)
         if rel_types is not None:

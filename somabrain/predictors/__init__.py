@@ -21,6 +21,6 @@ from .base import (
 __all__ = [
     "HeatDiffusionPredictor",
     "PredictorConfig",
-    "load_operator_from_file",
     "build_predictor_from_env",
+    "load_operator_from_file",
 ]

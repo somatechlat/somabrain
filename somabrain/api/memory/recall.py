@@ -16,7 +16,7 @@ import copy
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
@@ -32,12 +32,12 @@ from somabrain.api.memory.models import (
     MemoryRecallRequest,
     MemoryRecallResponse,
 )
-from somabrain.metrics import observe_recall_latency, record_memory_snapshot
 from somabrain.core.runtime.config_runtime import (
     ensure_config_dispatcher,
     ensure_supervisor_worker,
     submit_metrics_snapshot,
 )
+from somabrain.metrics import observe_recall_latency, record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.parameter_supervisor import MetricsSnapshot
 
@@ -74,9 +74,9 @@ def _store_recall_session(
     session_id: str,
     tenant: str,
     namespace: str,
-    conversation_id: Optional[str],
-    scoring_mode: Optional[str],
-    results: List[MemoryRecallItem],
+    conversation_id: str | None,
+    scoring_mode: str | None,
+    results: list[MemoryRecallItem],
 ) -> None:
     """Store a recall session with results."""
     _get_recall_session_store().store(
@@ -95,7 +95,7 @@ async def _ensure_config_runtime_started() -> None:
     await ensure_supervisor_worker()
 
 
-def _match_tags(candidate: Dict[str, Any], required_tags: Optional[List[str]]) -> bool:
+def _match_tags(candidate: dict[str, Any], required_tags: list[str] | None) -> bool:
     """Check if candidate matches required tags."""
     if not required_tags:
         return True
@@ -112,7 +112,7 @@ def _match_tags(candidate: Dict[str, Any], required_tags: Optional[List[str]]) -
     return all(tag in candidate_tags for tag in required_tags)
 
 
-def _within_age(candidate: Dict[str, Any], max_age_seconds: Optional[float]) -> bool:
+def _within_age(candidate: dict[str, Any], max_age_seconds: float | None) -> bool:
     """Check if candidate is within max age."""
     if max_age_seconds is None:
         return True
@@ -124,9 +124,7 @@ def _within_age(candidate: Dict[str, Any], max_age_seconds: Optional[float]) -> 
         if value is None:
             continue
         try:
-            if isinstance(value, (int, float)):
-                ts = float(value)
-            elif isinstance(value, str):
+            if isinstance(value, (int, float)) or isinstance(value, str):
                 ts = float(value)
             else:
                 continue
@@ -139,13 +137,13 @@ def _within_age(candidate: Dict[str, Any], max_age_seconds: Optional[float]) -> 
 def _decorated_item(
     layer_name: str,
     source: str,
-    score_val: Optional[float],
-    candidate_payload: Dict[str, Any],
+    score_val: float | None,
+    candidate_payload: dict[str, Any],
     coord_obj: Any,
-    required_tags: Optional[List[str]],
-    max_age_seconds: Optional[float],
-    min_score: Optional[float],
-) -> Optional[MemoryRecallItem]:
+    required_tags: list[str] | None,
+    max_age_seconds: float | None,
+    min_score: float | None,
+) -> MemoryRecallItem | None:
     """Create a decorated MemoryRecallItem from candidate data."""
     if not _match_tags(candidate_payload, required_tags):
         return None
@@ -186,7 +184,7 @@ def _decorated_item(
 async def perform_recall(
     payload: MemoryRecallRequest,
     *,
-    default_chunk_size: Optional[int] = None,
+    default_chunk_size: int | None = None,
 ) -> MemoryRecallResponse:
     """Perform memory recall across WM, LTM, and tiered memory.
 
@@ -205,15 +203,15 @@ async def perform_recall(
         raise HttpError(400, "layer must be wm, ltm, or omitted")
 
     chunk_size = payload.chunk_size or default_chunk_size
-    chunk_index = payload.chunk_index if payload.chunk_index >= 0 else 0
+    chunk_index = max(payload.chunk_index, 0)
 
-    wm_hits: List[MemoryRecallItem] = []
-    ltm_hits: List[MemoryRecallItem] = []
+    wm_hits: list[MemoryRecallItem] = []
+    ltm_hits: list[MemoryRecallItem] = []
     start = time.perf_counter()
 
     # Get embedder and query vector
     embedder = None
-    query_vec: Optional[np.ndarray] = None
+    query_vec: np.ndarray | None = None
     try:
         embedder = _get_embedder()
         query_vec = np.asarray(embedder.embed(payload.query), dtype=np.float32)
@@ -300,10 +298,10 @@ async def perform_recall(
                 ltm_hits.append(item)
 
     # Tiered memory recall
-    tiered_item: Optional[MemoryRecallItem] = None
-    tiered_margin_value: Optional[float] = None
-    tiered_eta_value: Optional[float] = None
-    tiered_sparsity_value: Optional[float] = None
+    tiered_item: MemoryRecallItem | None = None
+    tiered_margin_value: float | None = None
+    tiered_eta_value: float | None = None
+    tiered_sparsity_value: float | None = None
     if _tiered_enabled() and query_vec is not None:
         try:
             tiered_registry = _get_tiered_registry()
@@ -336,10 +334,10 @@ async def perform_recall(
                 tiered_sparsity_value = tiered_hit.sparsity
 
     # Deduplicate and merge results
-    all_results: List[MemoryRecallItem] = []
-    seen: set[Tuple[Optional[Tuple[float, ...]], str, str]] = set()
+    all_results: list[MemoryRecallItem] = []
+    seen: set[tuple[tuple[float, ...] | None, str, str]] = set()
 
-    def _append(item: Optional[MemoryRecallItem]) -> None:
+    def _append(item: MemoryRecallItem | None) -> None:
         """Execute append.
 
         Args:
@@ -445,10 +443,10 @@ async def perform_recall(
 
 
 __all__ = [
-    "perform_recall",
-    "_match_tags",
-    "_within_age",
     "_decorated_item",
+    "_match_tags",
     "_prune_sessions",
     "_store_recall_session",
+    "_within_age",
+    "perform_recall",
 ]

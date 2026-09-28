@@ -7,7 +7,6 @@ Supports: Google, Facebook, GitHub, Keycloak, Generic OIDC.
 All secrets referenced via vault path - NEVER stored in database.
 """
 
-from typing import List, Optional
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -35,13 +34,13 @@ class IdentityProviderBase(Schema):
     name: str
     provider_type: str
     client_id: str
-    project_id: Optional[str] = None
+    project_id: str | None = None
     auth_uri: str
     token_uri: str
-    certs_url: Optional[str] = None
-    redirect_uris: List[str] = []
-    javascript_origins: List[str] = []
-    default_scopes: List[str] = ["openid", "email", "profile"]
+    certs_url: str | None = None
+    redirect_uris: list[str] = []
+    javascript_origins: list[str] = []
+    default_scopes: list[str] = ["openid", "email", "profile"]
     claim_mappings: dict = {}
     vault_secret_path: str
     is_enabled: bool = True
@@ -54,35 +53,35 @@ class IdentityProviderBase(Schema):
 class IdentityProviderCreate(IdentityProviderBase):
     """Schema for creating identity provider."""
 
-    tenant_id: Optional[UUID] = None  # None = platform level
+    tenant_id: UUID | None = None  # None = platform level
 
 
 class IdentityProviderUpdate(Schema):
     """Schema for updating identity provider."""
 
-    name: Optional[str] = None
-    client_id: Optional[str] = None
-    project_id: Optional[str] = None
-    auth_uri: Optional[str] = None
-    token_uri: Optional[str] = None
-    certs_url: Optional[str] = None
-    redirect_uris: Optional[List[str]] = None
-    javascript_origins: Optional[List[str]] = None
-    default_scopes: Optional[List[str]] = None
-    claim_mappings: Optional[dict] = None
-    vault_secret_path: Optional[str] = None
-    is_enabled: Optional[bool] = None
-    is_default: Optional[bool] = None
-    trust_email: Optional[bool] = None
-    store_token: Optional[bool] = None
-    display_order: Optional[int] = None
+    name: str | None = None
+    client_id: str | None = None
+    project_id: str | None = None
+    auth_uri: str | None = None
+    token_uri: str | None = None
+    certs_url: str | None = None
+    redirect_uris: list[str] | None = None
+    javascript_origins: list[str] | None = None
+    default_scopes: list[str] | None = None
+    claim_mappings: dict | None = None
+    vault_secret_path: str | None = None
+    is_enabled: bool | None = None
+    is_default: bool | None = None
+    trust_email: bool | None = None
+    store_token: bool | None = None
+    display_order: int | None = None
 
 
 class IdentityProviderOut(IdentityProviderBase):
     """Schema for identity provider output."""
 
     id: UUID
-    tenant_id: Optional[UUID] = None
+    tenant_id: UUID | None = None
     created_at: str
     updated_at: str
 
@@ -113,7 +112,7 @@ class IdentityProviderListOut(Schema):
     id: UUID
     name: str
     provider_type: str
-    tenant_id: Optional[UUID] = None
+    tenant_id: UUID | None = None
     is_enabled: bool
     is_default: bool
     display_order: int
@@ -122,8 +121,8 @@ class IdentityProviderListOut(Schema):
 class TestConnectionRequest(Schema):
     """Schema for testing provider connection."""
 
-    provider_id: Optional[UUID] = None
-    provider_data: Optional[IdentityProviderBase] = None
+    provider_id: UUID | None = None
+    provider_data: IdentityProviderBase | None = None
 
 
 class TestConnectionResult(Schema):
@@ -131,7 +130,7 @@ class TestConnectionResult(Schema):
 
     success: bool
     message: str
-    details: Optional[dict] = None
+    details: dict | None = None
 
 
 # =============================================================================
@@ -139,7 +138,7 @@ class TestConnectionResult(Schema):
 # =============================================================================
 
 
-@router.get("/platform", response=List[IdentityProviderListOut])
+@router.get("/platform", response=list[IdentityProviderListOut])
 @require_auth(roles=["super-admin"])
 def list_platform_providers(request: AuthenticatedRequest):
     """
@@ -281,7 +280,7 @@ def delete_platform_provider(request: AuthenticatedRequest, provider_id: UUID):
 # =============================================================================
 
 
-@router.get("/tenant/{tenant_id}", response=List[IdentityProviderListOut])
+@router.get("/tenant/{tenant_id}", response=list[IdentityProviderListOut])
 @require_auth(roles=["super-admin", "tenant-admin"])
 def list_tenant_providers(request: AuthenticatedRequest, tenant_id: UUID):
     """
@@ -438,7 +437,7 @@ def test_provider_connection(
 
     except Exception as e:
         return TestConnectionResult(
-            success=False, message=f"Connection test failed: {str(e)}"
+            success=False, message=f"Connection test failed: {e!s}"
         )
 
 

@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Dict, Optional
+from datetime import UTC, datetime
 
 from django.conf import settings
 
 from common.kafka_utils import encode, make_producer
 
 
-def _bootstrap_from_env() -> Optional[str]:
+def _bootstrap_from_env() -> str | None:
     """Execute bootstrap from env."""
 
     url = settings.KAFKA_BOOTSTRAP_SERVERS
@@ -57,7 +56,7 @@ class BeliefUpdatePublisher:
     def _now_iso() -> str:
         """Execute now iso."""
 
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     def publish(
         self,
@@ -65,11 +64,11 @@ class BeliefUpdatePublisher:
         domain: str,
         delta_error: float,
         confidence: float,
-        evidence: Optional[Dict[str, str]] = None,
-        posterior: Optional[Dict[str, str]] = None,
+        evidence: dict[str, str] | None = None,
+        posterior: dict[str, str] | None = None,
         model_ver: str = "unknown",
         latency_ms: int = 0,
-        ts: Optional[str] = None,
+        ts: str | None = None,
     ) -> None:
         """Execute publish."""
 

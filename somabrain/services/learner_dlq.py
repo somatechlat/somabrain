@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Any, Dict
+from typing import Any
 
 from django.conf import settings
 
@@ -37,7 +37,7 @@ class LearnerDLQ:
         self.topic = topic
         self.path = path or DLQ_DEFAULT_PATH
 
-    def record(self, event: Dict[str, Any], reason: str) -> None:
+    def record(self, event: dict[str, Any], reason: str) -> None:
         """Execute record.
 
         Args:

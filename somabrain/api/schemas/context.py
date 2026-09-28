@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 try:
     from pydantic import BaseModel, Field
 except Exception:  # pragma: no cover
@@ -12,7 +10,7 @@ except Exception:  # pragma: no cover
     def Field(*a, **k):
         """Execute Field."""
 
-        return None
+        return
 
 
 class EvaluateRequest(BaseModel):
@@ -21,7 +19,7 @@ class EvaluateRequest(BaseModel):
     session_id: str
     query: str
     top_k: int = Field(default=5, ge=1, le=50)
-    tenant_id: Optional[str] = None
+    tenant_id: str | None = None
 
 
 class MemoryItem(BaseModel):
@@ -29,8 +27,8 @@ class MemoryItem(BaseModel):
 
     id: str
     score: float
-    metadata: Dict
-    embedding: Optional[List[float]] = None
+    metadata: dict
+    embedding: list[float] | None = None
 
 
 class EvaluateResponse(BaseModel):
@@ -39,11 +37,11 @@ class EvaluateResponse(BaseModel):
     query: str
     prompt: str
     tenant_id: str
-    memories: List[MemoryItem]
-    weights: List[float]
-    residual_vector: List[float]
-    working_memory: List[Dict]
-    constitution_checksum: Optional[str] = None
+    memories: list[MemoryItem]
+    weights: list[float]
+    residual_vector: list[float]
+    working_memory: list[dict]
+    constitution_checksum: str | None = None
 
 
 class FeedbackRequest(BaseModel):
@@ -54,9 +52,9 @@ class FeedbackRequest(BaseModel):
     prompt: str
     response_text: str
     utility: float
-    reward: Optional[float] = None
-    metadata: Optional[Dict] = None
-    tenant_id: Optional[str] = None
+    reward: float | None = None
+    metadata: dict | None = None
+    tenant_id: str | None = None
 
 
 class FeedbackResponse(BaseModel):

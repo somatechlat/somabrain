@@ -19,13 +19,12 @@ except Exception as exc:  # pragma: no cover - intentionally strict
     ) from exc
 
 
-from typing import Optional
 
 from django.conf import settings
 
 
 def init_tracing(
-    service_name: Optional[str] = None, *, console_export: bool = False
+    service_name: str | None = None, *, console_export: bool = False
 ) -> None:
     """Initialize OpenTelemetry tracer provider.
 

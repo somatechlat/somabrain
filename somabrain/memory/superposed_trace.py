@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
-from typing import Callable, Dict, Iterable, List, Optional, Protocol, Tuple
+from typing import Protocol
 
 import numpy as np
 
@@ -48,11 +49,11 @@ class TraceConfig:
         Numerical guard to avoid division by zero during renormalisation.
     """
 
-    dim: Optional[int] = None
-    eta: Optional[float] = None
+    dim: int | None = None
+    eta: float | None = None
     rotation_enabled: bool = True
     rotation_seed: int = 0
-    cleanup_topk: Optional[int] = None
+    cleanup_topk: int | None = None
     epsilon: float = 1e-12
 
     def __post_init__(self) -> None:
@@ -67,7 +68,7 @@ class TraceConfig:
         if self.cleanup_topk is None:
             self.cleanup_topk = BrainSetting.get("cleanup_topk", "default")
 
-    def validate(self) -> "TraceConfig":
+    def validate(self) -> TraceConfig:
         """Execute validate."""
 
         dim = int(self.dim)
@@ -108,9 +109,9 @@ class SuperposedTrace:
         self,
         cfg: TraceConfig,
         *,
-        quantum: Optional[QuantumLayer] = None,
-        rotation_matrix_factory: Optional[Callable[[int, int], np.ndarray]] = None,
-        cleanup_index: Optional["CleanupIndex"] = None,
+        quantum: QuantumLayer | None = None,
+        rotation_matrix_factory: Callable[[int, int], np.ndarray] | None = None,
+        cleanup_index: CleanupIndex | None = None,
     ) -> None:
         """Initialize the instance."""
 
@@ -119,7 +120,7 @@ class SuperposedTrace:
             HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed)
         )
         self._state = np.zeros((self.cfg.dim,), dtype=np.float32)
-        self._anchors: Dict[str, np.ndarray] = {}
+        self._anchors: dict[str, np.ndarray] = {}
         self._rotation = None
         if self.cfg.rotation_enabled:
             factory = rotation_matrix_factory or _make_orthogonal_matrix
@@ -140,12 +141,12 @@ class SuperposedTrace:
         return self._state.copy()
 
     @property
-    def anchors(self) -> Dict[str, np.ndarray]:
+    def anchors(self) -> dict[str, np.ndarray]:
         """A shallow copy of the managed anchor vectors."""
 
         return dict(self._anchors)
 
-    def anchors_snapshot(self) -> List[Tuple[str, np.ndarray]]:
+    def anchors_snapshot(self) -> list[tuple[str, np.ndarray]]:
         """Return a snapshot list of (anchor_id, vector) pairs."""
 
         return [(anchor_id, vec.copy()) for anchor_id, vec in self._anchors.items()]
@@ -183,7 +184,7 @@ class SuperposedTrace:
 
     def recall(
         self, key: np.ndarray
-    ) -> Tuple[np.ndarray, Tuple[Optional[str], float, float]]:
+    ) -> tuple[np.ndarray, tuple[str | None, float, float]]:
         """Recall a value by key with basic cleanup against managed anchors."""
 
         raw = self.recall_raw(key)
@@ -208,9 +209,9 @@ class SuperposedTrace:
     def update_parameters(
         self,
         *,
-        eta: Optional[float] = None,
-        cleanup_topk: Optional[int] = None,
-        cleanup_params: Optional[Dict[str, float]] = None,
+        eta: float | None = None,
+        cleanup_topk: int | None = None,
+        cleanup_params: dict[str, float] | None = None,
     ) -> None:
         """Adjust runtime parameters (decay, cleanup) without rebuilding the trace."""
 
@@ -245,7 +246,7 @@ class SuperposedTrace:
                 logger.exception("Failed to configure cleanup index: %s", exc)
 
     def rebuild_cleanup_index(
-        self, cleanup_index: Optional["CleanupIndex"] = None
+        self, cleanup_index: CleanupIndex | None = None
     ) -> int:
         """Rebuild the cleanup index from current anchors."""
 
@@ -293,7 +294,7 @@ class SuperposedTrace:
             return np.zeros_like(self._state)
         return (new_state / norm).astype(np.float32, copy=False)
 
-    def _cleanup(self, query: np.ndarray) -> Tuple[Optional[str], float, float]:
+    def _cleanup(self, query: np.ndarray) -> tuple[str | None, float, float]:
         """Execute cleanup.
 
         Args:
@@ -304,10 +305,10 @@ class SuperposedTrace:
             logger.debug("SuperposedTrace.cleanup: no anchors registered")
             return None, 0.0, 0.0
         query_vec = self._ensure_vector(query, "cleanup_query")
-        best_id: Optional[str] = None
+        best_id: str | None = None
         best_score = -1.0
         second_score = -1.0
-        candidates: Iterable[Tuple[str, float]]
+        candidates: Iterable[tuple[str, float]]
         if self._cleanup_index is not None:
             candidates = self._cleanup_index.search(query_vec, self.cfg.cleanup_topk)
         else:
@@ -330,8 +331,7 @@ class SuperposedTrace:
             )
             best_id = None
             best_score = 0.0
-        if second_score < 0.0:
-            second_score = 0.0
+        second_score = max(second_score, 0.0)
         return best_id, float(best_score), float(second_score)
 
     def _ensure_vector(self, vec: np.ndarray, name: str) -> np.ndarray:
@@ -365,7 +365,7 @@ def _make_orthogonal_matrix(dim: int, seed: int) -> np.ndarray:
     return q.astype(np.float32)
 
 
-__all__ = ["TraceConfig", "SuperposedTrace", "CleanupIndex"]
+__all__ = ["CleanupIndex", "SuperposedTrace", "TraceConfig"]
 
 
 class CleanupIndex(Protocol):
@@ -388,7 +388,7 @@ class CleanupIndex(Protocol):
         """
         ...
 
-    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
+    def search(self, query: np.ndarray, top_k: int) -> list[tuple[str, float]]:
         """Execute search.
 
         Args:
@@ -398,7 +398,7 @@ class CleanupIndex(Protocol):
         ...
 
     def configure(
-        self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
+        self, *, top_k: int | None = None, ef_search: int | None = None
     ) -> None:
         """Execute configure."""
         ...

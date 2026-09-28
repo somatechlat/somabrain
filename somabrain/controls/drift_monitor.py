@@ -36,7 +36,6 @@ Functions:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -57,8 +56,8 @@ class DriftConfig:
     Fields default to None, which triggers Settings lookup in __post_init__.
     """
 
-    window: Optional[int] = None
-    threshold: Optional[float] = None
+    window: int | None = None
+    threshold: float | None = None
 
     def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""

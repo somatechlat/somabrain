@@ -16,12 +16,12 @@ from .schemas import (
 )
 
 __all__ = [
-    "router",
-    "IdPType",
-    "IdPStatus",
     "IdPCreate",
-    "IdPUpdate",
-    "IdPOut",
     "IdPDetailOut",
+    "IdPOut",
+    "IdPStatus",
+    "IdPType",
+    "IdPUpdate",
     "SSOSettings",
+    "router",
 ]

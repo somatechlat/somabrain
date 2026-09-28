@@ -18,7 +18,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 """
 
 from datetime import timedelta
-from typing import List
 
 from django.db.models import Count
 from django.db.models.functions import TruncDate, TruncHour
@@ -123,7 +122,7 @@ def get_platform_metrics(request: AuthenticatedRequest):
     )
 
 
-@router.get("/tenant-growth", response=List[TenantGrowth])
+@router.get("/tenant-growth", response=list[TenantGrowth])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_tenant_growth(
@@ -164,7 +163,7 @@ def get_tenant_growth(
     return result
 
 
-@router.get("/user-activity", response=List[UserActivity])
+@router.get("/user-activity", response=list[UserActivity])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_user_activity(
@@ -199,7 +198,7 @@ def get_user_activity(
     ]
 
 
-@router.get("/api-usage", response=List[ApiUsage])
+@router.get("/api-usage", response=list[ApiUsage])
 @require_auth(roles=["super-admin"])
 @require_permission(Permission.PLATFORM_MANAGE.value)
 def get_api_usage(

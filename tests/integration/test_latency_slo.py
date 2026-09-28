@@ -110,7 +110,12 @@ def test_latency_slo_basic() -> None:
         r = client.post(
             "/memory/recall",
             headers=headers,
-            json={"tenant": TENANT, "namespace": "slo", "query": f"slo-{i}", "top_k": 1},
+            json={
+                "tenant": TENANT,
+                "namespace": "slo",
+                "query": f"slo-{i}",
+                "top_k": 1,
+            },
         )
         assert r.status_code == 200, r.text
         recall_lat.append((time.time() - t0) * 1000)

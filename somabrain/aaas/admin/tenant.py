@@ -11,7 +11,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.html import format_html
 
-from ..models import Tenant, TenantStatus, TenantUser, SubscriptionTier
+from ..models import SubscriptionTier, Tenant, TenantStatus, TenantUser
 from .filters import (
     APIKeyInline,
     RecentlyCreatedFilter,

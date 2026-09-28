@@ -99,7 +99,7 @@ class TestTraceContextInjection:
         **Feature: deep-memory-integration**
         **Validates: Requirements H1.2, H1.4**
         """
-        from somabrain.memory.http_helpers import _start_span, _end_span
+        from somabrain.memory.http_helpers import _end_span, _start_span
 
         # Start a span with correct signature: (operation, tenant, endpoint)
         span = _start_span("test_operation", "test_tenant", "/test/endpoint")
@@ -136,9 +136,9 @@ class TestTracePropagation:
         # This test verifies the integration exists
         # Actual trace propagation requires OpenTelemetry SDK configuration
         from somabrain.memory.http_helpers import (
-            inject_trace_context,
-            _start_span,
             _end_span,
+            _start_span,
+            inject_trace_context,
         )
 
         # Simulate what http_post_with_retries does
@@ -224,10 +224,10 @@ class TestMemoryClientTracing:
         **Validates: Requirements H1.2**
         """
         # Verify MemoryClient imports tracer
-        from somabrain.memory.client import MemoryClient
-
         # MemoryClient should use opentelemetry.trace
         import inspect
+
+        from somabrain.memory.client import MemoryClient
 
         source = inspect.getsource(MemoryClient)
 
@@ -242,6 +242,7 @@ class TestMemoryClientTracing:
         **Validates: Requirements H1.2**
         """
         import inspect
+
         from somabrain.memory.client import MemoryClient
 
         source = inspect.getsource(MemoryClient)

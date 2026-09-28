@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
-from django.conf import settings
 import sys
 import time
 from typing import Any
+
+from django.conf import settings
 
 try:
     import requests

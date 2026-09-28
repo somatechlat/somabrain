@@ -19,7 +19,6 @@ ALL 10 PERSONAS - VIBE Coding Rules:
 import hashlib
 import json
 from datetime import timedelta
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from django.core.cache import cache
@@ -99,7 +98,7 @@ def create_backup_record(
     return backup
 
 
-def update_backup(backup_id: str, **updates) -> Optional[dict]:
+def update_backup(backup_id: str, **updates) -> dict | None:
     """Update backup record."""
     key = get_backup_key(backup_id)
     backup = cache.get(key)
@@ -109,7 +108,7 @@ def update_backup(backup_id: str, **updates) -> Optional[dict]:
     return backup
 
 
-def get_backup(backup_id: str) -> Optional[dict]:
+def get_backup(backup_id: str) -> dict | None:
     """Retrieve backup.
 
     Args:
@@ -131,9 +130,9 @@ class BackupOut(Schema):
     type: str
     status: str
     created_at: str
-    completed_at: Optional[str]
+    completed_at: str | None
     size_bytes: int
-    checksum: Optional[str]
+    checksum: str | None
     expires_at: str
 
 
@@ -152,7 +151,7 @@ class RestoreRequest(Schema):
 
     backup_id: str
     overwrite: bool = False
-    components: Optional[List[str]] = None  # users, webhooks, etc.
+    components: list[str] | None = None  # users, webhooks, etc.
 
 
 class BackupStats(Schema):
@@ -160,9 +159,9 @@ class BackupStats(Schema):
 
     total_backups: int
     total_size_bytes: int
-    oldest_backup: Optional[str]
-    newest_backup: Optional[str]
-    last_successful: Optional[str]
+    oldest_backup: str | None
+    newest_backup: str | None
+    last_successful: str | None
 
 
 # =============================================================================
@@ -170,7 +169,7 @@ class BackupStats(Schema):
 # =============================================================================
 
 
-@router.get("/{tenant_id}/list", response=List[BackupOut])
+@router.get("/{tenant_id}/list", response=list[BackupOut])
 @require_auth(roles=["super-admin", "tenant-admin"], any_role=True)
 @require_permission(Permission.TENANTS_READ.value)
 def list_backups(

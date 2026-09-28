@@ -11,8 +11,11 @@ verification without requiring the full AdaptationEngine infrastructure.
 
 from __future__ import annotations
 
-from hypothesis import given, settings as hyp_settings, strategies as st, assume
 from dataclasses import dataclass
+
+from hypothesis import assume, given
+from hypothesis import settings as hyp_settings
+from hypothesis import strategies as st
 
 # ---------------------------------------------------------------------------
 # Strategies for generating test data
@@ -317,7 +320,7 @@ class WeightState:
     gamma: float = 0.1
     tau: float = 0.7
 
-    def reset_to(self, defaults: "WeightState") -> None:
+    def reset_to(self, defaults: WeightState) -> None:
         """Reset weights to default values."""
         self.alpha = defaults.alpha
         self.beta = defaults.beta

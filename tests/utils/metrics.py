@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence, Set
+from collections.abc import Sequence
 
 
-def precision_at_k(relevant: Set[str], retrieved: Sequence[str], k: int) -> float:
+def precision_at_k(relevant: set[str], retrieved: Sequence[str], k: int) -> float:
     """Execute precision at k.
 
     Args:
@@ -21,7 +21,7 @@ def precision_at_k(relevant: Set[str], retrieved: Sequence[str], k: int) -> floa
     return hits / float(k)
 
 
-def recall_at_k(relevant: Set[str], retrieved: Sequence[str], k: int) -> float:
+def recall_at_k(relevant: set[str], retrieved: Sequence[str], k: int) -> float:
     """Execute recall at k.
 
     Args:

@@ -7,20 +7,20 @@ Migrated from SQLAlchemy to Django ORM.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.db import transaction
 from django.db.models import Count
 
+from somabrain.admin.core.models import OutboxEvent
 from somabrain.journal import JournalEvent, get_journal
 from somabrain.metrics import report_outbox_replayed
-from somabrain.admin.core.models import OutboxEvent
 
 VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
 
 
 @transaction.atomic
-def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) -> int:
+def mark_events_for_replay(limit: int = 100, tenant_id: str | None = None) -> int:
     """Mark failed events for replay by setting their status back to 'pending'.
 
     Args:
@@ -101,10 +101,10 @@ def mark_tenant_events_for_replay(
 def list_tenant_events(
     tenant_id: str,
     status: str = "pending",
-    topic_filter: Optional[str] = None,
+    topic_filter: str | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> List[OutboxEvent]:
+) -> list[OutboxEvent]:
     """List outbox events for a specific tenant with filtering options.
 
     Args:
@@ -131,7 +131,7 @@ def list_tenant_events(
     return list(qs.order_by("-created_at")[offset : offset + limit])
 
 
-def get_failed_counts_by_tenant() -> Dict[str, int]:
+def get_failed_counts_by_tenant() -> dict[str, int]:
     """Get failed event counts per tenant."""
     counts = (
         OutboxEvent.objects.filter(status="failed")
@@ -141,7 +141,7 @@ def get_failed_counts_by_tenant() -> Dict[str, int]:
     return {row["tenant_id"] or "default": row["count"] for row in counts}
 
 
-def get_sent_counts_by_tenant() -> Dict[str, int]:
+def get_sent_counts_by_tenant() -> dict[str, int]:
     """Get sent event counts per tenant."""
     counts = (
         OutboxEvent.objects.filter(status="sent")
@@ -155,12 +155,12 @@ def get_sent_counts_by_tenant() -> Dict[str, int]:
 
 
 def get_journal_events(
-    tenant_id: Optional[str] = None,
-    status: Optional[str] = None,
-    topic: Optional[str] = None,
-    limit: Optional[int] = None,
-    since: Optional[datetime] = None,
-) -> List[JournalEvent]:
+    tenant_id: str | None = None,
+    status: str | None = None,
+    topic: str | None = None,
+    limit: int | None = None,
+    since: datetime | None = None,
+) -> list[JournalEvent]:
     """Get events from the local journal with filtering."""
     try:
         journal = get_journal()
@@ -176,7 +176,7 @@ def get_journal_events(
 
 @transaction.atomic
 def replay_journal_events(
-    tenant_id: Optional[str] = None,
+    tenant_id: str | None = None,
     limit: int = 100,
     mark_processed: bool = True,
 ) -> int:
@@ -228,7 +228,7 @@ def replay_journal_events(
     return replayed_count
 
 
-def get_journal_stats() -> Dict[str, Any]:
+def get_journal_stats() -> dict[str, Any]:
     """Get statistics about the local journal."""
     try:
         journal = get_journal()
@@ -240,7 +240,7 @@ def get_journal_stats() -> Dict[str, Any]:
         return {"error": str(e)}
 
 
-def cleanup_journal() -> Dict[str, Any]:
+def cleanup_journal() -> dict[str, Any]:
     """Clean up the local journal by removing old files."""
     try:
         journal = get_journal()
