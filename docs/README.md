@@ -30,8 +30,6 @@ deployment guides that live beside the infrastructure manifests.
 
 | Document | Purpose |
 |----------|---------|
-| [ARCHITECTURE_AUDIT_STANDALONE_2026-02-03.md](../ARCHITECTURE_AUDIT_STANDALONE_2026-02-03.md) | Standalone architecture audit, updated with current stack notes |
-| [AUDIT_REPORT_2026-02-03.md](../AUDIT_REPORT_2026-02-03.md) | Broader audit report snapshot |
 | [FINAL_VERIFICATION_REPORT.md](../FINAL_VERIFICATION_REPORT.md) | Verification summary |
 
 ## Note

@@ -3,7 +3,6 @@
 > **Document type:** Technical architecture overview  
 > **Scope:** Full-stack SomaBrain: mathematical foundations, runtime, memory plane, cognitive loop, API, security, and standalone deployment  
 > **As-of date:** 2026-06-14  
-> **Authoritative sources:** `docs/SomabrainGMD.md`, `docs/ONBOARDING.md`, `ARCHITECTURE_AUDIT_STANDALONE_2026-02-03.md`, `somabrain/runtime/manager.py`, `somabrain/services/memory_service.py`, `somabrain/memory`, `somabrain/services/cognitive_loop_service.py`, `somabrain/api`, `infra/standalone/docker-compose.yml`
 
 ---
 
