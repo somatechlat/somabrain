@@ -407,7 +407,8 @@ def linear_decay(tau_0: float, tau_min: float, alpha: float, t: int) -> float:
     """
     if RUST_ANNEALING_AVAILABLE and _rs is not None:
         return _rs.linear_tau_decay(tau_0, tau_min, alpha, t)
-    return max(float(tau_min), float(tau_0) - float(alpha) * (int(t) + 1))
+    # Must match rust_core::adaptation::linear_tau_decay: τ(t) = max(τ₀ - α·t, τ_min)
+    return max(float(tau_min), float(tau_0) - float(alpha) * int(t))
 
 
 def exponential_decay(tau_0: float, gamma: float, t: int) -> float:
@@ -423,4 +424,5 @@ def exponential_decay(tau_0: float, gamma: float, t: int) -> float:
     """
     if RUST_ANNEALING_AVAILABLE and _rs is not None:
         return _rs.exponential_tau_decay(tau_0, gamma, t)
-    return float(tau_0) * (float(gamma) ** (int(t) + 1))
+    # Must match rust_core::adaptation::exponential_tau_decay: τ(t) = τ₀ · exp(-γ·t)
+    return float(tau_0) * math.exp(-float(gamma) * int(t))

@@ -71,7 +71,7 @@ async def test_send_event_success(auth_settings) -> None:
         dedupe_key="key-1",
         tenant_id="test",
     )
-    client = MemoryClient(auth_settings)
+    client = MemoryClient(auth_settings, namespace="outbox-test")
     result = await _send_event(client, event)
     # Debug if false
     if not result:
@@ -94,7 +94,7 @@ async def test_send_event_failure(auth_settings) -> None:
         dedupe_key="key-2",
         tenant_id="test",
     )
-    client = MemoryClient(auth_settings)
+    client = MemoryClient(auth_settings, namespace="outbox-test")
     # This should fail due to serialization or API rejection
     # Actually _send_event catches exceptions and returns False?
     try:
