@@ -1,9 +1,6 @@
 # SOMA-BR-SRS-001: SomaBrain Software Requirements Specification
 
 > **Standard:** ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering
-> **Version:** 1.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Controlled
 > **Owner:** SomaTech Engineering
 
 ---
@@ -12,21 +9,23 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-SRS-001 |
-| Title | SomaBrain Software Requirements Specification |
-| Version | 1.0.0 |
+| Document Title | SomaBrain Software Requirements Specification |
+| Document Identifier | SOMA-BR-SRS-001 |
+| Version | 1.0.1 |
 | Date | 2026-06-15 |
+| Status | Approved |
 | Author | SomaTech Engineering |
-| Reviewer | Architecture Team, QA Team |
 | Approver | VP Engineering, SomaTech |
 | Classification | Internal |
-| Next Review | 2026-12-15 |
+| ISO Reference | ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial SRS: ISO/IEC/IEEE 29148 compliant requirements baseline for SomaBrain |
+| 1.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-SRS-001` \| Status added as `Approved` (document names an approver). |
 
 ### Normative References
 

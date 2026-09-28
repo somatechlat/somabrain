@@ -1,9 +1,6 @@
 # SOMA-BR-RISK-001: SomaBrain Risk Register
 
 > **Standard:** ISO 31000:2018 — Risk Management — Guidelines
-> **Version:** 2.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Controlled
 > **Owner:** SomaTech Risk Management
 
 ---
@@ -12,23 +9,25 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-RISK-001 |
-| Title | SomaBrain Risk Register |
-| Version | 2.0.0 |
+| Document Title | SomaBrain Risk Register |
+| Document Identifier | SOMA-BR-RISK-001 |
+| Version | 2.0.1 |
 | Date | 2026-06-15 |
+| Status | Approved |
 | Author | SomaTech Risk Management |
-| Reviewer | Architecture Team, Operations Team |
 | Approver | VP Engineering, SomaTech |
 | Classification | Internal |
-| Next Review | 2026-09-15 (quarterly) |
+| ISO Reference | ISO 31000:2018 — Risk Management — Guidelines |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-02-01 | Risk Management | Initial risk register |
 | 1.5.0 | 2026-04-15 | Risk Management | Added dependency and scaling risks |
 | 2.0.0 | 2026-06-15 | Risk Management | Comprehensive update: all five primary risks with quantitative analysis |
+| 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-RISK-001` \| Status added as `Approved` (document names an approver). |
 
 ---
 

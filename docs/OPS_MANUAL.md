@@ -1,5 +1,28 @@
 # Retrieval Observability Runbook (Strict Real Mode)
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | Retrieval Observability Runbook (Strict Real Mode) |
+| Document Identifier | SOMA-BR-GUIDE-OPS-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under the house ISO document-control contract. |
+
+
 This runbook documents the mandatory metrics, alert rules, and triage steps for the retrieval pipeline under strict production realism. No fallbacks, no silent degradation: empty results and latency surfaces must reflect actual system performance.
 
 ## Scope

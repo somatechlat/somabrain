@@ -1,9 +1,6 @@
 # SOMA-BR-AUDIT-001: SomaBrain Audit Report
 
 > **Standard:** ISO 19011:2018 — Guidelines for Auditing Management Systems
-> **Version:** 2.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Controlled
 > **Owner:** SomaTech Quality Assurance
 
 ---
@@ -12,23 +9,25 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-AUDIT-001 |
-| Title | SomaBrain Audit Report |
-| Version | 2.0.0 |
+| Document Title | SomaBrain Audit Report |
+| Document Identifier | SOMA-BR-AUDIT-001 |
+| Version | 2.0.1 |
 | Date | 2026-06-15 |
+| Status | Approved |
 | Author | SomaTech QA Team |
-| Reviewer | Architecture Team, Security Team |
 | Approver | VP Engineering, SomaTech |
 | Classification | Internal |
-| Next Audit | 2026-12-15 |
+| ISO Reference | ISO 19011:2018 — Guidelines for Auditing Management Systems |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-02-01 | QA Team | Initial audit baseline |
 | 1.5.0 | 2026-04-15 | QA Team | Expanded test coverage analysis, security review |
 | 2.0.0 | 2026-06-15 | QA Team | Comprehensive re-audit: code verification, executive scorecard, ISO 19011 methodology |
+| 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-AUDIT-001` \| Status added as `Approved` (document names an approver). |
 
 ---
 

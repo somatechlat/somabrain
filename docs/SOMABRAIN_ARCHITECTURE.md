@@ -1,5 +1,28 @@
 # SomaBrain Architecture — How the Brain Works
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | SomaBrain Architecture — How the Brain Works |
+| Document Identifier | SOMA-BR-GUIDE-ARCH-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under the house ISO document-control contract. |
+
+
 > **Document type:** Technical architecture overview  
 > **Scope:** Full-stack SomaBrain: mathematical foundations, runtime, memory plane, cognitive loop, API, security, and standalone deployment  
 > **As-of date:** 2026-06-14  

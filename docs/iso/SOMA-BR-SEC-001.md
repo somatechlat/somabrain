@@ -1,9 +1,6 @@
 # SOMA-BR-SEC-001: SomaBrain Security Assessment
 
 > **Standard:** ISO/IEC 27001:2022 — Information Security Management Systems
-> **Version:** 2.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Confidential
 > **Owner:** SomaTech Security Team
 
 ---
@@ -12,23 +9,25 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-SEC-001 |
-| Title | SomaBrain Security Assessment |
-| Version | 2.0.0 |
+| Document Title | SomaBrain Security Assessment |
+| Document Identifier | SOMA-BR-SEC-001 |
+| Version | 2.0.1 |
 | Date | 2026-06-15 |
+| Status | Approved |
 | Author | SomaTech Security Team |
-| Reviewer | Architecture Team, QA Team |
 | Approver | CISO, SomaTech |
-| Classification | Internal / Confidential |
-| Next Review | 2026-12-15 |
+| Classification | Confidential |
+| ISO Reference | ISO/IEC 27001:2022 — Information Security Management Systems |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-02-15 | Security Team | Initial security assessment |
 | 1.5.0 | 2026-04-20 | Security Team | Added multi-tenancy isolation review |
 | 2.0.0 | 2026-06-15 | Security Team | Comprehensive re-assessment: JWT, OPA, Vault, TLS, constitution signing, per-tenant isolation |
+| 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-SEC-001` \| Status added as `Approved` (document names an approver) \| prior classification `Internal / Confidential` normalised to `Confidential`. |
 
 ---
 

@@ -1,9 +1,6 @@
 # SOMA-BR-QMS-001: SomaBrain Quality Manual
 
 > **Standard:** ISO 9001:2015 — Quality Management Systems — Requirements
-> **Version:** 1.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Controlled
 > **Owner:** SomaTech Quality Assurance
 
 ---
@@ -12,21 +9,24 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-QMS-001 |
-| Title | SomaBrain Quality Manual |
-| Version | 1.0.0 |
-| Date | 2026-06-15 |
+| Document Title | SomaBrain Quality Manual |
+| Document Identifier | SOMA-BR-QMS-001 |
+| Version | 1.0.2 |
+| Date | 2026-09-28 |
+| Status | Approved |
 | Author | SomaTech QA Team |
-| Reviewer | Architecture Team, Engineering Leads |
 | Approver | VP Engineering, SomaTech |
 | Classification | Internal |
-| Next Review | 2026-12-15 |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-06-15 | SomaTech QA Team | Initial QMS: ISO 9001:2015 compliant quality manual for SomaBrain |
+| 1.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-QMS-001` \| Status added as `Approved` (document names an approver). |
+| 1.0.2 | 2026-09-28 | SomaTech Engineering | Document Reference Matrix added (12 documents, ISO series under `docs/iso/`). Every cell is derived from each document's own Document Control table. |
 
 ### Normative References
 
@@ -53,6 +53,7 @@
 5. [Metrics](#5-metrics)
 6. [Non-Conformance](#6-non-conformance)
 7. [Improvement Plan](#7-improvement-plan)
+8. [Document Reference Matrix](#8-document-reference-matrix)
 
 ---
 
@@ -363,6 +364,36 @@ SomaBrain's quality improvement follows the **Plan-Do-Check-Act (PDCA)** cycle:
 | Non-conformance review | Bi-weekly | Open non-conformances, root cause trends | QA Team + responsible engineers |
 | Quality objective review | Quarterly | Quality target progress, new targets | VP Engineering + QA Team |
 | Full management review | Semi-annually | Quality policy effectiveness, resource needs, strategic improvements | VP Engineering + all team leads |
+
+---
+
+## 8. Document Reference Matrix
+
+This matrix is the authoritative cross-reference of the QMS document set held under `docs/iso/`.
+It is not a second control record: every value below is read from the
+named document's own `## Document Control` table, so the matrix cannot
+claim a standard the document does not. `ISO Reference` is copied from
+that table verbatim — including `—` where a document cites none.
+
+Documents outside this set (contributor guides under `docs/`, project
+records under `docs/project/`) are still held in the Document Register
+`docs/iso/DOCUMENT-REGISTER.md`; they are supporting documentation, not
+QMS documents, and are therefore not listed here.
+
+| Document | Identifier | ISO Reference | File |
+|---|---|---|---|
+| SomaBrain Architecture Document | SOMA-BR-ARCH-001 | ISO/IEC 42010:2011 — Systems and Software Engineering — Architecture Description | `docs/iso/SOMA-BR-ARCH-001.md` |
+| SomaBrain Audit Report | SOMA-BR-AUDIT-001 | ISO 19011:2018 — Guidelines for Auditing Management Systems | `docs/iso/SOMA-BR-AUDIT-001.md` |
+| Soma Cognitive Triad Version Compatibility Matrix | SOMA-BR-COMPAT-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-COMPAT-001.md` |
+| Document Register | SOMA-BR-DOC-REGISTER-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/DOCUMENT-REGISTER.md` |
+| Document Control and Traceability Procedure | SOMA-BR-DOCS-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-DOCS-001.md` |
+| SomaBrain Production Readiness Assessment | SOMA-BR-PROD-001 | ISO/IEC 25010:2011 — Systems and Software Quality Requirements and Evaluation | `docs/iso/SOMA-BR-PROD-001.md` |
+| SomaBrain Quality Manual | SOMA-BR-QMS-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-QMS-001.md` |
+| SomaBrain Risk Register | SOMA-BR-RISK-001 | ISO 31000:2018 — Risk Management — Guidelines | `docs/iso/SOMA-BR-RISK-001.md` |
+| SomaBrain Software Development Plan | SOMA-BR-SDP-001 | ISO/IEC 12207:2017 — Systems and Software Engineering — Software Life Cycle Processes | `docs/iso/SOMA-BR-SDP-001.md` |
+| SomaBrain Security Assessment | SOMA-BR-SEC-001 | ISO/IEC 27001:2022 — Information Security Management Systems | `docs/iso/SOMA-BR-SEC-001.md` |
+| SomaBrain Software Requirements Specification | SOMA-BR-SRS-001 | ISO/IEC/IEEE 29148:2018 — Systems and Software Engineering — Life Cycle Processes — Requirements Engineering | `docs/iso/SOMA-BR-SRS-001.md` |
+| SomaBrain Verification and Validation Plan | SOMA-BR-VV-001 | ISO/IEC/IEEE 16085:2006 — Systems and Software Engineering — Life Cycle Processes — Risk Management (adapted for V&V) | `docs/iso/SOMA-BR-VV-001.md` |
 
 ---
 

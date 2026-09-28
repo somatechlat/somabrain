@@ -3,20 +3,24 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | Soma Cognitive Triad Version Compatibility Matrix |
-| Document Identifier | SOMA-COMPAT-001 |
-| Version | 1.0.0 |
+| Document Identifier | SOMA-BR-COMPAT-001 |
+| Version | 1.0.1 |
 | Date | 2026-06-15 |
-| Status | Active |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial compatibility matrix |
+| 1.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `SOMA-COMPAT-001` set to filename stem `SOMA-BR-COMPAT-001` \| prior status `Active` normalised to `Draft` (no approver named). |
 
 ---
 

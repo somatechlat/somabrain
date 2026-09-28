@@ -3,17 +3,23 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | Soma Agent Definitive UI/UX Specification |
 | Document Identifier | SOMA-UI-SPEC-001 |
 | Version | 2.0.0 |
 | Date | 2026-06-15 |
-| Status | Baseline |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
 | ISO Reference | ISO 9241-210:2019 — Human-centred design |
+| Next Review | 2026-12-28 |
+## Revision History
 
----
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 2.0.0 | 2026-09-28 | SomaTech Engineering | Document control normalised: prior status `Baseline` normalised to `Draft` (no approver named). |
+
 
 ## 1. BRAND IDENTITY
 

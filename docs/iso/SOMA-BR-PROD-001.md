@@ -1,9 +1,6 @@
 # SOMA-BR-PROD-001: SomaBrain Production Readiness Assessment
 
 > **Standard:** ISO/IEC 25010:2011 — Systems and Software Quality Requirements and Evaluation
-> **Version:** 2.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Controlled
 > **Owner:** SomaTech Operations Team
 
 ---
@@ -12,23 +9,25 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-PROD-001 |
-| Title | SomaBrain Production Readiness Assessment |
-| Version | 2.0.0 |
+| Document Title | SomaBrain Production Readiness Assessment |
+| Document Identifier | SOMA-BR-PROD-001 |
+| Version | 2.0.1 |
 | Date | 2026-06-15 |
+| Status | Approved |
 | Author | SomaTech Operations Team |
-| Reviewer | Architecture Team, QA Team, Security Team |
 | Approver | VP Engineering, SomaTech |
 | Classification | Internal |
-| Next Review | 2026-09-15 |
+| ISO Reference | ISO/IEC 25010:2011 — Systems and Software Quality Requirements and Evaluation |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-03-01 | Operations Team | Initial production readiness assessment |
 | 1.5.0 | 2026-04-20 | Operations Team | Added AAAS mode assessment |
 | 2.0.0 | 2026-06-15 | Operations Team | Comprehensive re-assessment: scorecards, deployment modes, K8s status, Helm charts |
+| 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-PROD-001` \| Status added as `Approved` (document names an approver). |
 
 ---
 

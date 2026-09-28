@@ -27,10 +27,10 @@ PYTEST:=$(VENV)/bin/pytest
 RUFF:=$(VENV)/bin/ruff
 MYPY:=$(VENV)/bin/mypy
 
-.PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean up-dev up-prod-like down-prod-like ps-prod-like logs-prod-like
+.PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean up-dev up-prod-like down-prod-like ps-prod-like logs-prod-like docs-check docs-register
 
 help:
-	@echo "Targets: venv | install | dev | run | test | lint | typecheck | fmt | docker-build | docker-run | clean | compose-preflight"
+	@echo "Targets: venv | install | dev | run | test | lint | typecheck | fmt | docker-build | docker-run | clean | compose-preflight | docs-check | docs-register"
 
 venv:
 	$(PY) -m venv $(VENV)
@@ -105,6 +105,18 @@ docker-push:
 docs:
 	@echo "Building Sphinx documentation..."
 	@AUTOSUMMARY=$(AUTOSUMMARY) sphinx-build -b html docs/source docs/build
+
+# ISO 9001:2015 clause 7.5 compliance for everything under docs/.
+# Distinct from `make docs` above, which builds Sphinx HTML from docs/source.
+.PHONY: docs-check docs-register
+
+docs-check:
+	@echo "Checking ISO document control compliance..."
+	@$(PY) scripts/check_docs.py
+
+docs-register:
+	@echo "Regenerating docs/iso/DOCUMENT-REGISTER.md..."
+	@$(PY) scripts/gen_register.py
 
 # Consolidated test target – runs the full pytest suite (kept from earlier edit)
 .PHONY: test

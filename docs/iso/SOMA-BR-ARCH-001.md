@@ -1,9 +1,6 @@
 # SOMA-BR-ARCH-001: SomaBrain Architecture Document
 
 > **Standard:** ISO/IEC 42010:2011 — Systems and Software Engineering — Architecture Description
-> **Version:** 2.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Controlled
 > **Owner:** SomaTech Architecture Team
 
 ---
@@ -12,17 +9,18 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-ARCH-001 |
-| Title | SomaBrain Architecture Document |
-| Version | 2.0.0 |
+| Document Title | SomaBrain Architecture Document |
+| Document Identifier | SOMA-BR-ARCH-001 |
+| Version | 2.0.1 |
 | Date | 2026-06-15 |
+| Status | Approved |
 | Author | SomaTech Architecture Team |
-| Reviewer | SomaTech Engineering Leads |
 | Approver | CTO, SomaTech |
 | Classification | Internal |
-| Next Review | 2026-12-15 |
+| ISO Reference | ISO/IEC 42010:2011 — Systems and Software Engineering — Architecture Description |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
@@ -30,6 +28,7 @@
 | 1.1.0 | 2026-03-01 | Architecture Team | Added AAAS deployment mode, Rust core section |
 | 1.2.0 | 2026-04-20 | Architecture Team | Expanded integration points, multi-tenancy section |
 | 2.0.0 | 2026-06-15 | Architecture Team | Full rewrite: ISO/IEC 42010 compliant, all views updated, Rust core expansion, observability and debt sections added |
+| 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-ARCH-001` \| Status added as `Approved` (document names an approver). |
 
 ---
 

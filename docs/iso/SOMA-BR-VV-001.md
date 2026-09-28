@@ -1,9 +1,6 @@
 # SOMA-BR-VV-001: SomaBrain Verification and Validation Plan
 
 > **Standard:** ISO/IEC/IEEE 16085:2006 — Systems and Software Engineering — Life Cycle Processes — Risk Management (adapted for V&V)
-> **Version:** 1.0.0
-> **Date:** 2026-06-15
-> **Classification:** Internal / Controlled
 > **Owner:** SomaTech QA Team
 
 ---
@@ -12,21 +9,23 @@
 
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-VV-001 |
-| Title | SomaBrain Verification and Validation Plan |
-| Version | 1.0.0 |
+| Document Title | SomaBrain Verification and Validation Plan |
+| Document Identifier | SOMA-BR-VV-001 |
+| Version | 1.0.1 |
 | Date | 2026-06-15 |
+| Status | Approved |
 | Author | SomaTech QA Team |
-| Reviewer | Architecture Team, Engineering Leads |
 | Approver | VP Engineering, SomaTech |
 | Classification | Internal |
-| Next Review | 2026-12-15 |
+| ISO Reference | ISO/IEC/IEEE 16085:2006 — Systems and Software Engineering — Life Cycle Processes — Risk Management (adapted for V&V) |
+| Next Review | 2026-12-28 |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-06-15 | SomaTech QA Team | Initial V&V plan: ISO/IEC/IEEE 16085 compliant, 95 test files, 8 proof categories |
+| 1.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-VV-001` \| Status added as `Approved` (document names an approver). |
 
 ### Normative References
 

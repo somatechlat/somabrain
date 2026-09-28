@@ -3,15 +3,23 @@
 ## Document Control
 
 | Field | Value |
-|-------|-------|
+|---|---|
 | Document Title | SomaBrain Production Readiness Execution Plan |
 | Document Identifier | SOMA-BR-EXEC-001 |
 | Version | 1.0.0 |
 | Date | 2026-06-15 |
-| Status | Active |
-| Cross-Reference | SOMA-PM-CHARTER-001 (Master Project Charter) |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2026-12-28 |
+## Revision History
 
----
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Document control normalised: prior status `Active` normalised to `Draft` (no approver named) \| Classification added as `Internal`. |
+
 
 ## 1. CURRENT STATE
 
