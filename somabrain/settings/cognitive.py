@@ -105,8 +105,12 @@ SOMABRAIN_MEMORY_HEALTH_POLL_INTERVAL = env.float(
 SOMABRAIN_DEBUG_MEMORY_CLIENT = env.bool("SOMABRAIN_DEBUG_MEMORY_CLIENT", default=False)
 
 # Working memory configuration
-# MUST equal the seam dim: MEM_EMBED_DIM (agent) == SOMA_VECTOR_DIM (SFM) == 768.
+# Seam dim unity (ARCHITECTURE-INVARIANTS §2):
+# MEM_EMBED_DIM (agent) == SOMABRAIN_EMBED_DIM == SOMA_VECTOR_DIM (SFM).
+# Configuration-owned and auditable via system health — never hardcoded in logic.
 SOMABRAIN_EMBED_DIM = env.int("EMBED_DIM", default=768)
+# Certified seam contract the effective dim must match (fail-closed on mismatch).
+SOMABRAIN_EMBED_DIM_SEAM = env.int("EMBED_DIM_SEAM", default=768)
 SOMABRAIN_WM_SIZE = env.int("SOMABRAIN_WM_SIZE", default=64)
 SOMABRAIN_WM_RECENCY_TIME_SCALE = env.float(
     "SOMABRAIN_WM_RECENCY_TIME_SCALE", default=1.0

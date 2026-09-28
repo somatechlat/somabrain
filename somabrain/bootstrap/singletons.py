@@ -7,6 +7,8 @@ This module is HIGH RISK due to tight coupling with runtime.py module loading.
 Changes should be tested thoroughly before deployment.
 """
 
+from somabrain.embed_dim import resolve_embed_dim
+
 from __future__ import annotations
 
 import logging
@@ -168,12 +170,11 @@ def make_embedder_with_dim(cfg, quantum=None):
             raise RuntimeError("embedder failed to produce vector dimension") from exc
 
     # Ensure config reflects the actual embedder dimension at runtime
-    current_embed_dim = getattr(settings, "EMBED_DIM", 256)
+    current_embed_dim = resolve_embed_dim(settings)
     if current_embed_dim != embed_dim:
-        logger.warning(
-            "settings EMBED_DIM=%s mismatch with provider dim=%s; overriding locally",
-            current_embed_dim,
-            embed_dim,
+        raise RuntimeError(
+            f"SOMABRAIN_EMBED_DIM={current_embed_dim} does not match provider "
+            f"dim={embed_dim}; refusing to guess a vector dim"
         )
 
     return embedder, embed_dim
@@ -198,7 +199,7 @@ def make_fd_sketch(cfg):
 
     from somabrain.admin.core.learning.salience import FDSalienceSketch
 
-    embed_dim = getattr(settings, "EMBED_DIM", 256)
+    embed_dim = resolve_embed_dim(settings)
     return FDSalienceSketch(
         dim=int(embed_dim),
         rank=max(

@@ -22,6 +22,8 @@ Functions:
     make_embedder: Factory function to create configured embedders.
 """
 
+from somabrain.embed_dim import resolve_embed_dim
+
 from __future__ import annotations
 
 import hashlib
@@ -80,11 +82,28 @@ class TinyDeterministicEmbedder:
             f"{self.seed_salt}:{token}".encode(), digest_size=16
         ).digest()
 
+    def _fold(self, token: str) -> str:
+        """Light morphological fold (work/works → work). Not a stopword list."""
+        t = token
+        if len(t) > 4 and t.endswith("ies"):
+            return t[:-3] + "y"
+        if len(t) > 3 and t.endswith("es"):
+            return t[:-2]
+        if len(t) > 3 and t.endswith("s") and not t.endswith("ss"):
+            return t[:-1]
+        if len(t) > 5 and t.endswith("ing"):
+            return t[:-3]
+        if len(t) > 4 and t.endswith("ed"):
+            return t[:-2]
+        return t
+
     def embed(self, text: str) -> np.ndarray:
         """
         Feature-hash tokens into a unit-norm vector.
 
-        Same tokens → same dimensions. Empty text maps to a zero-safe unit vector.
+        Distinctive tokens carry more mass than common short glue words,
+        character n-grams give morphological overlap, and a light suffix fold
+        unifies work/works. Same tokens map to the same dimensions.
         """
         from somabrain.math import normalize_vector
 
@@ -94,12 +113,26 @@ class TinyDeterministicEmbedder:
         if not tokens:
             tokens = ["__empty__"]
         for token in tokens:
-            digest = self._token_digest(token)
-            n = len(digest)
-            for offset in (0, 4, 8):
-                idx = int.from_bytes(digest[offset : offset + 4], "big") % self.dim
-                sign = 1.0 if digest[(offset + 4) % n] & 1 else -1.0
-                vec[idx] += sign
+            folded = self._fold(token)
+            # Length-based distinctiveness (no stopword lists): "pixel",
+            # "andeslabs", "charango" outweigh "is"/"my"/"what".
+            weight = 1.0 + (len(token) / 4.0)
+            for form in (token, folded) if folded != token else (token,):
+                digest = self._token_digest(form)
+                n = len(digest)
+                for offset in (0, 4, 8):
+                    idx = int.from_bytes(digest[offset : offset + 4], "big") % self.dim
+                    sign = 1.0 if digest[(offset + 4) % n] & 1 else -1.0
+                    vec[idx] += sign * weight
+            # Character trigrams for morphological robustness (work/works).
+            for form in (token, folded):
+                padded = f"^{form}$"
+                for i in range(max(0, len(padded) - 2)):
+                    gram = padded[i : i + 3]
+                    gd = self._token_digest(f"#{gram}")
+                    idx = int.from_bytes(gd[0:4], "big") % self.dim
+                    sign = 1.0 if gd[4] & 1 else -1.0
+                    vec[idx] += sign * (0.35 * weight)
         return normalize_vector(vec, dtype=np.float32)
 
 
@@ -275,13 +308,11 @@ def make_embedder(cfg, quantum=None):
             base_dim = t.dim
             base_fn = t.embed
         except Exception:
-            base = TinyDeterministicEmbedder(
-                dim=int(getattr(cfg, "embed_dim", 256) or 256)
-            )
+            base = TinyDeterministicEmbedder(dim=resolve_embed_dim())
             base_dim = base.dim
             base_fn = base.embed
     else:
-        base = TinyDeterministicEmbedder(dim=int(getattr(cfg, "embed_dim", 256) or 256))
+        base = TinyDeterministicEmbedder(dim=resolve_embed_dim())
         base_dim = base.dim
         base_fn = base.embed
 

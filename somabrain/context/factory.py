@@ -8,6 +8,7 @@ from functools import lru_cache
 from django.conf import settings
 
 from somabrain.admin.core.embeddings import make_embedder
+from somabrain.embed_dim import resolve_embed_dim
 from somabrain.cognitive.working_memory_buffer import WorkingMemoryBuffer
 from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
@@ -21,13 +22,13 @@ try:
     if getattr(settings, "allow_tiny_embedder", False):
         from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
-        _embedder = TinyDeterministicEmbedder(dim=256)
+        _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
     else:
         _embedder = make_embedder(settings, quantum=None)
 except Exception:
     from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
-    _embedder = TinyDeterministicEmbedder(dim=256)
+    _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
 _working_memory = WorkingMemoryBuffer()
 _retrieval_weights = RetrievalWeights(
     alpha=float(getattr(settings, "retrieval_alpha", 1.0)),

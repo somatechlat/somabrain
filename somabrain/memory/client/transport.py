@@ -5,6 +5,8 @@ from typing import Any
 
 from django.conf import settings
 
+from somabrain.embed_dim import ensure_embedding_dim
+
 from somabrain.core.infrastructure_defs import get_memory_http_endpoint
 from somabrain.memory.transport import MemoryHTTPTransport
 
@@ -20,6 +22,54 @@ def _http_setting(attr: str, default_val: int) -> int:
         except Exception:
             pass
     return default_val
+
+
+
+def build_store_payload(
+    *,
+    coord: str,
+    payload: Any,
+    memory_type: str,
+    embedding: list[float] | None = None,
+    tenant_id: str | None = None,
+) -> dict:
+    """Build the POST /memories body, forwarding the seam fields.
+
+    Regression guard: earlier versions rebuilt this body as
+    {coord, payload, memory_type} only, silently stripping ``embedding`` and
+    ``tenant_id`` so every stored memory fell back to hash vectors.
+    """
+    body: dict = {
+        "coord": coord,
+        "payload": payload,
+        "memory_type": memory_type,
+    }
+    if embedding is not None:
+        ensure_embedding_dim(embedding)
+        body["embedding"] = list(embedding)
+    if tenant_id:
+        body["tenant_id"] = str(tenant_id)
+    return body
+
+
+def build_search_payload(
+    *,
+    query: str,
+    top_k: int,
+    embedding: list[float] | None = None,
+    tenant_id: str | None = None,
+) -> dict:
+    """Build the POST /memories/search body, forwarding the query embedding."""
+    body: dict = {
+        "query": query,
+        "top_k": top_k,
+    }
+    if embedding is not None:
+        ensure_embedding_dim(embedding)
+        body["embedding"] = list(embedding)
+    if tenant_id:
+        body["tenant_id"] = str(tenant_id)
+    return body
 
 
 class TransportMixin:
@@ -216,11 +266,13 @@ class TransportMixin:
         payload = body.get("payload") or {}
         memory_type = str(body.get("memory_type") or body.get("type") or "episodic")
 
-        payload = {
-            "coord": coord,
-            "payload": payload,
-            "memory_type": memory_type,
-        }
+        payload = build_store_payload(
+            coord=coord,
+            payload=payload,
+            memory_type=memory_type,
+            embedding=body.get("embedding"),
+            tenant_id=body.get("tenant_id"),
+        )
 
         success, _, data = self._http_post_with_retries_sync(
             "/memories", payload, headers
@@ -238,11 +290,13 @@ class TransportMixin:
         payload = body.get("payload") or {}
         memory_type = str(body.get("memory_type") or body.get("type") or "episodic")
 
-        payload = {
-            "coord": coord,
-            "payload": payload,
-            "memory_type": memory_type,
-        }
+        payload = build_store_payload(
+            coord=coord,
+            payload=payload,
+            memory_type=memory_type,
+            embedding=body.get("embedding"),
+            tenant_id=body.get("tenant_id"),
+        )
 
         success, _, data = await self._http_post_with_retries_async(
             "/memories", payload, headers

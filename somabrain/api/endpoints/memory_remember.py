@@ -6,6 +6,8 @@ Complex memory write logic (batch, signals, embedding).
 
 from __future__ import annotations
 
+from somabrain.embed_dim import ensure_embedding_dim
+
 import asyncio
 import logging
 import uuid
@@ -154,7 +156,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         salience=payload.salience,
         source=payload.source,
         coord=payload.coord,
-        embedding=payload.embedding,
+        embedding=ensure_embedding_dim(payload.embedding),
     )
 
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())

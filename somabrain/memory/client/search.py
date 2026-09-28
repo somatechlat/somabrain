@@ -14,6 +14,7 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
         if self._http is None:
             raise RuntimeError("HTTP memory service required but not configured")
@@ -32,10 +33,14 @@ class SearchMixin:
         # between recall coverage and latency for the common top_k=1 case.
         fetch_limit = max(int(top_k) * 5, 50)
         query_text = str(query or "")
-        body = {
-            "query": query_text,
-            "top_k": fetch_limit,
-        }
+        from somabrain.memory.client.transport import build_search_payload
+
+        body = build_search_payload(
+            query=query_text,
+            top_k=fetch_limit,
+            embedding=embedding,
+            tenant_id=headers.get("X-Soma-Tenant"),
+        )
 
         success, status, data = self._http_post_with_retries_sync(
             "/memories/search", body, headers
@@ -79,6 +84,7 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
         if self._http_async is None:
             raise RuntimeError("Async HTTP memory service required but not configured")
@@ -97,10 +103,14 @@ class SearchMixin:
         # between recall coverage and latency for the common top_k=1 case.
         fetch_limit = max(int(top_k) * 5, 50)
         query_text = str(query or "")
-        body = {
-            "query": query_text,
-            "top_k": fetch_limit,
-        }
+        from somabrain.memory.client.transport import build_search_payload
+
+        body = build_search_payload(
+            query=query_text,
+            top_k=fetch_limit,
+            embedding=embedding,
+            tenant_id=headers.get("X-Soma-Tenant"),
+        )
 
         success, status, data = await self._http_post_with_retries_async(
             "/memories/search", body, headers
@@ -144,8 +154,9 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
-        return self._memories_search_sync(query, top_k, universe, request_id)
+        return self._memories_search_sync(query, top_k, universe, request_id, embedding=embedding)
 
     async def _http_recall_aggregate_async(
         self,
@@ -153,5 +164,6 @@ class SearchMixin:
         top_k: int,
         universe: str,
         request_id: str,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
-        return await self._memories_search_async(query, top_k, universe, request_id)
+        return await self._memories_search_async(query, top_k, universe, request_id, embedding=embedding)

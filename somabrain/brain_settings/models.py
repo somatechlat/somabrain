@@ -219,7 +219,7 @@ BRAIN_DEFAULTS = {
     "gmd_lambda_reg": {"v": 2.05e-5, "cat": "SYSTEM_CORE"},  # Wiener Unbinding λ*
     "gmd_quantization_bits": {"v": 8, "cat": "SYSTEM_CORE"},
     "hrr_dim": {"v": 8192, "cat": "SYSTEM_CORE"},
-    "embed_dim": {"v": 256, "cat": "SYSTEM_CORE"},
+    "embed_dim": {"v": 768, "cat": "SYSTEM_CORE"},
     "global_seed": {"v": 42, "cat": "SYSTEM_CORE"},
     # ==================== PLASTICITY (LEARNING) ====================
     "gmd_eta": {

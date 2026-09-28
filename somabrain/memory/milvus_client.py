@@ -127,7 +127,7 @@ def _set_segment_load(collection: str, value: float) -> None:
         pass
 
 
-def _vector_from_payload(payload: bytes, dim: int = 128) -> list[float]:
+def _vector_from_payload(payload: bytes, dim: int) -> list[float]:
     """Convert a payload blob into a deterministic float vector."""
 
     digest = hashlib.sha256(payload).digest()

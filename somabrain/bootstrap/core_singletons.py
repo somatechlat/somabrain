@@ -7,6 +7,8 @@ These singletons are created during application startup and shared
 across all request handlers.
 """
 
+from somabrain.embed_dim import resolve_embed_dim
+
 from __future__ import annotations
 
 import logging
@@ -35,7 +37,7 @@ def create_mt_wm(cfg, scorer: UnifiedScorer):
     from somabrain.mt_wm import MTWMConfig, MultiTenantWM
 
     return MultiTenantWM(
-        dim=getattr(settings, "EMBED_DIM", 256),
+        dim=resolve_embed_dim(settings),
         cfg=MTWMConfig(
             per_tenant_capacity=max(
                 getattr(settings, "SOMABRAIN_WM_PER_TENANT_CAPACITY", 1024),
@@ -70,7 +72,7 @@ def create_mc_wm(cfg, scorer: UnifiedScorer):
     )
 
     return MultiColumnWM(
-        dim=getattr(settings, "EMBED_DIM", 256),
+        dim=resolve_embed_dim(settings),
         cfg=MCConfig(
             columns=columns,
             per_col_capacity=per_col_capacity,
@@ -261,7 +263,7 @@ def create_drift_monitor(cfg):
     from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 
     return DriftMonitor(
-        getattr(settings, "EMBED_DIM", 256),
+        resolve_embed_dim(settings),
         DriftConfig(
             window=getattr(settings, "SOMABRAIN_DRIFT_WINDOW", 256),
             threshold=getattr(settings, "SOMABRAIN_DRIFT_THRESHOLD", 0.3),

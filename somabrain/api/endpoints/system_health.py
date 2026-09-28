@@ -219,7 +219,8 @@ def check_milvus() -> dict[str, Any]:
             "collection_name": (
                 getattr(client.collection, "name", None) if client.collection else None
             ),
-            "embedding_dim": getattr(settings, "MILVUS_EMBEDDING_DIM", 256),
+            "embedding_dim": getattr(settings, "SOMABRAIN_EMBED_DIM", None),
+            "embedding_dim_seam": getattr(settings, "SOMABRAIN_EMBED_DIM_SEAM", None),
         }
 
     result, time_ms, error = timed_check(_check)
