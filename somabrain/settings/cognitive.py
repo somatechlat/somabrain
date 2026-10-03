@@ -2,6 +2,7 @@ import environ  # type: ignore[import-untyped]
 
 from .infra import KAFKA_BOOTSTRAP_SERVERS as _INFRA_KAFKA_BOOTSTRAP_SERVERS
 from .infra import SOMABRAIN_MEMORY_HTTP_ENDPOINT as _INFRA_MEMORY_HTTP_ENDPOINT
+from .infra import SOMABRAIN_MEMORY_HTTP_TOKEN
 
 env = environ.Env()
 
@@ -70,7 +71,16 @@ SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(
     "SOMABRAIN_MEMORY_HTTP_ENDPOINT",
     default=env.str("MEMORY_SERVICE_URL", default=_INFRA_MEMORY_HTTP_ENDPOINT),
 )
-SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="")
+# SOMABRAIN_MEMORY_HTTP_TOKEN is defined once, in settings/infra.py (Vault ->
+# module state). Import and reuse that value here so the two modules cannot
+# drift. A missing token is a refusal, never "": an empty string dressed up as
+# a default is a shim that lets a service authenticate as nobody (Rule 91).
+if not SOMABRAIN_MEMORY_HTTP_TOKEN:
+    raise environ.ImproperlyConfigured(
+        "SOMABRAIN_MEMORY_HTTP_TOKEN must be provisioned via Vault "
+        "(settings/infra.py). An empty memory HTTP token is a refusal, "
+        "never a default."
+    )
 SOMABRAIN_MEMORY_MAX = env.str("SOMABRAIN_MEMORY_MAX", default="10GB")
 MEMORY_DB_PATH = env.str("MEMORY_DB_PATH", default="./data/memory.db")
 
