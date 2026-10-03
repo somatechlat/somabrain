@@ -1,12 +1,13 @@
 """Infrastructure settings and connection defaults for SomaBrain.
 
-This module resolves service endpoints in three stages:
-1. Optional Vault bootstrap writes secrets into the process environment.
-2. Explicit environment variables win over every inferred default.
-3. Remaining gaps are filled from Docker-aware local defaults.
+Secret resolution (VIBE Rule 164, zero-trust):
 
-That split lets the same code run in standalone Docker, CI, and direct local
-development without scattering connection logic across the codebase.
+  1. A secret is read from Vault and held in this module. It is NEVER
+     written to ``os.environ``. A secret in the process environment is a
+     secret in ``ps``, in ``/proc/*/environ`` and in every crash dump.
+  2. Environment variables carry TOPOLOGY only - hosts, ports, URLs, modes.
+  3. A missing credential fails closed. There is no local copy to fall
+     back on, and no empty string dressed up as a default.
 """
 
 import os
@@ -19,14 +20,14 @@ env = environ.Env()
 # INFRASTRUCTURE SETTINGS
 # ============================================================================
 
+# Values resolved from Vault at import time, held here and nowhere else.
+# Nothing in this module writes these into os.environ.
+_RESOLVED: dict[str, str] = {}
 
-def _set_env_if_present(name: str, value: object | None) -> None:
-    """Set an environment variable only when Vault returned a real value."""
-    if value is None:
-        return
-    text = str(value).strip()
-    if text:
-        os.environ[name] = text
+
+def _resolved(name: str) -> str:
+    """Return a Vault-resolved secret, or "" when it was not provisioned."""
+    return _RESOLVED.get(name, "")
 
 
 def configure_tf_metal() -> None:
@@ -38,11 +39,23 @@ def configure_tf_metal() -> None:
     os.environ.setdefault("TF_METAL_DEVICE_HANDLING", "1")
 
 
-def configure_infra_secrets() -> None:
-    """Preload infrastructure secrets from Vault into the environment.
+def _remember(name: str, value: object | None) -> None:
+    """Hold a Vault-resolved secret in this module. Never touches environ."""
+    if value is None:
+        return
+    text = str(value).strip()
+    if text:
+        _RESOLVED[name] = text
 
-    The rest of this module still supports plain environment-based
-    configuration when Vault is intentionally absent. Call once during startup.
+
+def configure_infra_secrets() -> None:
+    """Resolve infrastructure secrets from Vault into module state.
+
+    The values land in ``_RESOLVED`` and are read by the settings below.
+    They are never exported to the process environment - Rule 164.
+
+    Vault being unreachable is not "use the environment instead". The
+    callers that need these secrets fail closed when they are absent.
     """
     try:
         from somabrain.core.security.vault_client import (
@@ -57,54 +70,46 @@ def configure_infra_secrets() -> None:
 
     try:
         db_creds = get_db_credentials()
-        # Construct DSN from Vault if available
-        # Expected format: postgres://<user>:<password>@host:port/db
+        # Expected shape: username/password/host/port/dbname.
         if db_creds:
             _user = db_creds.get("username")
             _pass = db_creds.get("password")
             _host = db_creds.get("host", "127.0.0.1")
             _port = db_creds.get("port", 5432)
             _name = db_creds.get("dbname", "somabrain")
+            if _user and _pass:
+                _remember(
+                    "SOMABRAIN_POSTGRES_DSN",
+                    f"postgres://{_user}:{_pass}@{_host}:{_port}/{_name}",
+                )
 
-            # Vault wins over any stale DSN inherited from the shell.
-            os.environ["SOMABRAIN_POSTGRES_DSN"] = (
-                f"postgres://{_user}:{_pass}@{_host}:{_port}/{_name}"
+        redis_creds = get_secret("somabrain/redis")
+        if redis_creds:
+            _remember("SOMABRAIN_REDIS_URL", redis_creds.get("url"))
+
+        runtime_secrets = get_runtime_secrets()
+        if runtime_secrets:
+            _remember(
+                "SOMABRAIN_MEMORY_HTTP_TOKEN",
+                runtime_secrets.get("memory_http_token"),
             )
-
-            # Redis from Vault?
-            redis_creds = get_secret("somabrain/redis")
-            if redis_creds:
-                os.environ["SOMABRAIN_REDIS_URL"] = redis_creds.get("url", "")
-
-            runtime_secrets = get_runtime_secrets()
-            if runtime_secrets:
-                _set_env_if_present(
-                    "SOMABRAIN_MEMORY_HTTP_TOKEN",
-                    runtime_secrets.get("memory_http_token"),
-                )
-                _set_env_if_present(
-                    "SUPERVISOR_HTTP_PASS",
-                    runtime_secrets.get("supervisor_http_pass"),
-                )
-                _set_env_if_present(
-                    "OUTBOX_API_TOKEN",
-                    runtime_secrets.get("api_token"),
-                )
-                _set_env_if_present(
-                    "SOMABRAIN_API_TOKEN",
-                    runtime_secrets.get("api_token"),
-                )
-                _set_env_if_present(
-                    "SOMA_API_TOKEN",
-                    runtime_secrets.get("api_token"),
-                )
+            _remember(
+                "SUPERVISOR_HTTP_PASS",
+                runtime_secrets.get("supervisor_http_pass"),
+            )
+            _remember("OUTBOX_API_TOKEN", runtime_secrets.get("api_token"))
+            _remember("SOMABRAIN_API_TOKEN", runtime_secrets.get("api_token"))
+            _remember("SOMA_API_TOKEN", runtime_secrets.get("api_token"))
 
     except (SecretNotFound, VaultNotConfigured):
-        # Fallback to pure Env if Vault not configured (e.g. CI without Vault)
-        pass
+        # Not a fallback: the secrets simply stay absent and the features
+        # that need them fail closed. Rule 91.
+        return
 
 
-SOMABRAIN_POSTGRES_DSN = env.str("SOMABRAIN_POSTGRES_DSN", default="")
+SOMABRAIN_POSTGRES_DSN = _resolved("SOMABRAIN_POSTGRES_DSN") or env.str(
+    "SOMABRAIN_POSTGRES_DSN", default=""
+)
 # Remove legacy DATABASE_URL fallback to avoid collisions
 # DATABASE_URL = env.str("DATABASE_URL", default=None)
 
@@ -128,7 +133,9 @@ def _parse_port(value: str | int | None, default: int) -> int:
 
 
 # Redis
-SOMABRAIN_REDIS_URL = env.str("SOMABRAIN_REDIS_URL", default="")
+SOMABRAIN_REDIS_URL = _resolved("SOMABRAIN_REDIS_URL") or env.str(
+    "SOMABRAIN_REDIS_URL", default=""
+)
 SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="127.0.0.1")
 SOMABRAIN_REDIS_PORT = _parse_port(env.str("SOMABRAIN_REDIS_PORT", default=None), 6379)
 SOMABRAIN_REDIS_DB = env.int("SOMABRAIN_REDIS_DB", default=0)
@@ -295,7 +302,9 @@ SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(
 SOMA_FRACTAL_MEMORY_URL = env.str(
     "SOMA_FRACTAL_MEMORY_URL", default=SOMABRAIN_MEMORY_HTTP_ENDPOINT
 )
-SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="")
+SOMABRAIN_MEMORY_HTTP_TOKEN = _resolved("SOMABRAIN_MEMORY_HTTP_TOKEN") or env.str(
+    "SOMABRAIN_MEMORY_HTTP_TOKEN", default=""
+)
 if REQUIRE_MEMORY and not SOMABRAIN_MEMORY_HTTP_TOKEN:
     raise environ.ImproperlyConfigured(
         "SOMABRAIN_MEMORY_HTTP_TOKEN must be set when REQUIRE_MEMORY is enabled."

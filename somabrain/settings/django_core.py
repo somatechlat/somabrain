@@ -76,13 +76,28 @@ SOMA_API_TOKEN = env.str("SOMA_API_TOKEN", default=None)
 SOMA_API_TOKEN_FILE = env.str("SOMA_API_TOKEN_FILE", default=None)
 
 
-def configure_vault_secrets() -> None:
-    """Load bootstrap secrets from Vault into the process environment.
+# Bootstrap secrets resolved from Vault and held here. Rule 164: they are
+# never written to ``os.environ``. A secret in the process environment is
+# visible in ``ps``, in ``/proc/*/environ`` and in every crash dump.
+_BOOTSTRAP: dict[str, str] = {}
 
-    Standalone Docker boots with Vault enabled, but the same settings module is
-    also imported in CI and local development where Vault may be absent. This
-    helper therefore treats Vault as an early source of truth when available and
-    otherwise leaves the normal environment-based defaults intact.
+
+def _boot_secret(name: str, value: object | None) -> None:
+    """Hold a Vault-resolved bootstrap secret in this module only."""
+    if value is None:
+        return
+    text = str(value).strip()
+    if text:
+        _BOOTSTRAP[name] = text
+
+
+def configure_vault_secrets() -> None:
+    """Resolve bootstrap secrets from Vault into module state.
+
+    Standalone Docker boots with Vault enabled. The same settings module is
+    imported in CI and local development where Vault may be absent. Absence
+    of Vault does not license a fallback: the secrets stay absent and the
+    features that need them fail closed (Rule 91).
 
     Call once during application startup (e.g. from ``wsgi.py`` or
     ``AppConfig.ready()``) before Django resolves derived settings.
@@ -107,19 +122,20 @@ def configure_vault_secrets() -> None:
             port = db_creds.get("port", 5432)
             name = db_creds.get("dbname", "somabrain")
             if user and password and host and name:
-                os.environ["SOMABRAIN_POSTGRES_DSN"] = (
-                    f"postgresql://{user}:{password}@{host}:{port}/{name}"
+                _boot_secret(
+                    "SOMABRAIN_POSTGRES_DSN",
+                    f"postgresql://{user}:{password}@{host}:{port}/{name}",
                 )
     except (SecretNotFound, VaultNotConfigured):
-        pass
+        return
 
     try:
         vault_secret = get_jwt_secret()
         if vault_secret:
-            os.environ["SOMABRAIN_JWT_SECRET"] = vault_secret
-            os.environ["SECRET_KEY"] = vault_secret
+            _boot_secret("SOMABRAIN_JWT_SECRET", vault_secret)
+            _boot_secret("SECRET_KEY", vault_secret)
     except (SecretNotFound, VaultNotConfigured):
-        pass
+        return
 
     try:
         api_token = get_runtime_secret("api_token")
@@ -127,8 +143,8 @@ def configure_vault_secrets() -> None:
         api_token = None
 
     if api_token:
-        os.environ["SOMA_API_TOKEN"] = api_token
-        os.environ["SOMABRAIN_API_TOKEN"] = api_token
+        _boot_secret("SOMA_API_TOKEN", api_token)
+        _boot_secret("SOMABRAIN_API_TOKEN", api_token)
 
 
 SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
