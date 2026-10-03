@@ -1,14 +1,63 @@
 """Module conftest."""
 
 import os
+import pathlib
 import sys
 
 from hypothesis import settings as _hypothesis_settings
 
-if any("tests/standalone" in arg for arg in sys.argv):
+# Tests whose subject package is deliberately Django-free. When the run
+# contains only these, ``DJANGO_SETTINGS_MODULE`` is left unset so the
+# pytest-django plugin stays dormant and the memory-HTTP credential gate is
+# never imported. Booting settings for them would couple a pure transport test
+# to a credential it does not use and cannot obtain.
+#
+# Membership is declared where it is decided: on the test itself, as
+# ``pytest.mark.no_django``. The run is treated as Django-free exactly when
+# every test file named on the command line carries that marker. A hand-kept
+# path list here would silently rot the moment someone wrote the next pure
+# suite and forgot to register it — and mixing one unregistered file into the
+# run would quietly boot settings for the registered ones too.
+_MARK_NO_DJANGO = "pytest.mark.no_django"
+
+
+def _declares_no_django(path: str) -> bool:
+    """True when the file marks itself as covering a Django-free package."""
+    try:
+        source = pathlib.Path(path).read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return _MARK_NO_DJANGO in source
+
+
+def _running_only_django_free(argv: list[str]) -> bool:
+    """True when every test path on the command line opts out of Django.
+
+    Flags and options are ignored, and node ids are reduced to their file part
+    (``tests/x.py::test_y`` -> ``tests/x.py``). A bare ``pytest`` run with no
+    paths is never treated as Django-free, so the full suite keeps booting
+    settings exactly as it did before.
+    """
+    paths = []
+    for arg in argv[1:]:
+        if arg.startswith("-"):
+            continue
+        file_part = arg.split("::", 1)[0].replace(os.sep, "/")
+        if file_part.endswith(".py"):
+            paths.append(file_part)
+    if not paths:
+        return False
+    return all(_declares_no_django(p) for p in paths)
+
+
+if _running_only_django_free(sys.argv):
+    # Deliberately leave DJANGO_SETTINGS_MODULE unset.
+    pass
+elif any("tests/standalone" in arg for arg in sys.argv):
     os.environ["DJANGO_SETTINGS_MODULE"] = "somabrain.settings.standalone"
 else:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
+
 
 # Set local test infrastructure ports BEFORE loading .env or settings
 # These use host-mapped ports from docker-compose

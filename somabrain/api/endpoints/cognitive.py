@@ -66,23 +66,6 @@ def _get_embedder():
     return _runtime.embedder
 
 
-def _get_app_singletons():
-    """Get app-level singletons."""
-    try:
-        from somabrain import app as app_module
-
-        return {
-            "predictor_factory": getattr(app_module, "_make_predictor", None),
-            "per_tenant_neuromodulators": getattr(
-                app_module, "per_tenant_neuromodulators", None
-            ),
-            "personality_store": getattr(app_module, "personality_store", None),
-            "amygdala": getattr(app_module, "amygdala", None),
-        }
-    except Exception:
-        return {}
-
-
 def _get_or_create_focus_state(
     session_id: str, tenant_id: str, cfg
 ) -> FocusState | None:
@@ -95,7 +78,7 @@ def _get_or_create_focus_state(
         return _focus_state_cache[cache_key]
 
     try:
-        from somabrain.context_hrr import HRRContext
+        from somabrain.admin.core.context_hrr import HRRContext
 
         dim = int(getattr(cfg, "HRR_DIM", 512) or 512)
         hrr = HRRContext(dim=dim)
@@ -189,17 +172,21 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     """Execute an action/task and return step results."""
     mt_memory = _get_mt_memory()
     embedder = _get_embedder()
-    singletons = _get_app_singletons()
 
     ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))
     require_auth(request, settings)
 
-    predictor_factory = singletons.get("predictor_factory")
-    per_tenant_neuromodulators = singletons.get("per_tenant_neuromodulators")
-    personality_store = singletons.get("personality_store")
-    amygdala = singletons.get("amygdala")
+    from somabrain.bootstrap.singletons import (
+        get_amygdala,
+        get_neuromodulators,
+        get_personality_store,
+        get_predictor,
+    )
 
-    predictor = predictor_factory() if predictor_factory else None
+    predictor = get_predictor()
+    per_tenant_neuromodulators = get_neuromodulators()
+    personality_store = get_personality_store()
+    amygdala = get_amygdala()
     wm_vec = embedder.embed(body.task) if embedder else None
     session_id = request.headers.get("X-Session-ID") or f"{ctx.tenant_id}:default"
     focus_state = _get_or_create_focus_state(session_id, ctx.tenant_id, settings)
@@ -307,13 +294,16 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
 
 @router.post("/personality", response=PersonalityState, auth=api_key_auth)
 def set_personality(request: HttpRequest, state: PersonalityState) -> PersonalityState:
-    """Set personality traits.
+    """Set personality traits for the caller's tenant.
 
-    Personality configuration is not yet implemented in this release. The
-    endpoint is reserved and returns a honest 501 status instead of a
-    misleading 404.
+    ``PersonalityStore`` has always been a real per-tenant store; only this
+    route pretended otherwise. It now writes through to it.
     """
-    raise HttpError(501, "Personality configuration not implemented")
+    from somabrain.bootstrap.singletons import get_personality_store
+
+    ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))
+    require_auth(request, settings)
+    return get_personality_store().set(state, ctx.tenant_id)
 
 
 @router.get("/micro/diag", auth=api_key_auth)
@@ -335,13 +325,12 @@ def micro_diag(request: HttpRequest):
             "idempotency_key": idempotency_key,
         }
 
-    try:
-        from somabrain import app as app_module
-
-        mc_wm = getattr(app_module, "mc_wm", None)
-        stats = mc_wm.stats(ctx.tenant_id) if mc_wm else {}
-    except Exception:
-        stats = {}
+    # mc_wm is registered on the runtime module by register_singletons.
+    mc_wm = getattr(_runtime, "mc_wm", None) if _runtime is not None else None
+    if mc_wm is None and _runtime is not None:
+        _runtime.initialize_runtime()
+        mc_wm = getattr(_runtime, "mc_wm", None)
+    stats = mc_wm.stats(ctx.tenant_id) if mc_wm else {}
 
     return {
         "enabled": True,

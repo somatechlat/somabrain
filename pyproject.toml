@@ -83,8 +83,9 @@ dev = [
   "maturin",
 ]
 
+
 [project.scripts]
-somabrain-server = "somabrain.cli:run_server"
+somabrain-server = "somabrain.interfaces.cli.main:run_server"
 
 [tool.setuptools]
 packages = { find = { where = ["."], include = ["somabrain*"], exclude = ["tests*"] } }
@@ -137,6 +138,7 @@ markers = [
   "performance: performance-sensitive or latency tests",
   "slow: longer-running tests",
   "unit: unit-level tests",
+  "no_django: test covers a Django-free package and must not boot settings",
   "infrastructure: infrastructure integration checks",
   "circuit_breaker: circuit breaker behavior checks",
   "cognitive_proof: cognitive proof validations",

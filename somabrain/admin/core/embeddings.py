@@ -22,9 +22,9 @@ Functions:
     make_embedder: Factory function to create configured embedders.
 """
 
-from somabrain.embed_dim import resolve_embed_dim
-
 from __future__ import annotations
+
+from somabrain.embed_dim import resolve_embed_dim
 
 import hashlib
 import re

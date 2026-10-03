@@ -1,5 +1,5 @@
 """
-Admin schemas - Feature flags, Outbox, Quota operations.
+Admin schemas - feature flags and outbox operations.
 
 Request/response schemas for admin endpoints.
 """
@@ -128,51 +128,3 @@ class OutboxSummaryResponse(BaseModel):
     total_sent: int
 
 
-class QuotaStatus(BaseModel):
-    """Per-tenant quota status."""
-
-    tenant_id: str
-    daily_limit: int
-    remaining: int | float
-    used_today: int
-    reset_at: datetime | None = None
-    is_exempt: bool = False
-
-
-class QuotaListResponse(BaseModel):
-    """Response for listing all tenant quotas."""
-
-    quotas: list[QuotaStatus]
-    total_tenants: int
-
-
-class QuotaResetRequest(BaseModel):
-    """Request to reset a tenant's quota."""
-
-    reason: str | None = Field(None, description="Reason for quota reset")
-
-
-class QuotaResetResponse(BaseModel):
-    """Response after quota reset."""
-
-    tenant_id: str
-    reset: bool
-    new_remaining: int
-    message: str
-
-
-class QuotaAdjustRequest(BaseModel):
-    """Request to adjust a tenant's quota limit."""
-
-    new_limit: int = Field(..., gt=0, description="New daily quota limit")
-    reason: str | None = Field(None, description="Reason for quota adjustment")
-
-
-class QuotaAdjustResponse(BaseModel):
-    """Response after quota adjustment."""
-
-    tenant_id: str
-    old_limit: int
-    new_limit: int
-    adjusted: bool
-    message: str

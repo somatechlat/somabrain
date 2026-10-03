@@ -97,10 +97,6 @@ def create_mt_memory(cfg, scorer: UnifiedScorer, embedder: Any, _rt: Any):
     if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
         mt_memory = MultiTenantMemory(cfg, scorer=scorer, embedder=embedder)
         _rt.mt_memory = mt_memory
-        # Also patch this module's global for test visibility
-        mod = sys.modules.get("somabrain.app")
-        if mod:
-            mod.mt_memory = _rt.mt_memory
     else:
         mt_memory = _rt.mt_memory
 
@@ -152,7 +148,7 @@ def register_singletons(
         if missing:
             raise RuntimeError(
                 f"BACKEND ENFORCEMENT: missing runtime singletons: {', '.join(missing)}; "
-                "initialize runtime before importing somabrain.app"
+                "call initialize_runtime() before requesting singletons"
             )
 
     # Register with runtime module (legacy pattern for backward compatibility)

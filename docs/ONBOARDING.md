@@ -880,19 +880,22 @@ cp .env.example .env
 ### Required Environment Variables
 
 ```bash
-# Database (use shared SOMA Stack database)
+# Database topology (use the shared SOMA Stack database) — parts, not a DSN.
+# No password here. The password is read from Vault at
+# secret/agent/credentials/postgres_password and the connection is assembled
+# at runtime (VIBE Rule 164). Never put a credential in ENV or in a doc.
 SOMA_DB_HOST=localhost
 SOMA_DB_PORT=20432
 SOMA_DB_NAME=somabrain
 SOMA_DB_USER=postgres
-SOMA_DB_PASSWORD=somastack2024
 
-# Redis
-REDIS_URL=redis://<user>:<password>@localhost:20379/1
+# Redis — URL without credentials
+REDIS_URL=redis://localhost:20379/1
 
 # Memory Service
 SOMA_MEMORY_URL=http://localhost:10101
-SOMA_MEMORY_API_TOKEN=your-token
+# SOMA_MEMORY_API_TOKEN is a credential and is read from Vault at
+# secret/agent/credentials/somabrain_memory_http_token. Never set it here.
 
 # Milvus (Vector DB)
 MILVUS_HOST=localhost

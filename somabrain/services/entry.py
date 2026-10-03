@@ -59,17 +59,6 @@ def _run_segmentation() -> None:
         print(f"orchestrator: segmentation exited with error: {e}")
 
 
-def _run_drift_monitor() -> None:
-    """Execute run drift monitor."""
-
-    try:
-        from somabrain.monitoring.drift_detector import drift_service
-
-        drift_service.run_forever()
-    except Exception as e:  # pragma: no cover
-        print(f"orchestrator: drift monitoring exited with error: {e}")
-
-
 def _run_calibration() -> None:
     """Execute run calibration."""
 
@@ -119,12 +108,6 @@ def main() -> None:  # pragma: no cover
         threads.append(_start_thread(_run_segmentation, "segmentation_service"))
     else:
         print("orchestrator: segmentation disabled (cog flag or feature)")
-
-    # Drift Monitoring (respect master cog flag)
-    if feature_enabled("drift") and getattr(settings, "ENABLE_COG_THREADS", True):
-        threads.append(_start_thread(_run_drift_monitor, "drift_monitor"))
-    else:
-        print("orchestrator: drift monitoring disabled (cog flag or feature)")
 
     # Calibration Service (respect master cog flag)
     if feature_enabled("calibration") and getattr(settings, "ENABLE_COG_THREADS", True):

@@ -1,13 +1,13 @@
-"""Standalone authentication strategy for single-tenant Docker deployments.
+"""Bearer-token authentication for SomaBrain.
 
-The production AAAS auth layer validates API keys against the ``aaas_api_keys``
-table. In standalone mode the stack is intentionally single-tenant and the
-AAAS billing/rate-limiting middleware is disabled, but the API still needs a
-real authentication boundary. This class provides that boundary by verifying a
-pre-shared bearer token configured in Vault/environment at bootstrap time.
+SomaBrain is an HTTP + containers service that the agent calls. The trust
+boundary is a pre-shared bearer token: its value lives in Vault (VIBE Rule 164)
+and is read at bootstrap into ``SOMABRAIN_MEMORY_HTTP_TOKEN`` — the same secret
+the SFM backend uses, so the in-cluster trust boundary stays one credential.
 
-This is **not** an auth bypass; it is the canonical auth strategy for the
-standalone deployment profile.
+This is **not** an auth bypass. It is the authentication boundary: any request
+that does not present exactly the configured token is rejected, and a request
+presenting nothing is rejected too.
 """
 
 from __future__ import annotations

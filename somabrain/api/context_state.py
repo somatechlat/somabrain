@@ -15,15 +15,13 @@ from ninja.errors import HttpError
 from somabrain.context import ContextPlanner
 from somabrain.core.container import container
 from somabrain.learning import AdaptationEngine
-from somabrain.storage.feedback import FeedbackStore
-from somabrain.storage.token_ledger import TokenLedger
+from somabrain.admin.core.models import TokenLedger
 
 
 class ContextRouteState:
     """Encapsulates context route state for DI container management.
 
     This class holds:
-    - FeedbackStore (lazy-initialized)
     - TokenLedger (lazy-initialized)
     - Per-tenant AdaptationEngine cache
     - Feedback counter
@@ -38,19 +36,12 @@ class ContextRouteState:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self._feedback_store: FeedbackStore | None = None
         self._token_ledger: TokenLedger | None = None
         self._adaptation_engines: dict[str, AdaptationEngine] = {}
         self._feedback_counter: int = 0
         self._feedback_rate_window: dict[str, collections.deque] = (
             collections.defaultdict(collections.deque)
         )
-
-    def get_feedback_store(self) -> FeedbackStore:
-        """Get or create the FeedbackStore instance."""
-        if self._feedback_store is None:
-            self._feedback_store = FeedbackStore()
-        return self._feedback_store
 
     def get_token_ledger(self) -> TokenLedger:
         """Get or create the TokenLedger instance."""
@@ -109,7 +100,6 @@ class ContextRouteState:
 
     def reset(self) -> None:
         """Reset all state (for testing)."""
-        self._feedback_store = None
         self._token_ledger = None
         self._adaptation_engines.clear()
         self._feedback_counter = 0

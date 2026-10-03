@@ -92,14 +92,6 @@ class ServiceRegistry:
         health_check="/health",
     )
 
-    LAGO = ServiceEndpoint(
-        name="lago",
-        env_var="LAGO_URL",
-        description="Billing system",
-        default_port=3000,
-        required=False,
-        health_check="/health",
-    )
 
     @classmethod
     def get_all_services(cls) -> dict[str, ServiceEndpoint]:

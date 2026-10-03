@@ -29,6 +29,7 @@ router = Router(tags=["health"])
 
 # Helper functions - moved from health_helpers.py
 from somabrain.health.helpers import (
+    get_app_config,
     get_embedder,
     get_mt_memory,
 )
@@ -44,10 +45,9 @@ def health(request: HttpRequest) -> dict[str, Any]:
     from somabrain.sleep import SleepState
     from somabrain.sleep.cb_adapter import map_cb_to_sleep
 
-    cfg = _get_app_config()
-    mt_memory = _get_mt_memory()
-    _get_embedder()
-    app_state = _get_app_state()
+    cfg = get_app_config()
+    mt_memory = get_mt_memory()
+    get_embedder()
 
     # Synchronous tenant extraction (removed await)
     ctx = get_tenant(request, cfg.namespace)
@@ -73,10 +73,13 @@ def health(request: HttpRequest) -> dict[str, Any]:
         "idempotency_key": idempotency_key,
     }
 
-    # Constitution information
+    # Constitution information. The engine lives in somabrain.services.constitution,
+    # not on a deleted app.state. Report loaded only when it actually holds one.
     try:
-        engine = getattr(app_state, "constitution_engine", None) if app_state else None
-        if engine:
+        from somabrain.services.constitution import get_constitution_engine
+
+        engine = get_constitution_engine()
+        if engine.get_constitution():
             resp["constitution_version"] = engine.get_checksum()
             resp["constitution_status"] = "loaded"
         else:
@@ -110,10 +113,12 @@ def health(request: HttpRequest) -> dict[str, Any]:
         resp["memory_items"] = None
         resp["components"]["wm_items"] = None
 
-    # OPA status
+    # OPA status. create_opa_engine() returns None when no OPA URL is configured,
+    # which is exactly what this flag means.
     try:
-        opa_engine = getattr(app_state, "opa_engine", None) if app_state else None
-        resp["opa_ok"] = bool(opa_engine)
+        from somabrain.bootstrap.opa import create_opa_engine
+
+        resp["opa_ok"] = bool(create_opa_engine())
         resp["opa_required"] = getattr(settings, "REQUIRE_OPA", None)
     except Exception:
         resp["opa_ok"] = None
@@ -225,9 +230,8 @@ def healthz(request: HttpRequest) -> dict[str, str]:
 @router.get("/diagnostics", response=dict[str, Any])
 def diagnostics(request: HttpRequest) -> dict[str, Any]:
     """Detailed diagnostics endpoint."""
-    cfg = _get_app_config()
-    mt_memory = _get_mt_memory()
-    _get_app_state()
+    cfg = get_app_config()
+    mt_memory = get_mt_memory()
 
     ctx = get_tenant(request, cfg.namespace)
 

@@ -15,13 +15,15 @@ Key features:
 from __future__ import annotations
 
 import os
+import socket
 import threading
 import time
 from dataclasses import dataclass
 
-from common.config.settings import settings
-from somabrain.common.infra import assert_ready
-from somabrain.modes import feature_enabled
+from django.conf import settings
+
+from common.infra_utils import assert_ready
+from somabrain.runtime.modes import feature_enabled
 
 import somabrain.metrics as app_metrics
 
@@ -94,14 +96,13 @@ class IntegratorLeaderElection:
     """Redis-based leader election service for integrator instances."""
 
     def __init__(self, redis_url: str | None = None) -> None:
-        # Prefer explicit argument; fall back to central settings.
-        self._redis_url = redis_url or settings.redis_url or ""
+        # Prefer explicit argument; fall back to the one configured endpoint.
+        self._redis_url = redis_url or settings.SOMABRAIN_REDIS_URL
         self._redis_client = None
         self._leader_states: dict[str, LeaderState] = {}
         self._configs: dict[str, LeaderConfig] = {}
         self._lock_prefix = "integrator_leader"
-        # Use centralized configuration for hostname
-        self._instance_id = f"{settings.hostname}-{int(time.time())}"
+        self._instance_id = f"{socket.gethostname()}-{int(time.time())}"
         self._running = False
         self._heartbeat_thread: threading.Thread | None = None
 
@@ -135,11 +136,7 @@ class IntegratorLeaderElection:
         try:
             import yaml
 
-            config_path = (
-                settings.learning_tenants_file
-                or settings.learning_tenants_config
-                or "config/learning.tenants.yaml"
-            )
+            config_path = settings.SOMABRAIN_LEARNING_TENANTS_FILE
 
             if os.path.exists(config_path):
                 with open(config_path, "r", encoding="utf-8") as f:

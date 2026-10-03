@@ -50,7 +50,7 @@ class TestDegradedModeOperation:
         WHEN LTM circuit is open
         THEN recall SHALL return WM-only results with degraded=true.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         from somabrain.infrastructure.degradation import DegradationManager
 
@@ -99,7 +99,7 @@ class TestDegradedModeOperation:
         WHEN system is in degraded mode
         THEN health check SHALL report degraded status.
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         from somabrain.infrastructure.degradation import DegradationManager
 
@@ -191,7 +191,7 @@ class TestDegradationManager:
         **Feature: full-capacity-testing**
         **Validates: Requirements F3.1**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         from somabrain.infrastructure.degradation import DegradationManager
 
@@ -217,7 +217,7 @@ class TestDegradationManager:
         **Feature: full-capacity-testing**
         **Validates: Requirements F3.3**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         from somabrain.infrastructure.degradation import DegradationManager
 
@@ -249,7 +249,7 @@ class TestDegradationManager:
         **Feature: full-capacity-testing**
         **Validates: Requirements F3.4**
         """
-        from somabrain.core.infrastructure_defs.circuit_breaker import CircuitBreaker
+        from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
         from somabrain.infrastructure.degradation import DegradationManager
 

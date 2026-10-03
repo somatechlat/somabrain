@@ -52,13 +52,21 @@ brain-resilient.yaml
 ## Environment Variables (ConfigMap)
 ```yaml
 SOMABRAIN_LOG_LEVEL: "INFO"
-SOMABRAIN_POSTGRES_DSN: "postgresql://<user>:<password>@postgres:5432/somabrain"
+# Database topology — parts, not a DSN. A DSN embeds the password, so it must
+# never sit in a ConfigMap, a .env or git. The password is read from Vault at
+# secret/agent/credentials/postgres_password and the connection is assembled
+# at runtime (VIBE Rule 164).
+SOMABRAIN_POSTGRES_HOST: "postgres"
+SOMABRAIN_POSTGRES_PORT: "5432"
+SOMABRAIN_POSTGRES_USER: "somabrain"
+SOMABRAIN_POSTGRES_DB: "somabrain"
 SOMABRAIN_REDIS_URL: "redis://redis:6379/0"
 SOMABRAIN_KAFKA_URL: "kafka:9092"
 SOMABRAIN_MILVUS_HOST: "milvus"
 SOMABRAIN_MILVUS_PORT: "19530"
 ALLOWED_HOSTS: "*"
-SOMA_API_TOKEN: "dev-token-somastack2024"
+# SOMA_API_TOKEN is a credential and is read from Vault at
+# secret/agent/credentials/soma_api_token. It is never set here.
 ```
 
 ## Port Forwards (Tiltfile)

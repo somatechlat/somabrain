@@ -9,7 +9,7 @@ import json
 
 # Unified configuration – use the central Settings instance
 from django.conf import settings
-from somabrain.quantum import HRRConfig
+from somabrain.admin.core.quantum import HRRConfig
 
 cfg = settings
 if not getattr(cfg, "use_hrr", False):

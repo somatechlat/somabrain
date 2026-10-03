@@ -114,16 +114,6 @@ def get_embedder():
     return None
 
 
-def get_app_state():
-    """Get the Django Ninja app state for OPA engine access."""
-    try:
-        from somabrain.app import app
-
-        return app.state
-    except Exception:
-        return None
-
-
 def ping(url: str) -> bool:
     """Ping a URL and return True if it responds with 2xx."""
     ping_timeout = float(getattr(settings, "HEALTH_PING_TIMEOUT", 0.5) or 0.5)

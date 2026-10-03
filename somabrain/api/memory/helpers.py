@@ -270,8 +270,12 @@ def _compose_memory_payload(
         stored_payload["session_id"] = session_id
     if salience is not None:
         stored_payload["salience"] = float(salience)
-    if source:
-        stored_payload["source"] = source
+    # Provenance. ``source`` is None when the caller omitted it, so a source
+    # already carried in ``value`` survives; the seam default applies only when
+    # neither side set one. A truthy default on the request model used to reach
+    # here as "agent-chat" on every write and clobber ``value.source``.
+    resolved_source = source or stored_payload.get("source") or "agent-chat"
+    stored_payload["source"] = str(resolved_source)
     if embedding is not None:
         stored_payload["embedding"] = [float(x) for x in embedding]
     if coord is not None:

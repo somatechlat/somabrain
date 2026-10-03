@@ -7,17 +7,16 @@ any mocks or placeholders.
 
 High‑level workflow:
 
-* Enumerate tenants from the live ``mt_memory`` pool (falling back to the
-  runtime/app modules if needed).
+* Enumerate tenants from the live ``mt_memory`` pool.
 * For each tenant, pull the canonical option set via ``option_manager``.
 * Ensure every option has a Milvus vector; insert if missing and increment
   ``MILVUS_RECONCILE_MISSING``.
 * Delete any Milvus vectors whose ``option_id`` is absent from Postgres and
   increment ``MILVUS_RECONCILE_ORPHAN``.
 
-The job may be invoked manually or via a background scheduler (see
-``somabrain.app``).  It raises ``RuntimeError`` when Milvus is unavailable so
-operators can alert on the failure.
+The job may be invoked manually or from the management command.  It raises
+``RuntimeError`` when Milvus is unavailable so operators can alert on the
+failure.
 """
 
 from __future__ import annotations
@@ -35,54 +34,17 @@ logger = logging.getLogger(__name__)
 
 
 def _memory_pool():
-    """Return the global memory pool instance, regardless of import order.
+    """The live memory pool.
 
-    Attempts to retrieve the mt_memory pool from the runtime module first,
-    then falls back to the app module. If neither has an initialized pool,
-    creates a new MultiTenantMemory instance using centralized Settings
-    and caches it on the runtime module for subsequent calls.
-
-    Returns:
-        MultiTenantMemory: The global memory pool instance for tenant-scoped
-                          memory operations.
-
-    Notes:
-        - Import order agnostic: handles circular import scenarios gracefully
-        - Lazy initialization: creates pool only when first accessed
-        - Caches result on runtime module to avoid repeated instantiation
-        - Uses centralized Settings for pool configuration
+    ``somabrain.runtime`` owns the ``mt_memory`` singleton; ``get_memory_pool``
+    returns it and initializes it on first access. This used to walk a chain of
+    module lookups — ``runtime``, then the deleted ``somabrain.app``, then a
+    hand-built pool — with every step swallowed by ``except Exception``. The
+    middle step could never fire and the swallows hid real init failures.
     """
+    from somabrain.runtime import get_memory_pool
 
-    # Type ignores: These imports are intentionally dynamic to handle circular import
-    # scenarios and runtime module availability. The modules may not exist at static
-    # analysis time but are available at runtime after app initialization.
-    runtime_mod = None
-    try:
-        from somabrain import runtime as _rt  # type: ignore[import-not-found]
-
-        runtime_mod = _rt
-        pool = getattr(_rt, "mt_memory", None)
-    except Exception:
-        pool = None
-    if pool is None:
-        try:
-            import somabrain.app as _app_mod  # type: ignore[import-not-found]
-
-            pool = getattr(_app_mod, "mt_memory", None)
-        except Exception:
-            pool = None
-    if pool is None:
-        from django.conf import settings as cfg
-
-        from somabrain.memory.pool import MultiTenantMemory
-
-        pool = MultiTenantMemory(cfg)
-        if runtime_mod is not None:
-            try:
-                runtime_mod.mt_memory = pool
-            except Exception as exc:
-                logger.debug("Failed to cache mt_memory on runtime module: %s", exc)
-    return pool
+    return get_memory_pool()
 
 
 def _tenant_list() -> list[str]:

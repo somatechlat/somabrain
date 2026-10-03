@@ -17,7 +17,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from somabrain.feedback import Feedback
+    from somabrain.admin.core.feedback import Feedback
 
 try:
     from django.conf import settings

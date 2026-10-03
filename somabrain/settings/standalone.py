@@ -1,9 +1,9 @@
 
-"""Standalone settings profile with AAAS features stripped at import time.
+"""Standalone settings profile.
 
-The standalone runtime still reuses the shared Django, infrastructure, and
-cognitive settings modules, but it forces a single-tenant view of the world by
-removing AAAS apps/middleware and pinning the default tenant identity.
+Reuses the shared Django, infrastructure, and cognitive settings modules and
+pins a single tenant identity. There is no product overlay to strip: SomaBrain
+is HTTP + containers only, and ``tenant_id`` is a data-partition key.
 """
 
 import environ  # type: ignore[import-untyped]
@@ -16,21 +16,11 @@ from .neuro import *
 env = environ.Env()
 
 # =============================================================================
-# STANDALONE ISOLATION - STRIP AAAS
+# STANDALONE TENANT IDENTITY
 # =============================================================================
 
-# Keep AAAS Application in standalone so auth migrations and API keys work.
-# Only the AAAS middleware (billing, rate limiting) is removed.
-
-# Remove AAAS Middleware (Billing, Rate Limiting, etc)
-MIDDLEWARE = [
-    m
-    for m in MIDDLEWARE
-    if "somabrain.aaas" not in m and "UsageTrackingMiddleware" not in m
-]
-
-# Force standalone tenant identity even if the outer shell inherited AAAS-ish
-# variables from another environment.
+# Pin the tenant identity so a shared environment cannot leak another
+# partition's key into a standalone deployment.
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS = env.bool(
     "SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS",
     default=SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS,
@@ -38,4 +28,3 @@ SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS = env.bool(
 SOMABRAIN_DEFAULT_TENANT = "standalone"
 SOMABRAIN_TENANT_ID = "standalone"
 
-print(f"Loaded STANDALONE settings. Apps: {len(INSTALLED_APPS)}")

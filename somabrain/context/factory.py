@@ -9,7 +9,7 @@ from django.conf import settings
 
 from somabrain.admin.core.embeddings import make_embedder
 from somabrain.embed_dim import resolve_embed_dim
-from somabrain.cognitive.working_memory_buffer import WorkingMemoryBuffer
+from somabrain.admin.cognitive.working_memory_buffer import WorkingMemoryBuffer
 from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
 from somabrain.learning import UtilityWeights

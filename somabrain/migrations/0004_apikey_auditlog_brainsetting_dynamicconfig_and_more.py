@@ -1,12 +1,10 @@
-"""Root app migration cleanup for the split AAAS architecture.
+"""Root app migration — DynamicConfig only.
 
-Historically the monolithic ``somabrain`` app briefly carried AAAS models before
-they were moved into the dedicated ``somabrain.aaas`` app. The current repo
-keeps both migration histories, so replaying the old monolithic migration on a
-fresh database tries to create AAAS tables such as ``aaas_api_keys`` twice.
-
-For current installs, the root app only still owns ``DynamicConfig`` here. The
-AAAS schema is created exclusively by ``somabrain.aaas`` migrations.
+Historically this migration also created the product-tenancy tables (API keys,
+audit log, brain settings) that were later split into a separate app. That
+product overlay has since been removed from SomaBrain entirely: it is an HTTP +
+containers service, and ``tenant_id`` is a data-partition key rather than a
+product tenancy. Only the root-owned ``DynamicConfig`` table is created here.
 """
 
 from django.db import migrations, models
@@ -15,9 +13,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     """Create only the root-owned DynamicConfig table.
 
-    Keeping the migration number preserves compatibility for existing databases,
-    while removing duplicate AAAS table creation keeps fresh test databases
-    aligned with the present split-app layout.
+    The migration number is preserved so existing databases keep a stable
+    history; only the table set narrowed.
     """
 
     dependencies = [

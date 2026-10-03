@@ -14,11 +14,6 @@ from django.utils import timezone
 # Import consolidated API from v1
 from somabrain.api.v1 import api
 
-# Webhook handler — AAAS only
-_lago_webhook = None
-if _django_apps.is_installed("somabrain.aaas"):
-    from somabrain.aaas.webhooks import lago_webhook as _lago_webhook
-
 # =============================================================================
 # HEALTH VIEWS - VIBE Coding Rules
 # =============================================================================
@@ -81,7 +76,7 @@ def health_view(request):
     COMPREHENSIVE health endpoint for ALL SomaBrain services.
 
     Checks: PostgreSQL, Redis, Kafka, Milvus, OPA, MinIO,
-    Schema Registry, Keycloak, Lago, SFM, Cognitive, Embedder
+    Schema Registry, Keycloak, SFM, Cognitive, Embedder
     """
     import socket
     import time
@@ -252,21 +247,6 @@ def health_view(request):
 
     health["infrastructure"]["keycloak"] = timed_check("Keycloak", check_keycloak)
 
-    # Lago
-    def check_lago():
-        """Execute check lago."""
-
-        if not _django_apps.is_installed("somabrain.aaas"):
-            return {"configured": False, "mode": "standalone"}
-
-        from somabrain.aaas.billing import get_lago_client
-
-        lago = get_lago_client()
-        if not lago:
-            return {"configured": False}
-        return {"healthy": lago.health_check()}
-
-    health["infrastructure"]["lago"] = timed_check("Lago", check_lago)
 
     # SomaFractalMemory
     def check_sfm():
@@ -474,7 +454,3 @@ urlpatterns = [
     # paths continue to work alongside /api/*.
     path("", api.urls),
 ]
-
-# AAAS-only: Lago webhook endpoint
-if _lago_webhook is not None:
-    urlpatterns.append(path("webhooks/lago/", _lago_webhook, name="lago_webhook"))

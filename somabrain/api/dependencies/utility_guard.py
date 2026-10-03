@@ -36,13 +36,14 @@ def compute_utility(
 
 
 def _get_constitution_engine() -> ConstitutionEngine | None:
-    """Get the ConstitutionEngine singleton."""
-    try:
-        from somabrain.app import app
+    """Constitution engine from its real singleton home.
 
-        return getattr(app.state, "constitution_engine", None)
-    except Exception:
-        return None
+    This used to be read off ``somabrain.app.state``. That module is gone;
+    ``somabrain.services.constitution`` owns the engine now.
+    """
+    from somabrain.services.constitution import get_constitution_engine
+
+    return get_constitution_engine()
 
 
 async def utility_guard(request: HttpRequest) -> None:

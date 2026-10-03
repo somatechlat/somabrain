@@ -1,10 +1,9 @@
 """Brain Settings Management API - Persona-Driven implementation.
 
 Features:
-- Multi-tenant tenant isolation
-- AAAS Auth (JWT/API-Key)
-- OPA Permission Enforcement
-- Zero-Latency cognitive shifts
+- Namespace isolation on ``tenant_id`` (data-partition key only)
+- Bearer authentication via ``api_key_auth`` (Vault-managed token)
+- Zero-latency cognitive shifts
 """
 
 from typing import Any
@@ -12,9 +11,7 @@ from typing import Any
 from django.http import HttpRequest
 from ninja import Router, Schema
 
-from somabrain.aaas.auth import api_key_or_jwt
-from somabrain.aaas.granular import Permission, require_permission
-from somabrain.aaas.rate_limit import rate_limit
+from somabrain.api.auth import api_key_auth
 from somabrain.brain_settings.models import BrainSetting
 from somabrain.brain_settings.modes import BRAIN_MODES
 
@@ -31,8 +28,7 @@ class SetModeSchema(Schema):
     mode: str
 
 
-@router.get("/modes", auth=api_key_or_jwt, response=list[ModeResponse])
-@rate_limit(rps=5, burst=10)
+@router.get("/modes", auth=api_key_auth, response=list[ModeResponse])
 def list_brain_modes(request: HttpRequest):
     """List all available cognitive operational modes."""
     return [
@@ -41,9 +37,7 @@ def list_brain_modes(request: HttpRequest):
     ]
 
 
-@router.post("/mode", auth=api_key_or_jwt)
-@require_permission(Permission.SYSTEM_CONFIG)
-@rate_limit(rps=1, burst=5)
+@router.post("/mode", auth=api_key_auth)
 def set_brain_mode(request: HttpRequest, data: SetModeSchema):
     """
     Atomic cognitive shift. Immediate cache invalidation.
@@ -70,7 +64,7 @@ def set_brain_mode(request: HttpRequest, data: SetModeSchema):
     }
 
 
-@router.get("/status", auth=api_key_or_jwt)
+@router.get("/status", auth=api_key_auth)
 def get_brain_status(request: HttpRequest):
     """Get current operational state and critical GMD knobs."""
     tenant_id = request.auth.get("tenant_id", "default")

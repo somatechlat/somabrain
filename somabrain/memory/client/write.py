@@ -34,6 +34,31 @@ def _resolve_coord(
     return _stable_coord(f"{universe}::{coord_key}")
 
 
+def _seam_store_fields(cfg: Any, enriched: dict, payload: dict) -> dict[str, Any]:
+    """Return the first-class ``MemoryStoreRequest`` fields for a store body.
+
+    ARCHITECTURE-INVARIANTS §5: ``embedding`` and ``tenant_id`` are first-class
+    top-level fields on ``MemoryStoreRequest`` — never only inside ``payload``.
+    Every write path must add these to its body, not just the single-write one.
+
+    Regression guard: earlier versions of the *bulk* paths built their body as
+    ``{coord, payload, memory_type}`` and silently stripped both fields, so
+    every batch write fell back to hash vectors and lost tenant isolation. One
+    helper, used by every path, so the two cannot drift apart again.
+    """
+    from somabrain.memory.remember import _get_tenant_namespace
+
+    tenant, _ns = _get_tenant_namespace(cfg, payload)
+    embedding = enriched.get("embedding")
+    if embedding is None:
+        embedding = payload.get("embedding")
+
+    fields: dict[str, Any] = {"tenant_id": tenant or None}
+    if embedding is not None:
+        fields["embedding"] = embedding
+    return fields
+
+
 class WriteMixin:
     """Handles memory persistence operations."""
 
@@ -185,6 +210,8 @@ class WriteMixin:
                 "memory_type": memory_type,
                 "type": memory_type,
             }
+            # First-class seam fields — the bulk path must not strip them.
+            body.update(_seam_store_fields(self.cfg, enriched, payload))
             universes.append(universe)
             coords.append(coord)
             prepared.append(
@@ -264,21 +291,14 @@ class WriteMixin:
                 memory_type = str(
                     enriched.get("memory_type") or enriched.get("type") or "episodic"
                 )
-                from somabrain.memory.remember import _get_tenant_namespace
-
-                tenant, _ns = _get_tenant_namespace(self.cfg, payload)
-                embedding = enriched.get("embedding")
-                if embedding is None:
-                    embedding = payload.get("embedding")
                 body: dict[str, Any] = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
                     "payload": enriched,
                     "memory_type": memory_type,
                     "type": memory_type,
-                    "tenant_id": tenant or None,
                 }
-                if embedding is not None:
-                    body["embedding"] = embedding
+                # First-class seam fields — every write path, not just the sync one.
+                body.update(_seam_store_fields(self.cfg, enriched, payload))
 
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
@@ -341,6 +361,8 @@ class WriteMixin:
                 "payload": enriched_payload,
                 "type": enriched_payload.get("memory_type", "episodic"),
             }
+            # First-class seam fields — the bulk path must not strip them.
+            body.update(_seam_store_fields(self.cfg, enriched, payload))
             universes.append(universe)
             coords.append(coord)
             prepared.append(
@@ -411,21 +433,13 @@ class WriteMixin:
         )
         # ARCHITECTURE-INVARIANTS §5: embedding and tenant_id are FIRST-CLASS
         # top-level fields on MemoryStoreRequest — never only inside payload.
-        from somabrain.memory.remember import _get_tenant_namespace
-
-        tenant, _ns = _get_tenant_namespace(self.cfg, payload)
-        embedding = enriched.get("embedding")
-        if embedding is None:
-            embedding = payload.get("embedding")
         body: dict[str, Any] = {
             "coord": coord_str,
             "payload": enriched,
             "memory_type": memory_type,
             "type": memory_type,
-            "tenant_id": tenant or None,
         }
-        if embedding is not None:
-            body["embedding"] = embedding
+        body.update(_seam_store_fields(self.cfg, enriched, payload))
 
         rid = request_id or str(uuid.uuid4())
         rid_hdr = {"X-Request-ID": rid}
@@ -469,21 +483,14 @@ class WriteMixin:
         memory_type = str(
             enriched.get("memory_type") or enriched.get("type") or "episodic"
         )
-        from somabrain.memory.remember import _get_tenant_namespace
-
-        tenant, _ns = _get_tenant_namespace(self.cfg, payload)
-        embedding = enriched.get("embedding")
-        if embedding is None:
-            embedding = payload.get("embedding")
         body: dict[str, Any] = {
             "coord": coord_str,
             "payload": enriched,
             "memory_type": memory_type,
             "type": memory_type,
-            "tenant_id": tenant or None,
         }
-        if embedding is not None:
-            body["embedding"] = embedding
+        # First-class seam fields — the background path must not strip them.
+        body.update(_seam_store_fields(self.cfg, enriched, payload))
 
         try:
             await self._store_http_async(body, rid_hdr)
@@ -513,6 +520,8 @@ class WriteMixin:
                         payload.get("memory_type") or payload.get("type") or "episodic"
                     ),
                 }
+                # First-class seam fields — this path must not strip them either.
+                body.update(_seam_store_fields(self.cfg, payload, payload))
                 success, _ = self._store_http_sync(body, headers)
                 if success:
                     return True

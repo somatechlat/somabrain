@@ -7,14 +7,14 @@ This module is HIGH RISK due to tight coupling with runtime.py module loading.
 Changes should be tested thoroughly before deployment.
 """
 
-from somabrain.embed_dim import resolve_embed_dim
-
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
 from django.conf import settings
+
+from somabrain.embed_dim import resolve_embed_dim
 
 if TYPE_CHECKING:
     from somabrain.admin.core.learning.prediction import BudgetedPredictor
@@ -238,3 +238,52 @@ def make_unified_scorer(cfg, fd_sketch=None):
         recency_tau=getattr(settings, "SOMABRAIN_SCORER_RECENCY_TAU", 3600.0),
         fd_backend=fd_sketch,
     )
+
+
+# ---------------------------------------------------------------------------
+# Runtime Accessors
+# ---------------------------------------------------------------------------
+#
+# These used to live as attributes on ``somabrain.app``. That module is gone.
+# The DI container (``somabrain.core.container``) is the home for singletons
+# now, and this is the same register-on-first-use pattern
+# ``somabrain.journal.local_journal`` and ``somabrain.metrics.interface`` use.
+
+
+def _singleton(name: str, factory):
+    """Register ``factory`` under ``name`` on first use, then return the instance.
+
+    Registration is idempotent: an already-registered name is left alone so a
+    test that registered a replacement keeps it.
+    """
+    from somabrain.core.container import container
+
+    if not container.has(name):
+        container.register(name, factory)
+    return container.get(name)
+
+
+def get_predictor():
+    """The process-wide predictor. Same object every call."""
+    return _singleton("predictor", lambda: make_predictor(settings))
+
+
+def get_amygdala():
+    """The process-wide salience scorer. Same object every call."""
+    from somabrain.bootstrap.core_singletons import create_amygdala
+
+    return _singleton("amygdala", lambda: create_amygdala(settings))
+
+
+def get_neuromodulators():
+    """Per-tenant neuromodulator state. One store, keyed by tenant inside."""
+    from somabrain.runtime.neuromodulators import PerTenantNeuromodulators
+
+    return _singleton("per_tenant_neuromodulators", PerTenantNeuromodulators)
+
+
+def get_personality_store():
+    """Per-tenant personality traits. One store, keyed by tenant inside."""
+    from somabrain.admin.cognitive.personality import PersonalityStore
+
+    return _singleton("personality_store", PersonalityStore)

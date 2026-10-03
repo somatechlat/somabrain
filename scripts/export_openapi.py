@@ -18,7 +18,7 @@ import django
 
 django.setup()
 
-from somabrain.api import api  # Django Ninja API instance
+from somabrain.api.v1 import api  # Django Ninja API instance
 
 out_dir = Path("artifacts")
 out_dir.mkdir(parents=True, exist_ok=True)

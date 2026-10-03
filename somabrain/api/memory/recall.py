@@ -4,7 +4,7 @@ This module contains the core recall logic extracted from memory_api.py
 for better organization and reduced file size.
 
 Functions:
-- _perform_recall: Core recall implementation with WM/LTM/tiered support
+- _perform_recall: Core recall implementation with WM/LTM support
 - _match_tags: Tag matching filter for candidates
 - _within_age: Age-based filter for candidates
 - _decorated_item: Create MemoryRecallItem from candidate
@@ -44,23 +44,9 @@ from somabrain.services.parameter_supervisor import MetricsSnapshot
 logger = logging.getLogger(__name__)
 
 
-def _get_tiered_registry():
-    """Lazy import of tiered registry to avoid circular imports."""
-    from somabrain.api.memory_api import _TIERED_REGISTRY
-
-    return _TIERED_REGISTRY
-
-
-def _tiered_enabled() -> bool:
-    """Check if tiered memory feature is enabled."""
-    from somabrain.runtime.modes import feature_enabled
-
-    return feature_enabled("tiered_memory")
-
-
 def _get_recall_session_store():
     """Get the recall session store from the DI container."""
-    from somabrain.api.memory_api import get_recall_session_store
+    from somabrain.api.memory.session import get_recall_session_store
 
     return get_recall_session_store()
 
@@ -186,12 +172,11 @@ async def perform_recall(
     *,
     default_chunk_size: int | None = None,
 ) -> MemoryRecallResponse:
-    """Perform memory recall across WM, LTM, and tiered memory.
+    """Perform memory recall across working memory and long-term memory.
 
     This is the core recall implementation that handles:
     - Working memory (WM) recall via embeddings
     - Long-term memory (LTM) recall via MemoryService
-    - Tiered memory recall via TieredMemoryRegistry
     - Result filtering by tags, age, and score
     - Session management and chunking
     """
@@ -297,42 +282,6 @@ async def perform_recall(
             if item is not None:
                 ltm_hits.append(item)
 
-    # Tiered memory recall
-    tiered_item: MemoryRecallItem | None = None
-    tiered_margin_value: float | None = None
-    tiered_eta_value: float | None = None
-    tiered_sparsity_value: float | None = None
-    if _tiered_enabled() and query_vec is not None:
-        try:
-            tiered_registry = _get_tiered_registry()
-            tiered_hit = tiered_registry.recall(
-                payload.tenant,
-                payload.namespace,
-                query_vector=query_vec,
-            )
-        except Exception:
-            tiered_hit = None
-        if tiered_hit is not None and tiered_hit.payload is not None:
-            payload_copy = copy.deepcopy(tiered_hit.payload)
-            payload_copy.setdefault("governed_margin", tiered_hit.context.margin)
-            payload_copy.setdefault("cleanup_backend", tiered_hit.backend)
-            coord_obj = tiered_hit.coordinate or payload_copy.get("coordinate")
-            item = _decorated_item(
-                tiered_hit.context.layer,
-                "tiered_memory",
-                tiered_hit.context.score,
-                payload_copy,
-                coord_obj,
-                payload.tags,
-                payload.max_age_seconds,
-                payload.min_score,
-            )
-            if item is not None:
-                tiered_item = item
-                tiered_margin_value = tiered_hit.context.margin
-                tiered_eta_value = tiered_hit.eta
-                tiered_sparsity_value = tiered_hit.sparsity
-
     # Deduplicate and merge results
     all_results: list[MemoryRecallItem] = []
     seen: set[tuple[tuple[float, ...] | None, str, str]] = set()
@@ -353,7 +302,6 @@ async def perform_recall(
         seen.add(key)
         all_results.append(item)
 
-    _append(tiered_item)
     for entry in wm_hits:
         _append(entry)
     for entry in ltm_hits:
@@ -389,19 +337,6 @@ async def perform_recall(
             all_results,
         )
 
-    # Record tiered metrics
-    if tiered_margin_value is not None:
-        try:
-            record_memory_snapshot(
-                payload.tenant,
-                payload.namespace,
-                margin=tiered_margin_value,
-                eta=tiered_eta_value,
-                sparsity=tiered_sparsity_value,
-            )
-        except Exception as e:
-            logger.debug("Failed to record tiered memory snapshot: %s", e)
-
     # Submit metrics snapshot
     top_confidence = 0.0
     if all_results:
@@ -417,9 +352,11 @@ async def perform_recall(
             MetricsSnapshot(
                 tenant=payload.tenant,
                 namespace=payload.namespace,
-                top1_accuracy=top_confidence,
-                margin=float(tiered_margin_value or 0.0),
-                latency_p95_ms=duration * 1000.0,
+                metrics={
+                    "top1_accuracy": top_confidence,
+                    "latency_p95_ms": duration * 1000.0,
+                    "result_count": float(len(chunk_results)),
+                },
             )
         )
     except Exception as e:

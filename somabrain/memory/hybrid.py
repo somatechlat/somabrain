@@ -205,7 +205,7 @@ def hybrid_recall_sync(
     Returns:
         List of RecallHit objects with hybrid scoring.
     """
-    from somabrain.core.infrastructure_defs.degradation import get_degradation_manager
+    from somabrain.infrastructure.degradation import get_degradation_manager
 
     degradation_mgr = get_degradation_manager()
 
@@ -310,7 +310,7 @@ async def hybrid_recall_async(
     Returns:
         List of RecallHit objects with hybrid scoring.
     """
-    from somabrain.core.infrastructure_defs.degradation import get_degradation_manager
+    from somabrain.infrastructure.degradation import get_degradation_manager
 
     degradation_mgr = get_degradation_manager()
 

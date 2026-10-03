@@ -61,19 +61,19 @@ class MemoryClient:
             self._init_direct_mode()
 
     def _init_direct_mode(self) -> None:
-        """Initialize direct code access if available."""
-        try:
-            services_module = import_module("somafractalmemory.services")
-            get_memory_service = services_module.get_memory_service
-            self._direct_service = cast(_DirectMemoryService, get_memory_service())
-            logger.info(
-                "Initialized Unified Memory Client in DIRECT mode (Zero-Latency)."
-            )
-        except ImportError:
-            logger.error(
-                "Direct mode requested but somafractalmemory is not installed. Falling back to HTTP."
-            )
-            self.mode = "http"
+        """Bind the in-process memory service for direct mode.
+
+        Direct mode is a deployment choice, not a preference. If the caller
+        asked for it and the memory service cannot be imported, that is a
+        broken deployment: fail closed rather than silently serving over a
+        different transport than the one that was configured.
+        """
+        services_module = import_module("somafractalmemory.services")
+        get_memory_service = services_module.get_memory_service
+        self._direct_service = cast(_DirectMemoryService, get_memory_service())
+        logger.info(
+            "Initialized Unified Memory Client in DIRECT mode (Zero-Latency)."
+        )
 
     def _canonical_client(self) -> CanonicalMemoryClient:
         """Lazy initializer for the canonical HTTP-backed MemoryClient."""

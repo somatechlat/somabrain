@@ -7,9 +7,9 @@ These singletons are created during application startup and shared
 across all request handlers.
 """
 
-from somabrain.embed_dim import resolve_embed_dim
-
 from __future__ import annotations
+
+from somabrain.embed_dim import resolve_embed_dim
 
 import logging
 from typing import TYPE_CHECKING, Any
@@ -34,7 +34,7 @@ def create_mt_wm(cfg, scorer: UnifiedScorer):
     Returns:
         MultiTenantWM: The working memory singleton.
     """
-    from somabrain.mt_wm import MTWMConfig, MultiTenantWM
+    from somabrain.memory.wm.mt_wm import MTWMConfig, MultiTenantWM
 
     return MultiTenantWM(
         dim=resolve_embed_dim(settings),
@@ -63,7 +63,7 @@ def create_mc_wm(cfg, scorer: UnifiedScorer):
     Returns:
         MultiColumnWM: The multi-column working memory singleton.
     """
-    from somabrain.microcircuits import MCConfig, MultiColumnWM
+    from somabrain.admin.cognitive.microcircuits import MCConfig, MultiColumnWM
 
     columns = max(1, int(getattr(settings, "SOMABRAIN_MICRO_CIRCUITS", 4)))
     per_col_capacity = max(
@@ -100,8 +100,8 @@ def create_mt_ctx(cfg, quantum: QuantumLayer | None):
     if quantum is None:
         return None
 
-    from somabrain.context_hrr import HRRContextConfig
-    from somabrain.mt_context import MultiTenantHRRContext
+    from somabrain.admin.core.context_hrr import HRRContextConfig
+    from somabrain.memory.mt_context import MultiTenantHRRContext
 
     return MultiTenantHRRContext(
         quantum,
@@ -113,43 +113,6 @@ def create_mt_ctx(cfg, quantum: QuantumLayer | None):
             ),
         ),
         max_tenants=1000,
-    )
-
-
-def create_quotas(cfg):
-    """Create the QuotaManager singleton.
-
-    Args:
-        cfg: Application configuration object.
-
-    Returns:
-        QuotaManager: The quota management singleton.
-    """
-    from somabrain.quotas import QuotaConfig, QuotaManager
-
-    return QuotaManager(
-        QuotaConfig(
-            daily_writes=getattr(settings, "SOMABRAIN_WRITE_DAILY_LIMIT", 10000)
-        )
-    )
-
-
-def create_rate_limiter(cfg):
-    """Create the RateLimiter singleton.
-
-    Args:
-        cfg: Application configuration object.
-
-    Returns:
-        RateLimiter: The rate limiting singleton.
-    """
-    from somabrain.ratelimit import RateConfig, RateLimiter
-
-    return RateLimiter(
-        RateConfig(
-            rps=getattr(settings, "SOMABRAIN_RATE_RPS", 100),
-            burst=getattr(settings, "SOMABRAIN_RATE_BURST", 20),
-        )
     )
 
 
@@ -321,7 +284,7 @@ def create_unified_brain(fnom_memory: Any, fractal_memory: Any, neuromods: Any):
     if fnom_memory is None or fractal_memory is None:
         return None
 
-    from somabrain.brain import UnifiedBrainCore
+    from somabrain.admin.brain.unified_core import UnifiedBrainCore
 
     return UnifiedBrainCore(fractal_memory, fnom_memory, neuromods)
 

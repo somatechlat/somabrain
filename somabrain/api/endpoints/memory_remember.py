@@ -278,7 +278,10 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         ),
         "coordinate": coordinate_list,
         "store": "somafractalmemory",
-        "kind": payload.kind,
+        # Report the kind that was actually stored. ``payload.kind`` is None
+        # when the caller omitted it and the stored value came from
+        # ``value.kind`` or the seam default.
+        "kind": stored_payload.get("kind"),
         "error": None,
         "promoted_to_wm": promoted_to_wm,
         "persisted_to_ltm": persisted_to_ltm,

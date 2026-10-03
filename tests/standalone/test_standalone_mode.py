@@ -2,7 +2,8 @@
 Standalone Mode Test Suite.
 
 Tests for single-tenant standalone deployment mode.
-These tests verify somabrain works correctly without AAAS multi-tenancy.
+These tests verify somabrain works with ``tenant_id`` as a data-partition key
+and with no product tenancy overlay.
 
 Test Categories:
 - Config tests: NO database required
@@ -28,10 +29,9 @@ class TestStandaloneConfig:
         settings_module = importlib.import_module("somabrain.settings.standalone")
 
         assert settings_module is not None
-        # Standalone keeps the AAAS app installed for auth migrations/API-key
-        # compatibility, but removes the AAAS-specific middleware.
-        assert "somabrain.aaas" in settings_module.INSTALLED_APPS
-        assert not any("somabrain.aaas" in m for m in settings_module.MIDDLEWARE)
+        # SomaBrain is HTTP + containers only: there is no product-tenancy app.
+        assert "somabrain.aaas" not in settings_module.INSTALLED_APPS
+        assert not any("aaas" in m.lower() for m in settings_module.MIDDLEWARE)
 
     def test_somabrain_mode_setting_exists(self):
         """Verify SOMABRAIN_MODE setting is available."""

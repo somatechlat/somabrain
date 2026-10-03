@@ -366,7 +366,7 @@ def recall_with_degradation(
     Returns:
         List of RecallHit objects.
     """
-    from somabrain.core.infrastructure_defs.degradation import get_degradation_manager
+    from somabrain.infrastructure.degradation import get_degradation_manager
 
     degradation_mgr = get_degradation_manager()
 
@@ -424,7 +424,7 @@ async def arecall_with_degradation(
     Returns:
         List of RecallHit objects.
     """
-    from somabrain.core.infrastructure_defs.degradation import get_degradation_manager
+    from somabrain.infrastructure.degradation import get_degradation_manager
 
     degradation_mgr = get_degradation_manager()
 

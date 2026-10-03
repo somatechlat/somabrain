@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from threading import RLock
 
-from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 from somabrain.schemas import PersonalityState
 
 
@@ -23,42 +22,48 @@ class PersonalityStore:
         self._lock = RLock()
         self._states: dict[str, PersonalityState] = {}
 
-    def get(self, tenant: str | None = None) -> PersonalityState:
-        """Execute get.
+    def get(self, tenant: str) -> PersonalityState:
+        """Return the personality state for ``tenant``.
 
         Args:
-            tenant: The tenant.
+            tenant: The tenant partition key. Required — this store is keyed by
+                tenant and has no ambient tenant context to fall back on.
         """
 
-        t = tenant or get_tenant_manager().current_tenant()
+        if not tenant:
+            raise ValueError("tenant is required")
         with self._lock:
             return self._states.setdefault(t, PersonalityState())  # validated default
 
-    def set(
-        self, state: PersonalityState, tenant: str | None = None
-    ) -> PersonalityState:
-        """Execute set.
+    def set(self, state: PersonalityState, tenant: str) -> PersonalityState:
+        """Replace the personality state for ``tenant``.
 
         Args:
             state: The state.
-            tenant: The tenant.
+            tenant: The tenant partition key. Required.
         """
 
-        t = tenant or get_tenant_manager().current_tenant()
+        if not tenant:
+            raise ValueError("tenant is required")
         with self._lock:
             # store a copy to avoid external mutation
-            self._states[t] = PersonalityState(**state.model_dump())
-            return self._states[t]
+            self._states[tenant] = PersonalityState(**state.model_dump())
+            return self._states[tenant]
 
-    def update_traits(
-        self, traits: dict, tenant: str | None = None
-    ) -> PersonalityState:
-        """Merge provided traits into the tenant personality."""
-        t = tenant or get_tenant_manager().current_tenant()
+    def update_traits(self, traits: dict, tenant: str) -> PersonalityState:
+        """Merge provided traits into the tenant personality.
+
+        Args:
+            traits: Trait values to merge.
+            tenant: The tenant partition key. Required.
+        """
+
+        if not tenant:
+            raise ValueError("tenant is required")
         with self._lock:
-            current = self._states.setdefault(t, PersonalityState())
+            current = self._states.setdefault(tenant, PersonalityState())
             updated = current.model_copy(update=traits)
-            self._states[t] = updated
+            self._states[tenant] = updated
             return updated
 
     def all(self) -> dict[str, PersonalityState]:

@@ -25,7 +25,7 @@ from somabrain.services.memory_service import MemoryService
 
 # VIBE Compliance: Use TYPE_CHECKING for forward references to avoid circular imports
 if TYPE_CHECKING:
-    from somabrain.cognitive.working_memory_buffer import WorkingMemoryBuffer
+    from somabrain.admin.cognitive.working_memory_buffer import WorkingMemoryBuffer
 
 
 @dataclass

@@ -1,7 +1,7 @@
 """Category D2: State Isolation Tests.
 
 **Feature: full-capacity-testing**
-**Validates: Requirements D2.1, D2.2, D2.3, D2.4, D2.5**
+**Validates: Requirements D2.1, D2.2, D2.4, D2.5**
 
 Tests that verify per-tenant state isolation works correctly.
 These tests run against REAL implementations - NO mocks.
@@ -9,7 +9,6 @@ These tests run against REAL implementations - NO mocks.
 Test Coverage:
 - D2.1: Neuromodulator isolation
 - D2.2: Circuit breaker isolation
-- D2.3: Quota isolation
 - D2.4: Adaptation isolation
 - D2.5: WM capacity isolation
 """
@@ -38,7 +37,7 @@ class TestStateIsolation:
     """Tests for per-tenant state isolation.
 
     **Feature: full-capacity-testing, Category D2: State Isolation**
-    **Validates: Requirements D2.1, D2.2, D2.3, D2.4, D2.5**
+    **Validates: Requirements D2.1, D2.2, D2.4, D2.5**
     """
 
     def test_neuromodulator_isolation(self) -> None:
@@ -136,77 +135,6 @@ class TestStateIsolation:
 
         # Tenant B should still be closed
         assert not cb.is_open("tenant_b"), "Tenant B circuit should remain closed"
-
-    def test_quota_isolation(self) -> None:
-        """D2.3: Quota isolation.
-
-        **Feature: full-capacity-testing, Property D2.3**
-        **Validates: Requirements D2.3**
-
-        WHEN tenant A exhausts quota
-        THEN tenant B's quota SHALL be unaffected.
-        """
-        import asyncio
-
-        from somabrain.aaas.governance.quotas import QuotaConfig, QuotaManager
-        from somabrain.aaas.logic.tenant_manager import get_tenant_manager
-
-        # Get tenant manager synchronously
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        tenant_mgr = loop.run_until_complete(get_tenant_manager())
-
-        # Configure Tenant A with low quota (10)
-        # We must create/update the tenant to persist this config in Redis
-        # so QuotaManager picks it up.
-        loop.run_until_complete(
-            tenant_mgr.create_tenant(
-                "Tenant A", "public", config={"quota": {"daily_quota": 10}}
-            )
-        )
-
-        # Ensure we use the proper ID (TenantManager might normalize "Tenant A" to something else,
-        # but create_tenant uses an ID generation logic or we can assume it returns the ID)
-        # Actually create_tenant returns the ID.
-        # But for this test we assumed "tenant_a" string.
-        # Let's forcibly update config for "tenant_a" assuming it exists or creation allows specifying ID?
-        # create_tenant signature: (display_name, ...) -> str. ID is generated.
-
-        # Strategy: Use a known ID. create_tenant doesn't allow custom ID.
-        # BUT QuotaManager uses whatever string we pass to allow_write.
-        # So we should use the ID returned by create_tenant.
-
-        tenant_a_id = loop.run_until_complete(
-            tenant_mgr.create_tenant(
-                "Tenant A Test", "public", config={"quota": {"daily_quota": 10}}
-            )
-        )
-
-        tenant_b_id = loop.run_until_complete(
-            tenant_mgr.create_tenant(
-                "Tenant B Test", "public", config={"quota": {"daily_quota": 10}}
-            )
-        )
-
-        cfg = QuotaConfig(daily_writes=10)
-        qm = QuotaManager(cfg)
-
-        # Exhaust tenant A's quota (10 writes)
-        for _ in range(10):
-            allowed = qm.allow_write(tenant_a_id, 1)
-            assert allowed, "Tenant A should be allowed within quota"
-
-        # Tenant A should be over quota on 11th attempt
-        assert not qm.allow_write(tenant_a_id, 1), "Tenant A should be over quota"
-
-        # Tenant B should still be allowed (independent counters)
-        assert qm.allow_write(
-            tenant_b_id, 1
-        ), "Tenant B should be unaffected by Tenant A"
 
     def test_adaptation_isolation(self) -> None:
         """D2.4: Adaptation isolation.

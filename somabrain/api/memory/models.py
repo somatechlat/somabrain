@@ -122,9 +122,12 @@ class MemoryWriteRequest(BaseModel):
     content: str | None = Field(
         None, description="Dialect alias for text (BrainBridge / legacy proofs)"
     )
-    kind: str = Field(
-        "episodic",
-        description="Memory kind: episodic | semantic | belief (seam)",
+    kind: str | None = Field(
+        None,
+        description="Memory kind: episodic | semantic | belief (seam). Omitted "
+        "means the caller did not set it: a kind already carried in ``value`` "
+        "wins, and only then the seam default 'episodic'. Defaulting this "
+        "field here would clobber an explicit ``value.kind`` on every write.",
     )
     memory_type: str | None = Field(
         None, description="Dialect alias for kind (legacy value.memory_type)"
@@ -147,7 +150,13 @@ class MemoryWriteRequest(BaseModel):
     salience: float | None = Field(
         None, ge=0.0, le=1.0, description="Salience weight in [0,1] (seam)"
     )
-    source: str | None = Field("agent-chat", description="Write provenance (seam)")
+    source: str | None = Field(
+        None,
+        description="Write provenance (seam). Omitted means the caller did not "
+        "set it: a source already carried in ``value`` wins, and only then the "
+        "seam default 'agent-chat'. Defaulting this field here would clobber "
+        "an explicit ``value.source`` on every write.",
+    )
 
     # --- rich write shape (still canonical) ---
     tenant: str = Field(
@@ -379,17 +388,9 @@ class MemoryRecallRequest(BaseModel):
     )
 
 
-def _iso_created_at(payload: dict[str, Any]) -> str:
-    """Derive an ISO-8601 ``created_at`` from a stored payload."""
-    raw = payload.get("timestamp") or payload.get("created_at")
-    if isinstance(raw, (int, float)):
-        try:
-            return datetime.fromtimestamp(float(raw), tz=UTC).isoformat()
-        except (OverflowError, OSError, ValueError):
-            pass
-    if isinstance(raw, str) and raw.strip():
-        return raw.strip()
-    return datetime.fromtimestamp(time.time(), tz=UTC).isoformat()
+# Moved to somabrain.datetime_utils so the gRPC transport can share it
+# without importing this module (and with it Django/ninja).
+from somabrain.datetime_utils import iso_created_at as _iso_created_at  # noqa: E402
 
 
 class MemoryRecallItem(BaseModel):

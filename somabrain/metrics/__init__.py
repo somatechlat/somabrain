@@ -7,6 +7,7 @@ from somabrain.metrics.core import (
     get_histogram,
     get_summary,
     registry,
+    tau_gauge,
 )
 from somabrain.metrics.learning import (
     LEARNER_DLQ_TOTAL,
@@ -15,9 +16,14 @@ from somabrain.metrics.learning import (
     LEARNER_EVENTS_FAILED,
     LEARNER_EVENTS_PRODUCED,
     LEARNER_LAG_SECONDS,
+    LEARNING_ENTROPY_CAP_HITS,
+    LEARNING_TAU,
+    soma_next_event_regret,
+    update_learning_retrieval_weights,
 )
 from somabrain.metrics.memory_metrics import (
     MEMORY_OUTBOX_SYNC_TOTAL,
+    observe_recall_latency,
     record_memory_snapshot,
 )
 from somabrain.metrics.oak import (
@@ -35,11 +41,14 @@ from somabrain.metrics.outbox_metrics import (
     DEFAULT_TENANT_LABEL,
     report_outbox_pending,
     report_outbox_processed,
+    report_outbox_replayed,
 )
 
 __all__ = [
     "DEFAULT_TENANT_LABEL",
     "LEARNER_DLQ_TOTAL",
+    "LEARNING_ENTROPY_CAP_HITS",
+    "LEARNING_TAU",
     "LEARNER_EVENTS_CONSUMED",
     "LEARNER_EVENTS_FAILED",
     "LEARNER_EVENTS_PRODUCED",
@@ -62,6 +71,11 @@ __all__ = [
     "get_histogram",
     "get_summary",
     "math_metrics",
+    "observe_recall_latency",
+    "report_outbox_replayed",
+    "soma_next_event_regret",
+    "tau_gauge",
+    "update_learning_retrieval_weights",
     "record_memory_snapshot",
     "registry",
     "report_outbox_pending",

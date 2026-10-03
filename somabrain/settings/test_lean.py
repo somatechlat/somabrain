@@ -15,7 +15,7 @@ INSTALLED_APPS = [
 
 
 # DISABLE MIGRATIONS for somabrain to force table creation from models
-# This avoids the "aaas" dependency hell in the migration graph
+# This keeps the lean test settings independent of the full app set
 class DisableMigrations:
     def __contains__(self, item):
         return True

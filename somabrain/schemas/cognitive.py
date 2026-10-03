@@ -11,8 +11,6 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, model_validator
 
-from somabrain.core.utils.nano_profile import HRR_DIM
-
 from .common import normalize_vector
 
 
@@ -30,7 +28,7 @@ class Observation(BaseModel):
 
     @model_validator(mode="after")
     def _validate_embeddings(self):
-        self.embeddings = normalize_vector(self.embeddings, dim=HRR_DIM)
+        self.embeddings = normalize_vector(self.embeddings)
         return self
 
 
@@ -47,7 +45,7 @@ class Thought(BaseModel):
 
     @model_validator(mode="after")
     def _validate_vector(self):
-        self.vector = normalize_vector(self.vector, dim=HRR_DIM)
+        self.vector = normalize_vector(self.vector)
         return self
 
 
@@ -63,7 +61,7 @@ class Memory(BaseModel):
 
     @model_validator(mode="after")
     def _validate_memory_vector(self):
-        self.vector = normalize_vector(self.vector, dim=HRR_DIM)
+        self.vector = normalize_vector(self.vector)
         return self
 
 

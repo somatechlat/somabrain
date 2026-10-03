@@ -368,39 +368,6 @@ def check_keycloak() -> dict[str, Any]:
     }
 
 
-def check_lago() -> dict[str, Any]:
-    """Check Lago billing service health."""
-
-    def _check():
-        """Execute check."""
-
-        from somabrain.aaas.billing import get_lago_client
-
-        lago = get_lago_client()
-        if not lago:
-            return {"configured": False}
-
-        healthy = lago.health_check()
-        return {
-            "healthy": healthy,
-            "api_url": getattr(settings, "LAGO_API_URL", "unknown"),
-        }
-
-    result, time_ms, error = timed_check(_check)
-
-    if result and not result.get("configured", True):
-        status = "not_configured"
-    else:
-        status = "healthy" if result and result.get("healthy") else "unavailable"
-
-    return {
-        "name": "Lago",
-        "status": status,
-        "response_time_ms": time_ms,
-        "details": result,
-        "error": error,
-    }
-
 
 # =============================================================================
 # INTERNAL SERVICE CHECKS
@@ -530,7 +497,6 @@ def get_full_health(request):
         "minio": check_minio(),
         "schema_registry": check_schema_registry(),
         "keycloak": check_keycloak(),
-        "lago": check_lago(),
     }
 
     # Internal services

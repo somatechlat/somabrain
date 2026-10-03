@@ -1,53 +1,30 @@
-"""Django Ninja Authentication Handlers
+"""Django Ninja authentication handlers.
 
-VIBE COMPLIANT: Real implementations only - no placeholders.
+The authentication boundary for SomaBrain is a pre-shared bearer token whose
+value lives in Vault (VIBE Rule 164) and is read at bootstrap into
+``SOMABRAIN_MEMORY_HTTP_TOKEN``. That single token is the trust boundary in
+every deployment profile: the agent holds it, SomaBrain verifies it. There is
+no second product-identity layer — SaaS auth (JWT/OAuth/API-key product
+tables) was removed with the commerce overlay.
 
-This module provides auth handlers. In multi-tenant deployments it re-exports
-from the production AAAS auth module. In standalone mode it uses a dedicated
-single-tenant token strategy so the API remains protected without requiring
-the full AAAS schema.
+``require_auth`` / ``require_admin_auth`` are the defense-in-depth helpers
+called inside handlers after Ninja has already authenticated the request.
 """
 
 from __future__ import annotations
 
-from typing import Any
-
-from django.conf import settings
-from django.http import HttpRequest
-from ninja.security import HttpBearer
-
-from somabrain.aaas.auth import APIKeyAuth as _APIKeyAuth
-from somabrain.aaas.auth import GoogleOAuth, JWTAuth
 from somabrain.api.standalone_auth import StandaloneAPIKeyAuth
 from somabrain.core.security import legacy_auth as _legacy_auth
 
-# Canonical defense-in-depth auth helpers used by endpoints.
+# Defense-in-depth helpers used by endpoints.
 require_auth = _legacy_auth.require_auth
 require_admin_auth = _legacy_auth.require_admin_auth
 
+# Canonical auth handler used by every route's ``auth=`` argument.
+api_key_auth = StandaloneAPIKeyAuth()
 
-class _AdaptiveAPIKeyAuth(HttpBearer):
-    """Dispatches to AAAS API key auth or standalone token auth.
-
-    Standalone mode is detected via ``settings.SOMABRAIN_DEFAULT_TENANT``,
-    which the standalone settings module pins to ``"standalone"``. This keeps
-    the dispatch explicit and avoids importing deployment-specific modules at
-    auth import time.
-    """
-
-    def __init__(self) -> None:
-        self._standalone = StandaloneAPIKeyAuth()
-        self._aaas = _APIKeyAuth()
-
-    def authenticate(
-        self, request: HttpRequest, token: str
-    ) -> dict[str, Any] | None:
-        if getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None) == "standalone":
-            return self._standalone.authenticate(request, token)
-        return self._aaas.authenticate(request, token)
-
-
-# Canonical auth handlers
-api_key_auth = _AdaptiveAPIKeyAuth()
-jwt_auth = JWTAuth()
-google_oauth = GoogleOAuth()
+__all__ = [
+    "api_key_auth",
+    "require_auth",
+    "require_admin_auth",
+]

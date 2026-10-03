@@ -190,31 +190,6 @@ async def init_health_watchdog(
         health_watchdog_task_holder["task"] = task
 
 
-async def init_tenant_manager(logger: logging.Logger | None = None) -> None:
-    """Initialize centralized tenant management system.
-
-    Skipped in Standalone mode (somabrain.aaas not in INSTALLED_APPS).
-
-    Args:
-        logger: Optional logger instance for status messages
-    """
-    log = logger or _logger
-    try:
-        from django.apps import apps
-
-        if not apps.is_installed("somabrain.aaas"):
-            log.info("Standalone mode — tenant manager initialization skipped")
-            return
-
-        from somabrain.aaas.logic.tenant_manager import get_tenant_manager
-
-        await get_tenant_manager()
-        log.info("Tenant manager initialized successfully")
-    except ImportError:
-        log.info("Tenant manager not available — skipped")
-    except (OSError, TimeoutError) as e:
-        log.error("Failed to initialize tenant manager: %s", e)
-        # Don't fail startup - tenant management can be initialized lazily
 
 
 async def start_outbox_sync(logger: logging.Logger | None = None) -> None:

@@ -51,3 +51,31 @@ def coerce_to_epoch_seconds(value: Any) -> float:
     raise ValueError(
         f"Unsupported timestamp type {type(value)!r}; expected float, int, str, or datetime"
     )
+
+
+def iso_created_at(payload: dict[str, Any]) -> str:
+    """Derive an ISO-8601 ``created_at`` from a stored payload.
+
+    One definition for every transport. A record that carries no timestamp of
+    its own is stamped with the time it was read, which is the behaviour the
+    HTTP recall path has always had and what the seam's ``MemoryHit.created_at``
+    requires.
+
+    Args:
+        payload: The stored payload dict.
+
+    Returns:
+        An ISO-8601 timestamp string. Never empty — the seam types
+        ``created_at`` as required.
+    """
+    raw = payload.get("timestamp") or payload.get("created_at")
+    if isinstance(raw, (int, float)):
+        try:
+            return datetime.datetime.fromtimestamp(float(raw), tz=datetime.UTC).isoformat()
+        except (OverflowError, OSError, ValueError):
+            pass
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return datetime.datetime.fromtimestamp(
+        datetime.datetime.now(datetime.UTC).timestamp(), tz=datetime.UTC
+    ).isoformat()

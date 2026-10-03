@@ -1,7 +1,7 @@
 """Admin Router - Django Ninja Version
 
 Migrated from FastAPI to Django Ninja.
-Service management, outbox, quota, and feature flag endpoints.
+Service management, outbox, and feature flag endpoints.
 """
 
 from __future__ import annotations
@@ -26,8 +26,6 @@ from somabrain.schemas import (
     OutboxListResponse,
     OutboxReplayRequest,
     OutboxReplayResponse,
-    QuotaListResponse,
-    QuotaStatus,
 )
 from somabrain.services.feature_flags import FeatureFlags
 
@@ -194,47 +192,6 @@ def admin_replay_outbox(request: HttpRequest, body: OutboxReplayRequest):
         pass
     return OutboxReplayResponse(replayed=count)
 
-
-# Quota management
-@router.get("/quotas", auth=api_key_auth)
-def admin_list_quotas(
-    request: HttpRequest,
-    limit: int = 100,
-    offset: int = 0,
-    tenant_filter: str | None = None,
-):
-    """List quota status for all tenants."""
-    from somabrain.quotas import QuotaConfig, QuotaManager
-
-    try:
-        quota_manager = QuotaManager(QuotaConfig())
-        all_quotas = quota_manager.get_all_quotas()
-
-        if tenant_filter and isinstance(tenant_filter, str):
-            all_quotas = [
-                q for q in all_quotas if q.tenant_id.startswith(tenant_filter)
-            ]
-
-        total_count = len(all_quotas)
-        paginated_quotas = all_quotas[offset : offset + limit]
-
-        quota_statuses = [
-            QuotaStatus(
-                tenant_id=quota_info.tenant_id,
-                daily_limit=quota_info.daily_limit,
-                remaining=quota_info.remaining,
-                used_today=quota_info.used_today,
-                reset_at=quota_info.reset_at,
-                is_exempt=quota_info.is_exempt,
-            )
-            for quota_info in paginated_quotas
-        ]
-
-        return QuotaListResponse(quotas=quota_statuses, total_tenants=total_count)
-
-    except Exception as exc:
-        logger.error(f"Failed to list quotas: {exc}")
-        raise HttpError(500, f"Failed to list quotas: {exc}")
 
 
 # Feature flags

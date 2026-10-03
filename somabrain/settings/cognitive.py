@@ -74,7 +74,7 @@ SOMABRAIN_MEMORY_HTTP_TOKEN = env.str("SOMABRAIN_MEMORY_HTTP_TOKEN", default="")
 SOMABRAIN_MEMORY_MAX = env.str("SOMABRAIN_MEMORY_MAX", default="10GB")
 MEMORY_DB_PATH = env.str("MEMORY_DB_PATH", default="./data/memory.db")
 
-# Memory Backend Mode Selection (AAAS Feature)
+# Memory Backend Mode Selection
 SOMABRAIN_MEMORY_MODE = env.str("SOMABRAIN_MEMORY_MODE", default="http")
 if SOMABRAIN_MEMORY_MODE not in ("http", "direct"):
     raise ValueError(

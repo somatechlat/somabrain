@@ -69,16 +69,39 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: Long-running tests")
     config.addinivalue_line("markers", "infra: Requires real infrastructure")
     config.addinivalue_line("markers", "unit: Pure unit tests (no infrastructure)")
+    config.addinivalue_line(
+        "markers",
+        "no_django: test covers a Django-free package and must not boot settings",
+    )
 
 
-@pytest.fixture(scope="session", autouse=True)
-def configure_test_environment(request):
-    """Auto-configure environment based on test markers."""
-    # Setup Django once so imports during collection can resolve settings.
+_DJANGO_READY = False
+
+
+def _ensure_django() -> None:
+    """Boot Django settings once, for the tests that need them."""
+    global _DJANGO_READY
+    if _DJANGO_READY:
+        return
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
     import django
 
     django.setup()
+    _DJANGO_READY = True
+
+
+@pytest.fixture(autouse=True)
+def configure_test_environment(request):
+    """Boot Django settings before each test that needs them.
+
+    Marked ``no_django`` tests are skipped entirely here. Those cover packages
+    built to be Django-free — ``somabrain.transport`` is one — and booting
+    settings for them would couple a pure transport test to the memory-HTTP
+    credential gate, which that test neither uses nor can satisfy.
+    """
+    if request.node.get_closest_marker("no_django") is not None:
+        return
+    _ensure_django()
 
 
 @pytest.fixture(autouse=True)

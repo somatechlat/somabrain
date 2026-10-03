@@ -11,9 +11,9 @@ from django.http import HttpRequest, HttpResponse
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.aaas.logic.tenant_manager import get_tenant_manager
 from somabrain.api.auth import require_auth
 from somabrain.schemas import Persona
+from somabrain.tenant import get_tenant
 
 # Note: Ideally move these imports to top-level if dependencies allow,
 # but keeping structure similar to original for safety during rapid migration.
@@ -47,9 +47,8 @@ async def put_persona(
     """Create or update a Persona record."""
     if_match = request.headers.get("If-Match")
     cfg = settings
-    tenant_manager = await get_tenant_manager()
-    tenant_id = await tenant_manager.resolve_tenant_from_request(request)
-    ctx = SimpleNamespace(namespace=tenant_id, tenant_id=tenant_id)
+    tctx = await get_tenant(request, settings.SOMABRAIN_NAMESPACE)
+    ctx = SimpleNamespace(namespace=tctx.namespace, tenant_id=tctx.tenant_id)
     require_auth(request, cfg)
 
     # Lazy import logic adapted from original
@@ -125,9 +124,8 @@ async def put_persona(
 async def get_persona(request: HttpRequest, pid: str):
     """Retrieve the latest Persona record for pid."""
     cfg = settings
-    tenant_manager = await get_tenant_manager()
-    tenant_id = await tenant_manager.resolve_tenant_from_request(request)
-    ctx = SimpleNamespace(namespace=tenant_id, tenant_id=tenant_id)
+    tctx = await get_tenant(request, settings.SOMABRAIN_NAMESPACE)
+    ctx = SimpleNamespace(namespace=tctx.namespace, tenant_id=tctx.tenant_id)
     require_auth(request, cfg)
 
     from somabrain import runtime as _rt
@@ -162,9 +160,8 @@ async def get_persona(request: HttpRequest, pid: str):
 async def delete_persona(request: HttpRequest, pid: str):
     """Append a persona tombstone for pid."""
     cfg = settings
-    tenant_manager = await get_tenant_manager()
-    tenant_id = await tenant_manager.resolve_tenant_from_request(request)
-    ctx = SimpleNamespace(namespace=tenant_id, tenant_id=tenant_id)
+    tctx = await get_tenant(request, settings.SOMABRAIN_NAMESPACE)
+    ctx = SimpleNamespace(namespace=tctx.namespace, tenant_id=tctx.tenant_id)
     require_auth(request, cfg)
 
     from somabrain import runtime as _rt

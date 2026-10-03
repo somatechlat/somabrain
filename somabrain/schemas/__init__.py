@@ -19,12 +19,6 @@ from .admin import (
     OutboxTenantReplayRequest,
     OutboxTenantReplayResponse,
     OutboxTenantSummary,
-    QuotaAdjustRequest,
-    QuotaAdjustResponse,
-    QuotaListResponse,
-    QuotaResetRequest,
-    QuotaResetResponse,
-    QuotaStatus,
 )
 
 # API operations
@@ -146,12 +140,6 @@ __all__ = [
     "OutboxTenantReplayRequest",
     "OutboxTenantReplayResponse",
     "OutboxTenantSummary",
-    "QuotaAdjustRequest",
-    "QuotaAdjustResponse",
-    "QuotaListResponse",
-    "QuotaResetRequest",
-    "QuotaResetResponse",
-    "QuotaStatus",
     # Oak
     "OakOptionCreateRequest",
     "OakPlanSuggestResponse",

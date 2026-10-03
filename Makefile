@@ -22,7 +22,6 @@ PY?=python3
 VENV?=.venv
 PIP:=$(VENV)/bin/pip
 PYBIN:=$(VENV)/bin/python
-UVICORN:=$(VENV)/bin/uvicorn
 PYTEST:=$(VENV)/bin/pytest
 RUFF:=$(VENV)/bin/ruff
 MYPY:=$(VENV)/bin/mypy
@@ -45,7 +44,7 @@ dev: venv
 	$(PIP) install -e .[dev]
 
 run:
-	$(UVICORN) somabrain.app:app --reload
+	$(PYBIN) manage.py runserver
 
 bench:
 	PYTHONPATH=. MPLBACKEND=Agg $(PYBIN) benchmarks/cognition_core_bench.py
