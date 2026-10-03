@@ -1,0 +1,212 @@
+// SomaBrain wire contract — the single source of truth for every call between
+// the agent and the brain.
+//
+// Authority: docs/architecture/SOMA-ARCH-INVARIANTS-001.md §5 "INVARIANT — DTO
+// format", authored from services/common/memory_contract.py. The messages
+// below mirror MemoryWrite / MemoryHit / MemoryAck / MemoryGateway field for
+// field. Invariant 3: "No field may be added without updating both adapters
+// AND the SFM request schema AND the brain request schema in the same change."
+// Adding a field here is therefore a four-file change or it is not a change.
+//
+// Bindings (deployment mode selects one):
+//   STANDALONE  — gRPC over a Unix domain socket, mode 0600. Filesystem
+//                 permissions are the gate; no bearer token is issued or
+//                 required (RFC 9113 transport is not in the path).
+//   DISTRIBUTED — gRPC over TCP + HTTP/2 (RFC 9113), one multiplexed
+//                 connection per peer, TLS 1.3 (RFC 8446) with certificates
+//                 validated to a configured trust anchor per RFC 5280 §6.
+//
+// Vectors travel as raw little-endian IEEE-754 floats with an explicit
+// (dtype, dim, count) header — never as a JSON number array (PLAN §1.4).
+
+syntax = "proto3";
+
+package soma.brain.v1;
+
+option py_generic_services = false;
+
+
+// ---------------------------------------------------------------------------
+// Scalar encodings
+// ---------------------------------------------------------------------------
+
+// One packed vector payload.
+//
+// ``data`` is ``count`` consecutive vectors, each ``dim`` floats wide, packed
+// contiguously in little-endian byte order. A single embedding is the common
+// case: count = 1. The header is on the wire so a receiver never has to guess
+// the layout from ``len(data)`` alone.
+message Vector {
+  bytes data = 1;
+  // "float32" or "float64". Required — a receiver that does not recognise the
+  // dtype must reject the message rather than reinterpret the bytes.
+  string dtype = 2;
+  int32 dim = 3;
+  int32 count = 4;
+}
+
+// ``MemoryWrite.kind`` — typed, never a comment listing allowed values.
+enum MemoryKind {
+  MEMORY_KIND_UNSPECIFIED = 0;
+  MEMORY_KIND_EPISODIC = 1;
+  MEMORY_KIND_SEMANTIC = 2;
+  MEMORY_KIND_BELIEF = 3;
+}
+
+// ``MemoryHit.store`` / ``MemoryAck.store`` — typed, never bare string.
+enum StoreName {
+  STORE_NAME_UNSPECIFIED = 0;
+  STORE_NAME_SOMABRAIN = 1;
+  STORE_NAME_SOMAFRACTALMEMORY = 2;
+}
+
+
+// ---------------------------------------------------------------------------
+// Seam DTOs — exact mirror of services/common/memory_contract.py
+// ---------------------------------------------------------------------------
+
+// MemoryWrite: text, kind, tenant_id, session_id, coord, embedding,
+// salience, source.
+message MemoryWrite {
+  string text = 1;
+  MemoryKind kind = 2;
+  string tenant_id = 3;
+  // proto3 has no null: empty string is the absent case, matching
+  // ``session_id: str | None = None``.
+  optional string session_id = 4;
+  // Canonical coordinate string from make_coord(...) — "x,y,z". Exactly what
+  // somafractalmemory.admin.core.models.Memory.coord_to_key produces.
+  string coord = 5;
+  // Absent when the caller has no embedding; the store then derives one.
+  optional Vector embedding = 6;
+  // Field presence is explicit so the proto3 zero value cannot silently
+  // overwrite the seam default of 0.5 with 0.0.
+  //
+  // double, not float: the seam types this as a Python ``float`` (IEEE-754
+  // binary64). A proto ``float`` is binary32 and turns 0.8 into
+  // 0.800000011920929, which is precision loss on a value that gates a store.
+  optional double salience = 7;
+  string source = 8;
+}
+
+// MemoryHit: text, coord, score, store, created_at, session_id, role.
+message MemoryHit {
+  string text = 1;
+  string coord = 2;
+  // double, not float: score is the ranking key. binary32 collapses near-ties
+  // and can reorder hits, so it carries the same precision the seam does.
+  double score = 3;
+  StoreName store = 4;
+  string created_at = 5;
+  optional string session_id = 6;
+  optional string role = 7;
+}
+
+// MemoryAck: coord, store, ok, error.
+message MemoryAck {
+  string coord = 1;
+  StoreName store = 2;
+  bool ok = 3;
+  optional string error = 4;
+}
+
+
+// ---------------------------------------------------------------------------
+// RPCs — MemoryGateway plus the two batching shapes
+// ---------------------------------------------------------------------------
+
+message RememberRequest {
+  MemoryWrite write = 1;
+}
+
+message RememberResponse {
+  // One entry per store that was written (MemoryGateway.remember returns a list).
+  repeated MemoryAck acks = 1;
+}
+
+// One round trip, N writes. This is the shape that removes the N-sequential-
+// round-trips problem on the write path, the way RecallBatch does for reads.
+message RememberBatchRequest {
+  repeated MemoryWrite writes = 1;
+}
+
+message RememberBatchResponse {
+  // Parallel to ``writes``: element i holds the acks for writes[i].
+  repeated RememberResponse results = 1;
+}
+
+message RecallRequest {
+  string query = 1;
+  int32 k = 2;
+  string tenant_id = 3;
+}
+
+message RecallResponse {
+  // Ranked by score, descending. Never padded with invented hits.
+  repeated MemoryHit hits = 1;
+}
+
+// One round trip, N queries. The largest single win available and it is not a
+// protocol choice (PLAN §1.2): 8 recalls go from 8 round trips to 1.
+message RecallBatchRequest {
+  repeated RecallRequest queries = 1;
+}
+
+message RecallBatchResponse {
+  // Parallel to ``queries``: element i holds the hits for queries[i].
+  repeated RecallResponse results = 1;
+}
+
+message ForgetRequest {
+  string coord = 1;
+  string tenant_id = 2;
+}
+
+message ForgetResponse {
+  bool ok = 1;
+  optional string error = 2;
+}
+
+// Server streaming for long context assembly (PLAN §1.2). Hits are emitted as
+// each layer answers rather than after the slowest one does.
+message StreamContextRequest {
+  string query = 1;
+  int32 k = 2;
+  string tenant_id = 3;
+}
+
+message ContextDone {
+  int32 total_hits = 1;
+}
+
+message ContextError {
+  string message = 1;
+}
+
+message ContextEvent {
+  oneof event {
+    MemoryHit hit = 1;
+    ContextDone done = 2;
+    ContextError error = 3;
+  }
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool ok = 1;
+  // Store that answered — same typed enum as every other reply.
+  StoreName store = 2;
+  optional string error = 3;
+}
+
+
+service Brain {
+  rpc Remember(RememberRequest) returns (RememberResponse);
+  rpc RememberBatch(RememberBatchRequest) returns (RememberBatchResponse);
+  rpc Recall(RecallRequest) returns (RecallResponse);
+  rpc RecallBatch(RecallBatchRequest) returns (RecallBatchResponse);
+  rpc Forget(ForgetRequest) returns (ForgetResponse);
+  rpc StreamContext(StreamContextRequest) returns (stream ContextEvent);
+  rpc Health(HealthRequest) returns (HealthResponse);
+}
