@@ -11,7 +11,9 @@ Usage:
 """
 
 import logging
+import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from django.core.exceptions import ImproperlyConfigured
@@ -26,6 +28,57 @@ class VaultNotConfigured(ImproperlyConfigured):
 
 class SecretNotFound(ImproperlyConfigured):
     """Secret not found in Vault."""
+
+
+class VaultAuthError(VaultNotConfigured):
+    """Vault could not be authenticated to.
+
+    This is an infrastructure failure, NOT a missing secret. It must never be
+    reported as ``None``: a caller that cannot reach Vault has no idea whether
+    the secret exists (VIBE Rule 91 / Rule 164).
+    """
+
+
+# Token is a FILE, never an environment variable (VIBE Rule 164). A path is
+# topology; the credential it names is not. There is deliberately no token
+# value read from the process environment anywhere in this module — exporting
+# a token into a shell leaves it in ``ps``, in ``/proc/*/environ`` and in
+# every crash dump.
+VAULT_TOKEN_FILE_ENV = "VAULT_TOKEN_FILE"
+
+
+def _read_vault_token() -> str:
+    """Return the Vault token read from ``VAULT_TOKEN_FILE``.
+
+    Raises:
+        VaultAuthError: if the path is unset, the file is unreadable, or the
+            file is empty. Absence of a token is never "no secrets available".
+    """
+    token_path = os.environ.get(VAULT_TOKEN_FILE_ENV, "").strip()
+    if not token_path:
+        raise VaultAuthError(
+            f"VIBE Rule 164 VIOLATION: no Vault token available. Point "
+            f"{VAULT_TOKEN_FILE_ENV} at a file containing the token. The token "
+            f"is a credential and is delivered as a file — it is never read "
+            f"from the environment and there is no fallback."
+        )
+    try:
+        resolved = Path(token_path).read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        raise VaultAuthError(
+            f"VIBE Rule 164 VIOLATION: cannot read the Vault token file named "
+            f"by {VAULT_TOKEN_FILE_ENV} at {token_path!r}: "
+            f"{exc.strerror or exc}. Fix the path or the file's permissions "
+            f"(0600); the token is never read from the environment."
+        ) from None
+    if not resolved:
+        raise VaultAuthError(
+            f"VIBE Rule 164 VIOLATION: the Vault token file named by "
+            f"{VAULT_TOKEN_FILE_ENV} at {token_path!r} is empty. An empty "
+            f"token is not a valid credential and must not be treated as "
+            f"'no secrets'."
+        )
+    return resolved
 
 
 
@@ -59,30 +112,32 @@ def _split_secret_path(path: str) -> tuple[str, str]:
 def _get_vault_client() -> Any | None:
     """Get Vault client singleton. FAILS if not configured.
 
-    Reads directly from os.environ to allow usage within settings.py.
+    Vault address is topology and may come from the environment. The token is
+    a credential and is read only from the file named by
+    ``VAULT_TOKEN_FILE`` (VIBE Rule 164).
     """
-    import os
-
     vault_addr = os.environ.get("SOMABRAIN_VAULT_ADDR") or os.environ.get("VAULT_ADDR")
-    vault_token = os.environ.get("SOMABRAIN_VAULT_TOKEN") or os.environ.get(
-        "VAULT_TOKEN"
-    )
-
-    if not vault_addr or not vault_token:
+    if not vault_addr:
         raise VaultNotConfigured(
-            "Vault not configured. Set VAULT_ADDR and VAULT_TOKEN environment variables."
+            "Vault not configured. Set VAULT_ADDR to the Vault API address "
+            "(topology). The token is supplied via VAULT_TOKEN_FILE, never as "
+            "an environment variable."
         )
+
+    vault_token = _read_vault_token()
 
     try:
         import hvac
 
         client = hvac.Client(url=vault_addr, token=vault_token)
         if not client.is_authenticated():
-            raise VaultNotConfigured("Vault authentication failed.")
+            raise VaultAuthError("Vault authentication failed.")
         logger.info(f"Vault client connected to {vault_addr}")
         return client
     except ImportError:
         raise VaultNotConfigured("hvac library not installed. Run: pip install hvac")
+    except VaultAuthError:
+        raise
     except Exception as e:
         raise VaultNotConfigured(f"Vault connection failed: {e}")
 
