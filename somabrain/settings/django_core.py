@@ -230,17 +230,33 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Helper function to load API token (matches existing logic)
 # -----------------------------------------------------------------------------
 def get_api_token() -> str | None:
-    """Load the API token from settings or file."""
+    """Load the API token from module state or from its credential file.
+
+    Returns ``None`` only when nothing is configured — a deployment that
+    deliberately runs without an API token. Any failure to *read* a named
+    token file raises: "I could not read it" must never look like "it is not
+    configured" (Rule 91).
+    """
     if SOMA_API_TOKEN:
         return SOMA_API_TOKEN
 
     if SOMA_API_TOKEN_FILE:
+        token_path = Path(SOMA_API_TOKEN_FILE)
         try:
-            p = Path(SOMA_API_TOKEN_FILE)
-            if p.exists():
-                return p.read_text(encoding="utf-8").strip()
-        except Exception:
-            pass
+            resolved = token_path.read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise environ.ImproperlyConfigured(
+                f"Cannot read the API token file named by SOMA_API_TOKEN_FILE "
+                f"at {str(token_path)!r}: {exc.strerror or exc}. Fix the path "
+                f"or the file's permissions; a failed read is not 'no token'."
+            ) from None
+        if not resolved:
+            raise environ.ImproperlyConfigured(
+                f"The API token file named by SOMA_API_TOKEN_FILE at "
+                f"{str(token_path)!r} is empty. An empty credential is not "
+                f"'no token configured'."
+            )
+        return resolved
 
     return None
 
