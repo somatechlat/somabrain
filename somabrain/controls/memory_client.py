@@ -14,12 +14,28 @@ from importlib import import_module
 from typing import Any, Protocol, cast
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from somabrain.memory.client import MemoryClient as CanonicalMemoryClient
 
 from .degradation import HealthStatus, degradation_manager
 
 logger = logging.getLogger("somabrain.memory")
+
+
+def _require_tenant(tenant: str | None) -> str:
+    """Return a non-empty tenant or raise.
+
+    Memory is partitioned by tenant. There is no default partition: a caller
+    that forgets the tenant must not silently write into a shared scope
+    (Rule 91).
+    """
+    if not isinstance(tenant, str) or not tenant.strip():
+        raise ValueError(
+            "tenant must be a non-empty string; memory is partitioned by "
+            "tenant and there is no default partition."
+        )
+    return tenant.strip()
 
 
 class _DirectMemoryService(Protocol):
@@ -49,9 +65,14 @@ class MemoryClient:
 
     def __init__(self) -> None:
         self.mode = getattr(settings, "SOMABRAIN_MEMORY_MODE", "http")
-        self.endpoint = getattr(
-            settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:21000"
-        )
+        endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)
+        if not endpoint:
+            raise ImproperlyConfigured(
+                "SOMABRAIN_MEMORY_HTTP_ENDPOINT must be set to the "
+                "SomaFractalMemory HTTP endpoint. A missing endpoint is a "
+                "refusal — there is no hardcoded fallback URL."
+            )
+        self.endpoint = endpoint
         self.token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None)
 
         self._direct_service: _DirectMemoryService | None = None
@@ -82,9 +103,14 @@ class MemoryClient:
         return self._canonical
 
     async def store(
-        self, coordinate: list[float], payload: dict[str, Any], tenant: str = "default"
+        self, coordinate: list[float], payload: dict[str, Any], *, tenant: str
     ) -> bool:
-        """Store a memory with automated timing and health reporting."""
+        """Store a memory with automated timing and health reporting.
+
+        ``tenant`` is required and must be non-empty; there is no default
+        partition.
+        """
+        tenant = _require_tenant(tenant)
         start_time = time.time()
         try:
             if self.mode == "direct" and self._direct_service:
@@ -104,9 +130,14 @@ class MemoryClient:
             raise
 
     async def search(
-        self, query: str, top_k: int = 5, tenant: str = "default"
+        self, query: str, top_k: int = 5, *, tenant: str
     ) -> list[dict[str, Any]]:
-        """Search memories with automated degradation fallbacks."""
+        """Search memories with automated degradation fallbacks.
+
+        ``tenant`` is required and must be non-empty; there is no default
+        partition.
+        """
+        tenant = _require_tenant(tenant)
         status = degradation_manager.get_status(tenant)
 
         if status == HealthStatus.FAILSAFE:
