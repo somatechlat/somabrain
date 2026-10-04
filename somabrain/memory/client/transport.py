@@ -95,8 +95,11 @@ class TransportMixin:
 
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
-        token_value = getattr(self.cfg, "memory_http_token", None) or getattr(
-            self.cfg, "SOMABRAIN_MEMORY_HTTP_TOKEN", None
+        # Brain→SFM bearer is SOMA_API_TOKEN (SFM's own credential). The
+        # agent↔brain somabrain_memory_http_token is a different trust
+        # boundary and must not be presented to SFM.
+        token_value = getattr(self.cfg, "soma_api_token", None) or getattr(
+            self.cfg, "SOMA_API_TOKEN", None
         )
         if token_value:
             headers["Authorization"] = f"Bearer {token_value}"

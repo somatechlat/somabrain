@@ -73,7 +73,11 @@ class MemoryClient:
                 "refusal — there is no hardcoded fallback URL."
             )
         self.endpoint = endpoint
-        self.token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN")
+        # Brain→SFM is a separate trust boundary from agent→brain. The bearer
+        # SFM accepts is SOMA_API_TOKEN (its own get_api_token()), never the
+        # agent↔brain somabrain_memory_http_token. Conflating the two is how a
+        # reseeded agent token silently broke every store write.
+        self.token = getattr(settings, "SOMA_API_TOKEN")
 
         self._direct_service: _DirectMemoryService | None = None
         self._canonical: CanonicalMemoryClient | None = None

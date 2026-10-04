@@ -310,8 +310,11 @@ def create_memory_transport(
     from somabrain.memory.utils import get_tenant_namespace
 
     headers = {}
-    token_value = getattr(cfg, "memory_http_token", None) or getattr(
-        cfg, "SOMABRAIN_MEMORY_HTTP_TOKEN", None
+    # Brain→SFM bearer is SOMA_API_TOKEN (SFM's own credential). The
+    # agent↔brain somabrain_memory_http_token is a different trust boundary
+    # and must not be presented to SFM.
+    token_value = getattr(cfg, "soma_api_token", None) or getattr(
+        cfg, "SOMA_API_TOKEN", None
     )
     if token_value:
         headers["Authorization"] = f"Bearer {token_value}"

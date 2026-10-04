@@ -168,13 +168,20 @@ def _validate_api_or_memory_token(token: str) -> bool:
     503 if no static token is configured, or 403 if a token is configured but
     does not match.
     """
+    # Accept the request when it matches ANY configured static token. Raising
+    # on the first mismatch rejected a correct agent↔brain token just because
+    # a separate brain→SFM token happened to be configured too — two trust
+    # boundaries, two credentials, one validator that must accept either.
+    configured = False
     for setting_name in ("SOMABRAIN_API_TOKEN", "SOMABRAIN_MEMORY_HTTP_TOKEN"):
         expected = getattr(settings, setting_name, None)
-        if expected:
-            if token == expected:
-                return True
-            # A token is configured but this request did not match it; reject.
-            raise HttpError(403, "invalid token")
+        if not expected:
+            continue
+        configured = True
+        if token == expected:
+            return True
+    if configured:
+        raise HttpError(403, "invalid token")
     return False
 
 
