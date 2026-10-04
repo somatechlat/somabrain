@@ -30,7 +30,7 @@ def _policy_path_for_mode() -> str:
     bundle = None
     if settings is not None:
         try:
-            bundle = str(getattr(settings, "mode_opa_policy_bundle", "") or "")
+            bundle = str(getattr(settings, "mode_opa_policy_bundle") or "")
         except Exception:
             bundle = None
     bundle = (bundle or "").strip().lower()
@@ -55,7 +55,7 @@ class OPAClient:
         if settings is not None:
             try:
                 self.timeout = float(
-                    getattr(settings, "opa_timeout_seconds", 2.0) or 2.0
+                    getattr(settings, "opa_timeout_seconds") or 2.0
                 )
             except Exception:
                 self.timeout = 2.0

@@ -40,14 +40,14 @@ def create_mt_wm(cfg, scorer: UnifiedScorer):
         dim=resolve_embed_dim(settings),
         cfg=MTWMConfig(
             per_tenant_capacity=max(
-                getattr(settings, "SOMABRAIN_WM_PER_TENANT_CAPACITY", 1024),
-                getattr(settings, "SOMABRAIN_WM_SIZE", 512),
+                getattr(settings, "SOMABRAIN_WM_PER_TENANT_CAPACITY"),
+                getattr(settings, "SOMABRAIN_WM_SIZE"),
             ),
-            max_tenants=getattr(settings, "SOMABRAIN_MTWM_MAX_TENANTS", 100),
+            max_tenants=getattr(settings, "SOMABRAIN_MTWM_MAX_TENANTS"),
             recency_time_scale=getattr(
                 settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
             ),
-            recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 100),
+            recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS"),
         ),
         scorer=scorer,
     )
@@ -65,10 +65,10 @@ def create_mc_wm(cfg, scorer: UnifiedScorer):
     """
     from somabrain.admin.cognitive.microcircuits import MCConfig, MultiColumnWM
 
-    columns = max(1, int(getattr(settings, "SOMABRAIN_MICRO_CIRCUITS", 4)))
+    columns = max(1, int(getattr(settings, "SOMABRAIN_MICRO_CIRCUITS")))
     per_col_capacity = max(
         16,
-        int((getattr(settings, "SOMABRAIN_WM_SIZE", 512) + columns - 1) // columns),
+        int((getattr(settings, "SOMABRAIN_WM_SIZE") + columns - 1) // columns),
     )
 
     return MultiColumnWM(
@@ -76,12 +76,12 @@ def create_mc_wm(cfg, scorer: UnifiedScorer):
         cfg=MCConfig(
             columns=columns,
             per_col_capacity=per_col_capacity,
-            vote_temperature=getattr(settings, "SOMABRAIN_MICRO_VOTE_TEMPERATURE", 0.5),
-            max_tenants=getattr(settings, "SOMABRAIN_MICRO_MAX_TENANTS", 100),
+            vote_temperature=getattr(settings, "SOMABRAIN_MICRO_VOTE_TEMPERATURE"),
+            max_tenants=getattr(settings, "SOMABRAIN_MICRO_MAX_TENANTS"),
             recency_time_scale=getattr(
                 settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
             ),
-            recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 100),
+            recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS"),
         ),
         scorer=scorer,
     )
@@ -106,8 +106,8 @@ def create_mt_ctx(cfg, quantum: QuantumLayer | None):
     return MultiTenantHRRContext(
         quantum,
         HRRContextConfig(
-            max_anchors=getattr(settings, "SOMABRAIN_HRR_ANCHORS_MAX", 256),
-            decay_lambda=getattr(settings, "SOMABRAIN_HRR_DECAY_LAMBDA", 0.05),
+            max_anchors=getattr(settings, "SOMABRAIN_HRR_ANCHORS_MAX"),
+            decay_lambda=getattr(settings, "SOMABRAIN_HRR_DECAY_LAMBDA"),
             min_confidence=getattr(
                 settings, "SOMABRAIN_HRR_CLEANUP_MIN_CONFIDENCE", 0.1
             ),
@@ -130,19 +130,19 @@ def create_amygdala(cfg, fd_sketch: Any = None):
 
     return AmygdalaSalience(
         SalienceConfig(
-            w_novelty=getattr(settings, "SOMABRAIN_SALIENCE_W_NOVELTY", 0.5),
-            w_error=getattr(settings, "SOMABRAIN_SALIENCE_W_ERROR", 0.3),
+            w_novelty=getattr(settings, "SOMABRAIN_SALIENCE_W_NOVELTY"),
+            w_error=getattr(settings, "SOMABRAIN_SALIENCE_W_ERROR"),
             threshold_store=getattr(
                 settings, "SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.6
             ),
-            threshold_act=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_ACT", 0.4),
-            hysteresis=getattr(settings, "SOMABRAIN_SALIENCE_HYSTERESIS", 0.05),
-            use_soft=getattr(settings, "SOMABRAIN_USE_SOFT_SALIENCE", True),
+            threshold_act=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_ACT"),
+            hysteresis=getattr(settings, "SOMABRAIN_SALIENCE_HYSTERESIS"),
+            use_soft=getattr(settings, "SOMABRAIN_USE_SOFT_SALIENCE"),
             soft_temperature=getattr(
                 settings, "SOMABRAIN_SOFT_SALIENCE_TEMPERATURE", 1.0
             ),
-            method=getattr(settings, "SOMABRAIN_SALIENCE_METHOD", "hybrid"),
-            w_fd=getattr(settings, "SOMABRAIN_SALIENCE_FD_WEIGHT", 0.1),
+            method=getattr(settings, "SOMABRAIN_SALIENCE_METHOD"),
+            w_fd=getattr(settings, "SOMABRAIN_SALIENCE_FD_WEIGHT"),
             fd_energy_floor=getattr(
                 settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.01
             ),
@@ -171,15 +171,15 @@ def create_supervisor(cfg):
     Returns:
         Supervisor if use_meta_brain is True, None otherwise.
     """
-    if not getattr(settings, "SOMABRAIN_USE_META_BRAIN", False):
+    if not getattr(settings, "SOMABRAIN_USE_META_BRAIN"):
         return None
 
     from somabrain.runtime.supervisor import Supervisor, SupervisorConfig
 
     return Supervisor(
         SupervisorConfig(
-            gain=getattr(settings, "SOMABRAIN_META_GAIN", 0.1),
-            limit=getattr(settings, "SOMABRAIN_META_LIMIT", 1.0),
+            gain=getattr(settings, "SOMABRAIN_META_GAIN"),
+            limit=getattr(settings, "SOMABRAIN_META_LIMIT"),
         )
     )
 
@@ -193,20 +193,20 @@ def create_exec_controller(cfg):
     Returns:
         ExecutiveController if use_exec_controller is True, None otherwise.
     """
-    if not getattr(settings, "SOMABRAIN_USE_EXEC_CONTROLLER", False):
+    if not getattr(settings, "SOMABRAIN_USE_EXEC_CONTROLLER"):
         return None
 
     from somabrain.planning.exec_controller import ExecConfig, ExecutiveController
 
     return ExecutiveController(
         ExecConfig(
-            window=getattr(settings, "SOMABRAIN_EXEC_WINDOW", 64),
+            window=getattr(settings, "SOMABRAIN_EXEC_WINDOW"),
             conflict_threshold=getattr(
                 settings, "SOMABRAIN_EXEC_CONFLICT_THRESHOLD", 0.4
             ),
-            explore_boost_k=getattr(settings, "SOMABRAIN_EXEC_EXPLORE_BOOST_K", 1.2),
-            use_bandits=bool(getattr(settings, "SOMABRAIN_EXEC_USE_BANDITS", False)),
-            bandit_eps=getattr(settings, "SOMABRAIN_EXEC_BANDIT_EPS", 0.1),
+            explore_boost_k=getattr(settings, "SOMABRAIN_EXEC_EXPLORE_BOOST_K"),
+            use_bandits=bool(getattr(settings, "SOMABRAIN_EXEC_USE_BANDITS")),
+            bandit_eps=getattr(settings, "SOMABRAIN_EXEC_BANDIT_EPS"),
         )
     )
 
@@ -220,7 +220,7 @@ def create_drift_monitor(cfg):
     Returns:
         DriftMonitor if use_drift_monitor is True, None otherwise.
     """
-    if not getattr(settings, "SOMABRAIN_USE_DRIFT_MONITOR", False):
+    if not getattr(settings, "SOMABRAIN_USE_DRIFT_MONITOR"):
         return None
 
     from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
@@ -228,8 +228,8 @@ def create_drift_monitor(cfg):
     return DriftMonitor(
         resolve_embed_dim(settings),
         DriftConfig(
-            window=getattr(settings, "SOMABRAIN_DRIFT_WINDOW", 256),
-            threshold=getattr(settings, "SOMABRAIN_DRIFT_THRESHOLD", 0.3),
+            window=getattr(settings, "SOMABRAIN_DRIFT_WINDOW"),
+            threshold=getattr(settings, "SOMABRAIN_DRIFT_THRESHOLD"),
         ),
     )
 
@@ -243,14 +243,14 @@ def create_sdr_encoder(cfg):
     Returns:
         SDREncoder if use_sdr_prefilter is True, None otherwise.
     """
-    if not getattr(settings, "SOMABRAIN_USE_SDR_PREFILTER", False):
+    if not getattr(settings, "SOMABRAIN_USE_SDR_PREFILTER"):
         return None
 
     from somabrain.admin.core.sdr import SDREncoder
 
     return SDREncoder(
-        dim=getattr(settings, "SOMABRAIN_SDR_DIM", 2048),
-        density=getattr(settings, "SOMABRAIN_SDR_DENSITY", 0.02),
+        dim=getattr(settings, "SOMABRAIN_SDR_DIM"),
+        density=getattr(settings, "SOMABRAIN_SDR_DENSITY"),
     )
 
 
@@ -339,7 +339,7 @@ def create_fnom_memory(cfg, embedder):
 
     # Reuse valid connection parameters for shared persistence layer
     # Segregate data via explicit namespacing
-    postgres_dsn = getattr(settings, "SOMABRAIN_POSTGRES_DSN", "")
+    postgres_dsn = getattr(settings, "SOMABRAIN_POSTGRES_DSN")
     if not postgres_dsn:
         raise ImproperlyConfigured(
             "SOMABRAIN_POSTGRES_DSN must be configured before creating PersistentFNOM"
@@ -350,10 +350,25 @@ def create_fnom_memory(cfg, embedder):
         table_name="fnom_kv",
     )
 
+    milvus_host = getattr(settings, "SOMABRAIN_MILVUS_HOST")
+    if not milvus_host:
+        raise RuntimeError(
+            "SOMABRAIN_MILVUS_HOST is not configured — refusing to invent a vector-store host"
+        )
+    milvus_port = getattr(settings, "SOMABRAIN_MILVUS_PORT")
+    if not milvus_port:
+        raise RuntimeError(
+            "SOMABRAIN_MILVUS_PORT is not configured — refusing to invent a vector-store port"
+        )
+    milvus_collection = getattr(settings, "SOMABRAIN_MILVUS_COLLECTION")
+    if not milvus_collection:
+        raise RuntimeError(
+            "SOMABRAIN_MILVUS_COLLECTION is not configured — refusing to invent a collection name"
+        )
     vector_store = MilvusVectorStore(
-        host=getattr(settings, "MILVUS_HOST", "localhost"),
-        port=getattr(settings, "MILVUS_PORT", "19530"),
-        collection_name="soma_fnom_memory",
+        host=milvus_host,
+        port=milvus_port,
+        collection_name=milvus_collection,
     )
 
     return PersistentFNOM(

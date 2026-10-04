@@ -199,7 +199,7 @@ class ConstitutionEngine:
             LOGGER.debug("No public keys configured for constitution verification")
             return False
 
-        required = int(getattr(settings, "SOMABRAIN_CONSTITUTION_THRESHOLD", 1))
+        required = int(getattr(settings, "SOMABRAIN_CONSTITUTION_THRESHOLD"))
         valid = 0
         errors: list[str] = []
         for sig in signatures:
@@ -262,7 +262,7 @@ class ConstitutionEngine:
 
             sig_bytes = priv.sign(self._checksum.encode("utf-8"))
             hexsig = sig_bytes.hex()
-            signer_id = getattr(settings, "SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
+            signer_id = getattr(settings, "SOMABRAIN_CONSTITUTION_SIGNER_ID")
             self._signature = hexsig
             self._signatures = [
                 {
@@ -295,7 +295,7 @@ class ConstitutionEngine:
         to OPA (`/v1/data/soma/policy/allow`). If OPA is not configured or unreachable, fall
         back to a conservative local check that ensures required top-level keys exist.
         """
-        opa_url = getattr(settings, "SOMABRAIN_OPA_URL", None)
+        opa_url = getattr(settings, "SOMABRAIN_OPA_URL")
         # Conservative local check
         required = ["version", "rules"]
         if opa_url:
@@ -341,7 +341,7 @@ class ConstitutionEngine:
                 LOGGER.debug("OPA validation failed: %s", e)
 
         # If HTTP OPA not available, optionally try local opa binary with a bundle
-        opa_bundle = getattr(settings, "OPA_BUNDLE_PATH", None)
+        opa_bundle = getattr(settings, "OPA_BUNDLE_PATH")
         if opa_bundle:
             try:
                 import subprocess

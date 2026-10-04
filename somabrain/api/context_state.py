@@ -83,7 +83,7 @@ class ContextRouteState:
 
     def enforce_rate_limit(self, tenant_id: str) -> None:
         """Enforce per-tenant rate limiting for feedback requests."""
-        limit = getattr(settings, "feedback_rate_limit_per_minute", 0) or 0
+        limit = getattr(settings, "feedback_rate_limit_per_minute") or 0
         if limit <= 0:
             return
         now = time.time()

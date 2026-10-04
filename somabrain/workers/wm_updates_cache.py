@@ -45,7 +45,7 @@ except Exception:  # pragma: no cover
 def _bootstrap() -> str:
     """Execute bootstrap."""
 
-    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "")
+    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
     if not url:
         raise ValueError(
             "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
@@ -56,7 +56,7 @@ def _bootstrap() -> str:
 def _redis_client():
     """Execute redis client."""
 
-    url = getattr(settings, "SOMABRAIN_REDIS_URL", "") or ""
+    url = getattr(settings, "SOMABRAIN_REDIS_URL") or ""
     if not url or redis is None:
         return None
     try:
@@ -109,12 +109,12 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         require_opa=False,
     )
     r = _redis_client()
-    max_items = int(getattr(settings, "wm_updates_max_items", 50) or 50)
-    ttl_seconds = int(getattr(settings, "wm_updates_ttl_seconds", 8) or 8)
+    max_items = int(getattr(settings, "wm_updates_max_items") or 50)
+    ttl_seconds = int(getattr(settings, "wm_updates_ttl_seconds") or 8)
     consumer = CKConsumer(
         {
             "bootstrap.servers": _bootstrap(),
-            "group.id": getattr(settings, "consumer_group", "wm-updates-cache"),
+            "group.id": getattr(settings, "consumer_group"),
             "enable.auto.commit": True,
             "auto.offset.reset": "latest",
         }

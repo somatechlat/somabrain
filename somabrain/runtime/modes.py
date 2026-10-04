@@ -80,7 +80,7 @@ def _resolve_mode() -> str:
         raw = (settings.SOMABRAIN_MODE or "").strip().upper()
 
     if not raw:
-        home_dir = getattr(settings, "HOME_DIR", "") or getattr(
+        home_dir = getattr(settings, "HOME_DIR") or getattr(
             settings, "home_dir", ""
         )
         return "full-local" if home_dir else "prod"
@@ -156,7 +156,7 @@ def get_mode_config() -> ModeConfig:
             fusion_normalization=True,
             calibration_enabled=True,
             consistency_checks=True,
-            enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS", True),
+            enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS"),
         )
     # full-local: production parity but allow dev overrides & relaxed Avro if runtime_config requests it
     if name == "full-local":
@@ -182,7 +182,7 @@ def get_mode_config() -> ModeConfig:
             fusion_normalization=True,
             calibration_enabled=True,
             consistency_checks=True,
-            enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS", True),
+            enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS"),
         )
     # prod: same semantics (strict, all ON) – operational differences handled outside python.
     return ModeConfig(
@@ -207,7 +207,7 @@ def get_mode_config() -> ModeConfig:
         fusion_normalization=True,
         calibration_enabled=True,
         consistency_checks=True,
-        enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS", True),
+        enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS"),
     )
 
 

@@ -37,7 +37,7 @@ def feature_flags_endpoint(request: HttpRequest):
 @router.post("/evaluate", auth=api_key_auth)
 def evaluate_endpoint(request: HttpRequest, payload: dict):
     """Evaluate context and return prompt with memories."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     try:
@@ -71,7 +71,7 @@ def evaluate_endpoint(request: HttpRequest, payload: dict):
 @router.post("/feedback", auth=api_key_auth)
 def feedback_endpoint(request: HttpRequest, payload: dict):
     """Record feedback for learning adaptation."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     start_time = time.perf_counter()
@@ -134,7 +134,7 @@ def feedback_endpoint(request: HttpRequest, payload: dict):
 @router.get("/adaptation/state", auth=api_key_auth)
 def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None):
     """Get current adaptation weights and learning state."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     target_tenant = tenant_id or ctx.tenant_id
@@ -185,7 +185,7 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None
 @router.post("/adaptation/reset", auth=api_key_auth)
 def adaptation_reset_endpoint(request: HttpRequest, payload: dict):
     """Reset adaptation engine to defaults (dev mode only)."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     # Gate to dev mode only

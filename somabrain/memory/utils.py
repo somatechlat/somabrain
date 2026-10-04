@@ -43,7 +43,7 @@ def get_tenant_namespace(
     namespace = (
         override_namespace
         or getattr(cfg, "namespace", None)
-        or getattr(settings, "SOMABRAIN_NAMESPACE", None)
+        or getattr(settings, "SOMABRAIN_NAMESPACE")
     )
     namespace = require_namespace(namespace)
 
@@ -59,7 +59,7 @@ def get_tenant_namespace(
 
     # Fallback to configured tenant from settings
     if not tenant:
-        tenant = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None)
+        tenant = getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
         if tenant:
             tenant = str(tenant).strip()
 

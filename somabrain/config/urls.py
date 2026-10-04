@@ -162,7 +162,7 @@ def health_view(request):
     def check_kafka():
         """Execute check kafka."""
 
-        host = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "somabrain_kafka:9094")
+        host = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
         h, p = (host.split(":") + ["9094"])[:2]
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(3)
@@ -176,9 +176,9 @@ def health_view(request):
     def check_milvus():
         """Execute check milvus."""
 
-        if not getattr(settings, "ENABLE_OAK", False):
+        if not getattr(settings, "ENABLE_OAK"):
             return None
-        host = getattr(settings, "SOMABRAIN_MILVUS_HOST", None)
+        host = getattr(settings, "SOMABRAIN_MILVUS_HOST")
         if not host:
             return None
 
@@ -271,7 +271,7 @@ def health_view(request):
     def check_sfm():
         """Execute check sfm."""
 
-        url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL", None)
+        url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL")
         if not url:
             return {"configured": False}
         with httpx.Client(timeout=3) as c:
@@ -380,7 +380,7 @@ def health_view(request):
         pending_count = None
         last_pending_ts = None
 
-    if getattr(settings, "ENABLE_OAK", False):
+    if getattr(settings, "ENABLE_OAK"):
         milvus_metrics = health["infrastructure"].get("milvus", {}).get("details") or {}
     else:
         milvus_metrics = {}
@@ -394,13 +394,13 @@ def health_view(request):
         and embedder_ok
         and predictor_ok
     )
-    health["namespace"] = getattr(settings, "SOMABRAIN_NAMESPACE", None)
+    health["namespace"] = getattr(settings, "SOMABRAIN_NAMESPACE")
     health["trace_id"] = request.headers.get("X-Request-ID")
     health["postgres_ok"] = postgres_ok
     health["kafka_ok"] = kafka_ok
     health["memory_ok"] = memory_ok
     health["opa_ok"] = opa_ok
-    health["opa_required"] = getattr(settings, "REQUIRE_OPA", False)
+    health["opa_required"] = getattr(settings, "REQUIRE_OPA")
     health["memory_circuit_open"] = memory_circuit_open
     health["memory_should_reset"] = memory_should_reset
     health["memory_degraded"] = memory_degraded

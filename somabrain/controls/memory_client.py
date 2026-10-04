@@ -64,8 +64,8 @@ class MemoryClient:
     """Unified client for SomaFractalMemory (SFM)."""
 
     def __init__(self) -> None:
-        self.mode = getattr(settings, "SOMABRAIN_MEMORY_MODE", "http")
-        endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)
+        self.mode = getattr(settings, "SOMABRAIN_MEMORY_MODE")
+        endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         if not endpoint:
             raise ImproperlyConfigured(
                 "SOMABRAIN_MEMORY_HTTP_ENDPOINT must be set to the "
@@ -73,7 +73,7 @@ class MemoryClient:
                 "refusal — there is no hardcoded fallback URL."
             )
         self.endpoint = endpoint
-        self.token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None)
+        self.token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN")
 
         self._direct_service: _DirectMemoryService | None = None
         self._canonical: CanonicalMemoryClient | None = None

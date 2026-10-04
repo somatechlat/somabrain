@@ -32,13 +32,13 @@ def _redis_client():
 def _policy_key() -> str:
     from django.conf import settings
 
-    return getattr(settings, "SOMABRAIN_OPA_POLICY_KEY", "soma:opa:policy")
+    return getattr(settings, "SOMABRAIN_OPA_POLICY_KEY")
 
 
 def _sig_key() -> str:
     from django.conf import settings
 
-    return getattr(settings, "SOMABRAIN_OPA_POLICY_SIG_KEY", "soma:opa:policy:sig")
+    return getattr(settings, "SOMABRAIN_OPA_POLICY_SIG_KEY")
 
 
 def store_policy(policy: str, signature: str) -> bool:

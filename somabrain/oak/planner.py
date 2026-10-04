@@ -50,7 +50,7 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> list[str]
         application startup or cause errors when Oak subsystem is not configured.
         Callers should handle empty results gracefully.
     """
-    default_max = getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10)
+    default_max = getattr(settings, "OAK_PLAN_MAX_OPTIONS")
     limit = max_options if max_options is not None else default_max
 
     # First, attempt to use a Cognitive Thread if enabled and present.

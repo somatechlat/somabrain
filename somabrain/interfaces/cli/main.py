@@ -45,7 +45,13 @@ def run_server() -> None:
             "forget to activate a virtual environment?"
         ) from exc
 
-    host = os.environ.get("HOST", "0.0.0.0")
-    port = os.environ.get("PORT", "30101")
+    # Bind topology comes from the deployment. There is no default host or
+    # port at the call site (Rule 91).
+    host = os.environ.get("HOST")
+    if not host:
+        raise SystemExit("HOST is required configuration; there is no default bind address")
+    port = os.environ.get("PORT")
+    if not port:
+        raise SystemExit("PORT is required configuration; there is no default port")
 
     execute_from_command_line(["manage.py", "runserver", f"{host}:{port}"])

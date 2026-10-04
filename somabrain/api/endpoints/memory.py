@@ -210,7 +210,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     in ``results``; the legacy ``content/layer/coordinate`` keys are kept on
     each item as aliases.
     """
-    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     pool = _get_memory_pool()
@@ -443,7 +443,7 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
     silent success. ``ok: false`` with an ``error`` is returned only when the
     coordinate is not present.
     """
-    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     tenant = (payload.tenant or payload.tenant_id or ctx.tenant_id or "").strip()
@@ -497,7 +497,7 @@ def memory_metrics(
     request: HttpRequest, tenant: str | None = None, namespace: str | None = None
 ):
     """Get real memory metrics for a tenant/namespace."""
-    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     target_tenant = tenant or ctx.tenant_id

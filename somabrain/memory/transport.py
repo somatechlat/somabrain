@@ -64,7 +64,7 @@ class MemoryHTTPTransport:
     communicating with the memory service. It handles:
     - Connection pooling via httpx.Limits
     - Automatic retries with exponential backoff
-    - Fallback to localhost if the primary endpoint is unreachable
+    - The endpoint is named by the operator; there is no localhost fallback
 
     Attributes:
         base_url: The base URL for the memory service.

@@ -42,7 +42,7 @@ def publish_event(event: dict[str, Any], topic: str | None = None) -> bool:
     """
     # Use centralized Settings for the audit topic name.
     topic_str = (
-        topic or getattr(settings, "SOMABRAIN_AUDIT_TOPIC", None) or "soma.audit"
+        topic or getattr(settings, "SOMABRAIN_AUDIT_TOPIC") or "soma.audit"
     )
     ev = dict(event)
     # sanitize
@@ -98,7 +98,7 @@ def log_admin_action(
 
         # Use the outbox-backed publish_event. No direct disk write.
         publish_event(
-            ev, topic=getattr(settings, "SOMABRAIN_AUDIT_TOPIC", "soma.audit")
+            ev, topic=getattr(settings, "SOMABRAIN_AUDIT_TOPIC")
         )
     except Exception:
         LOGGER.debug("log_admin_action failed", exc_info=True)

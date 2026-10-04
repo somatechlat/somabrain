@@ -217,9 +217,9 @@ class TransactionEventStore:
         try:
             from confluent_kafka import Producer
 
-            bootstrap = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "")
+            bootstrap = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
             if not bootstrap:
-                bootstrap = getattr(settings, "KAFKA_BOOTSTRAP", "")
+                bootstrap = getattr(settings, "KAFKA_BOOTSTRAP")
 
             if not bootstrap:
                 logger.warning(

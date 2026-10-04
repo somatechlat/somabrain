@@ -76,7 +76,7 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
     # Use settings if cfg not provided
     cfg = cfg or settings
     client = MemoryClient(cfg)
-    max_retries = getattr(settings, "OUTBOX_MAX_RETRIES", 5)
+    max_retries = getattr(settings, "OUTBOX_MAX_RETRIES")
     # Ensure the client is healthy before entering the loop – otherwise we
     # would generate a flood of failed attempts.
     backoff = poll_interval

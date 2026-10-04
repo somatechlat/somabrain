@@ -37,7 +37,7 @@ router = Router(tags=["admin"])
 # Supervisor helpers
 def _get_supervisor_url() -> str:
     """Get the supervisor XML-RPC URL from settings."""
-    url = getattr(settings, "SUPERVISOR_URL", None)
+    url = getattr(settings, "SUPERVISOR_URL")
     if not url:
         user = settings.SUPERVISOR_HTTP_USER
         pwd = settings.SUPERVISOR_HTTP_PASS
@@ -227,7 +227,7 @@ def admin_diagnostics(request: HttpRequest):
     return {
         "status": "ok",
         "timestamp": timezone.now().isoformat(),
-        "mode": getattr(settings, "SOMABRAIN_MODE", "unknown"),
-        "deploy_mode": getattr(settings, "SOMA_DEPLOY_MODE", "unknown"),
-        "tenant": getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "unknown"),
+        "mode": getattr(settings, "SOMABRAIN_MODE"),
+        "deploy_mode": getattr(settings, "SOMA_DEPLOY_MODE"),
+        "tenant": getattr(settings, "SOMABRAIN_DEFAULT_TENANT"),
     }

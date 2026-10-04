@@ -96,7 +96,7 @@ def main() -> None:  # pragma: no cover
     threads: list[threading.Thread] = []
 
     # Integrator Hub (respect master cog flag)
-    if feature_enabled("integrator") and getattr(settings, "ENABLE_COG_THREADS", True):
+    if feature_enabled("integrator") and getattr(settings, "ENABLE_COG_THREADS"):
         threads.append(_start_thread(_run_integrator, "integrator_hub"))
     else:
         print("orchestrator: integrator disabled (cog flag or feature)")
@@ -110,13 +110,13 @@ def main() -> None:  # pragma: no cover
         print("orchestrator: segmentation disabled (cog flag or feature)")
 
     # Calibration Service (respect master cog flag)
-    if feature_enabled("calibration") and getattr(settings, "ENABLE_COG_THREADS", True):
+    if feature_enabled("calibration") and getattr(settings, "ENABLE_COG_THREADS"):
         threads.append(_start_thread(_run_calibration, "calibration_service"))
     else:
         print("orchestrator: calibration disabled (cog flag or feature)")
 
     # Learner Online (respect master cog flag)
-    if feature_enabled("learner") and getattr(settings, "ENABLE_COG_THREADS", True):
+    if feature_enabled("learner") and getattr(settings, "ENABLE_COG_THREADS"):
         threads.append(_start_thread(_run_learner, "learner_online"))
     else:
         print("orchestrator: learner disabled (cog flag or feature)")

@@ -76,7 +76,7 @@ class TenantOverridesCache:
         # Optional: overrides via env JSON string
         if not overrides:
             raw = (
-                getattr(settings, "learning_tenants_overrides", "") if settings else ""
+                getattr(settings, "learning_tenants_overrides") if settings else ""
             )
             raw = (raw or "").strip()
             if raw:

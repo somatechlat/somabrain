@@ -154,7 +154,7 @@ class AdaptationEngine:
         if settings is not None:
             try:
                 dyn_lr = dyn_lr or bool(
-                    getattr(settings, "learning_rate_dynamic", False)
+                    getattr(settings, "learning_rate_dynamic")
                 )
             except Exception:
                 pass

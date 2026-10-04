@@ -67,7 +67,7 @@ class MemoryService:
         # Enforce production-like degradation defaults: always queue, never silently drop.
         self._degrade_queue = True
         self._degrade_readonly = bool(
-            getattr(settings, "SOMABRAIN_MEMORY_DEGRADE_READONLY", False)
+            getattr(settings, "SOMABRAIN_MEMORY_DEGRADE_READONLY")
         )
         self._degrade_topic = getattr(
             settings, "SOMABRAIN_MEMORY_DEGRADE_TOPIC", "memory.degraded"

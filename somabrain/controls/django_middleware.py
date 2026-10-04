@@ -69,10 +69,10 @@ class ControlsMiddleware:
             "body_size": len(raw_body),
             "provenance_valid": None,
             "provenance_strict": bool(
-                getattr(settings, "SOMABRAIN_PROVENANCE_STRICT_DENY", False)
+                getattr(settings, "SOMABRAIN_PROVENANCE_STRICT_DENY")
             ),
             "require_provenance": bool(
-                getattr(settings, "SOMABRAIN_REQUIRE_PROVENANCE", False)
+                getattr(settings, "SOMABRAIN_REQUIRE_PROVENANCE")
             ),
         }
 
@@ -87,7 +87,7 @@ class ControlsMiddleware:
         ):
             header_val = normalized_headers.get("x-provenance", "")
             try:
-                secret = getattr(settings, "SOMABRAIN_PROVENANCE_SECRET", "")
+                secret = getattr(settings, "SOMABRAIN_PROVENANCE_SECRET")
                 ctx["provenance_valid"] = verify_hmac_sha256(
                     secret,
                     raw_body,

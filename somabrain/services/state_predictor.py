@@ -42,9 +42,9 @@ logger = logging.getLogger("somabrain.services.state_predictor")
 
 # Kafka configuration (prod-like defaults, override via env/settings)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = getattr(settings, "topic_global_frame", "cog.global.frame")
-PUBLISH_TOPIC = getattr(settings, "topic_state_updates", "cog.state.updates")
-PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
+CONSUME_TOPIC = getattr(settings, "topic_global_frame")
+PUBLISH_TOPIC = getattr(settings, "topic_state_updates")
+PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha"))
 
 
 class StatePredictorService:
@@ -56,12 +56,12 @@ class StatePredictorService:
         self.producer = make_producer()
         self.consumer = self._create_consumer()
         # Tenant identifier from centralized Settings (default defined there).
-        self.tenant_id = getattr(settings, "tenant_id", "default")
+        self.tenant_id = getattr(settings, "tenant_id")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
         # Use centralized Settings for Kafka bootstrap servers.
-        bs = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", None)
+        bs = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

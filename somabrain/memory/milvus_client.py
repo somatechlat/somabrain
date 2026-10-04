@@ -70,7 +70,7 @@ except Exception:  # pragma: no cover - exercised only when pymilvus missing
 logger = logging.getLogger(__name__)
 
 _LATENCY_WINDOW_SIZE = max(
-    1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW", 50))
+    1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW"))
 )
 _LATENCY_WINDOWS: dict[str, dict[str, deque[float]]] = {
     "ingest": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
@@ -157,7 +157,7 @@ class MilvusClient:
 
         # Seam dim unity (ARCHITECTURE-INVARIANTS §2): MEM_EMBED_DIM ==
         # SOMA_VECTOR_DIM == SOMABRAIN_EMBED_DIM. Never invent a fallback.
-        dim = getattr(settings, "SOMABRAIN_EMBED_DIM", None)
+        dim = getattr(settings, "SOMABRAIN_EMBED_DIM")
         if not dim:
             raise RuntimeError(
                 "SOMABRAIN_EMBED_DIM is not configured — refusing to guess a vector dim"
@@ -166,14 +166,30 @@ class MilvusClient:
         self.collection_name: str = getattr(
             settings, "SOMABRAIN_MILVUS_COLLECTION", "oak_options"
         )
-        host = getattr(settings, "SOMABRAIN_MILVUS_HOST", None) or "localhost"
-        port = int(getattr(settings, "SOMABRAIN_MILVUS_PORT", 19530))
+        # Topology is named by the operator. No localhost, no invented port (Rule 91).
+        host = getattr(settings, "SOMABRAIN_MILVUS_HOST")
+        if not host:
+            raise RuntimeError(
+                "SOMABRAIN_MILVUS_HOST is not configured — refusing to invent a vector-store host"
+            )
+        port = getattr(settings, "SOMABRAIN_MILVUS_PORT")
+        if not port:
+            raise RuntimeError(
+                "SOMABRAIN_MILVUS_PORT is not configured — refusing to invent a vector-store port"
+            )
+        port = int(port)
+        # Credentials are Vault material held on the settings module, not ENV.
         user = getattr(settings, "SOMABRAIN_MILVUS_USER", None)
         password = getattr(settings, "SOMABRAIN_MILVUS_PASSWORD", None)
-        secure = bool(getattr(settings, "SOMABRAIN_MILVUS_SECURE", False))
-        timeout = int(getattr(settings, "SOMABRAIN_MILVUS_CONNECT_TIMEOUT", 5))
+        if user and not password:
+            raise RuntimeError(
+                "SOMABRAIN_MILVUS_USER is set but SOMABRAIN_MILVUS_PASSWORD is missing — "
+                "a username without a password is not a credential (Rule 164)"
+            )
+        secure = bool(getattr(settings, "SOMABRAIN_MILVUS_SECURE"))
+        timeout = int(getattr(settings, "SOMABRAIN_MILVUS_CONNECT_TIMEOUT"))
         self._segment_refresh_interval = float(
-            getattr(settings, "SOMABRAIN_MILVUS_SEGMENT_REFRESH_INTERVAL", 60.0)
+            getattr(settings, "SOMABRAIN_MILVUS_SEGMENT_REFRESH_INTERVAL")
         )
         self._segment_refresh_lock = threading.Lock()
         self._segment_last_refresh = 0.0
@@ -377,9 +393,9 @@ class MilvusClient:
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot upsert option")
 
-        max_retries = int(getattr(settings, "SOMABRAIN_MILVUS_UPSERT_RETRIES", 3))
+        max_retries = int(getattr(settings, "SOMABRAIN_MILVUS_UPSERT_RETRIES"))
         backoff_base = float(
-            getattr(settings, "SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE", 0.5)
+            getattr(settings, "SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE")
         )
         attempt = 0
         while True:
@@ -436,12 +452,12 @@ class MilvusClient:
         top_k = (
             top_k
             if top_k is not None
-            else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10))
+            else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS"))
         )
         similarity_threshold = (
             similarity_threshold
             if similarity_threshold is not None
-            else float(getattr(settings, "OAK_SIMILARITY_THRESHOLD", 0.85))
+            else float(getattr(settings, "OAK_SIMILARITY_THRESHOLD"))
         )
 
         start = time.perf_counter()

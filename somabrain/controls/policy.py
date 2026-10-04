@@ -56,7 +56,7 @@ class PolicyEngine:
         """Initialize the instance."""
 
         self.safety_threshold = float(safety_threshold)
-        pat = getattr(settings, "SOMABRAIN_BLOCK_UA_REGEX", "").strip()
+        pat = getattr(settings, "SOMABRAIN_BLOCK_UA_REGEX").strip()
         self._block_ua = re.compile(pat) if pat else None
 
     def _kill_switch(self) -> bool:
@@ -66,7 +66,7 @@ class PolicyEngine:
 
         if getattr(settings, "pytest_current_test", None):
             return False
-        return bool(getattr(settings, "SOMABRAIN_KILL_SWITCH", False))
+        return bool(getattr(settings, "SOMABRAIN_KILL_SWITCH"))
 
     def evaluate(self, ctx: dict[str, Any]) -> PolicyDecision:
         # Global kill switch

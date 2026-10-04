@@ -60,7 +60,7 @@ async def _health_watchdog_coroutine():
     from somabrain.services.memory_service import MemoryService
 
     mt_memory = _get_mt_memory()
-    poll_interval = float(getattr(settings, "MEMORY_HEALTH_POLL_INTERVAL", 5.0))
+    poll_interval = float(getattr(settings, "MEMORY_HEALTH_POLL_INTERVAL"))
 
     while True:
         try:

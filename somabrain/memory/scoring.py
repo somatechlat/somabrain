@@ -283,11 +283,11 @@ def apply_weighting_to_hits(hits: list[RecallHit]) -> None:
     if settings is not None:
         try:
             weighting_enabled = bool(
-                getattr(settings, "SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
+                getattr(settings, "SOMABRAIN_MEMORY_ENABLE_WEIGHTING")
             )
-            priors_env = getattr(settings, "SOMABRAIN_MEMORY_PHASE_PRIORS", "") or ""
+            priors_env = getattr(settings, "SOMABRAIN_MEMORY_PHASE_PRIORS") or ""
             quality_exp = float(
-                getattr(settings, "SOMABRAIN_MEMORY_QUALITY_EXP", 1.0) or 1.0
+                getattr(settings, "SOMABRAIN_MEMORY_QUALITY_EXP") or 1.0
             )
         except Exception:
             weighting_enabled = False

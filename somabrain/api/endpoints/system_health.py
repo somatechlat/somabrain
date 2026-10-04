@@ -204,9 +204,9 @@ def check_milvus() -> dict[str, Any]:
     def _check():
         """Execute check."""
 
-        if not getattr(settings, "ENABLE_OAK", False):
+        if not getattr(settings, "ENABLE_OAK"):
             return {"connected": False, "reason": "OAK disabled"}
-        host = getattr(settings, "SOMABRAIN_MILVUS_HOST", None)
+        host = getattr(settings, "SOMABRAIN_MILVUS_HOST")
         if not host:
             return {"connected": False, "reason": "Milvus host not configured"}
 
@@ -219,8 +219,8 @@ def check_milvus() -> dict[str, Any]:
             "collection_name": (
                 getattr(client.collection, "name", None) if client.collection else None
             ),
-            "embedding_dim": getattr(settings, "SOMABRAIN_EMBED_DIM", None),
-            "embedding_dim_seam": getattr(settings, "SOMABRAIN_EMBED_DIM_SEAM", None),
+            "embedding_dim": getattr(settings, "SOMABRAIN_EMBED_DIM"),
+            "embedding_dim_seam": getattr(settings, "SOMABRAIN_EMBED_DIM_SEAM"),
         }
 
     result, time_ms, error = timed_check(_check)
@@ -368,7 +368,7 @@ def check_keycloak() -> dict[str, Any]:
             return {
                 "status_code": response.status_code,
                 "healthy": response.status_code == 200,
-                "realm": getattr(settings, "KEYCLOAK_REALM", "unknown"),
+                "realm": getattr(settings, "KEYCLOAK_REALM"),
             }
 
     result, time_ms, error = timed_check(_check)
@@ -400,7 +400,7 @@ def check_soma_fractal_memory() -> dict[str, Any]:
     def _check():
         """Execute check."""
 
-        sfm_url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL", None)
+        sfm_url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL")
 
         if not sfm_url:
             return {"configured": False}
@@ -530,12 +530,12 @@ def get_full_health(request):
 
     django_info = {
         "version": django.get_version(),
-        "debug": getattr(settings, "DEBUG", False),
+        "debug": getattr(settings, "DEBUG"),
         "database_vendor": connection.vendor,
         "cache_backend": getattr(settings, "CACHES", {})
         .get("default", {})
         .get("BACKEND", "unknown"),
-        "installed_apps": len(getattr(settings, "INSTALLED_APPS", [])),
+        "installed_apps": len(getattr(settings, "INSTALLED_APPS")),
     }
 
     # Count statuses

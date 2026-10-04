@@ -80,8 +80,17 @@ class MilvusAnnIndex(CleanupIndex):
         self._collection_name = f"soma_{namespace}_{tenant_id}".replace("-", "_")
 
         # Connection parameters from settings
-        self._host = settings.MILVUS_HOST or "localhost"
-        self._port = settings.MILVUS_PORT or 19530
+        # Topology from settings only. No localhost and no invented port (Rule 91).
+        self._host = getattr(settings, "SOMABRAIN_MILVUS_HOST")
+        if not self._host:
+            raise RuntimeError(
+                "SOMABRAIN_MILVUS_HOST is not configured — refusing to invent a vector-store host"
+            )
+        self._port = getattr(settings, "SOMABRAIN_MILVUS_PORT")
+        if not self._port:
+            raise RuntimeError(
+                "SOMABRAIN_MILVUS_PORT is not configured — refusing to invent a vector-store port"
+            )
 
         # Local ID mapping for anchor_id -> Milvus internal ID
         self._anchor_to_id: dict[str, int] = {}

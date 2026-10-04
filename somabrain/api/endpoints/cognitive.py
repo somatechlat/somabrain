@@ -111,7 +111,7 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
     mt_memory = _get_mt_memory()
     embedder = _get_embedder()
 
-    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", "default"))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     task_key = str(getattr(body, "task_key", None) or "").strip()
@@ -120,7 +120,7 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
 
     max_steps = int(
         getattr(body, "max_steps", None)
-        or getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS", 5)
+        or getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS")
         or 5
     )
 
@@ -131,7 +131,7 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
     header_u = request.headers.get("X-Universe", "").strip() or None
     universe = getattr(body, "universe", None) or header_u
 
-    if not getattr(settings, "SOMABRAIN_USE_PLANNER", False):
+    if not getattr(settings, "SOMABRAIN_USE_PLANNER"):
         return {"plan": []}
 
     try:
@@ -146,7 +146,7 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
             task_key=task_key,
             task_vec=task_vec,
             start_coord=(0.0, 0.0),
-            time_budget_ms=int(getattr(settings, "PLAN_TIME_BUDGET_MS", 50) or 50),
+            time_budget_ms=int(getattr(settings, "PLAN_TIME_BUDGET_MS") or 50),
             max_steps=max_steps,
             rel_types=rel_types or [],
             universe=universe,
@@ -174,7 +174,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     mt_memory = _get_mt_memory()
     embedder = _get_embedder()
 
-    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     from somabrain.bootstrap.singletons import (
@@ -202,7 +202,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
 
     initial_novelty = float(
         getattr(body, "novelty", None)
-        or getattr(settings, "SOMABRAIN_DEFAULT_NOVELTY", 0.0)
+        or getattr(settings, "SOMABRAIN_DEFAULT_NOVELTY")
         or 0.0
     )
 
@@ -224,7 +224,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
         "novelty": step_result.get("pred_error", initial_novelty),
         "pred_error": step_result.get("pred_error", initial_novelty),
         "salience": step_result.get(
-            "salience", getattr(settings, "SOMABRAIN_DEFAULT_SALIENCE", 0.0) or 0.0
+            "salience", getattr(settings, "SOMABRAIN_DEFAULT_SALIENCE") or 0.0
         ),
         "stored": step_result.get("gate_store", False),
         "wm_hits": step_result.get("wm_hits", 0),
@@ -243,7 +243,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
             )
 
     plan_result: list[str] = []
-    if getattr(settings, "USE_PLANNER", False):
+    if getattr(settings, "USE_PLANNER"):
         try:
             mem_client = mt_memory.for_namespace(ctx.namespace) if mt_memory else None
             if mem_client:
@@ -259,10 +259,10 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
                     start_coord=(0.0, 0.0),
                     focus_vec=focus_state.current_focus_vec if focus_state else None,
                     time_budget_ms=int(
-                        getattr(settings, "SOMABRAIN_PLAN_TIME_BUDGET_MS", 50) or 50
+                        getattr(settings, "SOMABRAIN_PLAN_TIME_BUDGET_MS") or 50
                     ),
                     max_steps=int(
-                        getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS", 5) or 5
+                        getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS") or 5
                     ),
                     rel_types=[],
                     universe=getattr(body, "universe", None),
@@ -273,7 +273,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
             logger.warning(f"PlanEngine failed in /act: {exc}")
 
     log_truncate_len = int(
-        getattr(settings, "SOMABRAIN_LOG_TASK_TRUNCATE_LEN", 50) or 50
+        getattr(settings, "SOMABRAIN_LOG_TASK_TRUNCATE_LEN") or 50
     )
     task_preview = body.task[:log_truncate_len] if body.task else ""
 
@@ -302,7 +302,7 @@ def set_personality(request: HttpRequest, state: PersonalityState) -> Personalit
     """
     from somabrain.bootstrap.singletons import get_personality_store
 
-    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
     return get_personality_store().set(state, ctx.tenant_id)
 
@@ -310,14 +310,14 @@ def set_personality(request: HttpRequest, state: PersonalityState) -> Personalit
 @router.get("/micro/diag", auth=api_key_auth)
 def micro_diag(request: HttpRequest):
     """Get microcircuit diagnostics for the current tenant."""
-    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
     deadline_ms = request.headers.get("X-Deadline-MS")
     idempotency_key = request.headers.get("X-Idempotency-Key")
 
-    if not getattr(settings, "SOMABRAIN_USE_MICROCIRCUITS", False):
+    if not getattr(settings, "SOMABRAIN_USE_MICROCIRCUITS"):
         return {
             "enabled": False,
             "namespace": ctx.namespace,

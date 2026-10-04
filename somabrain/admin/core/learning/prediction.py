@@ -118,7 +118,7 @@ class SlowPredictor:
         """
         from django.conf import settings
 
-        default_delay = getattr(settings, "SOMABRAIN_SLOW_PREDICTOR_DELAY_MS", 1000)
+        default_delay = getattr(settings, "SOMABRAIN_SLOW_PREDICTOR_DELAY_MS")
         self.delay_ms = int(default_delay if delay_ms is None else delay_ms)
 
     def predict_and_compare(
@@ -168,7 +168,7 @@ class BudgetedPredictor:
         from django.conf import settings
 
         self.inner = inner
-        default_timeout = getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS", 1000)
+        default_timeout = getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS")
         self.timeout_ms = int(default_timeout if timeout_ms is None else timeout_ms)
 
     def predict_and_compare(

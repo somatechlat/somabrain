@@ -33,7 +33,7 @@ router = Router(tags=["proxy"])
 @router.post("/forward", auth=api_key_auth)
 def forward_request(request: HttpRequest, body: ProxyRequest):
     """Forward request to external service."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     # Basic proxy logic - forward to configured service

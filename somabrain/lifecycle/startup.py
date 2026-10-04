@@ -208,7 +208,7 @@ async def start_outbox_sync(logger: logging.Logger | None = None) -> None:
 
         from somabrain.services.outbox_sync import outbox_sync_loop
 
-        interval = float(getattr(settings, "SOMABRAIN_OUTBOX_SYNC_INTERVAL", 10.0))
+        interval = float(getattr(settings, "SOMABRAIN_OUTBOX_SYNC_INTERVAL"))
         # fire-and-forget – Django Ninja will keep the task alive as long as the app runs.
         asyncio.create_task(outbox_sync_loop(settings, poll_interval=interval))
         log.info("Outbox sync background task started (interval=%s s)", interval)
@@ -226,7 +226,7 @@ async def start_milvus_reconciliation_task() -> None:
 
     from somabrain.jobs.milvus_reconciliation import reconcile as milvus_reconcile
 
-    interval = float(getattr(settings, "SOMABRAIN_MILVUS_RECONCILE_INTERVAL", 3600.0))
+    interval = float(getattr(settings, "SOMABRAIN_MILVUS_RECONCILE_INTERVAL"))
     if interval <= 0:
         logging.getLogger("somabrain").info(
             "Milvus reconciliation disabled (interval=%s)", interval
@@ -264,9 +264,9 @@ async def startup_diagnostics(cfg: Any) -> None:
         from django.conf import settings
 
         mem_ep = str(
-            getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "") or ""
+            getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT") or ""
         ).strip()
-        token_present = bool(getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None))
+        token_present = bool(getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN"))
 
         # Use centralized Settings flag for Docker detection
         from django.conf import settings

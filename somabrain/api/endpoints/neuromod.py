@@ -46,7 +46,7 @@ def _state_values(tenant_id: str) -> dict:
 @router.get("/state", auth=api_key_auth)
 def get_neuromod_state(request: HttpRequest):
     """Get neuromodulator state for tenant."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     try:
@@ -64,7 +64,7 @@ def get_neuromod_state(request: HttpRequest):
 @router.post("/adjust", auth=api_key_auth)
 def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
     """Adjust neuromodulator values for tenant."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     try:

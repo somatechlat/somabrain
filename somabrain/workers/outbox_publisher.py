@@ -49,12 +49,12 @@ from somabrain.workers.quota_manager import get_quota_manager
 # Per-tenant batch processing configuration
 _PER_TENANT_BATCH_LIMIT = max(
     1,
-    int(getattr(settings, "OUTBOX_TENANT_BATCH_LIMIT", 50) or 50),
+    int(getattr(settings, "OUTBOX_TENANT_BATCH_LIMIT") or 50),
 )
 
 # Backpressure configuration
 _BACKPRESSURE_ENABLED = (
-    str(getattr(settings, "OUTBOX_BACKPRESSURE_ENABLED", "true")).lower() == "true"
+    str(getattr(settings, "OUTBOX_BACKPRESSURE_ENABLED")).lower() == "true"
 )
 
 
@@ -62,10 +62,10 @@ def _bootstrap() -> str | None:
     # Prefer explicit SOMA_KAFKA_BOOTSTRAP if present (plain host:port)
     """Execute bootstrap."""
 
-    direct = (getattr(settings, "KAFKA_BOOTSTRAP", "") or "").strip()
+    direct = (getattr(settings, "KAFKA_BOOTSTRAP") or "").strip()
     if direct:
         return direct
-    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "")
+    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
     if not url:
         return None
     return url.replace("kafka://", "").strip()
@@ -325,11 +325,11 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         require_opa=False,
     )
     batch_size = int(settings.OUTBOX_BATCH_SIZE or 100)
-    max_retries = int(getattr(settings, "OUTBOX_MAX_RETRIES", 5) or 5)
-    poll_interval = float(getattr(settings, "OUTBOX_POLL_INTERVAL", 1.0) or 1.0)
-    create_retry_ms = int(getattr(settings, "OUTBOX_PRODUCER_RETRY_MS", 1000) or 1000)
+    max_retries = int(getattr(settings, "OUTBOX_MAX_RETRIES") or 5)
+    poll_interval = float(getattr(settings, "OUTBOX_POLL_INTERVAL") or 1.0)
+    create_retry_ms = int(getattr(settings, "OUTBOX_PRODUCER_RETRY_MS") or 1000)
     journal_replay_interval = int(
-        getattr(settings, "JOURNAL_REPLAY_INTERVAL", 300) or 300
+        getattr(settings, "JOURNAL_REPLAY_INTERVAL") or 300
     )  # 5 minutes
 
     producer = _make_producer()

@@ -69,7 +69,7 @@ class OpaMiddleware:
         """
 
         try:
-            opa_url = getattr(settings, "SOMABRAIN_OPA_URL", None)
+            opa_url = getattr(settings, "SOMABRAIN_OPA_URL")
         except Exception:
             opa_url = None
 
@@ -112,7 +112,7 @@ class OpaMiddleware:
         query_url = f"{opa_url.rstrip('/')}/v1/data/{policy_path}"
 
         try:
-            timeout_seconds = float(getattr(settings, "SOMABRAIN_OPA_TIMEOUT", 2.0))
+            timeout_seconds = float(getattr(settings, "SOMABRAIN_OPA_TIMEOUT"))
             with httpx.Client(timeout=timeout_seconds) as client:
                 resp = client.post(query_url, json={"input": input_payload})
 

@@ -92,8 +92,8 @@ def check_postgres(dsn: str | None, timeout_s: float = 1.0) -> bool:
 
 def check_from_env() -> dict[str, bool]:
     """Convenience: check Kafka/Postgres based on common SOMABRAIN_* envs."""
-    kafka_url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "")
-    pg_dsn = getattr(settings, "SOMABRAIN_POSTGRES_DSN", "")
+    kafka_url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
+    pg_dsn = getattr(settings, "SOMABRAIN_POSTGRES_DSN")
     return {
         "kafka_ok": check_kafka(kafka_url),
         "postgres_ok": check_postgres(pg_dsn),
@@ -154,7 +154,7 @@ def check_sfm_integration_health(
 
     # Get SFM endpoint from settings if not provided
     if not sfm_endpoint:
-        sfm_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)
+        sfm_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         if not sfm_endpoint:
             from somabrain.core.infrastructure_defs import get_memory_http_endpoint
 
@@ -176,7 +176,7 @@ def check_sfm_integration_health(
         # Use sync client with timeout (E3.4: 2 second timeout)
         with httpx.Client(timeout=timeout_s) as client:
             # Get API token for auth
-            token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None) or getattr(
+            token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN") or getattr(
                 settings, "api_token", None
             )
             headers = {}
@@ -243,7 +243,7 @@ async def check_sfm_integration_health_async(
 
     # Get SFM endpoint from settings if not provided
     if not sfm_endpoint:
-        sfm_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)
+        sfm_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         if not sfm_endpoint:
             from somabrain.core.infrastructure_defs import get_memory_http_endpoint
 
@@ -265,7 +265,7 @@ async def check_sfm_integration_health_async(
         # Use async client with timeout (E3.4: 2 second timeout)
         async with httpx.AsyncClient(timeout=timeout_s) as client:
             # Get API token for auth
-            token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", None) or getattr(
+            token = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN") or getattr(
                 settings, "api_token", None
             )
             headers = {}

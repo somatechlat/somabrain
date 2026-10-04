@@ -57,12 +57,12 @@ def _resolve(request: HttpRequest, namespace: str | None) -> TenantContext:
 
     tenant_id = require_tenant(
         request.headers.get("X-Tenant-ID")
-        or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None)
+        or getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
     )
     ns = require_namespace(
         request.headers.get("X-Namespace")
         or namespace
-        or getattr(settings, "SOMABRAIN_NAMESPACE", None)
+        or getattr(settings, "SOMABRAIN_NAMESPACE")
     )
     return TenantContext(tenant_id=tenant_id, namespace=ns)
 

@@ -28,7 +28,11 @@ def get_config_service() -> ConfigService:
     """Get or initialize the ConfigService singleton."""
     global _config_service
     if _config_service is None:
-        redis_url = getattr(settings, "SOMABRAIN_REDIS_URL", "redis://localhost:6379/0")
+        redis_url = getattr(settings, "SOMABRAIN_REDIS_URL")
+        if not redis_url:
+            raise RuntimeError(
+                "SOMABRAIN_REDIS_URL is not configured — refusing to invent a Redis URL"
+            )
         keys_path = getattr(settings, "SOMABRAIN_JWT_PUBLIC_KEY_PATH", None)
         _config_service = ConfigService(redis_url=redis_url, keys_path=keys_path)
     return _config_service

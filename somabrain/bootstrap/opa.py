@@ -43,7 +43,7 @@ def get_opa_url() -> str | None:
     Returns:
         The OPA URL if configured, None otherwise.
     """
-    return getattr(settings, "SOMABRAIN_OPA_URL", None) or getattr(
+    return getattr(settings, "SOMABRAIN_OPA_URL") or getattr(
         settings, "SOMABRAIN_OPA_URL", None
     )
 

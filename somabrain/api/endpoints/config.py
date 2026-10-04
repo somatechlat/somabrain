@@ -33,7 +33,7 @@ router = Router(tags=["config"])
 @router.get("/", response=ConfigResponse, auth=api_key_auth)
 def get_config(request: HttpRequest):
     """Get current configuration for tenant."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     # Return sanitized configuration (no secrets)
@@ -41,16 +41,16 @@ def get_config(request: HttpRequest):
         "tenant_id": ctx.tenant_id,
         "namespace": ctx.namespace,
         "features": {
-            "enable_sleep": getattr(settings, "SOMABRAIN_ENABLE_SLEEP", True),
+            "enable_sleep": getattr(settings, "SOMABRAIN_ENABLE_SLEEP"),
             "consolidation_enabled": getattr(
                 settings, "SOMABRAIN_CONSOLIDATION_ENABLED", True
             ),
-            "use_planner": getattr(settings, "USE_PLANNER", False),
-            "use_microcircuits": getattr(settings, "USE_MICROCIRCUITS", False),
+            "use_planner": getattr(settings, "USE_PLANNER"),
+            "use_microcircuits": getattr(settings, "USE_MICROCIRCUITS"),
         },
         "limits": {
-            "plan_max_steps": getattr(settings, "PLAN_MAX_STEPS", 5),
-            "hrr_dim": getattr(settings, "HRR_DIM", 512),
+            "plan_max_steps": getattr(settings, "PLAN_MAX_STEPS"),
+            "hrr_dim": getattr(settings, "HRR_DIM"),
         },
     }
 

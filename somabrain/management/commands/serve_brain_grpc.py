@@ -46,7 +46,7 @@ class Command(BaseCommand):
 
         return (
             getattr(settings, "SA01_DEPLOYMENT_MODE", None)
-            or getattr(settings, "SOMA_DEPLOY_MODE", None)
+            or getattr(settings, "SOMA_DEPLOY_MODE")
             or ""
         )
 
@@ -101,8 +101,8 @@ class Command(BaseCommand):
 
         from somabrain.transport.net import _read_required_file
 
-        cert_file = getattr(settings, "SOMABRAIN_GRPC_CERT_FILE", "") or ""
-        key_file = getattr(settings, "SOMABRAIN_GRPC_KEY_FILE", "") or ""
+        cert_file = getattr(settings, "SOMABRAIN_GRPC_CERT_FILE") or ""
+        key_file = getattr(settings, "SOMABRAIN_GRPC_KEY_FILE") or ""
         if not cert_file or not key_file:
             raise CommandError(
                 "NET binding requires SOMABRAIN_GRPC_CERT_FILE and "
@@ -111,8 +111,8 @@ class Command(BaseCommand):
         cert = _read_required_file(cert_file, "gRPC server certificate")
         key = _read_required_file(key_file, "gRPC server key")
 
-        host = getattr(settings, "SOMABRAIN_GRPC_LISTEN_HOST", "0.0.0.0")
-        port = int(getattr(settings, "SOMABRAIN_GRPC_LISTEN_PORT", 30102))
+        host = getattr(settings, "SOMABRAIN_GRPC_LISTEN_HOST")
+        port = int(getattr(settings, "SOMABRAIN_GRPC_LISTEN_PORT"))
         creds = grpc.ssl_server_credentials(
             [(key, cert)],
             root_certificates=None,

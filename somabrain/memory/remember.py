@@ -113,13 +113,13 @@ def _get_tenant_namespace(cfg: Any, payload: dict | None = None) -> tuple[str, s
     if not tenant:
         tenant = str(
             getattr(cfg, "tenant", None)
-            or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "")
+            or getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
             or ""
         ).strip()
     if not namespace:
         namespace = str(
             getattr(cfg, "namespace", None)
-            or getattr(settings, "SOMABRAIN_NAMESPACE", "public")
+            or getattr(settings, "SOMABRAIN_NAMESPACE")
             or "public"
         ).strip()
     return tenant, namespace

@@ -105,7 +105,7 @@ def run_nrem(
         top_k: Max items to batch
         max_summaries: Max summaries to create
     """
-    namespace = f"{getattr(settings, 'SOMABRAIN_NAMESPACE', 'public')}:{tenant_id}"
+    namespace = f"{getattr(settings, 'SOMABRAIN_NAMESPACE')}:{tenant_id}"
     memsvc = MemoryService(mtmem, namespace)
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if not episodics:
@@ -113,7 +113,7 @@ def run_nrem(
 
     # Time budget guard
     _t0 = _time.perf_counter()
-    _budget = float(getattr(settings, "SOMABRAIN_CONSOLIDATION_TIMEOUT_S", 0.0) or 0.0)
+    _budget = float(getattr(settings, "SOMABRAIN_CONSOLIDATION_TIMEOUT_S") or 0.0)
 
     episodics.sort(key=lambda p: int(p.get("importance", 1)), reverse=True)
     batch = episodics[: max(1, int(top_k))]
@@ -150,7 +150,7 @@ def run_rem(
         recomb_rate: Rate of recombination
         max_summaries: Max summaries to create
     """
-    namespace = f"{getattr(settings, 'SOMABRAIN_NAMESPACE', 'public')}:{tenant_id}"
+    namespace = f"{getattr(settings, 'SOMABRAIN_NAMESPACE')}:{tenant_id}"
     memsvc = MemoryService(mtmem, namespace)
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if len(episodics) < 2:
@@ -160,7 +160,7 @@ def run_rem(
     n_pairs = max(0, int(recomb_rate * len(episodics)))
     created = 0
     _t0 = _time.perf_counter()
-    _budget = float(getattr(settings, "SOMABRAIN_CONSOLIDATION_TIMEOUT_S", 0.0) or 0.0)
+    _budget = float(getattr(settings, "SOMABRAIN_CONSOLIDATION_TIMEOUT_S") or 0.0)
 
     for _ in range(min(n_pairs, max_summaries)):
         if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
@@ -191,7 +191,7 @@ def main():
     args = parser.parse_args()
 
     tenant = args.tenant
-    embed_dim = getattr(settings, "SOMABRAIN_EMBED_DIM", None)
+    embed_dim = getattr(settings, "SOMABRAIN_EMBED_DIM")
     if not embed_dim:
         raise RuntimeError(
             "SOMABRAIN_EMBED_DIM is not configured — refusing to guess a vector dim"
@@ -205,8 +205,8 @@ def main():
             settings,
             mtwm,
             mtmem,
-            top_k=getattr(settings, "SOMABRAIN_NREM_BATCH_SIZE", 16),
-            max_summaries=getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3),
+            top_k=getattr(settings, "SOMABRAIN_NREM_BATCH_SIZE"),
+            max_summaries=getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE"),
         )
         print("NREM:", stats)
 
@@ -216,8 +216,8 @@ def main():
             settings,
             mtwm,
             mtmem,
-            recomb_rate=getattr(settings, "SOMABRAIN_REM_RECOMB_RATE", 0.2),
-            max_summaries=getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3),
+            recomb_rate=getattr(settings, "SOMABRAIN_REM_RECOMB_RATE"),
+            max_summaries=getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE"),
         )
         print("REM:", stats)
 

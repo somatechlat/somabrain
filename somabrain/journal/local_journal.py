@@ -83,18 +83,18 @@ class JournalConfig:
         """
         return cls(
             journal_dir=str(
-                getattr(settings, "SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal")
+                getattr(settings, "SOMABRAIN_JOURNAL_DIR")
             ),
             max_file_size=int(
-                getattr(settings, "SOMABRAIN_JOURNAL_MAX_FILE_SIZE", 104857600)
+                getattr(settings, "SOMABRAIN_JOURNAL_MAX_FILE_SIZE")
             ),
-            max_files=int(getattr(settings, "journal_max_files", 10)),
+            max_files=int(getattr(settings, "journal_max_files")),
             rotation_interval=int(
-                getattr(settings, "journal_rotation_interval", 86400)
+                getattr(settings, "journal_rotation_interval")
             ),
-            retention_days=int(getattr(settings, "journal_retention_days", 7)),
-            compression=bool(getattr(settings, "journal_compression", True)),
-            sync_writes=bool(getattr(settings, "journal_sync_writes", True)),
+            retention_days=int(getattr(settings, "journal_retention_days")),
+            compression=bool(getattr(settings, "journal_compression")),
+            sync_writes=bool(getattr(settings, "journal_sync_writes")),
         )
 
 

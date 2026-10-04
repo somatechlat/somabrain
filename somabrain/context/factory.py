@@ -19,7 +19,7 @@ _embedder = None
 try:
     # Use production embedder by default; allow tiny embedder only when explicitly enabled.
     # Use Settings attribute "allow_tiny_embedder" (bool) instead of getenv.
-    if getattr(settings, "allow_tiny_embedder", False):
+    if getattr(settings, "allow_tiny_embedder"):
         from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
         _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
@@ -31,10 +31,10 @@ except Exception:
     _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
 _working_memory = WorkingMemoryBuffer()
 _retrieval_weights = RetrievalWeights(
-    alpha=float(getattr(settings, "retrieval_alpha", 1.0)),
-    beta=float(getattr(settings, "retrieval_beta", 0.3)),
-    gamma=float(getattr(settings, "retrieval_gamma", 0.1)),
-    tau=float(getattr(settings, "retrieval_tau", 0.8)),
+    alpha=float(getattr(settings, "retrieval_alpha")),
+    beta=float(getattr(settings, "retrieval_beta")),
+    gamma=float(getattr(settings, "retrieval_gamma")),
+    tau=float(getattr(settings, "retrieval_tau")),
 )
 _utility_weights = UtilityWeights()
 _memory_backend = MultiTenantMemory(cfg=settings)

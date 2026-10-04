@@ -82,22 +82,22 @@ class NeuromodState:
 
     dopamine: float = field(
         default_factory=lambda: float(
-            getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4)
+            getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE")
         )
     )
     serotonin: float = field(
         default_factory=lambda: float(
-            getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5)
+            getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE")
         )
     )
     noradrenaline: float = field(
         default_factory=lambda: float(
-            getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE", 0.0)
+            getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE")
         )
     )
     acetylcholine: float = field(
         default_factory=lambda: float(
-            getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE", 0.0)
+            getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE")
         )
     )
     timestamp: float = field(default_factory=lambda: time.time())
@@ -253,31 +253,31 @@ class AdaptiveNeuromodulators:
 
         self.dopamine_param = AdaptiveParameter(
             name="dopamine",
-            initial_value=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4),
-            min_value=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_MIN", 0.2),
-            max_value=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_MAX", 0.8),
-            learning_rate=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_LR", 0.01),
+            initial_value=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BASE"),
+            min_value=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_MIN"),
+            max_value=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_MAX"),
+            learning_rate=getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_LR"),
         )
         self.serotonin_param = AdaptiveParameter(
             name="serotonin",
-            initial_value=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5),
-            min_value=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_MIN", 0.0),
-            max_value=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_MAX", 1.0),
-            learning_rate=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_LR", 0.01),
+            initial_value=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_BASE"),
+            min_value=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_MIN"),
+            max_value=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_MAX"),
+            learning_rate=getattr(settings, "SOMABRAIN_NEURO_SEROTONIN_LR"),
         )
         self.noradrenaline_param = AdaptiveParameter(
             name="noradrenaline",
-            initial_value=getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE", 0.0),
-            min_value=getattr(settings, "SOMABRAIN_NEURO_NORAD_MIN", 0.0),
-            max_value=getattr(settings, "SOMABRAIN_NEURO_NORAD_MAX", 0.1),
-            learning_rate=getattr(settings, "SOMABRAIN_NEURO_NORAD_LR", 0.01),
+            initial_value=getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE"),
+            min_value=getattr(settings, "SOMABRAIN_NEURO_NORAD_MIN"),
+            max_value=getattr(settings, "SOMABRAIN_NEURO_NORAD_MAX"),
+            learning_rate=getattr(settings, "SOMABRAIN_NEURO_NORAD_LR"),
         )
         self.acetylcholine_param = AdaptiveParameter(
             name="acetylcholine",
-            initial_value=getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE", 0.0),
-            min_value=getattr(settings, "SOMABRAIN_NEURO_ACETYL_MIN", 0.0),
-            max_value=getattr(settings, "SOMABRAIN_NEURO_ACETYL_MAX", 0.1),
-            learning_rate=getattr(settings, "SOMABRAIN_NEURO_ACETYL_LR", 0.01),
+            initial_value=getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE"),
+            min_value=getattr(settings, "SOMABRAIN_NEURO_ACETYL_MIN"),
+            max_value=getattr(settings, "SOMABRAIN_NEURO_ACETYL_MAX"),
+            learning_rate=getattr(settings, "SOMABRAIN_NEURO_ACETYL_LR"),
         )
 
     def get_current_state(self) -> NeuromodState:
@@ -327,13 +327,13 @@ def _calculate_dopamine_feedback(
     """Calculate dopamine feedback based on reward prediction errors."""
     # Higher dopamine for successful reward-based learning
     boost = (
-        getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_REWARD_BOOST", 0.1)
+        getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_REWARD_BOOST")
         if task_type == "reward_learning"
         else 0.0
     )
     return (
         performance.success_rate
-        + getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BIAS", 0.05)
+        + getattr(settings, "SOMABRAIN_NEURO_DOPAMINE_BIAS")
         + boost
     )
 
@@ -352,18 +352,18 @@ def _calculate_noradrenaline_feedback(
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
     urgency_factor = (
-        getattr(settings, "SOMABRAIN_NEURO_URGENCY_FACTOR", 0.02)
+        getattr(settings, "SOMABRAIN_NEURO_URGENCY_FACTOR")
         if task_type == "urgent"
         else 0.0
     )
     floor = max(
-        0.0, min(1.0, float(getattr(settings, "SOMABRAIN_NEURO_LATENCY_FLOOR", 0.1)))
+        0.0, min(1.0, float(getattr(settings, "SOMABRAIN_NEURO_LATENCY_FLOOR")))
     )
     latency_term = (1.0 / max(floor, performance.latency)) * getattr(
         settings, "SOMABRAIN_NEURO_LATENCY_SCALE", 0.01
     )
     return min(
-        getattr(settings, "SOMABRAIN_NEURO_NORAD_MAX", 0.1),
+        getattr(settings, "SOMABRAIN_NEURO_NORAD_MAX"),
         latency_term + urgency_factor,
     )
 
@@ -374,12 +374,12 @@ def _calculate_acetylcholine_feedback(
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
     memory_factor = (
-        getattr(settings, "SOMABRAIN_NEURO_MEMORY_FACTOR", 0.02)
+        getattr(settings, "SOMABRAIN_NEURO_MEMORY_FACTOR")
         if task_type == "memory"
         else 0.0
     )
     return (
-        performance.accuracy * getattr(settings, "SOMABRAIN_NEURO_ACCURACY_SCALE", 0.05)
+        performance.accuracy * getattr(settings, "SOMABRAIN_NEURO_ACCURACY_SCALE")
         + memory_factor
     )
 

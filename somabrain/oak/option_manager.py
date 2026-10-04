@@ -69,7 +69,7 @@ class OAKOption(models.Model):
 
         # Use abstract=True until model is migrated
         # Remove this line and run makemigrations when ready
-        managed = getattr(settings, "OAK_OPTION_MODEL_MANAGED", False)
+        managed = getattr(settings, "OAK_OPTION_MODEL_MANAGED")
         db_table = "oak_options"
         constraints = [
             models.UniqueConstraint(

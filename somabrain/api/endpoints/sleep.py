@@ -66,7 +66,7 @@ def _check_rate_limit(tenant_id: str, path: str):
 @router.get("/state", auth=api_key_auth)
 def get_sleep_state(request: HttpRequest):
     """Get current sleep state for tenant."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     try:
@@ -101,7 +101,7 @@ def _process_sleep_transition(
         trace_id: The trace_id.
     """
 
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
     tenant_id = ctx.tenant_id
 
@@ -120,7 +120,7 @@ def _process_sleep_transition(
         "tenant_id": tenant_id,
         "action": action_map.get(mode, "sleep"),
         "target_state": target_state_str,
-        "max_seconds": getattr(settings, "SLEEP_MAX_SECONDS", 3600),
+        "max_seconds": getattr(settings, "SLEEP_MAX_SECONDS"),
     }
     if not opa_client.evaluate(opa_input):
         raise HttpError(403, "OPA policy denied sleep request")
@@ -155,7 +155,7 @@ def _process_sleep_transition(
         )
 
     # Validation TTL
-    max_sec = getattr(settings, "SLEEP_MAX_SECONDS", 3600)
+    max_sec = getattr(settings, "SLEEP_MAX_SECONDS")
     if ttl_seconds is not None and ttl_seconds > max_sec:
         raise HttpError(400, f"ttl_seconds exceeds maximum of {max_sec}")
 
@@ -211,9 +211,9 @@ def _run_sleep_consolidation(tenant_id: str, target_state: SleepState) -> dict:
                 settings,
                 mtwm,
                 mtmem,
-                top_k=int(getattr(settings, "SOMABRAIN_NREM_BATCH_SIZE", 16)),
+                top_k=int(getattr(settings, "SOMABRAIN_NREM_BATCH_SIZE")),
                 max_summaries=int(
-                    getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3)
+                    getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE")
                 ),
             )
         if target_state == SleepState.ACTIVE:
@@ -223,10 +223,10 @@ def _run_sleep_consolidation(tenant_id: str, target_state: SleepState) -> dict:
                 mtwm,
                 mtmem,
                 recomb_rate=float(
-                    getattr(settings, "SOMABRAIN_REM_RECOMB_RATE", 0.2)
+                    getattr(settings, "SOMABRAIN_REM_RECOMB_RATE")
                 ),
                 max_summaries=int(
-                    getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3)
+                    getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE")
                 ),
             )
         return stats
@@ -288,7 +288,7 @@ def transition_sleep_state(request: HttpRequest, payload: dict):
     # We should probably implement it similarly or map trigger to state
     # For now, sticking to state-based for the upgraded parts.
     # Legacy 'transition' endpoint might need the trigger logic
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     manager = _get_sleep_manager()

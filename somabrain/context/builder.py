@@ -87,7 +87,7 @@ class ContextBuilder:
         )
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default value)
-        self._tenant_id: str = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "public")
+        self._tenant_id: str = getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
         # Align temporal decay and density penalties with runtime configuration when available
         self._recency_half_life = settings.retrieval_recency_half_life
         self._recency_sharpness = settings.retrieval_recency_sharpness
@@ -250,8 +250,8 @@ class ContextBuilder:
             tenant_id: The tenant_id.
         """
 
-        base = getattr(settings, "SOMABRAIN_NAMESPACE", "public") or "public"
-        tid = str(tenant_id or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "public"))
+        base = getattr(settings, "SOMABRAIN_NAMESPACE") or "public"
+        tid = str(tenant_id or getattr(settings, "SOMABRAIN_DEFAULT_TENANT"))
         return f"{base}:{tid}"
 
     def _memory_component(self) -> object:

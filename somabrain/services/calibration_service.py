@@ -19,7 +19,7 @@ class CalibrationService:
     """Service for managing predictor calibration."""
 
     enabled: bool = field(
-        default_factory=lambda: getattr(settings, "CALIBRATION_ENABLED", False)
+        default_factory=lambda: getattr(settings, "CALIBRATION_ENABLED")
     )
     trackers: dict[str, CalibrationTracker] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)

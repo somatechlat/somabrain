@@ -31,10 +31,10 @@ class StandaloneAPIKeyAuth(HttpBearer):
     def authenticate(
         self, request: HttpRequest, token: str
     ) -> dict[str, Any] | None:
-        expected = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", "")
+        expected = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN")
         if not expected or token != expected:
             return None
-        tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None)
+        tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
         if not tenant_id:
             from somabrain.settings.resolve import require_tenant
 

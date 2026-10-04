@@ -51,8 +51,8 @@ except Exception:  # pragma: no cover
 from common.infra_utils import assert_ready
 
 # Topic configuration constants (centralised settings only)
-GLOBAL_FRAME_TOPIC = getattr(settings, "topic_global_frame", "cog.global.frame")
-SEGMENTS_TOPIC = getattr(settings, "topic_segments", "cog.segments")
+GLOBAL_FRAME_TOPIC = getattr(settings, "topic_global_frame")
+SEGMENTS_TOPIC = getattr(settings, "topic_segments")
 
 
 @dataclass
@@ -71,7 +71,7 @@ class GlobalFrameCtx:
 def _bootstrap() -> str:
     """Execute bootstrap."""
 
-    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", "") or getattr(
+    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS") or getattr(
         settings, "kafka_bootstrap", ""
     )
     if not url:
@@ -160,7 +160,7 @@ class OrchestratorService:
         self._ns = getattr(settings, "orchestrator_namespace", None) or "cog"
         # Minimal leader->tools routing (JSON via env)
         try:
-            routing_raw = getattr(settings, "orchestrator_routing", "") or ""
+            routing_raw = getattr(settings, "orchestrator_routing") or ""
             self._routing = json.loads(routing_raw) if routing_raw else {}
         except Exception as e:
             logger.warning("Failed to parse orchestrator routing config: %s", e)
@@ -288,7 +288,7 @@ class OrchestratorService:
             {
                 "bootstrap.servers": _bootstrap(),
                 # Use Settings attribute for consumer group; fallback to default.
-                "group.id": getattr(settings, "consumer_group", "orchestrator-service"),
+                "group.id": getattr(settings, "consumer_group"),
                 "enable.auto.commit": True,
                 "auto.offset.reset": "latest",
             }

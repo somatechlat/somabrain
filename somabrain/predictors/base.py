@@ -25,7 +25,7 @@ def _select_heat_method() -> str:
     The ``Settings`` model provides a ``heat_method`` attribute that defaults to
     ``"chebyshev"``. We use that attribute directly, normalising the value.
     """
-    m = getattr(settings, "heat_method", "chebyshev")
+    m = getattr(settings, "heat_method")
     if not isinstance(m, str):
         m = "chebyshev"
     m = m.strip().lower()
@@ -260,10 +260,10 @@ def build_predictor_from_env(domain: str) -> tuple[HeatDiffusionPredictor, int]:
         apply_A=apply_A,
         dim=dim,
         cfg=PredictorConfig(
-            diffusion_t=float(getattr(settings, "SOMABRAIN_DIFFUSION_T", 0.5)),
-            alpha=float(getattr(settings, "SOMABRAIN_CONF_ALPHA", 2.0)),
-            chebyshev_K=int(getattr(settings, "SOMABRAIN_CHEB_K", 30)),
-            lanczos_m=int(getattr(settings, "SOMABRAIN_LANCZOS_M", 20)),
+            diffusion_t=float(getattr(settings, "SOMABRAIN_DIFFUSION_T")),
+            alpha=float(getattr(settings, "SOMABRAIN_CONF_ALPHA")),
+            chebyshev_K=int(getattr(settings, "SOMABRAIN_CHEB_K")),
+            lanczos_m=int(getattr(settings, "SOMABRAIN_LANCZOS_M")),
         ),
     )
     return pred, dim

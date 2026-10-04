@@ -43,9 +43,9 @@ logger = logging.getLogger("somabrain.services.action_predictor")
 
 # Kafka configuration (prod-like defaults, override via env)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = getattr(settings, "topic_next_event", "cog.next_event")
-PUBLISH_TOPIC = getattr(settings, "topic_action_updates", "cog.action.updates")
-PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
+CONSUME_TOPIC = getattr(settings, "topic_next_event")
+PUBLISH_TOPIC = getattr(settings, "topic_action_updates")
+PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha"))
 
 
 class ActionPredictorService:
@@ -80,7 +80,7 @@ class ActionPredictorService:
         # otherwise fall back to the same budgeted Mahalanobis predictor used by
         # the agent predictor. This keeps the standalone profile self-contained
         # and avoids requiring an external LLM service for local development.
-        llm_endpoint = getattr(settings, "SOMABRAIN_LLM_ENDPOINT", None) or getattr(
+        llm_endpoint = getattr(settings, "SOMABRAIN_LLM_ENDPOINT") or getattr(
             settings, "llm_endpoint", None
         )
         if llm_endpoint:
@@ -90,13 +90,13 @@ class ActionPredictorService:
         self.producer = make_producer()
         self.consumer = self._create_consumer()
         # Tenant ID from Settings (fallback to default defined in Settings)
-        self.tenant_id = getattr(settings, "tenant_id", "default")
+        self.tenant_id = getattr(settings, "tenant_id")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
         # Prefer Settings' kafka_bootstrap_servers, fallback to legacy env vars for compatibility
         # Use central Settings for Kafka bootstrap; fallback to settings if defined.
-        bs = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", None)
+        bs = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

@@ -27,7 +27,7 @@ def get_entropy_cap() -> float:
     ``RuntimeError`` is raised. This mirrors the VIBE rule of failing fast on
     missing configuration.
     """
-    cap = getattr(settings, "SOMABRAIN_ENTROPY_CAP", None)
+    cap = getattr(settings, "SOMABRAIN_ENTROPY_CAP")
     if cap is None:
         raise RuntimeError(
             "Entropy cap is not configured. Set 'entropy_cap' in the settings."

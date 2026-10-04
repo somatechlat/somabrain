@@ -119,7 +119,7 @@ def health(request: HttpRequest) -> dict[str, Any]:
         from somabrain.bootstrap.opa import create_opa_engine
 
         resp["opa_ok"] = bool(create_opa_engine())
-        resp["opa_required"] = getattr(settings, "REQUIRE_OPA", None)
+        resp["opa_required"] = getattr(settings, "REQUIRE_OPA")
     except Exception:
         resp["opa_ok"] = None
         resp["opa_required"] = None

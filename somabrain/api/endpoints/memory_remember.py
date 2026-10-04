@@ -165,7 +165,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     degraded_warnings: list[str] = []
 
     fast_ack = request.headers.get("X-Soma-Fast-Ack", "").lower() == "true" or bool(
-        getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK", False)
+        getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK")
     )
 
     if memsvc._is_circuit_open():

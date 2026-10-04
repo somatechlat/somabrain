@@ -44,22 +44,22 @@ class FeatureFlags:
             "allow_anonymous_tenants": getattr(
                 settings, "SOMABRAIN_ALLOW_ANONYMOUS_TENANTS", False
             ),
-            "kill_switch": getattr(settings, "SOMABRAIN_KILL_SWITCH", False),
+            "kill_switch": getattr(settings, "SOMABRAIN_KILL_SWITCH"),
             "allow_tiny_embedder": getattr(
                 settings, "SOMABRAIN_ALLOW_TINY_EMBEDDER", False
             ),
-            "enable_cog_threads": getattr(settings, "ENABLE_COG_THREADS", False),
-            "enable_sleep": getattr(settings, "SOMABRAIN_ENABLE_SLEEP", True),
+            "enable_cog_threads": getattr(settings, "ENABLE_COG_THREADS"),
+            "enable_sleep": getattr(settings, "SOMABRAIN_ENABLE_SLEEP"),
             "consolidation_enabled": getattr(
                 settings, "SOMABRAIN_CONSOLIDATION_ENABLED", True
             ),
-            "use_planner": getattr(settings, "SOMABRAIN_USE_PLANNER", False),
-            "use_focus_state": getattr(settings, "SOMABRAIN_USE_FOCUS_STATE", True),
+            "use_planner": getattr(settings, "SOMABRAIN_USE_PLANNER"),
+            "use_focus_state": getattr(settings, "SOMABRAIN_USE_FOCUS_STATE"),
             "use_microcircuits": getattr(
                 settings, "SOMABRAIN_USE_MICROCIRCUITS", False
             ),
-            "use_hrr": getattr(settings, "SOMABRAIN_USE_HRR", False),
-            "use_meta_brain": getattr(settings, "SOMABRAIN_USE_META_BRAIN", False),
+            "use_hrr": getattr(settings, "SOMABRAIN_USE_HRR"),
+            "use_meta_brain": getattr(settings, "SOMABRAIN_USE_META_BRAIN"),
             "use_exec_controller": getattr(
                 settings, "SOMABRAIN_USE_EXEC_CONTROLLER", False
             ),

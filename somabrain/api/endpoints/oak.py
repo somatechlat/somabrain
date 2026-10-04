@@ -35,7 +35,7 @@ def _get_milvus() -> MilvusClient:
     """Return the lazy singleton MilvusClient, raising if OAK is disabled."""
     global _milvus
     if _milvus is None:
-        if not getattr(settings, "ENABLE_OAK", False):
+        if not getattr(settings, "ENABLE_OAK"):
             raise RuntimeError("OAK is not enabled")
         _milvus = MilvusClient()
     return _milvus
@@ -58,7 +58,7 @@ class OakPlanSuggestResponse(Schema):
 @router.post("/option/create", response=OakPlanSuggestResponse, auth=api_key_auth)
 def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
     """Create a new Oak option and store it in Milvus."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     try:
@@ -93,7 +93,7 @@ def oak_option_update(
     request: HttpRequest, option_id: str, body: OakOptionCreateRequest
 ):
     """Replace the payload of an existing Oak option."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     try:
@@ -123,7 +123,7 @@ def oak_option_update(
 @router.get("/plan", response=OakPlanSuggestResponse, auth=api_key_auth)
 def oak_plan(request: HttpRequest, max_options: int | None = None):
     """Return a ranked list of Oak option identifiers for the tenant."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     try:

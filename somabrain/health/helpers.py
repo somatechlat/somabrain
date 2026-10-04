@@ -70,7 +70,7 @@ def get_mt_memory():
 
     # Fallback: verify SFM is reachable for health checks
     try:
-        memory_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)
+        memory_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         if memory_endpoint:
             # Ping SFM healthz endpoint to verify it's reachable
             healthz_url = memory_endpoint.rstrip("/") + "/healthz"
@@ -116,7 +116,7 @@ def get_embedder():
 
 def ping(url: str) -> bool:
     """Ping a URL and return True if it responds with 2xx."""
-    ping_timeout = float(getattr(settings, "HEALTH_PING_TIMEOUT", 0.5) or 0.5)
+    ping_timeout = float(getattr(settings, "HEALTH_PING_TIMEOUT") or 0.5)
     try:
         with urllib.request.urlopen(url, timeout=ping_timeout) as r:
             return 200 <= getattr(r, "status", 500) < 300
@@ -152,6 +152,6 @@ def milvus_metrics_for_tenant(tenant_id: str) -> dict[str, float | None]:
         ),
         "segment_load": _read(
             M.MILVUS_SEGMENT_LOAD,
-            collection=getattr(settings, "SOMABRAIN_MILVUS_COLLECTION", "oak_options"),
+            collection=getattr(settings, "SOMABRAIN_MILVUS_COLLECTION"),
         ),
     }

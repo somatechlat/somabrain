@@ -116,19 +116,19 @@ class TransportMixin:
         # Allow tuning via environment variables for production/dev use
         default_max = _http_setting("http_max_connections", 64)
         try:
-            max_conns = int(getattr(settings, "http_max_connections", default_max))
+            max_conns = int(getattr(settings, "http_max_connections"))
         except Exception:
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
             keepalive = int(
-                getattr(settings, "http_keepalive_connections", default_keepalive)
+                getattr(settings, "http_keepalive_connections")
             )
         except Exception:
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
         try:
-            retries = int(getattr(settings, "http_retries", default_retries))
+            retries = int(getattr(settings, "http_retries"))
         except Exception:
             retries = default_retries
 

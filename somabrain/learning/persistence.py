@@ -27,7 +27,7 @@ def get_redis() -> Redis | None:
     Returns None if Redis is not available or not required.
     """
     require_backends = (
-        getattr(settings, "require_external_backends", False) if settings else False
+        getattr(settings, "require_external_backends") if settings else False
     )
     require_backends = str(require_backends).strip().lower() in {
         "1",
@@ -47,7 +47,7 @@ def get_redis() -> Redis | None:
                 return redis.from_url(redis_url)
             redis_host = getattr(settings, "redis_host", None) if settings else None
             redis_port = getattr(settings, "redis_port", None) if settings else None
-            redis_db = getattr(settings, "redis_db", 0) if settings else 0
+            redis_db = getattr(settings, "redis_db") if settings else 0
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
         except Exception:
@@ -67,7 +67,7 @@ def is_persistence_enabled() -> bool:
     if not _persist_enabled:
         if settings:
             _persist_enabled = str(
-                getattr(settings, "enable_learning_state_persistence", "")
+                getattr(settings, "enable_learning_state_persistence")
             ).strip().lower() in {"1", "true", "yes", "on"}
     return _persist_enabled
 

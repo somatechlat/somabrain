@@ -67,7 +67,7 @@ class DegradationManager:
         logger.error("Service error in %s for tenant %s: %s", service, tenant, error)
         cache.set(f"{self.HEALTH_KEY}:{tenant}", HealthStatus.DEGRADED.value, 300)
 
-        kafka_topic = getattr(settings, "SOMABRAIN_DEGRADATION_KAFKA_TOPIC", "")
+        kafka_topic = getattr(settings, "SOMABRAIN_DEGRADATION_KAFKA_TOPIC")
         if kafka_topic:
             # Write to the transactional outbox. The outbox worker publishes pending
             # rows to Kafka reliably (at-least-once). We use get_or_create with a
