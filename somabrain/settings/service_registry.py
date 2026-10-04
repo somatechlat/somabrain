@@ -19,23 +19,23 @@ class ServiceEndpoint:
     def get_url(
         self, environment: str = "development", host: str | None = None
     ) -> str:
-        """Resolve service URL from environment or defaults."""
+        """Resolve service URL from the environment.
+
+        There is no invented ``localhost`` or cluster-DNS fallback (Rule 91).
+        A missing required service is a missing required service in every
+        environment; a missing optional one raises here too because a caller
+        that asked for a URL did not ask for a guess.
+        """
         url = os.environ.get(self.env_var)
-        if url:
-            return url.rstrip("/") + self.path
+        if url and url.strip():
+            return url.strip().rstrip("/") + self.path
 
-        if environment == "production" and self.required:
-            raise ValueError(
-                f"Missing required service: {self.env_var}\n"
-                f"Service: {self.name} - {self.description}"
-            )
-
-        if not host:
-            host = self.name.lower().replace(" ", "").replace("-", "")
-        if environment == "development":
-            host = "localhost"
-
-        return f"http://{host}:{self.default_port}{self.path}"
+        raise ValueError(
+            f"Missing required service: {self.env_var}\n"
+            f"Service: {self.name} - {self.description}\n"
+            f"Declare it in the environment / Compose / Helm. There is no "
+            f"localhost fallback at the call site (Rule 91)."
+        )
 
 
 class ServiceRegistry:

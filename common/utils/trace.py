@@ -22,9 +22,14 @@ except Exception as exc:  # pragma: no cover
 
 def configure_tracing(
     service_name: str,
-    collector_endpoint: str = "http://otel-collector.soma-infra.svc.cluster.local:4317",
+    collector_endpoint: str | None = None,
 ) -> None:
-    """Initialise OpenTelemetry tracing for a service."""
+    """Initialise OpenTelemetry tracing for a service.
+
+    ``collector_endpoint`` is deployment topology. When omitted it is resolved
+    from ``OTEL_EXPORTER_OTLP_ENDPOINT``; a missing setting raises. There is no
+    cluster DNS name or localhost fallback at the call site (Rule 91).
+    """
 
     if trace is None:  # pragma: no cover - executed when OTel missing
         _LOG.warning(
@@ -32,8 +37,22 @@ def configure_tracing(
         )
         return
 
+    from somabrain.settings.resolve import require_url
+
+    endpoint = (
+        require_url("OTEL_EXPORTER_OTLP_ENDPOINT")
+        if collector_endpoint is None
+        else str(collector_endpoint).strip()
+    )
+    if "://" not in endpoint:
+        raise ValueError(
+            "collector_endpoint must be a URL with a scheme; protocol constants "
+            "live in somabrain.settings.constants and the effective base is "
+            "OTEL_EXPORTER_OTLP_ENDPOINT."
+        )
+
     provider = TracerProvider(resource=Resource.create({"service.name": service_name}))
-    span_exporter = OTLPSpanExporter(endpoint=collector_endpoint, insecure=True)
+    span_exporter = OTLPSpanExporter(endpoint=endpoint, insecure=True)
     span_processor = BatchSpanProcessor(span_exporter)
     provider.add_span_processor(span_processor)
     trace.set_tracer_provider(provider)

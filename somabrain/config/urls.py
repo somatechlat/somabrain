@@ -198,7 +198,14 @@ def health_view(request):
     def check_opa():
         """Execute check opa."""
 
-        url = getattr(settings, "OPA_URL", "http://somabrain_opa:8181")
+        from somabrain.settings.resolve import optional_url
+
+        url = optional_url("OPA_URL") or optional_url("SOMABRAIN_OPA_URL")
+        if not url:
+            raise RuntimeError(
+                "OPA_URL / SOMABRAIN_OPA_URL is not configured; there is no "
+                "default policy-engine URL at the call site (Rule 91)."
+            )
         with httpx.Client(timeout=3) as c:
             r = c.get(f"{url}/health")
             return {"healthy": r.status_code == 200}
@@ -209,7 +216,14 @@ def health_view(request):
     def check_minio():
         """Execute check minio."""
 
-        url = getattr(settings, "MINIO_ENDPOINT", "http://somabrain_minio:9000")
+        from somabrain.settings.resolve import optional_url
+
+        url = optional_url("MINIO_ENDPOINT")
+        if not url:
+            raise RuntimeError(
+                "MINIO_ENDPOINT is not configured; there is no default "
+                "object-storage URL at the call site (Rule 91)."
+            )
         with httpx.Client(timeout=3) as c:
             r = c.get(f"{url}/minio/health/live")
             return {"healthy": r.status_code == 200}
@@ -220,9 +234,14 @@ def health_view(request):
     def check_schema_registry():
         """Execute check schema registry."""
 
-        url = getattr(
-            settings, "SCHEMA_REGISTRY_URL", "http://somabrain_schema_registry:8081"
-        )
+        from somabrain.settings.resolve import optional_url
+
+        url = optional_url("SCHEMA_REGISTRY_URL")
+        if not url:
+            raise RuntimeError(
+                "SCHEMA_REGISTRY_URL is not configured; there is no default "
+                "registry URL at the call site (Rule 91)."
+            )
         with httpx.Client(timeout=3) as c:
             r = c.get(f"{url}/subjects")
             return {
@@ -375,7 +394,7 @@ def health_view(request):
         and embedder_ok
         and predictor_ok
     )
-    health["namespace"] = getattr(settings, "NAMESPACE", "default")
+    health["namespace"] = getattr(settings, "SOMABRAIN_NAMESPACE", None)
     health["trace_id"] = request.headers.get("X-Request-ID")
     health["postgres_ok"] = postgres_ok
     health["kafka_ok"] = kafka_ok

@@ -240,10 +240,17 @@ def check_opa() -> dict[str, Any]:
     """Check OPA policy engine health."""
     import httpx
 
+    from somabrain.settings.resolve import optional_url
+
     def _check():
         """Execute check."""
 
-        opa_url = getattr(settings, "SOMABRAIN_OPA_URL", "http://localhost:20181")
+        opa_url = optional_url("SOMABRAIN_OPA_URL")
+        if not opa_url:
+            raise RuntimeError(
+                "SOMABRAIN_OPA_URL is not configured; there is no default "
+                "policy-engine URL at the call site (Rule 91)."
+            )
 
         with httpx.Client(timeout=5) as client:
             response = client.get(f"{opa_url}/health")
@@ -270,10 +277,17 @@ def check_minio() -> dict[str, Any]:
     """Check MinIO object storage health."""
     import httpx
 
+    from somabrain.settings.resolve import optional_url
+
     def _check():
         """Execute check."""
 
-        minio_url = getattr(settings, "MINIO_ENDPOINT", "http://somabrain_minio:9000")
+        minio_url = optional_url("MINIO_ENDPOINT")
+        if not minio_url:
+            raise RuntimeError(
+                "MINIO_ENDPOINT is not configured; there is no default "
+                "object-storage URL at the call site (Rule 91)."
+            )
 
         with httpx.Client(timeout=5) as client:
             response = client.get(f"{minio_url}/minio/health/live")
@@ -300,12 +314,17 @@ def check_schema_registry() -> dict[str, Any]:
     """Check Kafka Schema Registry health."""
     import httpx
 
+    from somabrain.settings.resolve import optional_url
+
     def _check():
         """Execute check."""
 
-        registry_url = getattr(
-            settings, "SCHEMA_REGISTRY_URL", "http://somabrain_schema_registry:8081"
-        )
+        registry_url = optional_url("SCHEMA_REGISTRY_URL")
+        if not registry_url:
+            raise RuntimeError(
+                "SCHEMA_REGISTRY_URL is not configured; there is no default "
+                "registry URL at the call site (Rule 91)."
+            )
 
         with httpx.Client(timeout=5) as client:
             response = client.get(f"{registry_url}/subjects")
