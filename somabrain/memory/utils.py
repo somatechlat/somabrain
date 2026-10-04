@@ -32,6 +32,8 @@ def get_tenant_namespace(
     """
     from django.conf import settings
 
+    from somabrain.settings.resolve import require_namespace, require_tenant
+
     # First try explicit tenant field from the supplied config object.
     tenant = getattr(cfg, "tenant", None)
     if tenant:
@@ -41,9 +43,9 @@ def get_tenant_namespace(
     namespace = (
         override_namespace
         or getattr(cfg, "namespace", None)
-        or getattr(settings, "namespace", "public")
+        or getattr(settings, "SOMABRAIN_NAMESPACE", None)
     )
-    namespace = str(namespace or "public").strip()
+    namespace = require_namespace(namespace)
 
     # If no explicit tenant, try to extract from namespace string
     # Namespace format: 'base:tenant:namespace' or 'base:tenant' or just 'namespace'
@@ -55,19 +57,16 @@ def get_tenant_namespace(
         elif len(parts) == 1:
             tenant = parts[0].strip()
 
-    # Fallback to default tenant from settings
+    # Fallback to configured tenant from settings
     if not tenant:
         tenant = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None)
         if tenant:
             tenant = str(tenant).strip()
 
-    # CRITICAL: Final fallback - NEVER return empty tenant
-    # This prevents cross-tenant data leakage (D1.4)
-    if not tenant:
-        tenant = "default"
-
-    # Double-check: ensure tenant is never empty or whitespace-only
-    tenant = tenant if tenant and tenant.strip() else "default"
+    # Fail-closed: there is no ``"default"`` partition on a memory path.
+    # Returning a shared bucket when the tenant is unknown is cross-tenant
+    # mixing by omission (F-06 / R-05). Raise instead (Rule 91).
+    tenant = require_tenant(tenant)
 
     return tenant, namespace
 

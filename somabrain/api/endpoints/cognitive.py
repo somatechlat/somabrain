@@ -173,7 +173,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     mt_memory = _get_mt_memory()
     embedder = _get_embedder()
 
-    ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     from somabrain.bootstrap.singletons import (
@@ -301,7 +301,7 @@ def set_personality(request: HttpRequest, state: PersonalityState) -> Personalit
     """
     from somabrain.bootstrap.singletons import get_personality_store
 
-    ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
     return get_personality_store().set(state, ctx.tenant_id)
 
@@ -309,7 +309,7 @@ def set_personality(request: HttpRequest, state: PersonalityState) -> Personalit
 @router.get("/micro/diag", auth=api_key_auth)
 def micro_diag(request: HttpRequest):
     """Get microcircuit diagnostics for the current tenant."""
-    ctx = get_tenant_sync(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     trace_id = request.headers.get("X-Request-ID") or str(id(request))

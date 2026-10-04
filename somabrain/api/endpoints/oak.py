@@ -58,7 +58,7 @@ class OakPlanSuggestResponse(Schema):
 @router.post("/option/create", response=OakPlanSuggestResponse, auth=api_key_auth)
 def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
     """Create a new Oak option and store it in Milvus."""
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     try:
@@ -86,7 +86,7 @@ def oak_option_update(
     request: HttpRequest, option_id: str, body: OakOptionCreateRequest
 ):
     """Replace the payload of an existing Oak option."""
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     try:
@@ -110,7 +110,7 @@ def oak_option_update(
 @router.get("/plan", response=OakPlanSuggestResponse, auth=api_key_auth)
 def oak_plan(request: HttpRequest, max_options: int | None = None):
     """Return a ranked list of Oak option identifiers for the tenant."""
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     try:

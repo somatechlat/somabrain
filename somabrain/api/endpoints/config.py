@@ -33,7 +33,7 @@ router = Router(tags=["config"])
 @router.get("/", response=ConfigResponse, auth=api_key_auth)
 def get_config(request: HttpRequest):
     """Get current configuration for tenant."""
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     # Return sanitized configuration (no secrets)

@@ -142,7 +142,7 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         return await loop.run_in_executor(None, self.delete, coordinate)
 
     async def store(
-        self, coordinate: list[float], payload: dict[str, Any], tenant: str = "default"
+        self, coordinate: list[float], payload: dict[str, Any], tenant: str
     ) -> bool:
         """Store a memory with an explicit coordinate (async wrapper).
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest
 
 
@@ -30,17 +29,18 @@ class TenantContext:
     namespace: str
 
 
-async def get_tenant(request: HttpRequest, namespace: str) -> TenantContext:
+async def get_tenant(request: HttpRequest, namespace: str | None) -> TenantContext:
     """Resolve the tenant partition for the given request.
 
     ``X-Tenant-ID`` and ``X-Namespace`` override the configured defaults so a
     caller can address its own partition explicitly. There is no ambient tenant
-    context and no product tenancy to resolve.
+    context, no product tenancy to resolve, and no ``"default"`` partition:
+    a missing tenant or namespace raises (Rule 91).
     """
     return _resolve(request, namespace)
 
 
-def get_tenant_sync(request: HttpRequest, namespace: str) -> TenantContext:
+def get_tenant_sync(request: HttpRequest, namespace: str | None) -> TenantContext:
     """Resolve the tenant partition synchronously.
 
     Same resolution as :func:`get_tenant`; the async wrapper only exists so
@@ -49,18 +49,21 @@ def get_tenant_sync(request: HttpRequest, namespace: str) -> TenantContext:
     return _resolve(request, namespace)
 
 
-def _resolve(request: HttpRequest, namespace: str) -> TenantContext:
+def _resolve(request: HttpRequest, namespace: str | None) -> TenantContext:
     """Single resolution path shared by the async and sync facades."""
     from django.conf import settings
 
-    tenant_id = request.headers.get("X-Tenant-ID") or getattr(
-        settings, "SOMABRAIN_DEFAULT_TENANT", None
+    from somabrain.settings.resolve import require_namespace, require_tenant
+
+    tenant_id = require_tenant(
+        request.headers.get("X-Tenant-ID")
+        or getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None)
     )
-    if not tenant_id:
-        raise ImproperlyConfigured(
-            "SOMABRAIN_DEFAULT_TENANT must be set; tenant resolution is fail-closed"
-        )
-    ns = request.headers.get("X-Namespace") or namespace or "default"
+    ns = require_namespace(
+        request.headers.get("X-Namespace")
+        or namespace
+        or getattr(settings, "SOMABRAIN_NAMESPACE", None)
+    )
     return TenantContext(tenant_id=tenant_id, namespace=ns)
 
 

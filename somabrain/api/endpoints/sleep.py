@@ -66,7 +66,7 @@ def _check_rate_limit(tenant_id: str, path: str):
 @router.get("/state", auth=api_key_auth)
 def get_sleep_state(request: HttpRequest):
     """Get current sleep state for tenant."""
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     try:
@@ -101,7 +101,7 @@ def _process_sleep_transition(
         trace_id: The trace_id.
     """
 
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
     tenant_id = ctx.tenant_id
 
@@ -232,7 +232,7 @@ def transition_sleep_state(request: HttpRequest, payload: dict):
     # We should probably implement it similarly or map trigger to state
     # For now, sticking to state-based for the upgraded parts.
     # Legacy 'transition' endpoint might need the trigger logic
-    ctx = get_tenant(request, getattr(settings, "NAMESPACE", "default"))
+    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE", None))
     require_auth(request, settings)
 
     manager = _get_sleep_manager()

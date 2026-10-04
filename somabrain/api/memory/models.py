@@ -232,10 +232,15 @@ class MemoryWriteRequest(BaseModel):
         if d.get("meta") is None and d.get("metadata") is not None:
             d["meta"] = d["metadata"]
 
-        # namespace default
+        # namespace: required, never invented (Rule 91). A memory without a
+        # namespace is a memory that cannot be partitioned.
         ns = d.get("namespace")
         if not isinstance(ns, str) or not ns.strip():
-            d["namespace"] = "default"
+            from somabrain.settings.resolve import require_namespace
+
+            d["namespace"] = require_namespace(ns)
+        else:
+            d["namespace"] = ns.strip()
 
         # value: tolerate absent/dict/scalar, and dict-valued `content`
         value = d.get("value")

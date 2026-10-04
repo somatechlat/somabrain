@@ -34,7 +34,11 @@ class StandaloneAPIKeyAuth(HttpBearer):
         expected = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN", "")
         if not expected or token != expected:
             return None
-        tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "standalone")
+        tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", None)
+        if not tenant_id:
+            from somabrain.settings.resolve import require_tenant
+
+            tenant_id = require_tenant(None)
         return {
             "tenant": None,
             "tenant_id": tenant_id,
