@@ -197,12 +197,38 @@ def get_db_credentials() -> dict:
 
 
 def get_runtime_secrets() -> dict:
-    """Get runtime service secrets from Vault."""
-    return get_secret("somabrain/runtime")
+    """Get runtime service secrets from Vault.
+
+    ``memory_http_token`` is NOT taken from ``somabrain/runtime``. It is the
+    shared agent credential (see :func:`get_runtime_secret`) and is merged in
+    from that one authority so this dict cannot disagree with a direct read.
+    When ``somabrain/runtime`` itself is absent the other runtime keys stay
+    absent; the shared memory token is still resolved (and still raises when
+    it is not provisioned).
+    """
+    data: dict = {}
+    try:
+        data.update(get_secret("somabrain/runtime") or {})
+    except SecretNotFound:
+        pass
+    data["memory_http_token"] = get_runtime_secret("memory_http_token")
+    return data
 
 
 def get_runtime_secret(key: str) -> Any:
-    """Get a specific runtime service secret from Vault."""
+    """Get a specific runtime service secret from Vault.
+
+    The memory HTTP token is the shared credential the agent presents on every
+    call. The agent stack seeds it as the key ``somabrain_memory_http_token``
+    inside the single KV document at ``agent/credentials`` (mount ``secret``) —
+    see somaAgent01 ``infra/standalone/init_vault.py`` and
+    ``services/common/unified_secret_manager.get_credential``. Reading one
+    value from one authority is the point: two independently seeded tokens is
+    exactly the 401 this caused. Everything else stays on this service's own
+    path.
+    """
+    if key == "memory_http_token":
+        return get_secret(SHARED_CREDENTIALS_PATH, MEMORY_HTTP_TOKEN_KEY)
     return get_secret("somabrain/runtime", key)
 
 
@@ -218,6 +244,13 @@ def get_public_key(name: str) -> str:
 
 # =========== Secret Path Constants ===========
 
+# Shared agent-credential document (KV v2). One document, one key per
+# credential — the key name is load-bearing and matches
+# UnifiedSecretManager.get_credential("somabrain_memory_http_token").
+# Path form here is "mount/relative" as _split_secret_path expects.
+SHARED_CREDENTIALS_PATH = "secret/agent/credentials"
+MEMORY_HTTP_TOKEN_KEY = "somabrain_memory_http_token"
+
 VAULT_PATHS = {
     "jwt_secret": "somabrain/auth",
     "constitution_keys": "somabrain/constitution",
@@ -226,4 +259,5 @@ VAULT_PATHS = {
     "runtime": "somabrain/runtime",
     "oauth": "somabrain/oauth",
     "email": "somabrain/email",
+    "shared_credentials": SHARED_CREDENTIALS_PATH,
 }
