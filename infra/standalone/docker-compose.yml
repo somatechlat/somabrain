@@ -13,7 +13,7 @@ services:
     networks:
       - somabrain_standalone_net
     ports:
-      - "${REDIS_HOST_PORT:-30100}:${REDIS_CONTAINER_PORT:-6379}"
+      - "${REDIS_HOST_PORT:?set REDIS_HOST_PORT}:${REDIS_CONTAINER_PORT:?set REDIS_CONTAINER_PORT}"
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
@@ -60,14 +60,14 @@ services:
           memory: 1G
     environment:
       # Production-like Kafka configuration for constrained environment
-      KAFKA_CFG_NODE_ID: ${KAFKA_CFG_NODE_ID:-1}
-      KAFKA_CFG_PROCESS_ROLES: ${KAFKA_CFG_PROCESS_ROLES:-broker,controller}
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:-1@localhost:9093}
-      KAFKA_CFG_LISTENERS: ${KAFKA_CFG_LISTENERS:-INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093}
+      KAFKA_CFG_NODE_ID: ${KAFKA_CFG_NODE_ID:?set KAFKA_CFG_NODE_ID}
+      KAFKA_CFG_PROCESS_ROLES: ${KAFKA_CFG_PROCESS_ROLES:?set KAFKA_CFG_PROCESS_ROLES}
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:?set KAFKA_CFG_CONTROLLER_QUORUM_VOTERS}
+      KAFKA_CFG_LISTENERS: ${KAFKA_CFG_LISTENERS:?set KAFKA_CFG_LISTENERS}
       KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://somabrain_standalone_kafka:9092,EXTERNAL://localhost:30102
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: ${KAFKA_CFG_CONTROLLER_LISTENER_NAMES:-CONTROLLER}
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: ${KAFKA_CFG_INTER_BROKER_LISTENER_NAME:-INTERNAL}
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:-CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT}
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: ${KAFKA_CFG_CONTROLLER_LISTENER_NAMES:?set KAFKA_CFG_CONTROLLER_LISTENER_NAMES}
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: ${KAFKA_CFG_INTER_BROKER_LISTENER_NAME:?set KAFKA_CFG_INTER_BROKER_LISTENER_NAME}
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:?set KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP}
       # Production settings
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_CFG_NUM_PARTITIONS: "3"
@@ -96,9 +96,9 @@ services:
       # JVM settings for constrained memory
       KAFKA_HEAP_OPTS: "-Xmx1g -Xms512m"
       KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent"
-      KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew}
-      KAFKA_BROKER_HOST_PORT: ${KAFKA_BROKER_HOST_PORT:-30102}
-      KAFKA_BROKER_CONTAINER_PORT: ${KAFKA_BROKER_CONTAINER_PORT:-9092}
+      KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID:?set KAFKA_CLUSTER_ID}
+      KAFKA_BROKER_HOST_PORT: ${KAFKA_BROKER_HOST_PORT:?set KAFKA_BROKER_HOST_PORT}
+      KAFKA_BROKER_CONTAINER_PORT: ${KAFKA_BROKER_CONTAINER_PORT:?set KAFKA_BROKER_CONTAINER_PORT}
     volumes:
       # Persist Kafka broker data in the correct data directory.
       # The apache/kafka image uses /var/lib/kafka/data for logs; mounting at that
@@ -136,12 +136,12 @@ services:
           echo "log.retention.bytes=$${KAFKA_CFG_LOG_RETENTION_BYTES}"
         } >> "$${CONFIG_PATH}"
         if [ ! -f /var/lib/kafka/data/meta.properties ]; then
-          /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id ${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew} --config "$${CONFIG_PATH}"
+          /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id ${KAFKA_CLUSTER_ID:?set KAFKA_CLUSTER_ID} --config "$${CONFIG_PATH}"
         fi
         exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
     ports:
       # Expose only the EXTERNAL listener container port to the host
-      - "${KAFKA_BROKER_HOST_PORT:-30102}:${KAFKA_BROKER_EXTERNAL_CONTAINER_PORT:-9094}"
+      - "${KAFKA_BROKER_HOST_PORT:?set KAFKA_BROKER_HOST_PORT}:${KAFKA_BROKER_EXTERNAL_CONTAINER_PORT:?set KAFKA_BROKER_EXTERNAL_CONTAINER_PORT}"
     healthcheck:
       test: [ "CMD-SHELL", "bash -c 'echo > /dev/tcp/::1/9092' 2>/dev/null || exit 1" ]
       interval: 10s
@@ -161,7 +161,7 @@ services:
     networks:
       - somabrain_standalone_net
     environment:
-      KAFKA_BROKER_CONTAINER_PORT: ${KAFKA_BROKER_CONTAINER_PORT:-9092}
+      KAFKA_BROKER_CONTAINER_PORT: ${KAFKA_BROKER_CONTAINER_PORT:?set KAFKA_BROKER_CONTAINER_PORT}
     command:
       - bash
       - -c
@@ -191,7 +191,7 @@ services:
     image: danielqsj/kafka-exporter:v1.7.0
     restart: unless-stopped
     command:
-      - --kafka.server=somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}
+      - --kafka.server=somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:?set KAFKA_BROKER_CONTAINER_PORT}
     deploy:
       resources:
         limits:
@@ -202,7 +202,7 @@ services:
       somabrain_standalone_kafka:
         condition: service_healthy
     ports:
-      - "${KAFKA_EXPORTER_HOST_PORT:-30103}:${KAFKA_EXPORTER_CONTAINER_PORT:-9308}"
+      - "${KAFKA_EXPORTER_HOST_PORT:?set KAFKA_EXPORTER_HOST_PORT}:${KAFKA_EXPORTER_CONTAINER_PORT:?set KAFKA_EXPORTER_CONTAINER_PORT}"
     networks:
       - somabrain_standalone_net
     healthcheck:
@@ -223,7 +223,7 @@ services:
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:?set KAFKA_BROKER_CONTAINER_PORT}"
       SCHEMA_REGISTRY_HEAP_OPTS: "-Xms128m -Xmx192m"
     depends_on:
       somabrain_standalone_kafka:
@@ -231,7 +231,7 @@ services:
     networks:
       - somabrain_standalone_net
     ports:
-      - "${SCHEMA_REGISTRY_HOST_PORT:-30108}:8081"
+      - "${SCHEMA_REGISTRY_HOST_PORT:?set SCHEMA_REGISTRY_HOST_PORT}:8081"
     healthcheck:
       test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:8081/subjects" ]
       interval: 30s
@@ -262,7 +262,7 @@ services:
     networks:
       - somabrain_standalone_net
     ports:
-      - "${OPA_HOST_PORT:-30104}:${OPA_CONTAINER_PORT:-8181}"
+      - "${OPA_HOST_PORT:?set OPA_HOST_PORT}:${OPA_CONTAINER_PORT:?set OPA_CONTAINER_PORT}"
     volumes:
       - ./ops/opa/policies:/policies:ro
       - opa_data:/var/lib/opa
@@ -287,7 +287,7 @@ services:
     networks:
       - somabrain_standalone_net
     ports:
-      - "${PROMETHEUS_HOST_PORT:-30105}:${PROMETHEUS_CONTAINER_PORT:-9090}"
+      - "${PROMETHEUS_HOST_PORT:?set PROMETHEUS_HOST_PORT}:${PROMETHEUS_CONTAINER_PORT:?set PROMETHEUS_CONTAINER_PORT}"
     volumes:
       - ../../infra/ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -323,7 +323,7 @@ services:
     networks:
       - somabrain_standalone_net
     ports:
-      - "${JAEGER_HOST_PORT:-30111}:16686"
+      - "${JAEGER_HOST_PORT:?set JAEGER_HOST_PORT}:16686"
       - "30112:14250"
       - "30113:14268"
       - "30114:4317"
@@ -353,19 +353,19 @@ services:
         reservations:
           memory: 256M
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-somabrain}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-somabrain}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
       # Production-like PostgreSQL tuning for constrained environment
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
-      - "${POSTGRES_HOST_PORT:-30106}:${POSTGRES_CONTAINER_PORT:-5432}"
+      - "${POSTGRES_HOST_PORT:?set POSTGRES_HOST_PORT}:${POSTGRES_CONTAINER_PORT:?set POSTGRES_CONTAINER_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - somabrain_standalone_net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-somabrain} -d ${POSTGRES_DB:-somabrain}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?set POSTGRES_USER} -d ${POSTGRES_DB:?set POSTGRES_DB}" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -436,46 +436,139 @@ services:
       somabrain_standalone_vault:
         condition: service_healthy
     environment:
-      SOMABRAIN_VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
-      POSTGRES_USER: "${POSTGRES_USER:-somabrain}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}"
-      POSTGRES_DB: "${POSTGRES_DB:-somabrain}"
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:-redis://somabrain_standalone_redis:6379/0}"
-      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
-      SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:?set SUPERVISOR_HTTP_PASS}"
-      SOMABRAIN_API_TOKEN: "${SOMABRAIN_API_TOKEN:-}"
+      # Bootstrap topology only. Every credential is a FILE path into the
+      # mounted t=0 secrets dir — never a value in ENV (Rule 164). The Vault
+      # bootstrap token is the same: a path, not a token.
+      SOMABRAIN_VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
+      SOMABRAIN_VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      POSTGRES_USER: "${POSTGRES_USER:?set POSTGRES_USER}"
+      POSTGRES_DB: "${POSTGRES_DB:?set POSTGRES_DB}"
+      POSTGRES_HOST: "${POSTGRES_HOST:?set POSTGRES_HOST}"
+      POSTGRES_PORT: "${POSTGRES_PORT:?set POSTGRES_PORT}"
+      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:?set SOMABRAIN_REDIS_URL}"
+      # Secret material, each a PATH into /run/secrets_t0 (SOMA_T0_SECRETS_DIR).
+      # Generate once in the agent stack (infra/standalone/secrets/). This job
+      # never invents a substitute and never sees the values in ENV.
+      POSTGRES_PASSWORD_FILE: "${POSTGRES_PASSWORD_FILE:?set POSTGRES_PASSWORD_FILE}"
+      SOMABRAIN_JWT_SECRET_FILE: "${SOMABRAIN_JWT_SECRET_FILE:?set SOMABRAIN_JWT_SECRET_FILE}"
+      SUPERVISOR_HTTP_PASS_FILE: "${SUPERVISOR_HTTP_PASS_FILE:?set SUPERVISOR_HTTP_PASS_FILE}"
+      SOMABRAIN_API_TOKEN_FILE: "${SOMABRAIN_API_TOKEN_FILE:?set SOMABRAIN_API_TOKEN_FILE}"
+      # A PATH, not a secret — the same contract as VAULT_TOKEN_FILE. It points
+      # at the shared t=0 material the agent stack holds once (somaAgent01
+      # infra/standalone/secrets/, one file per secret). The VALUE never travels
+      # through ENV: two stacks each generating their own copy is exactly the
+      # 401 this exists to prevent. Required — no default path to fall back to.
+      SOMABRAIN_MEMORY_HTTP_TOKEN_FILE: "${SOMABRAIN_MEMORY_HTTP_TOKEN_FILE:?set SOMABRAIN_MEMORY_HTTP_TOKEN_FILE}"
+    volumes:
+      # Shared t=0 credential material, read-only. This job never writes here.
+      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
     networks:
       - somabrain_standalone_net
     entrypoint: [ "sh", "-c" ]
     command:
       - |
+        set -eu
         apk add --no-cache curl jq
-        # Wait for vault
-        until curl -s http://somabrain_standalone_vault:8200/v1/sys/health; do sleep 1; done
 
-        # Mount KV v2
-        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST -d '{"type":"kv-v2"}' http://somabrain_standalone_vault:8200/v1/sys/mounts/somabrain
+        # ---- Read every credential from t=0 files, never from ENV -------
+        # A missing or empty file is a refusal: this job will NOT invent a
+        # substitute (Rule 91 / Rule 164).
+        read_secret() {
+          f="$${1:?read_secret needs a path}"
+          if [ ! -s "$${f}" ]; then
+            echo "FATAL: secret file missing or empty: $${f}" >&2
+            exit 1
+          fi
+          tr -d '\r\n' < "$${f}"
+        }
+        VAULT_TOKEN="$$(read_secret "$${SOMABRAIN_VAULT_TOKEN_FILE}")"
+        POSTGRES_PASSWORD="$$(read_secret "$${POSTGRES_PASSWORD_FILE}")"
+        SOMABRAIN_JWT_SECRET="$$(read_secret "$${SOMABRAIN_JWT_SECRET_FILE}")"
+        SUPERVISOR_HTTP_PASS="$$(read_secret "$${SUPERVISOR_HTTP_PASS_FILE}")"
+        SOMABRAIN_API_TOKEN="$$(read_secret "$${SOMABRAIN_API_TOKEN_FILE}")"
+
+        # ---- Shared agent↔brain credential ------------------------------
+        # One trust boundary, one value, one reader path. somabrain's
+        # vault_client.get_runtime_secret("memory_http_token") reads
+        # secret/agent/credentials[somabrain_memory_http_token] — see
+        # SHARED_CREDENTIALS_PATH and MEMORY_HTTP_TOKEN_KEY. Writing it to
+        # somabrain/runtime put it where the reader never looked, and
+        # generating it per stack gave the two sides different values.
+        TOKEN_FILE="$${SOMABRAIN_MEMORY_HTTP_TOKEN_FILE}"
+        if [ ! -s "$${TOKEN_FILE}" ]; then
+          echo "FATAL: shared memory token file missing or empty: $${TOKEN_FILE}" >&2
+          echo "       Generate it once in the agent stack (infra/standalone/secrets/," >&2
+          echo "       see its README.md) and point SOMA_T0_SECRETS_DIR at that" >&2
+          echo "       directory. This job will NOT invent a substitute." >&2
+          exit 1
+        fi
+        # Same trimming init_vault.py applies: every consumer of these values
+        # strips trailing newlines, so store what they will actually see.
+        SHARED_MEMORY_TOKEN="$$(tr -d '\r\n' < "$${TOKEN_FILE}")"
+        if [ -z "$${SHARED_MEMORY_TOKEN}" ]; then
+          echo "FATAL: shared memory token file is blank after trimming" >&2
+          exit 1
+        fi
+
+        # Wait for vault
+        until curl -s "$${SOMABRAIN_VAULT_ADDR}/v1/sys/health"; do sleep 1; done
+
+        # Mount KV v2 — `somabrain` for this service's own secrets, `secret`
+        # for the shared agent/credentials document the reader expects.
+        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST -d '{"type":"kv-v2"}' "$${SOMABRAIN_VAULT_ADDR}/v1/sys/mounts/somabrain"
+        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST -d '{"type":"kv-v2"}' "$${SOMABRAIN_VAULT_ADDR}/v1/sys/mounts/secret"
 
         # 1. Database Credentials
-        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
-          -d "{\"data\": {\"username\": \"$${POSTGRES_USER}\", \"password\": \"$${POSTGRES_PASSWORD}\", \"host\": \"somabrain_standalone_postgres\", \"port\": 5432, \"dbname\": \"$${POSTGRES_DB}\"}}" \
-          http://somabrain_standalone_vault:8200/v1/somabrain/data/database
+        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
+          -d "{\"data\": {\"username\": \"$${POSTGRES_USER}\", \"password\": \"$${POSTGRES_PASSWORD}\", \"host\": \"$${POSTGRES_HOST}\", \"port\": $${POSTGRES_PORT}, \"dbname\": \"$${POSTGRES_DB}\"}}" \
+          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/database"
 
         # 2. Redis Credentials
-        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
+        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
           -d "{\"data\": {\"url\": \"$${SOMABRAIN_REDIS_URL}\"}}" \
-          http://somabrain_standalone_vault:8200/v1/somabrain/data/redis
+          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/redis"
 
         # 3. JWT Secret
-        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
+        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
           -d "{\"data\": {\"jwt_secret\": \"$${SOMABRAIN_JWT_SECRET}\"}}" \
-          http://somabrain_standalone_vault:8200/v1/somabrain/data/auth
+          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/auth"
 
-        # 4. Runtime service secrets
-        curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
+        # 4. Runtime service secrets — this service's OWN keys only. The shared
+        #    memory token deliberately does NOT live here.
+        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
           -d "{\"data\": {\"supervisor_http_pass\": \"$${SUPERVISOR_HTTP_PASS}\", \"api_token\": \"$${SOMABRAIN_API_TOKEN}\"}}" \
-          http://somabrain_standalone_vault:8200/v1/somabrain/data/runtime
+          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/runtime"
+
+        # 5. SHARED agent↔brain trust boundary. Exactly the document and key
+        #    vault_client reads. The value came from t=0 material — not from
+        #    ENV, and not invented by this job.
+        #
+        #    MERGE, never replace. Vault KV v2 POST replaces the entire `data`
+        #    object at a path — writing one key alone deletes every sibling
+        #    credential in that document. Read it first, merge in memory, write
+        #    the whole object back, then read back and assert the key landed.
+        SHARED_PATH="$${SOMABRAIN_VAULT_ADDR}/v1/secret/data/agent/credentials"
+        EXISTING="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
+          | jq -c --arg tok "$${SHARED_MEMORY_TOKEN}" \
+            '((.data.data) // {}) + {somabrain_memory_http_token: $$tok}')"
+        if [ -z "$${EXISTING}" ] || [ "$${EXISTING}" = "null" ]; then
+          echo "FATAL: could not read agent/credentials before merging." >&2
+          echo "       Refusing to write blind - a blind write deletes every" >&2
+          echo "       other key in that document." >&2
+          exit 1
+        fi
+        curl -sf -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
+          -d "{\"data\": $${EXISTING}}" "$${SHARED_PATH}" >/dev/null
+
+        STORED="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
+          | jq -r '.data.data.somabrain_memory_http_token // empty')"
+        if [ "$${STORED}" != "$${SHARED_MEMORY_TOKEN}" ]; then
+          echo "FATAL: shared memory token read-back mismatch after merge write" >&2
+          exit 1
+        fi
+        KEPT="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
+          | jq -r '(.data.data // {}) | keys | length')"
+        echo "  shared credential merged in; document now holds $${KEPT} key(s)"
 
         echo "Vault initialized and secrets populated."
 
@@ -488,13 +581,15 @@ services:
         condition: service_healthy
     networks:
       - somabrain_standalone_net
+    volumes:
+      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
     environment:
-      # VAULT BOOTSTRAP ONLY
-      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
-      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      # VAULT BOOTSTRAP ONLY — address + token FILE, never the token value.
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       # Shared seam dim: agent MEM_EMBED_DIM == SFM SOMA_VECTOR_DIM == this
-      EMBED_DIM: "768"
+      EMBED_DIM: "${EMBED_DIM:?set EMBED_DIM}"
       RUNNING_IN_DOCKER: "true"
     # Dev convenience: run Django migrations.
     command: [ "sh", "-lc", "cd /app && python manage.py migrate --noinput" ]
@@ -511,12 +606,12 @@ services:
         reservations:
           memory: 32M
     environment:
-      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}?sslmode=disable
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:?set POSTGRES_USER}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:?set POSTGRES_DB}?sslmode=disable
     depends_on:
       somabrain_standalone_postgres:
         condition: service_healthy
     ports:
-      - "${POSTGRES_EXPORTER_HOST_PORT:-30107}:${POSTGRES_EXPORTER_CONTAINER_PORT:-9187}"
+      - "${POSTGRES_EXPORTER_HOST_PORT:?set POSTGRES_EXPORTER_HOST_PORT}:${POSTGRES_EXPORTER_CONTAINER_PORT:?set POSTGRES_EXPORTER_CONTAINER_PORT}"
     networks:
       - somabrain_standalone_net
     healthcheck:
@@ -564,6 +659,7 @@ services:
     volumes:
       - ../../somabrain:/app/somabrain:ro
       - ../../scripts:/app/scripts:ro
+      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
     tmpfs:
       - /app/logs:rw,size=64m,mode=1777
       - /tmp:rw,size=64m,mode=1777
@@ -572,53 +668,50 @@ services:
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
       # Host headers seen by the app container (healthchecks, host-bound curl, Docker Desktop proxy)
-      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,host.docker.internal,somabrain}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:?set ALLOWED_HOSTS}"
       # Gunicorn writes its control socket to $HOME; tmpfs /tmp keeps it writable.
       HOME: "/tmp"
 
       # VAULT BOOTSTRAP ONLY
-      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
-      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
 
-      # Resolved secrets required before Django settings import.
-      # Vault bootstrap also provides these, but explicit env values keep the
-      # container runnable when Vault is temporarily unavailable.
-      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      # Secrets are NOT environment variables (Rule 164). JWT secret, API token
+      # and the shared agent memory token are read from Vault via
+      # VAULT_TOKEN_FILE + somabrain/core/security/vault_client.py. There is
+      # deliberately no SOMABRAIN_MEMORY_HTTP_TOKEN here.
       # Use the internal Postgres service name; the host-bound port is not reachable from the container.
-      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
 
       # Configuration Pass-throughs (No hardcoded URLs)
-      SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
-      SOMABRAIN_PORT: "${SOMABRAIN_PORT:-30101}"
-      SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"
-      SOMABRAIN_OPA_URL: "http://somabrain_standalone_opa:8181"
+      SOMABRAIN_HOST: "${SOMABRAIN_HOST:?set SOMABRAIN_HOST}"
+      SOMABRAIN_PORT: "${SOMABRAIN_PORT:?set SOMABRAIN_PORT}"
+      SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:?set SOMABRAIN_WORKERS}"
+      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL:?set SOMABRAIN_OPA_URL}"
       SOMABRAIN_KAFKA_URL: "kafka://somabrain_standalone_kafka:9092"
       # Default memory endpoint:
       #   - Standalone on macOS/Windows Docker Desktop: http://host.docker.internal:10101
       #   - Shared network / Linux: override to http://somafractalmemory-standalone-api:10101
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:?set SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
 
       # Feature Flags
-      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
-      SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
-      SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
-      SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
-      SOMABRAIN_MEMORY_FAST_ACK: "${SOMABRAIN_MEMORY_FAST_ACK:-false}"
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:?set SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
+      SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:?set SOMABRAIN_FORCE_FULL_STACK}"
+      SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:?set SOMABRAIN_REQUIRE_MEMORY}"
+      SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:?set SOMABRAIN_PREDICTOR_PROVIDER}"
+      SOMABRAIN_MEMORY_FAST_ACK: "${SOMABRAIN_MEMORY_FAST_ACK:?set SOMABRAIN_MEMORY_FAST_ACK}"
       # Memory weighting is controlled by runtime config overrides (local only)
-      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-standalone}"
-      SOMA_DEPLOY_MODE: "${SOMA_DEPLOY_MODE:-FULL_LOCAL}"
-      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
-      SOMABRAIN_ANN_BACKEND: "${SOMABRAIN_ANN_BACKEND:-none}"
-      SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
+      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:?set SOMABRAIN_DEFAULT_TENANT}"
+      SOMA_DEPLOY_MODE: "${SOMA_DEPLOY_MODE:?set SOMA_DEPLOY_MODE}"
+      SOMABRAIN_MODE: "${SOMABRAIN_MODE:?set SOMABRAIN_MODE}"
+      SOMABRAIN_ANN_BACKEND: "${SOMABRAIN_ANN_BACKEND:?set SOMABRAIN_ANN_BACKEND}"
+      SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:?set SUPERVISOR_HTTP_USER}"
       # Adaptive knobs are controlled by runtime config overrides (local only)
-      SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
+      SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:?set SOMABRAIN_LEARNING_TENANTS_FILE}"
       # Disable Kafka readiness check for local dev (tests/smoke/kafka_smoke_test.py not included)
     ports:
-      - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-30101}"
+      - "${SOMABRAIN_HOST_PORT:?set SOMABRAIN_HOST_PORT}:${SOMABRAIN_PORT:?set SOMABRAIN_PORT}"
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT:-30101}/health || exit 1" ]
+      test: [ "CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT:?set SOMABRAIN_PORT}/health || exit 1" ]
       interval: 30s
       timeout: 10s
       start_period: 30s
@@ -659,55 +752,55 @@ services:
           memory: 2G
     networks:
       - somabrain_standalone_net
+    volumes:
+      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
     environment:
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
 
-      # VAULT BOOTSTRAP ONLY
-      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
-      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      # VAULT BOOTSTRAP ONLY — address + token FILE, never the token value.
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
 
-      # Resolved secrets required before Django settings import.
-      # Vault bootstrap only runs in WSGI/ASGI entrypoints; workers import settings directly.
-      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
+      # Secrets are NOT environment variables (Rule 164). JWT secret, API token
+      # and the shared agent memory token are read from Vault via
+      # VAULT_TOKEN_FILE + somabrain/core/security/vault_client.py. There is
+      # deliberately no SOMABRAIN_MEMORY_HTTP_TOKEN here.
       # Use the internal Postgres service name; the host-bound port is not reachable from the container.
-      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:?set SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
 
       # Configuration Pass-throughs
       SOMABRAIN_STRICT_REAL: "1"
-      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
-      SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
-      SOMABRAIN_MODE: "full-local"
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:?set SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
+      SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:?set SOMABRAIN_REQUIRE_MEMORY}"
+      SOMABRAIN_MODE: "${SOMABRAIN_MODE:?set SOMABRAIN_MODE}"
       SOMA_HEAT_METHOD: "lanczos"
       # Enable OTEL tracing to Jaeger collector
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://somabrain_standalone_jaeger:4318"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:?set OTEL_EXPORTER_OTLP_ENDPOINT}"
       OTEL_SERVICE_NAME: "somabrain-cog"
-      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-standalone}"
+      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:?set SOMABRAIN_DEFAULT_TENANT}"
       # Supervisor HTTP auth used by API for control; only on internal network
-      SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
+      SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:?set SUPERVISOR_HTTP_USER}"
       # Keep cognition in sync for observability (no functional dependency)
       # Adaptive knobs are controlled by runtime config overrides (local only)
-      SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
+      SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:?set SOMABRAIN_LEARNING_TENANTS_FILE}"
       # Program-specific ports (supervisor will pass to processes)
-      REWARD_PRODUCER_PORT: "${REWARD_PRODUCER_PORT:-8083}"
-      SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:-cog.state.updates}"
-      SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:-cog.agent.updates}"
-      SOMABRAIN_TOPIC_ACTION_UPDATES: "${SOMABRAIN_TOPIC_ACTION_UPDATES:-cog.action.updates}"
-      SOMABRAIN_TOPIC_GLOBAL_FRAME: "${SOMABRAIN_TOPIC_GLOBAL_FRAME:-cog.global.frame}"
-      SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:-cog.next_event}"
-      SOMABRAIN_TOPIC_SEGMENTS: "${SOMABRAIN_TOPIC_SEGMENTS:-cog.segments}"
-      SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"
+      REWARD_PRODUCER_PORT: "${REWARD_PRODUCER_PORT:?set REWARD_PRODUCER_PORT}"
+      SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:?set SOMABRAIN_TOPIC_STATE_UPDATES}"
+      SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:?set SOMABRAIN_TOPIC_AGENT_UPDATES}"
+      SOMABRAIN_TOPIC_ACTION_UPDATES: "${SOMABRAIN_TOPIC_ACTION_UPDATES:?set SOMABRAIN_TOPIC_ACTION_UPDATES}"
+      SOMABRAIN_TOPIC_GLOBAL_FRAME: "${SOMABRAIN_TOPIC_GLOBAL_FRAME:?set SOMABRAIN_TOPIC_GLOBAL_FRAME}"
+      SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:?set SOMABRAIN_TOPIC_NEXT_EVENT}"
+      SOMABRAIN_TOPIC_SEGMENTS: "${SOMABRAIN_TOPIC_SEGMENTS:?set SOMABRAIN_TOPIC_SEGMENTS}"
+      SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:?set SOMABRAIN_TOPIC_CONFIG_UPDATES}"
       # Milvus removed: brain uses SFM's Milvus instead
     ports:
       # Reward producer HTTP (host default 30083)
-      - "${COG_REWARD_PRODUCER_HOST_PORT:-30083}:8083"
+      - "${COG_REWARD_PRODUCER_HOST_PORT:?set COG_REWARD_PRODUCER_HOST_PORT}:8083"
       # Integrator health/metrics (program-level env set below via supervisor env)
-      - "${COG_INTEGRATOR_HEALTH_HOST_PORT:-30010}:9010"
+      - "${COG_INTEGRATOR_HEALTH_HOST_PORT:?set COG_INTEGRATOR_HEALTH_HOST_PORT}:9010"
       # Segmentation health
-      - "${SEGMENTATION_HEALTH_HOST_PORT:-30116}:9016"
+      - "${SEGMENTATION_HEALTH_HOST_PORT:?set SEGMENTATION_HEALTH_HOST_PORT}:9016"
     command:
       - sh
       - -lc
@@ -721,7 +814,7 @@ services:
         - CMD-SHELL
         - >-
           PASS="$$(python -c "from somabrain.core.security.vault_client import get_runtime_secret; print(get_runtime_secret('supervisor_http_pass'))")" &&
-          curl -fsS "http://$${SUPERVISOR_HTTP_USER:-admin}:$${PASS}@localhost:9001" >/dev/null
+          curl -fsS "http://$${SUPERVISOR_HTTP_USER:?set SUPERVISOR_HTTP_USER}:$${PASS}@localhost:9001" >/dev/null
       interval: 30s
       timeout: 5s
       retries: 5
@@ -763,30 +856,28 @@ services:
       RUNNING_IN_DOCKER: "true"
 
       # VAULT BOOTSTRAP ONLY
-      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
-      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
 
       # Resolved secrets required before Django settings import.
-      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
       # Use the internal Postgres service name; the host-bound port is not reachable from the container.
-      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:?set SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
 
-      SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
-      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
-      SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
-      SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:-100}
-      SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY:-5.0}
+      SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:?set SOMABRAIN_PREDICTOR_PROVIDER}"
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:?set SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
+      SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:?set SOMABRAIN_FORCE_FULL_STACK}"
+      SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:?set SOMABRAIN_OUTBOX_BATCH_SIZE}
+      SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY:?set SOMABRAIN_OUTBOX_MAX_DELAY}
       # Propagate the global memory cap to the outbox publisher.
-      SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
-      SOMABRAIN_KAFKA_URL: "kafka://somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
+      SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:?set SOMABRAIN_MEMORY_MAX}"
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL:?set SOMABRAIN_KAFKA_URL}"
     # No journal mount required
     cap_drop: [ "ALL" ]
     read_only: true
     security_opt:
       - no-new-privileges:true
+    volumes:
+      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
     tmpfs:
       - /app/logs:rw,size=64m,mode=1777
       - /tmp:rw,size=64m,mode=1777
@@ -853,30 +944,26 @@ services:
       RUNNING_IN_DOCKER: "true"
 
       # VAULT BOOTSTRAP ONLY
-      VAULT_ADDR: "http://somabrain_standalone_vault:8200"
-      VAULT_TOKEN: "${SOMABRAIN_VAULT_TOKEN:?set SOMABRAIN_VAULT_TOKEN}"
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
 
       # Resolved secrets required before Django settings import.
-      SOMABRAIN_JWT_SECRET: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SECRET_KEY: "${SOMABRAIN_JWT_SECRET:?set SOMABRAIN_JWT_SECRET}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:?set SOMABRAIN_MEMORY_HTTP_TOKEN}"
       # Use the internal Postgres service name; the host-bound port is not reachable from the container.
-      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER:-somabrain}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@somabrain_standalone_postgres:5432/${POSTGRES_DB:-somabrain}"
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:10101}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:?set SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
 
       # Propagate the global memory cap to the integrator service.
-      SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
-      SOMABRAIN_KAFKA_URL: "kafka://somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      KAFKA_BOOTSTRAP_SERVERS: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMA_KAFKA_BOOTSTRAP: "somabrain_standalone_kafka:${KAFKA_BROKER_CONTAINER_PORT:-9092}"
-      SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:-cog.state.updates}"
-      SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:-cog.agent.updates}"
-      SOMABRAIN_TOPIC_GLOBAL_FRAME: "${SOMABRAIN_TOPIC_GLOBAL_FRAME:-cog.global.frame}"
-      SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:-cog.next_event}"
-      SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"
+      SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:?set SOMABRAIN_MEMORY_MAX}"
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL:?set SOMABRAIN_KAFKA_URL}"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:?set KAFKA_BOOTSTRAP_SERVERS}"
+      SOMA_KAFKA_BOOTSTRAP: "${SOMA_KAFKA_BOOTSTRAP:?set SOMA_KAFKA_BOOTSTRAP}"
+      SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:?set SOMABRAIN_TOPIC_STATE_UPDATES}"
+      SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:?set SOMABRAIN_TOPIC_AGENT_UPDATES}"
+      SOMABRAIN_TOPIC_GLOBAL_FRAME: "${SOMABRAIN_TOPIC_GLOBAL_FRAME:?set SOMABRAIN_TOPIC_GLOBAL_FRAME}"
+      SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:?set SOMABRAIN_TOPIC_NEXT_EVENT}"
+      SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:?set SOMABRAIN_TOPIC_CONFIG_UPDATES}"
       SOMABRAIN_STRICT_REAL: "1"
-      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
-      SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:?set SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
+      SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:?set SOMABRAIN_REQUIRE_MEMORY}"
     command: [ "python", "-m", "somabrain.services.integrator_hub_triplet" ]
     deploy:
       resources:
@@ -884,13 +971,15 @@ services:
           memory: 256M
         reservations:
           memory: 192M
+    volumes:
+      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
     healthcheck:
       test: [ "CMD", "curl", "-fsS", "http://localhost:9015/health" ]
       interval: 30s
       timeout: 5s
       retries: 1
     ports:
-      - "${INTEGRATOR_HEALTH_HOST_PORT:-30115}:9015"
+      - "${INTEGRATOR_HEALTH_HOST_PORT:?set INTEGRATOR_HEALTH_HOST_PORT}:9015"
 
 volumes:
   kafka_data:

@@ -10,10 +10,10 @@ if [ "$#" -gt 0 ]; then
 fi
 
 # Allow overriding host, port, workers, and extra args
-HOST="${SOMABRAIN_HOST:-0.0.0.0}"
-PORT="${SOMABRAIN_PORT:-30101}"
+HOST="${SOMABRAIN_HOST:?set SOMABRAIN_HOST}"
+PORT="${SOMABRAIN_PORT:?set SOMABRAIN_PORT}"
 EXTRA_ARGS="${SOMABRAIN_EXTRA_ARGS}"
-TMPDIR="${TMPDIR:-/tmp}"
+TMPDIR="${TMPDIR:?set TMPDIR}"
 export TMPDIR
 
 # Print config for debugging
@@ -28,10 +28,10 @@ KAFKA_OK=0
 OPA_OK=0
 
 # Determine whether we should enforce Kafka reachability.
-REQUIRE_KAFKA="${SOMABRAIN_REQUIRE_KAFKA:-1}"
+REQUIRE_KAFKA="${SOMABRAIN_REQUIRE_KAFKA:?set SOMABRAIN_REQUIRE_KAFKA}"
 
 # Use the real Kafka smoke test for health check when required.
-KAFKA_BROKER="${SOMABRAIN_KAFKA_URL:-}"
+KAFKA_BROKER="${SOMABRAIN_KAFKA_URL:?set SOMABRAIN_KAFKA_URL}"
 if [ -n "$KAFKA_BROKER" ]; then
   KAFKA_BROKER="${KAFKA_BROKER#kafka://}"
 fi
@@ -48,7 +48,7 @@ fi
 
 for i in 1 2 3 4 5 6; do
   echo "Attempt $i: checking OPA readiness..."
-  if curl -fsS "${SOMABRAIN_OPA_URL:-http://opa:8181}/health" >/dev/null 2>&1; then
+  if curl -fsS "${SOMABRAIN_OPA_URL:?set SOMABRAIN_OPA_URL}/health" >/dev/null 2>&1; then
     OPA_OK=1
     break
   fi
@@ -76,13 +76,13 @@ python3 manage.py migrate --noinput 2>&1 || {
 }
 
 # Collect static files only when explicitly requested.
-if [ "${SOMABRAIN_COLLECTSTATIC:-0}" = "1" ]; then
+if [ "${SOMABRAIN_COLLECTSTATIC:?set SOMABRAIN_COLLECTSTATIC}" = "1" ]; then
   python3 manage.py collectstatic --noinput
 fi
 
 # Optional eager runtime bootstrap. Default off because Django startup should
 # remain fast and non-blocking; runtime singletons are otherwise lazy.
-if [ "${SOMABRAIN_INIT_RUNTIME:-0}" = "1" ] && { [ -x "/app/scripts/initialize_runtime.py" ] || [ -f "/app/scripts/initialize_runtime.py" ]; }; then
+if [ "${SOMABRAIN_INIT_RUNTIME:?set SOMABRAIN_INIT_RUNTIME}" = "1" ] && { [ -x "/app/scripts/initialize_runtime.py" ] || [ -f "/app/scripts/initialize_runtime.py" ]; }; then
   echo "Running initialize_runtime.py to prepare runtime singletons"
   python3 /app/scripts/initialize_runtime.py || {
     echo "ERROR: initialize_runtime.py failed; refusing to start." >&2
@@ -92,13 +92,13 @@ fi
 
 # Execute Django runserver (development) or gunicorn (production)
 # Pure Django - NO UVICORN per VIBE rules
-SERVER_MODE="${SOMA_DEPLOY_MODE:-${SOMABRAIN_MODE:-}}"
+SERVER_MODE="${SOMA_DEPLOY_MODE:?set SOMA_DEPLOY_MODE}"
 SERVER_MODE="$(printf '%s' "$SERVER_MODE" | tr '[:upper:]' '[:lower:]')"
-if [ "${RUNNING_IN_DOCKER:-}" = "true" ] || [ "$SERVER_MODE" = "production" ] || [ "$SERVER_MODE" = "prod" ] || [ "$SERVER_MODE" = "enterprise" ] || [ "$SERVER_MODE" = "full-local" ] || [ "$SERVER_MODE" = "standalone" ]; then
+if [ "${RUNNING_IN_DOCKER:?set RUNNING_IN_DOCKER}" = "true" ] || [ "$SERVER_MODE" = "production" ] || [ "$SERVER_MODE" = "prod" ] || [ "$SERVER_MODE" = "enterprise" ] || [ "$SERVER_MODE" = "full-local" ] || [ "$SERVER_MODE" = "standalone" ]; then
   echo "Starting gunicorn (production mode)"
   exec gunicorn somabrain.config.wsgi:application \
     --bind "$HOST:$PORT" \
-    --workers "${SOMABRAIN_WORKERS:-2}" \
+    --workers "${SOMABRAIN_WORKERS:?set SOMABRAIN_WORKERS}" \
     --timeout 120 \
     --worker-tmp-dir "$TMPDIR" \
     --access-logfile - \

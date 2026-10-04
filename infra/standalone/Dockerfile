@@ -154,10 +154,10 @@ COPY common /app/common
 # COPY libs /app/libs
 
 # Ensure runtime imports can find the copied libraries.
-ENV PYTHONPATH=/app:/app/libs:${PYTHONPATH:-}
+ENV PYTHONPATH=/app:/app/libs:${PYTHONPATH:?set PYTHONPATH}
 
 # Ensure runtime imports from /app are visible
-ENV PYTHONPATH=/app:${PYTHONPATH:-}
+ENV PYTHONPATH=/app:${PYTHONPATH:?set PYTHONPATH}
 
 # Prepare writable log dir for supervisor and services
 RUN mkdir -p /app/logs && chmod 0755 /app/logs
@@ -192,6 +192,6 @@ COPY --chown=appuser:appuser --chmod=0755 infra/standalone/docker-entrypoint.sh 
 
 # Healthcheck against unified /health endpoint (matches compose and docs)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:-30101}/health" || exit 1
+    CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:?set SOMABRAIN_PORT}/health" || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]

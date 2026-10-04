@@ -4,8 +4,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CERT_NAME="${CERT_NAME:-somabrain.internal}"
-DAYS="${CERT_DAYS:-365}"
+CERT_NAME="${CERT_NAME:?set CERT_NAME}"
+DAYS="${CERT_DAYS:?set CERT_DAYS}"
 KEY_FILE="${SCRIPT_DIR}/${CERT_NAME}.key"
 CRT_FILE="${SCRIPT_DIR}/${CERT_NAME}.crt"
 
