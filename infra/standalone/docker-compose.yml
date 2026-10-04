@@ -548,6 +548,11 @@ services:
         #    credential in that document. Read it first, merge in memory, write
         #    the whole object back, then read back and assert the key landed.
         SHARED_PATH="$${SOMABRAIN_VAULT_ADDR}/v1/secret/data/agent/credentials"
+        # Snapshot the key set BEFORE the merge so we can assert every sibling
+        # survived. KV v2 POST replaces the whole document; a one-key write
+        # deletes every other key. This has already caused real data loss.
+        PRE_KEYS="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
+          | jq -r '((.data.data) // {}) | keys[]' | sort | tr '\n' ' ')"
         EXISTING="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
           | jq -c --arg tok "$${SHARED_MEMORY_TOKEN}" \
             '((.data.data) // {}) + {somabrain_memory_http_token: $$tok}')"
@@ -560,15 +565,29 @@ services:
         curl -sf -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
           -d "{\"data\": $${EXISTING}}" "$${SHARED_PATH}" >/dev/null
 
-        STORED="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
-          | jq -r '.data.data.somabrain_memory_http_token // empty')"
+        # Read back the WHOLE document and assert:
+        #   1. the shared token landed and matches byte-for-byte
+        #   2. every pre-existing key is still present
+        POST_JSON="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}")"
+        STORED="$(printf '%s' "$${POST_JSON}" | jq -r '.data.data.somabrain_memory_http_token // empty')"
         if [ "$${STORED}" != "$${SHARED_MEMORY_TOKEN}" ]; then
           echo "FATAL: shared memory token read-back mismatch after merge write" >&2
           exit 1
         fi
-        KEPT="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
-          | jq -r '(.data.data // {}) | keys | length')"
-        echo "  shared credential merged in; document now holds $${KEPT} key(s)"
+        POST_KEYS="$(printf '%s' "$${POST_JSON}" | jq -r '((.data.data) // {}) | keys[]' | sort | tr '\n' ' ')"
+        for k in $${PRE_KEYS}; do
+          case " $${POST_KEYS} " in
+            *" $$k "*) ;;
+            *)
+              echo "FATAL: merge write destroyed sibling key '$${k}' in agent/credentials." >&2
+              echo "       KV v2 POST replaces the whole document. The read-modify-" >&2
+              echo "       write must carry every pre-existing key forward." >&2
+              exit 1
+              ;;
+          esac
+        done
+        KEPT="$(printf '%s' "$${POST_JSON}" | jq -r '((.data.data) // {}) | keys | length')"
+        echo "  shared credential merged in; document now holds $${KEPT} key(s): $${POST_KEYS}"
 
         echo "Vault initialized and secrets populated."
 
