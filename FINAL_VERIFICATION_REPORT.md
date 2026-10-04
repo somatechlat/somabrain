@@ -1,23 +1,33 @@
-# 🎉 SomaBrain Final Verification Report 🎉
-**Date**: 2026-02-04  
-**Status**: ✅ **COMPLETE - BRAIN WORKING FLAWLESSLY**  
+# SomaBrain Final Verification Report
+**Date**: 2026-02-04 (claims restated 2026-10-04)  
+**Status**: **NOT A PRODUCTION READINESS CERTIFICATE**  
 **Verification Type**: Mathematical Proof + Performance Benchmarks + Real Infrastructure Testing
 
 ---
 
-## 🏆 EXECUTIVE SUMMARY
+## Executive summary (restated)
 
-**SomaBrain is mathematically proven to work correctly and performs excellently.**
+This report records a historical test run. It is **not** a declaration that
+SomaBrain is production-ready, and it is **not** evidence of "NO INVENTED
+APIS". The house compliance assessment
+(`SOMA-BRAIN-COMPLIANCE-001`) is **NOT COMPLIANT**. Treat every "PASSED"
+below as "passed in that run, under those conditions", nothing more.
 
-- ✅ **19/19 Core Tests PASSED** (100% success rate)
-- ✅ **15/15 Mathematical Properties PROVEN** (1500+ random test cases)
-- ✅ **8/8 Performance Benchmarks EXECUTED** (all meet SLOs)
-- ✅ **Real Infrastructure VERIFIED** (PostgreSQL, Redis, Kafka, Milvus)
-- ✅ **Memory System WORKING** (SomaFractalMemory integration verified)
-- ✅ **Learning System PROVEN** (adaptation formulas mathematically correct)
-- ✅ **Cognition System VERIFIED** (executive control logic correct)
+What the 2026-02-04 run did show:
 
-**NO MOCKS. NO FAKES. NO BULLSHIT.**
+- 19/19 core tests passed in that run
+- 15/15 learning-math properties held over 1500+ generated cases
+- 8/8 benchmarks executed against the infrastructure that was up then
+- Real PostgreSQL, Redis, Kafka, Milvus and SFM were reachable
+
+What it did **not** show, and what was wrong with the original wording:
+
+- "WORKING FLAWLESSLY" / "production-ready" — overclaim. Subsequent audits
+  found unauthenticated constitution routes, an OPA store path that was
+  fail-open, endpoints that 500'd, and a README that invented routes.
+- "NO INVENTED APIs" — false at the time of writing: the README documented
+  `/api/v1/memory/store`, `retrievers` on recall, and `/api/v1/memory/wm/status`,
+  none of which exist.
 
 ---
 

@@ -222,80 +222,66 @@ services:
 
 ## 📡 API Reference
 
-### Store Memory
+### Remember (write)
+
+The real write route is `POST /api/memory/remember` (alias `POST /memory/remember`).
+Batch writes use `POST /api/memory/remember/batch`.
 
 ```bash
-curl -X POST http://localhost:9696/api/v1/memory/store \
+curl -X POST http://localhost:30101/memory/remember \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
-    "content": "The mitochondria is the powerhouse of the cell",
-    "namespace": "biology",
-    "importance": 0.9,
-    "metadata": {
-      "source": "textbook",
-      "chapter": 3
-    }
+    "text": "The mitochondria is the powerhouse of the cell",
+    "tenant_id": "demo",
+    "kind": "semantic",
+    "salience": 0.9,
+    "source": "textbook"
   }'
 ```
 
-```json
-{
-  "id": "mem_7f3a9b2c",
-  "embedding_id": "emb_8k4d2f1a",
-  "salience": 0.87,
-  "created_at": "2026-01-03T10:30:00Z"
-}
-```
+### Recall
 
-### Recall Memory
+The real recall route is `POST /api/memory/recall` (alias `POST /memory/recall`).
+There is no `retrievers` field. Hits come from working memory (WM) and
+long-term memory (LTM), selected by `layer` (`wm`, `ltm`, or `both`).
 
 ```bash
-curl -X POST http://localhost:9696/api/v1/memory/recall \
+curl -X POST http://localhost:30101/memory/recall \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{
     "query": "What produces energy in cells?",
+    "tenant_id": "demo",
     "top_k": 5,
-    "retrievers": ["vector", "wm", "graph", "lexical"],
-    "namespace": "biology"
+    "layer": "both",
+    "min_score": 0.1,
+    "max_age_seconds": 86400
   }'
 ```
 
 ```json
 {
-  "memories": [
+  "tenant": "demo",
+  "namespace": "somabrain:demo",
+  "results": [
     {
-      "id": "mem_7f3a9b2c",
-      "content": "The mitochondria is the powerhouse of the cell",
+      "text": "The mitochondria is the powerhouse of the cell",
+      "coord": "0.1,0.2,0.3",
       "score": 0.94,
-      "retriever": "vector"
+      "store": "somafractalmemory",
+      "created_at": "2026-01-03T10:30:00Z"
     }
   ],
-  "latency_ms": 12
+  "wm_hits": 1,
+  "ltm_hits": 1
 }
 ```
 
-### Working Memory Status
+### Memory metrics
 
-```bash
-curl http://localhost:9696/api/v1/memory/wm/status
-```
-
-```json
-{
-  "capacity": 64,
-  "used": 47,
-  "items": [
-    {"id": "wm_1", "salience": 0.92, "age_seconds": 5},
-    {"id": "wm_2", "salience": 0.85, "age_seconds": 12}
-  ],
-  "neuromodulators": {
-    "dopamine": 0.48,
-    "serotonin": 0.52,
-    "norepinephrine": 0.12
-  }
-}
-```
+There is no `/api/v1/memory/wm/status`. Working-memory occupancy is on
+`GET /api/memory/metrics?tenant=...`.
 
 ---
 
@@ -325,7 +311,7 @@ SomaBrain exposes a large set of environment-driven settings. Key examples:
 | `SOMABRAIN_WM_SIZE` | 64 | Working memory capacity |
 | `SOMABRAIN_HRR_DIM` | 8192 | Hypervector dimensions |
 | `SOMABRAIN_SDR_BITS` | 2048 | SDR active bits |
-| `SOMABRAIN_EMBED_DIM` | 256 | Embedding dimensions |
+| `SOMABRAIN_EMBED_DIM` | 768 | Embedding dimensions (seam contract with SFM/agent) |
 | `SOMABRAIN_ENABLE_SLEEP` | true | Enable consolidation cycles |
 | `SOMABRAIN_NEURO_DOPAMINE_BASE` | 0.4 | Base dopamine level |
 | `SOMABRAIN_RATE_RPS` | 1000 | Rate limit (req/sec) |
