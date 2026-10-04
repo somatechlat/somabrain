@@ -148,9 +148,9 @@ def _parse_port(value: str | int | None, default: int) -> int:
 
 
 # Redis
-SOMABRAIN_REDIS_URL = _resolved("SOMABRAIN_REDIS_URL") or env.str(
-    "SOMABRAIN_REDIS_URL", default=""
-)
+# Redis URL may embed a password, so when Vault has it Vault is authoritative.
+# An empty value means unset; readers fail closed.
+SOMABRAIN_REDIS_URL = _resolved("SOMABRAIN_REDIS_URL")
 # Host is topology: no localhost default. Empty means unset; readers fail closed.
 SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="")
 SOMABRAIN_REDIS_PORT = _parse_port(env.str("SOMABRAIN_REDIS_PORT", default=None), 6379)
