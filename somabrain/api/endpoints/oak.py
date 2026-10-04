@@ -70,13 +70,20 @@ def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
 
     try:
         opt = option_manager.create_option(ctx.tenant_id, option_id, payload_bytes)
+        if not isinstance(opt, dict) or "error" in opt:
+            detail = opt.get("error") if isinstance(opt, dict) else "invalid result"
+            raise HttpError(400 if detail != "OAK model not migrated" else 503, str(detail))
+        # create_option returns a dict; the payload bytes we wrote are the
+        # Milvus payload (the stored dict has no payload key).
         _get_milvus().upsert_option(
-            tenant_id=opt.tenant_id,
-            option_id=opt.option_id,
-            payload=opt.payload,
+            tenant_id=opt["tenant_id"],
+            option_id=opt["option_id"],
+            payload=payload_bytes,
         )
-        M.OPTION_COUNT.labels(opt.tenant_id).inc()
-        return {"plan": [opt.option_id]}
+        M.OPTION_COUNT.labels(opt["tenant_id"]).inc()
+        return {"plan": [opt["option_id"]]}
+    except HttpError:
+        raise
     except Exception as exc:
         raise HttpError(500, f"Option creation failed: {exc}")
 
@@ -96,13 +103,19 @@ def oak_option_update(
 
     try:
         opt = option_manager.update_option(ctx.tenant_id, option_id, payload_bytes)
+        if not isinstance(opt, dict) or "error" in opt:
+            detail = opt.get("error") if isinstance(opt, dict) else "invalid result"
+            status = 404 if detail == "Option not found" else 503
+            raise HttpError(status, str(detail))
         _get_milvus().upsert_option(
-            tenant_id=opt.tenant_id,
-            option_id=opt.option_id,
-            payload=opt.payload,
+            tenant_id=opt["tenant_id"],
+            option_id=opt["option_id"],
+            payload=payload_bytes,
         )
-        M.OPTION_COUNT.labels(opt.tenant_id).inc()
-        return {"plan": [opt.option_id]}
+        M.OPTION_COUNT.labels(opt["tenant_id"]).inc()
+        return {"plan": [opt["option_id"]]}
+    except HttpError:
+        raise
     except Exception as exc:
         raise HttpError(500, f"Option update failed: {exc}")
 

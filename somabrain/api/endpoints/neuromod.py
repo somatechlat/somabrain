@@ -28,23 +28,11 @@ logger = logging.getLogger("somabrain.api.endpoints.neuromod")
 
 router = Router(tags=["neuromod"])
 
-_NEUROMOD_STORE = None
-
-
-def _neuromod_store():
-    """Process-wide PerTenantNeuromodulators (real runtime store, not a mock)."""
-    global _NEUROMOD_STORE
-    if _NEUROMOD_STORE is None:
-        from somabrain.runtime.neuromodulators import PerTenantNeuromodulators
-
-        _NEUROMOD_STORE = PerTenantNeuromodulators()
-    return _NEUROMOD_STORE
-
-
 def _state_values(tenant_id: str) -> dict:
+    from somabrain.bootstrap.singletons import get_neuromodulators
     from somabrain.runtime.neuromodulators import NeuromodState
 
-    state = _neuromod_store().get_state(tenant_id)
+    state = get_neuromodulators().get_state(tenant_id)
     if not isinstance(state, NeuromodState):
         state = NeuromodState()
     return {
@@ -80,9 +68,10 @@ def adjust_neuromod(request: HttpRequest, body: NeuromodAdjustRequest):
     require_auth(request, settings)
 
     try:
+        from somabrain.bootstrap.singletons import get_neuromodulators
         from somabrain.runtime.neuromodulators import NeuromodState
 
-        store = _neuromod_store()
+        store = get_neuromodulators()
         current = _state_values(ctx.tenant_id)
         for name in ("dopamine", "serotonin", "noradrenaline", "acetylcholine"):
             val = getattr(body, name, None)

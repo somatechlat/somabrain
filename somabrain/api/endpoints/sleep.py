@@ -172,11 +172,67 @@ def _process_sleep_transition(
 
     ss.save()
 
+    # Sleep is when consolidation runs: NREM on LIGHT/DEEP, REM on the wake
+    # edge back to ACTIVE. Failures are logged and do not fail the transition —
+    # the state change already committed and the next cycle can retry.
+    consolidation_stats = _run_sleep_consolidation(tenant_id, target_state)
+
     logger.info(
         f"Sleep transition ({mode}) for {tenant_id}: {current_state_enum.value} -> {target_state.value}"
     )
 
-    return {"ok": True, "tenant": tenant_id, "new_state": target_state.value}
+    return {
+        "ok": True,
+        "tenant": tenant_id,
+        "new_state": target_state.value,
+        "consolidation": consolidation_stats,
+    }
+
+
+def _run_sleep_consolidation(tenant_id: str, target_state: SleepState) -> dict:
+    """Run NREM/REM consolidation for the sleep phase just entered.
+
+    Returns a stats dict; an empty dict means nothing ran (no backend or the
+    phase does not consolidate). Never raises — consolidation is best-effort
+    relative to the already-committed state change.
+    """
+    try:
+        from somabrain.memory import consolidation
+        from somabrain.runtime.manager import get_memory_pool, get_working_memory
+
+        mtmem = get_memory_pool()
+        mtwm = get_working_memory()
+        if mtmem is None or mtwm is None:
+            return {}
+        stats: dict = {}
+        if target_state in (SleepState.LIGHT, SleepState.DEEP):
+            stats["nrem"] = consolidation.run_nrem(
+                tenant_id,
+                settings,
+                mtwm,
+                mtmem,
+                top_k=int(getattr(settings, "SOMABRAIN_NREM_BATCH_SIZE", 16)),
+                max_summaries=int(
+                    getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3)
+                ),
+            )
+        if target_state == SleepState.ACTIVE:
+            stats["rem"] = consolidation.run_rem(
+                tenant_id,
+                settings,
+                mtwm,
+                mtmem,
+                recomb_rate=float(
+                    getattr(settings, "SOMABRAIN_REM_RECOMB_RATE", 0.2)
+                ),
+                max_summaries=int(
+                    getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3)
+                ),
+            )
+        return stats
+    except Exception as exc:
+        logger.warning("Sleep consolidation failed for %s: %s", tenant_id, exc)
+        return {"error": str(exc)}
 
 
 @router.post("/brain/mode", auth=api_key_auth)

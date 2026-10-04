@@ -148,7 +148,12 @@ def _hit_record(
 
 
 class RecallRequest(BaseModel):
-    """Recall request — accepts ``top_k`` or ``k``, ``tenant`` or ``tenant_id``."""
+    """Recall request — accepts ``top_k`` or ``k``, ``tenant`` or ``tenant_id``.
+
+    Also carries the advanced recall fields implemented by
+    ``somabrain.api.memory.recall.perform_recall`` so ``/memory/recall``
+    is that handler's contract surface.
+    """
 
     query: str = Field(..., description="Query text")
     top_k: int = Field(10, description="Max results")
@@ -158,6 +163,31 @@ class RecallRequest(BaseModel):
     namespace: str | None = None
     universe: str | None = Field(None, description="Optional universe scope")
     k: int | None = Field(None, description="Seam/legacy alias for top_k")
+    tags: list[str] = Field(
+        default_factory=list, description="Filter hits containing these tags"
+    )
+    min_score: float | None = Field(
+        None, ge=0.0, description="Drop hits with score below this threshold"
+    )
+    max_age_seconds: int | None = Field(
+        None, ge=0, description="Exclude hits older than this age"
+    )
+    scoring_mode: str | None = Field(
+        None, description="Preferred scoring strategy"
+    )
+    session_id: str | None = Field(
+        None, description="Attach to an existing recall session"
+    )
+    conversation_id: str | None = Field(
+        None, description="Agent-provided conversation identifier"
+    )
+    pin_results: bool = Field(
+        False, description="Persist results in the session registry"
+    )
+    chunk_size: int | None = Field(
+        None, ge=1, le=50, description="Limit hits returned per call"
+    )
+    chunk_index: int = Field(0, ge=0, description="Chunk index for paged recall")
 
     @model_validator(mode="before")
     @classmethod
@@ -329,22 +359,79 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
             except Exception as exc:
                 logger.warning("WM recall failed: %s", exc)
 
+    # Advanced recall contract (same semantics as perform_recall).
+    from somabrain.api.memory.recall import _match_tags, _within_age
+
+    def _keep(rec: dict) -> bool:
+        payload_dict = rec.get("payload") if isinstance(rec.get("payload"), dict) else rec
+        if payload.min_score is not None:
+            score = rec.get("score")
+            if isinstance(score, (int, float)) and score < payload.min_score:
+                return False
+        if payload.max_age_seconds is not None and not _within_age(
+            payload_dict, payload.max_age_seconds
+        ):
+            return False
+        if payload.tags and not _match_tags(payload_dict, payload.tags):
+            return False
+        return True
+
+    results = [r for r in results if _keep(r)]
+
     # Sort combined results by score descending and apply top_k limit
     results.sort(key=lambda r: r.get("score", 0.0), reverse=True)
     results = results[:top_k]
+
+    # Chunking: chunk_size pages through the ranked list.
+    total_results = len(results)
+    chunk_size = payload.chunk_size
+    chunk_index = max(int(payload.chunk_index or 0), 0)
+    if chunk_size is not None and chunk_size > 0:
+        start_index = chunk_index * chunk_size
+        end_index = start_index + chunk_size
+        page = results[start_index:end_index]
+        has_more = end_index < total_results
+    else:
+        page = results
+        has_more = False
+
+    session_id = payload.session_id
+    if payload.pin_results or payload.session_id or payload.conversation_id:
+        try:
+            from somabrain.api.memory.recall import _store_recall_session
+
+            import uuid as _uuid
+
+            session_id = payload.session_id or str(_uuid.uuid4())
+            _store_recall_session(
+                session_id,
+                tenant,
+                namespace,
+                payload.conversation_id,
+                payload.scoring_mode,
+                page,
+            )
+        except Exception as exc:
+            logger.warning("recall session store failed: %s", exc)
 
     dt_ms = round((time.perf_counter() - t0) * 1000.0, 3)
 
     return {
         "tenant": tenant,
         "namespace": namespace,
-        "results": results,
+        "results": page,
         "wm_hits": wm_hits,
         "ltm_hits": ltm_hits,
         "duration_ms": dt_ms,
-        "total_results": len(results),
+        "total_results": total_results,
         "degraded": degraded,
         "degraded_reasons": degraded_reasons,
+        "session_id": session_id,
+        "scoring_mode": payload.scoring_mode,
+        "conversation_id": payload.conversation_id,
+        "chunk_index": chunk_index,
+        "chunk_size": chunk_size,
+        "has_more": has_more,
     }
 
 

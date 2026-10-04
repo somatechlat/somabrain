@@ -110,16 +110,64 @@ class SleepStateManager:
     def can_transition(self, from_state: SleepState, to_state: SleepState) -> bool:
         """Check if state transition is valid."""
         # The allowed state transition graph is:
-        #   ACTIVE → LIGHT → DEEP → FREEZE → LIGHT (and then back to ACTIVE is NOT allowed)
-        # Only the forward edges are permitted.  The previous implementation also
-        # allowed ``LIGHT → ACTIVE`` which contradicts the specification and the
-        # test suite expectations.  We therefore restrict the mapping to the
-        # minimal set of forward transitions.
+        #   ACTIVE → LIGHT → DEEP → FREEZE → LIGHT → ACTIVE
+        # The wake edge (LIGHT → ACTIVE) is required: a tenant that leaves
+        # ACTIVE must be able to return, otherwise a sleep cycle is permanent.
         valid_transitions = {
             SleepState.ACTIVE: [SleepState.LIGHT],
-            SleepState.LIGHT: [SleepState.DEEP],
+            SleepState.LIGHT: [SleepState.DEEP, SleepState.ACTIVE],
             SleepState.DEEP: [SleepState.FREEZE],
             SleepState.FREEZE: [SleepState.LIGHT],
         }
 
         return to_state in valid_transitions.get(from_state, [])
+
+    def transition(
+        self, tenant_id: str, trigger: str = "manual"
+    ) -> SleepState:
+        """Apply a trigger and return the resulting sleep state.
+
+        The state itself lives in ``TenantSleepState``; this method computes
+        the target from the trigger and the current state, validates the edge,
+        and returns the new ``SleepState``. Persistence is the caller's job
+        (the HTTP layer owns the DB transaction).
+
+        Args:
+            tenant_id: Tenant whose state is being transitioned.
+            trigger: Named trigger (``manual``, ``idle``, ``scheduled``,
+                ``wake``, ``freeze``).
+
+        Returns:
+            The target ``SleepState``.
+
+        Raises:
+            ValueError: On an unknown trigger or an illegal edge.
+        """
+        from somabrain.sleep.models import TenantSleepState
+
+        trigger_map = {
+            "manual": SleepState.LIGHT,
+            "idle": SleepState.LIGHT,
+            "scheduled": SleepState.DEEP,
+            "deep": SleepState.DEEP,
+            "freeze": SleepState.FREEZE,
+            "wake": SleepState.ACTIVE,
+            "active": SleepState.ACTIVE,
+        }
+        if trigger not in trigger_map:
+            raise ValueError(f"Unknown sleep trigger: {trigger}")
+        target = trigger_map[trigger]
+
+        try:
+            row = TenantSleepState.objects.get(tenant_id=tenant_id)
+            current = SleepState(row.current_state.lower())
+        except TenantSleepState.DoesNotExist:
+            current = SleepState.ACTIVE
+        except (ValueError, KeyError):
+            current = SleepState.ACTIVE
+
+        if not self.can_transition(current, target):
+            raise ValueError(
+                f"Invalid transition from {current.value} to {target.value}"
+            )
+        return target

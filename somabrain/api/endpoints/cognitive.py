@@ -17,6 +17,7 @@ from ninja.errors import HttpError
 
 from somabrain.admin.brain.focus_state import FocusState
 from somabrain.api.auth import api_key_auth, require_auth
+from somabrain.embed_dim import resolve_embed_dim
 from somabrain.schemas import (
     ActRequest,
     ActResponse,
@@ -139,7 +140,7 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
         graph_client = _get_graph_client(mem_client)
         engine = PlanEngine(settings, mem_client=mem_client, graph_client=graph_client)
 
-        task_vec = embedder.embed(task_key) if embedder else np.zeros(512)
+        task_vec = embedder.embed(task_key) if embedder else np.zeros(resolve_embed_dim())
         plan_ctx = PlanRequestContext(
             tenant_id=ctx.tenant_id,
             task_key=task_key,
@@ -250,7 +251,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
                 engine = PlanEngine(
                     settings, mem_client=mem_client, graph_client=graph_client
                 )
-                task_vec = wm_vec if wm_vec is not None else np.zeros(512)
+                task_vec = wm_vec if wm_vec is not None else np.zeros(resolve_embed_dim())
                 plan_ctx = PlanRequestContext(
                     tenant_id=ctx.tenant_id,
                     task_key=body.task,
