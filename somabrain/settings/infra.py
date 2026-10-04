@@ -310,6 +310,13 @@ INTEGRATOR_URL = env.str("INTEGRATOR_URL", default=None)
 SEGMENTATION_URL = env.str("SEGMENTATION_URL", default=None)
 OTEL_EXPORTER_OTLP_ENDPOINT = env.str("OTEL_EXPORTER_OTLP_ENDPOINT", default="")
 
+# gRPC transport (NET binding). File *paths* are topology; the credentials
+# they name live in Vault or on a mounted secret volume — never in ENV.
+SOMABRAIN_GRPC_CERT_FILE = env.str("SOMABRAIN_GRPC_CERT_FILE", default="")
+SOMABRAIN_GRPC_KEY_FILE = env.str("SOMABRAIN_GRPC_KEY_FILE", default="")
+SOMABRAIN_GRPC_LISTEN_HOST = env.str("SOMABRAIN_GRPC_LISTEN_HOST", default="0.0.0.0")
+SOMABRAIN_GRPC_LISTEN_PORT = env.int("SOMABRAIN_GRPC_LISTEN_PORT", default=30102)
+
 # Health endpoints
 SOMABRAIN_HEALTH_PORT = env.int("HEALTH_PORT", default=None)
 SOMABRAIN_INTEGRATOR_HEALTH_PORT = env.int(

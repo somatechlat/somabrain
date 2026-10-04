@@ -85,9 +85,39 @@ class RuntimeManager:
                 "working_memory": self._initialize_working_memory() is not None,
                 "memory_pool": self._initialize_memory_pool() is not None,
             }
+            self._attach_wm_promoter()
             self._initialized = True
             logger.info("Runtime initialized: %s", self._last_status)
             return self._last_status
+
+    def _attach_wm_promoter(self) -> None:
+        """Wire WM→LTM promotion once WM and the LTM pool both exist.
+
+        Without this, ``WorkingMemory.set_promoter`` is never called and
+        salient items never reach long-term memory (A2.1).
+        """
+        if self._mt_wm is None or self._mt_memory is None:
+            return
+        if not hasattr(self._mt_wm, "set_promoter_factory"):
+            return
+
+        def promoter_factory(tenant_id: str):
+            try:
+                from somabrain.memory.promotion import get_wm_ltm_promoter
+                from somabrain.services.memory_service import MemoryService
+
+                ns = f"somabrain:{tenant_id}"
+                memsvc = MemoryService(self._mt_memory, ns)
+                client = memsvc.client()
+                return get_wm_ltm_promoter(client, tenant_id=tenant_id)
+            except Exception as exc:
+                logger.warning(
+                    "WM promoter unavailable for tenant %s: %s", tenant_id, exc
+                )
+                return None
+
+        self._mt_wm.set_promoter_factory(promoter_factory)
+        logger.info("WM→LTM promoter factory attached")
 
     def _initialize_embedder(self) -> Any:
         if self._embedder is not None:

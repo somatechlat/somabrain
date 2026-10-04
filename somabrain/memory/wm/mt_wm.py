@@ -71,8 +71,27 @@ class MultiTenantWM:
         self.cfg = cfg or MTWMConfig()
         self._wms: OrderedDict[str, WorkingMemory] = OrderedDict()
         self._scorer = scorer
+        # Optional factory: tenant_id -> WMLTMPromoter. Set by the runtime
+        # once the long-term memory pool exists so every tenant WM promotes.
+        self._promoter_factory = None
         # Re‑entrant lock to guarantee thread‑safety for all public operations.
         self._lock = threading.RLock()
+
+    def set_promoter_factory(self, factory) -> None:
+        """Install the WM→LTM promoter factory used for new tenant WMs.
+
+        Args:
+            factory: ``tenant_id -> WMLTMPromoter | None``.
+        """
+        with self._lock:
+            self._promoter_factory = factory
+            # Attach to already-created tenant WMs so a late install still wires.
+            if factory is not None:
+                for tenant_id, wm in self._wms.items():
+                    if getattr(wm, "_promoter", None) is None:
+                        promoter = factory(tenant_id)
+                        if promoter is not None:
+                            wm.set_promoter(promoter)
 
     def _ensure(self, tenant_id: str) -> WorkingMemory:
         """Return the ``WorkingMemory`` instance for *tenant_id*.
@@ -91,6 +110,10 @@ class MultiTenantWM:
                     recency_time_scale=self.cfg.recency_time_scale,
                     recency_max_steps=self.cfg.recency_max_steps,
                 )
+                if self._promoter_factory is not None:
+                    promoter = self._promoter_factory(tenant_id)
+                    if promoter is not None:
+                        wm.set_promoter(promoter)
                 self._wms[tenant_id] = wm
             # LRU update – move the accessed tenant to the end (most‑recent)
             self._wms.move_to_end(tenant_id)
@@ -133,7 +156,15 @@ class MultiTenantWM:
         performs the actual admission.
         """
         with self._lock:
-            self._ensure(tenant_id).admit(vec, payload, cleanup_overlap=cleanup_overlap)
+            wm = self._ensure(tenant_id)
+            wm.admit(vec, payload, cleanup_overlap=cleanup_overlap)
+            # Advance the cognitive tick so salient items are promoted (A2.1).
+            try:
+                wm.tick()
+            except Exception as exc:
+                logging.getLogger(__name__).debug(
+                    "WM tick after admit failed for tenant %s: %s", tenant_id, exc
+                )
         try:
             M.WM_ADMIT.labels(source=tenant_id[:50]).inc()
         except Exception as exc:
