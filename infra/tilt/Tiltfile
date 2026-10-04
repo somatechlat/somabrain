@@ -51,7 +51,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir .
 
 EXPOSE 20020
-CMD ["uvicorn", "somabrain.asgi:application", "--host", "0.0.0.0", "--port", "20020"]
+CMD ["gunicorn", "somabrain.config.wsgi:application", "--bind", "0.0.0.0:20020", "--workers", "2", "--timeout", "120"]
 """
 
 
