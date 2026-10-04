@@ -140,25 +140,9 @@ SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="127.0.0.1")
 SOMABRAIN_REDIS_PORT = _parse_port(env.str("SOMABRAIN_REDIS_PORT", default=None), 6379)
 SOMABRAIN_REDIS_DB = env.int("SOMABRAIN_REDIS_DB", default=0)
 
-# Kafka
-KAFKA_BOOTSTRAP_SERVERS = env.str(
-    "KAFKA_BOOTSTRAP_SERVERS", default=env.str("SOMABRAIN_KAFKA_URL", default="")
-).replace("kafka://", "")
-SOMABRAIN_KAFKA_HOST = env.str(
-    "SOMABRAIN_KAFKA_HOST", default=env.str("KAFKA_HOST", default=None)
-)
-SOMABRAIN_KAFKA_PORT = env.int(
-    "SOMABRAIN_KAFKA_PORT", default=env.int("KAFKA_PORT", default=0)
-)
-SOMABRAIN_KAFKA_SCHEME = env.str(
-    "SOMABRAIN_KAFKA_SCHEME", default=env.str("KAFKA_SCHEME", default="kafka")
-)
-SOMABRAIN_KAFKA_URL = env.str("SOMABRAIN_KAFKA_URL", default="")
-SOMA_KAFKA_BOOTSTRAP = env.str("SOMA_KAFKA_BOOTSTRAP", default="")
-KAFKA_GROUP_ID = env.str("KAFKA_GROUP_ID", default=None)
-SOMABRAIN_CONSUMER_GROUP = env.str(
-    "SOMABRAIN_CONSUMER_GROUP", default="orchestrator-service"
-)
+# Kafka, OPA, Redis and Memory are declared once, below, under
+# "CENTRALIZED CONNECTION DEFAULTS". Two blocks that both assign
+# SOMABRAIN_OPA_URL disagree the moment an operator looks at one of them.
 
 # Milvus
 SOMABRAIN_MILVUS_HOST = env.str(
@@ -173,29 +157,10 @@ MILVUS_SEGMENT_REFRESH_INTERVAL = env.float(
 )
 MILVUS_LATENCY_WINDOW = env.int("MILVUS_LATENCY_WINDOW", default=50)
 
-# OPA
-SOMABRAIN_OPA_HOST = env.str(
-    "SOMABRAIN_OPA_HOST", default=env.str("OPA_HOST", default=None)
-)
-SOMABRAIN_OPA_PORT = env.int(
-    "SOMABRAIN_OPA_PORT", default=env.int("OPA_PORT", default=0)
-)
-SOMABRAIN_OPA_SCHEME = env.str(
-    "SOMABRAIN_OPA_SCHEME", default=env.str("OPA_SCHEME", default="http")
-)
-SOMABRAIN_OPA_URL = env.str("SOMABRAIN_OPA_URL", default="http://opa:8181")
-SOMABRAIN_OPA_TIMEOUT = env.float("SOMABRAIN_OPA_TIMEOUT", default=2.0)
-OPA_BUNDLE_PATH = env.str("OPA_BUNDLE_PATH", default="./opa")
 # Fail-closed OPA is enforced in somabrain/opa/client.py. The legacy allow-on-error
 # flag is intentionally unsupported; keep the variable only for backwards-compatible
-# settings attribute migration.
+# settings attribute migration. The OPA URL itself is declared once, below.
 SOMABRAIN_OPA_ALLOW_ON_ERROR = env.bool("SOMABRAIN_OPA_ALLOW_ON_ERROR", default=False)
-SOMABRAIN_OPA_POLICY_KEY = env.str(
-    "SOMABRAIN_OPA_POLICY_KEY", default="soma:opa:policy"
-)
-SOMABRAIN_OPA_POLICY_SIG_KEY = env.str(
-    "SOMABRAIN_OPA_POLICY_SIG_KEY", default="soma:opa:policy:sig"
-)
 
 # Circuit breaker
 SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD = env.int(
@@ -230,11 +195,17 @@ if RUNNING_IN_DOCKER:
     # via host.docker.internal gateway
     _MEMORY_DEFAULT = "http://host.docker.internal:10101"
     _REDIS_DEFAULT = "redis://somabrain_standalone_redis:6379/0"
+    _MINIO_DEFAULT = "http://somabrain_standalone_minio:9000"
+    _SCHEMA_REGISTRY_DEFAULT = "http://somabrain_standalone_schema_registry:8081"
+    _AUTH_DEFAULT = "http://somabrain_standalone_auth:8080"
 else:
     _KAFKA_DEFAULT = "127.0.0.1:9092"
     _OPA_DEFAULT = "http://127.0.0.1:8181"
     _MEMORY_DEFAULT = "http://127.0.0.1:10101"
     _REDIS_DEFAULT = "redis://127.0.0.1:6379/0"
+    _MINIO_DEFAULT = "http://127.0.0.1:9000"
+    _SCHEMA_REGISTRY_DEFAULT = "http://127.0.0.1:8081"
+    _AUTH_DEFAULT = "http://127.0.0.1:8080"
 
 # Kafka
 # ----------------------------------------------------------------------------
@@ -286,11 +257,11 @@ SOMABRAIN_OPA_POLICY_SIG_KEY = env.str(
 # URLs used by the legacy /health aggregator in somabrain/config/urls.py.
 # These are intentionally separate from the canonical SOMABRAIN_*_URL settings
 # so existing health checks keep working without touching every call site.
+# Topology defaults live only in the Docker-vs-local block above.
 OPA_URL = env.str("OPA_URL", default=SOMABRAIN_OPA_URL)
-MINIO_ENDPOINT = env.str("MINIO_ENDPOINT", default="http://minio:9000")
-SCHEMA_REGISTRY_URL = env.str(
-    "SCHEMA_REGISTRY_URL", default="http://somabrain_standalone_schema_registry:8081"
-)
+MINIO_ENDPOINT = env.str("MINIO_ENDPOINT", default=_MINIO_DEFAULT)
+SCHEMA_REGISTRY_URL = env.str("SCHEMA_REGISTRY_URL", default=_SCHEMA_REGISTRY_DEFAULT)
+SOMABRAIN_AUTH_URL = env.str("SOMABRAIN_AUTH_URL", default=_AUTH_DEFAULT)
 
 # External Memory (SFM)
 # ----------------------------------------------------------------------------
@@ -321,13 +292,16 @@ SOMABRAIN_WORKERS = env.int("SOMABRAIN_WORKERS", default=1)
 SOMABRAIN_SERVICE_NAME = env.str("SOMABRAIN_SERVICE_NAME", default="somabrain")
 SOMABRAIN_NAMESPACE = env.str("SOMABRAIN_NAMESPACE", default="public")
 SOMABRAIN_DEFAULT_TENANT = env.str("SOMABRAIN_DEFAULT_TENANT", default="public")
-SOMABRAIN_TENANT_ID = env.str("SOMABRAIN_TENANT_ID", default="default")
+# No ``"default"`` partition: an unset tenant id stays unset and the
+# resolution path raises (Rule 91). ``standalone.py`` pins its own identity.
+SOMABRAIN_TENANT_ID = env.str("SOMABRAIN_TENANT_ID", default="")
 
-# URLs
+# URLs. A missing URL is left missing: the resolver
+# (somabrain.settings.resolve.require_url / optional_url) is the only reader
+# and it fails closed. No localhost and no cluster DNS at the declaration site
+# outside the Docker-vs-local block above.
 SOMABRAIN_API_URL = env.str("SOMABRAIN_API_URL", default="")
-SOMABRAIN_DEFAULT_BASE_URL = env.str(
-    "SOMABRAIN_DEFAULT_BASE_URL", default="http://127.0.0.1:30101"
-)
+SOMABRAIN_DEFAULT_BASE_URL = env.str("SOMABRAIN_DEFAULT_BASE_URL", default="")
 BASE_URL = env.str("BASE_URL", default="")
 SUPERVISOR_URL = env.str("SUPERVISOR_URL", default=None)
 SUPERVISOR_HTTP_USER = env.str("SUPERVISOR_HTTP_USER", default="admin")
@@ -341,12 +315,9 @@ SOMABRAIN_HEALTH_PORT = env.int("HEALTH_PORT", default=None)
 SOMABRAIN_INTEGRATOR_HEALTH_PORT = env.int(
     "SOMABRAIN_INTEGRATOR_HEALTH_PORT", default=9015
 )
-SOMABRAIN_INTEGRATOR_HEALTH_URL = env.str(
-    "SOMABRAIN_INTEGRATOR_HEALTH_URL",
-    default="http://somabrain_integrator_triplet:9015/health",
-)
+SOMABRAIN_INTEGRATOR_HEALTH_URL = env.str("SOMABRAIN_INTEGRATOR_HEALTH_URL", default="")
 SOMABRAIN_SEGMENTATION_HEALTH_URL = env.str(
-    "SOMABRAIN_SEGMENTATION_HEALTH_URL", default="http://somabrain_cog:9016/health"
+    "SOMABRAIN_SEGMENTATION_HEALTH_URL", default=""
 )
 
 # Outbox

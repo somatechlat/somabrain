@@ -30,7 +30,9 @@ env = environ.Env(
     SOMABRAIN_LOG_LEVEL=(str, "INFO"),
     # No default DSN per VIBE rules. Vault bootstrap or env must supply it.
     SOMABRAIN_POSTGRES_DSN=(str, ""),
-    SOMABRAIN_API_URL=(str, "http://127.0.0.1:30101"),
+    # No localhost default: an invented 127.0.0.1 is a URL an operator cannot
+    # change and a reviewer cannot see. Empty means unset; require_url raises.
+    SOMABRAIN_API_URL=(str, ""),
     # Deployment Mode Standardization
     SOMA_DEPLOY_MODE=(str, "FULL_LOCAL"),
     SOMABRAIN_MODE=(str, "full-local"),  # Legacy fallback
