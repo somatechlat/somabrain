@@ -474,7 +474,7 @@ services:
 
         # 4. Runtime service secrets
         curl -H "X-Vault-Token: $${SOMABRAIN_VAULT_TOKEN}" -X POST \
-          -d "{\"data\": {\"memory_http_token\": \"$${SOMABRAIN_MEMORY_HTTP_TOKEN}\", \"supervisor_http_pass\": \"$${SUPERVISOR_HTTP_PASS}\", \"api_token\": \"$${SOMABRAIN_API_TOKEN}\"}}" \
+          -d "{\"data\": {\"supervisor_http_pass\": \"$${SUPERVISOR_HTTP_PASS}\", \"api_token\": \"$${SOMABRAIN_API_TOKEN}\"}}" \
           http://somabrain_standalone_vault:8200/v1/somabrain/data/runtime
 
         echo "Vault initialized and secrets populated."
@@ -551,7 +551,13 @@ services:
     #      somabrain_standalone_milvus:
     #        condition: service_healthy
     networks:
-      - somabrain_standalone_net
+      somabrain_standalone_net:
+        # RFC 1035 aliases. The compose container name contains underscores
+        # and Django host_validation_re rejects it as HTTP_HOST. Peers use
+        # http://somabrain:30101.
+        aliases:
+          - somabrain
+          - somabrain-app
     # Ensure containers can reach host services (e.g., external memory on 10101)
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -566,7 +572,7 @@ services:
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
       # Host headers seen by the app container (healthchecks, host-bound curl, Docker Desktop proxy)
-      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,host.docker.internal,somabrain_standalone_app}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-localhost,127.0.0.1,host.docker.internal,somabrain}"
       # Gunicorn writes its control socket to $HOME; tmpfs /tmp keeps it writable.
       HOME: "/tmp"
 

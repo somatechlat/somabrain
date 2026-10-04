@@ -57,7 +57,13 @@ services:
 
   somabrain_standalone_app:
     networks:
-      - soma-stack-net
+      soma-stack-net:
+        # RFC 1035 alias: the compose container name contains underscores and
+        # is rejected as an HTTP_HOST. Operators address the brain as
+        # http://somabrain:30101 on soma-stack-net.
+        aliases:
+          - somabrain
+          - somabrain-app
     extra_hosts: []  # Remove host-gateway mapping; shared network provides DNS
 
   somabrain_standalone_cog:
