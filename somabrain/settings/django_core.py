@@ -72,10 +72,10 @@ SOMABRAIN_WM_RECENCY_TIME_SCALE = env("SOMABRAIN_WM_RECENCY_TIME_SCALE")
 SOMABRAIN_WM_RECENCY_MAX_STEPS = env("SOMABRAIN_WM_RECENCY_MAX_STEPS")
 SOMABRAIN_WM_SALIENCE_THRESHOLD = env("SOMABRAIN_WM_SALIENCE_THRESHOLD")
 
-# API Authentication Token
-# Standardized to support SOMA_API_TOKEN or SOMA_API_TOKEN_FILE via environ's support
-SOMA_API_TOKEN = env.str("SOMA_API_TOKEN", default=None)
-SOMA_API_TOKEN_FILE = env.str("SOMA_API_TOKEN_FILE", default=None)
+# API Authentication Token — secret, Vault only (somabrain/runtime[api_token]).
+# ENV never carries it. See get_api_token() below.
+SOMA_API_TOKEN = None  # populated from Vault below
+SOMA_API_TOKEN_FILE = None
 
 
 # Bootstrap secrets resolved from Vault and held here. Rule 164: they are
@@ -120,16 +120,18 @@ def configure_vault_secrets() -> None:
         if db_creds:
             user = db_creds.get("username")
             password = db_creds.get("password")
-            host = db_creds.get("host", "127.0.0.1")
-            port = db_creds.get("port", 5432)
-            name = db_creds.get("dbname", "somabrain")
-            if user and password and host and name:
+            # Topology may live in Vault alongside the credential. There is no
+            # invented host/port/dbname here: absent means the DSN is not built.
+            host = db_creds.get("host")
+            port = db_creds.get("port")
+            name = db_creds.get("dbname")
+            if user and password and host and port and name:
                 _boot_secret(
                     "SOMABRAIN_POSTGRES_DSN",
                     f"postgresql://{user}:{password}@{host}:{port}/{name}",
                 )
     except (SecretNotFound, VaultNotConfigured):
-        return
+        pass
 
     try:
         vault_secret = get_jwt_secret()
@@ -137,7 +139,7 @@ def configure_vault_secrets() -> None:
             _boot_secret("SOMABRAIN_JWT_SECRET", vault_secret)
             _boot_secret("SECRET_KEY", vault_secret)
     except (SecretNotFound, VaultNotConfigured):
-        return
+        pass
 
     try:
         api_token = get_runtime_secret("api_token")
@@ -149,14 +151,31 @@ def configure_vault_secrets() -> None:
         _boot_secret("SOMABRAIN_API_TOKEN", api_token)
 
 
-SECRET_KEY = env("SOMABRAIN_JWT_SECRET", default=env("SECRET_KEY"))
+# Resolve bootstrap secrets from Vault BEFORE the assignments below read them.
+# The previous order populated `_BOOTSTRAP` after this module was imported, so
+# the SECRET_KEY assignment never saw the Vault value and fell through to ENV.
+configure_vault_secrets()
+
+# Secret: Vault only (somabrain/auth[jwt_secret]). ENV never carries it.
+SECRET_KEY = _BOOTSTRAP.get("SECRET_KEY", "")
 if not SECRET_KEY:
     raise environ.ImproperlyConfigured(
-        "SOMABRAIN_JWT_SECRET or SECRET_KEY must be set via environment or Vault."
+        "SECRET_KEY must be provisioned via Vault (somabrain/auth[jwt_secret]). "
+        "A secret is never read from the environment and there is no default "
+        "(Rule 164 / Rule 91)."
     )
 
 DEBUG = env("SOMABRAIN_LOG_LEVEL") == "DEBUG"
+# Required host allow-list. A defaulted list (or an empty one that Django treats
+# as "allow the test client only") is a gate, not a convenience: the operator
+# names the hosts this service is addressed by. RFC 1035 alias `somabrain`.
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
+if not ALLOWED_HOSTS:
+    raise environ.ImproperlyConfigured(
+        "ALLOWED_HOSTS is required configuration. Name the host aliases this "
+        "service is addressed by (for standalone: somabrain). There is no "
+        "default list (Rule 91)."
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -202,8 +221,16 @@ WSGI_APPLICATION = "somabrain.config.wsgi.application"
 ASGI_APPLICATION = "somabrain.config.asgi.application"
 
 # Database - PostgreSQL only
-# No default DSN per VIBE rules. Vault bootstrap or SOMABRAIN_POSTGRES_DSN must supply it.
-DATABASES = {"default": env.db("SOMABRAIN_POSTGRES_DSN")}
+# The DSN carries a password, so it is Vault material (somabrain/database),
+# assembled in configure_vault_secrets(). ENV never carries a DSN (Rule 164).
+_dsn = _BOOTSTRAP.get("SOMABRAIN_POSTGRES_DSN", "")
+if not _dsn:
+    raise environ.ImproperlyConfigured(
+        "SOMABRAIN_POSTGRES_DSN must be provisioned via Vault "
+        "(somabrain/database). A DSN carries a password and is never read "
+        "from the environment (Rule 164 / Rule 91)."
+    )
+DATABASES = {"default": env.db_url_config(_dsn)}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -229,41 +256,22 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # -----------------------------------------------------------------------------
-# Helper function to load API token (matches existing logic)
+# Helper function to load API token
 # -----------------------------------------------------------------------------
 def get_api_token() -> str | None:
-    """Load the API token from module state or from its credential file.
+    """Return the API token resolved from Vault.
 
-    Returns ``None`` only when nothing is configured — a deployment that
-    deliberately runs without an API token. Any failure to *read* a named
-    token file raises: "I could not read it" must never look like "it is not
-    configured" (Rule 91).
+    Returns ``None`` only when Vault did not provision one — a deployment that
+    deliberately runs without an API token. The token is never read from the
+    environment and never from a file path named by ENV (Rule 164). A failed
+    Vault read is not "no token": it is an infrastructure failure and raises.
     """
-    if SOMA_API_TOKEN:
-        return SOMA_API_TOKEN
-
-    if SOMA_API_TOKEN_FILE:
-        token_path = Path(SOMA_API_TOKEN_FILE)
-        try:
-            resolved = token_path.read_text(encoding="utf-8").strip()
-        except OSError as exc:
-            raise environ.ImproperlyConfigured(
-                f"Cannot read the API token file named by SOMA_API_TOKEN_FILE "
-                f"at {str(token_path)!r}: {exc.strerror or exc}. Fix the path "
-                f"or the file's permissions; a failed read is not 'no token'."
-            ) from None
-        if not resolved:
-            raise environ.ImproperlyConfigured(
-                f"The API token file named by SOMA_API_TOKEN_FILE at "
-                f"{str(token_path)!r} is empty. An empty credential is not "
-                f"'no token configured'."
-            )
-        return resolved
-
-    return None
+    token = _BOOTSTRAP.get("SOMA_API_TOKEN") or _BOOTSTRAP.get("SOMABRAIN_API_TOKEN")
+    return token or None
 
 
 SOMABRAIN_API_TOKEN = get_api_token()
+SOMA_API_TOKEN = SOMABRAIN_API_TOKEN
 
 # ============================================================================
 # DJANGO LOGGING CONFIGURATION

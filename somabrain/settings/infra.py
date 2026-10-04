@@ -68,45 +68,64 @@ def configure_infra_secrets() -> None:
     except ImportError:
         return
 
-    try:
-        db_creds = get_db_credentials()
-        # Expected shape: username/password/host/port/dbname.
-        if db_creds:
-            _user = db_creds.get("username")
-            _pass = db_creds.get("password")
-            _host = db_creds.get("host", "127.0.0.1")
-            _port = db_creds.get("port", 5432)
-            _name = db_creds.get("dbname", "somabrain")
-            if _user and _pass:
-                _remember(
-                    "SOMABRAIN_POSTGRES_DSN",
-                    f"postgres://{_user}:{_pass}@{_host}:{_port}/{_name}",
-                )
+    # Each secret is independent: one missing document must not abort the
+    # others. A secret that is absent stays absent and the feature that needs
+    # it fails closed (Rule 91). A Vault *outage* is not "secrets unavailable"
+    # for the rest — only that lookup is skipped, and the caller refuses.
+    def _try(fn, *args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except (SecretNotFound, VaultNotConfigured):
+            return None
 
-        redis_creds = get_secret("somabrain/redis")
-        if redis_creds:
-            _remember("SOMABRAIN_REDIS_URL", redis_creds.get("url"))
-
-        runtime_secrets = get_runtime_secrets()
-        if runtime_secrets:
+    db_creds = _try(get_db_credentials)
+    # Expected shape: username/password/host/port/dbname. Absent topology
+    # is not invented: there is no 127.0.0.1 or 5432 fallback here.
+    if db_creds:
+        _user = db_creds.get("username")
+        _pass = db_creds.get("password")
+        _host = db_creds.get("host")
+        _port = db_creds.get("port")
+        _name = db_creds.get("dbname")
+        if _user and _pass and _host and _port and _name:
             _remember(
-                "SOMABRAIN_MEMORY_HTTP_TOKEN",
-                runtime_secrets.get("memory_http_token"),
+                "SOMABRAIN_POSTGRES_DSN",
+                f"postgres://{_user}:{_pass}@{_host}:{_port}/{_name}",
             )
-            _remember(
-                "SUPERVISOR_HTTP_PASS",
-                runtime_secrets.get("supervisor_http_pass"),
-            )
-            _remember("OUTBOX_API_TOKEN", runtime_secrets.get("api_token"))
-            _remember("SOMABRAIN_API_TOKEN", runtime_secrets.get("api_token"))
-            _remember("SOMA_API_TOKEN", runtime_secrets.get("api_token"))
 
-    except (SecretNotFound, VaultNotConfigured):
-        # Not a fallback: the secrets simply stay absent and the features
-        # that need them fail closed. Rule 91.
-        return
+    redis_creds = _try(get_secret, "somabrain/redis")
+    if redis_creds:
+        _remember("SOMABRAIN_REDIS_URL", redis_creds.get("url"))
+
+    runtime_secrets = _try(get_runtime_secrets)
+    if runtime_secrets:
+        _remember(
+            "SOMABRAIN_MEMORY_HTTP_TOKEN",
+            runtime_secrets.get("memory_http_token"),
+        )
+        _remember(
+            "SUPERVISOR_HTTP_PASS",
+            runtime_secrets.get("supervisor_http_pass"),
+        )
+        _remember("OUTBOX_API_TOKEN", runtime_secrets.get("api_token"))
+        _remember("SOMABRAIN_API_TOKEN", runtime_secrets.get("api_token"))
+        _remember("SOMA_API_TOKEN", runtime_secrets.get("api_token"))
+        _remember(
+            "SOMABRAIN_PROVENANCE_SECRET",
+            runtime_secrets.get("provenance_secret"),
+        )
 
 
+# Resolve Vault secrets BEFORE the settings below read `_resolved`. Calling
+# this at import time is what makes the Vault path real: the previous order
+# (configure_* after this module was imported) left `_RESOLVED` empty and the
+# assignments fell through to ENV — a secret in ENV, which Rule 164 forbids.
+configure_infra_secrets()
+
+# Topology only (host/port/DB name) may arrive via ENV. The DSN itself —
+# especially its password — is assembled from Vault credentials below when
+# Vault has them. An ENV DSN is accepted only as the bootstrap topology the
+# operator is allowed to supply; it never carries a password that Vault owns.
 SOMABRAIN_POSTGRES_DSN = _resolved("SOMABRAIN_POSTGRES_DSN") or env.str(
     "SOMABRAIN_POSTGRES_DSN", default=""
 )
@@ -136,7 +155,8 @@ def _parse_port(value: str | int | None, default: int) -> int:
 SOMABRAIN_REDIS_URL = _resolved("SOMABRAIN_REDIS_URL") or env.str(
     "SOMABRAIN_REDIS_URL", default=""
 )
-SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="127.0.0.1")
+# Host is topology: no localhost default. Empty means unset; readers fail closed.
+SOMABRAIN_REDIS_HOST = env.str("SOMABRAIN_REDIS_HOST", default="")
 SOMABRAIN_REDIS_PORT = _parse_port(env.str("SOMABRAIN_REDIS_PORT", default=None), 6379)
 SOMABRAIN_REDIS_DB = env.int("SOMABRAIN_REDIS_DB", default=0)
 
@@ -148,9 +168,7 @@ SOMABRAIN_REDIS_DB = env.int("SOMABRAIN_REDIS_DB", default=0)
 SOMABRAIN_MILVUS_HOST = env.str(
     "MILVUS_HOST", default=env.str("SOMABRAIN_MILVUS_HOST", default=None)
 )
-SOMABRAIN_MILVUS_PORT = env.int(
-    "MILVUS_PORT", default=env.int("SOMABRAIN_MILVUS_PORT", default=19530)
-)
+SOMABRAIN_MILVUS_PORT = env.int("MILVUS_PORT", default=env.int("SOMABRAIN_MILVUS_PORT", default=None) or 0)
 SOMABRAIN_MILVUS_COLLECTION = env.str("MILVUS_COLLECTION", default="oak_options")
 MILVUS_SEGMENT_REFRESH_INTERVAL = env.float(
     "MILVUS_SEGMENT_REFRESH_INTERVAL", default=60.0
@@ -182,38 +200,21 @@ REQUIRE_INFRA = env.str("REQUIRE_INFRA", default="1")
 RUNNING_IN_DOCKER = env.bool("RUNNING_IN_DOCKER", default=False)
 
 # ============================================================================
-# CENTRALIZED CONNECTION DEFAULTS (Docker vs Local)
+# SERVICE TOPOLOGY (no code defaults)
 # ============================================================================
-# If running in Docker (standalone), default to internal service names.
-# If running locally, default to localhost ports.
-# Explicit environment variables still override these fallbacks.
-
-if RUNNING_IN_DOCKER:
-    _KAFKA_DEFAULT = "somabrain_standalone_kafka:9092"
-    _OPA_DEFAULT = "http://somabrain_standalone_opa:8181"
-    # In standalone docker, Brain (30101) talks to SFM (10101) on host
-    # via host.docker.internal gateway
-    _MEMORY_DEFAULT = "http://host.docker.internal:10101"
-    _REDIS_DEFAULT = "redis://somabrain_standalone_redis:6379/0"
-    _MINIO_DEFAULT = "http://somabrain_standalone_minio:9000"
-    _SCHEMA_REGISTRY_DEFAULT = "http://somabrain_standalone_schema_registry:8081"
-    _AUTH_DEFAULT = "http://somabrain_standalone_auth:8080"
-else:
-    _KAFKA_DEFAULT = "127.0.0.1:9092"
-    _OPA_DEFAULT = "http://127.0.0.1:8181"
-    _MEMORY_DEFAULT = "http://127.0.0.1:10101"
-    _REDIS_DEFAULT = "redis://127.0.0.1:6379/0"
-    _MINIO_DEFAULT = "http://127.0.0.1:9000"
-    _SCHEMA_REGISTRY_DEFAULT = "http://127.0.0.1:8081"
-    _AUTH_DEFAULT = "http://127.0.0.1:8080"
+# A deployment URL has no code default. There is no Docker-vs-local fallback
+# block: a silent 127.0.0.1 or host.docker.internal is a URL an operator cannot
+# change and a reviewer cannot see (Rule 91). The operator names each endpoint
+# in deployment env / Compose / Helm. Readers use
+# somabrain.settings.resolve.require_url / optional_url, which fail closed.
 
 # Kafka
 # ----------------------------------------------------------------------------
-SOMABRAIN_KAFKA_URL = env.str("SOMABRAIN_KAFKA_URL", default=_KAFKA_DEFAULT)
+SOMABRAIN_KAFKA_URL = env.str("SOMABRAIN_KAFKA_URL", default="")
 # Bootstrap servers often mirror URL
-KAFKA_BOOTSTRAP_SERVERS = env.str(
-    "KAFKA_BOOTSTRAP_SERVERS", default=SOMABRAIN_KAFKA_URL
-).replace("kafka://", "")
+KAFKA_BOOTSTRAP_SERVERS = env.str("KAFKA_BOOTSTRAP_SERVERS", default="").replace(
+    "kafka://", ""
+)
 
 SOMABRAIN_KAFKA_HOST = env.str(
     "SOMABRAIN_KAFKA_HOST", default=env.str("KAFKA_HOST", default=None)
@@ -225,7 +226,7 @@ SOMABRAIN_KAFKA_SCHEME = env.str(
     "SOMABRAIN_KAFKA_SCHEME", default=env.str("KAFKA_SCHEME", default="kafka")
 )
 # Alias for consistency
-SOMA_KAFKA_BOOTSTRAP = env.str("SOMA_KAFKA_BOOTSTRAP", default=SOMABRAIN_KAFKA_URL)
+SOMA_KAFKA_BOOTSTRAP = env.str("SOMA_KAFKA_BOOTSTRAP", default=SOMABRAIN_KAFKA_URL or "")
 
 KAFKA_GROUP_ID = env.str("KAFKA_GROUP_ID", default=None)
 SOMABRAIN_CONSUMER_GROUP = env.str(
@@ -234,7 +235,7 @@ SOMABRAIN_CONSUMER_GROUP = env.str(
 
 # OPA
 # ----------------------------------------------------------------------------
-SOMABRAIN_OPA_URL = env.str("SOMABRAIN_OPA_URL", default=_OPA_DEFAULT)
+SOMABRAIN_OPA_URL = env.str("SOMABRAIN_OPA_URL", default="")
 
 SOMABRAIN_OPA_HOST = env.str(
     "SOMABRAIN_OPA_HOST", default=env.str("OPA_HOST", default=None)
@@ -257,41 +258,42 @@ SOMABRAIN_OPA_POLICY_SIG_KEY = env.str(
 # URLs used by the legacy /health aggregator in somabrain/config/urls.py.
 # These are intentionally separate from the canonical SOMABRAIN_*_URL settings
 # so existing health checks keep working without touching every call site.
-# Topology defaults live only in the Docker-vs-local block above.
-OPA_URL = env.str("OPA_URL", default=SOMABRAIN_OPA_URL)
-MINIO_ENDPOINT = env.str("MINIO_ENDPOINT", default=_MINIO_DEFAULT)
-SCHEMA_REGISTRY_URL = env.str("SCHEMA_REGISTRY_URL", default=_SCHEMA_REGISTRY_DEFAULT)
-SOMABRAIN_AUTH_URL = env.str("SOMABRAIN_AUTH_URL", default=_AUTH_DEFAULT)
+# No code default: empty means unset and the reader fails closed.
+OPA_URL = env.str("OPA_URL", default=SOMABRAIN_OPA_URL or "")
+MINIO_ENDPOINT = env.str("MINIO_ENDPOINT", default="")
+SCHEMA_REGISTRY_URL = env.str("SCHEMA_REGISTRY_URL", default="")
+SOMABRAIN_AUTH_URL = env.str("SOMABRAIN_AUTH_URL", default="")
 
 # External Memory (SFM)
 # ----------------------------------------------------------------------------
-SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str(
-    "SOMABRAIN_MEMORY_HTTP_ENDPOINT", default=_MEMORY_DEFAULT
-)
+SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str("SOMABRAIN_MEMORY_HTTP_ENDPOINT", default="")
 
 # Legacy alias used by somabrain/config/urls.py and system_health.py health checks.
 SOMA_FRACTAL_MEMORY_URL = env.str(
-    "SOMA_FRACTAL_MEMORY_URL", default=SOMABRAIN_MEMORY_HTTP_ENDPOINT
+    "SOMA_FRACTAL_MEMORY_URL", default=SOMABRAIN_MEMORY_HTTP_ENDPOINT or ""
 )
-SOMABRAIN_MEMORY_HTTP_TOKEN = _resolved("SOMABRAIN_MEMORY_HTTP_TOKEN") or env.str(
-    "SOMABRAIN_MEMORY_HTTP_TOKEN", default=""
-)
+# Secret: Vault only (secret/agent/credentials[somabrain_memory_http_token]).
+# There is deliberately no ENV read here. A token in ENV is a token in `ps`,
+# in /proc/*/environ and in every crash dump — Rule 164. Missing is a refusal.
+SOMABRAIN_MEMORY_HTTP_TOKEN = _resolved("SOMABRAIN_MEMORY_HTTP_TOKEN")
 if REQUIRE_MEMORY and not SOMABRAIN_MEMORY_HTTP_TOKEN:
     raise environ.ImproperlyConfigured(
-        "SOMABRAIN_MEMORY_HTTP_TOKEN must be set when REQUIRE_MEMORY is enabled."
+        "SOMABRAIN_MEMORY_HTTP_TOKEN must be provisioned via Vault "
+        "(secret/agent/credentials[somabrain_memory_http_token]). It is never "
+        "read from the environment and there is no default (Rule 164 / Rule 91)."
     )
 SOMABRAIN_HTTP_KEEPALIVE = env.int("SOMABRAIN_HTTP_KEEPALIVE", default=32)
 SOMABRAIN_HTTP_RETRIES = env.int("SOMABRAIN_HTTP_RETRIES", default=1)
 
 # Service configuration
 HOME_DIR = env.str("HOME", default="")
-SOMABRAIN_HOST = env.str("SOMABRAIN_HOST", default="0.0.0.0")
-SOMABRAIN_PORT = env.str("SOMABRAIN_PORT", default="30101")
-SOMABRAIN_HOST_PORT = env.int("SOMABRAIN_HOST_PORT", default=30101)
+SOMABRAIN_HOST = env.str("SOMABRAIN_HOST", default="")
+SOMABRAIN_PORT = env.str("SOMABRAIN_PORT", default="")
+SOMABRAIN_HOST_PORT = _parse_port(env.str("SOMABRAIN_HOST_PORT", default=None), 0)
 SOMABRAIN_WORKERS = env.int("SOMABRAIN_WORKERS", default=1)
 SOMABRAIN_SERVICE_NAME = env.str("SOMABRAIN_SERVICE_NAME", default="somabrain")
-SOMABRAIN_NAMESPACE = env.str("SOMABRAIN_NAMESPACE", default="public")
-SOMABRAIN_DEFAULT_TENANT = env.str("SOMABRAIN_DEFAULT_TENANT", default="public")
+SOMABRAIN_NAMESPACE = env.str("SOMABRAIN_NAMESPACE", default="")
+SOMABRAIN_DEFAULT_TENANT = env.str("SOMABRAIN_DEFAULT_TENANT", default="")
 # No ``"default"`` partition: an unset tenant id stays unset and the
 # resolution path raises (Rule 91). ``standalone.py`` pins its own identity.
 SOMABRAIN_TENANT_ID = env.str("SOMABRAIN_TENANT_ID", default="")
@@ -305,7 +307,8 @@ SOMABRAIN_DEFAULT_BASE_URL = env.str("SOMABRAIN_DEFAULT_BASE_URL", default="")
 BASE_URL = env.str("BASE_URL", default="")
 SUPERVISOR_URL = env.str("SUPERVISOR_URL", default=None)
 SUPERVISOR_HTTP_USER = env.str("SUPERVISOR_HTTP_USER", default="admin")
-SUPERVISOR_HTTP_PASS = env.str("SUPERVISOR_HTTP_PASS", default="")
+# Secret: Vault only (somabrain/runtime[supervisor_http_pass]). No ENV, no "".
+SUPERVISOR_HTTP_PASS = _resolved("SUPERVISOR_HTTP_PASS")
 INTEGRATOR_URL = env.str("INTEGRATOR_URL", default=None)
 SEGMENTATION_URL = env.str("SEGMENTATION_URL", default=None)
 OTEL_EXPORTER_OTLP_ENDPOINT = env.str("OTEL_EXPORTER_OTLP_ENDPOINT", default="")
@@ -333,7 +336,8 @@ OUTBOX_MAX_DELAY = env.float("OUTBOX_MAX_DELAY", default=5.0)
 OUTBOX_MAX_RETRIES = env.int("OUTBOX_MAX_RETRIES", default=5)
 OUTBOX_POLL_INTERVAL = env.float("OUTBOX_POLL_INTERVAL", default=1.0)
 OUTBOX_PRODUCER_RETRY_MS = env.int("OUTBOX_PRODUCER_RETRY_MS", default=1000)
-OUTBOX_API_TOKEN = env.str("OUTBOX_API_TOKEN", default="")
+# Secret: Vault only (somabrain/runtime[api_token]). No ENV, no "".
+OUTBOX_API_TOKEN = _resolved("OUTBOX_API_TOKEN")
 
 # Journal
 SOMABRAIN_JOURNAL_DIR = env.str(
