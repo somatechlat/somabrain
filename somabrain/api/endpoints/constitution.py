@@ -5,11 +5,13 @@ import time
 from typing import Any
 from uuid import uuid4
 
+from django.conf import settings
 from django.http import HttpRequest
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from somabrain import audit
+from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.constitution import ConstitutionError
 from somabrain.services.constitution import get_constitution_engine
 
@@ -24,7 +26,7 @@ class ValidateRequest(Schema):
     input: dict
 
 
-@router.get("/version")
+@router.get("/version", auth=api_key_auth)
 def version(request: HttpRequest):
     """Execute version.
 
@@ -32,6 +34,7 @@ def version(request: HttpRequest):
         request: The request.
     """
 
+    require_auth(request, settings)
     engine = get_constitution_engine()
     checksum = engine.get_checksum() if engine else None
     status = "loaded" if checksum else "not-loaded"
@@ -42,7 +45,7 @@ def version(request: HttpRequest):
     }
 
 
-@router.post("/validate")
+@router.post("/validate", auth=api_key_auth)
 def validate(request: HttpRequest, req: ValidateRequest):
     """Execute validate.
 
@@ -51,6 +54,7 @@ def validate(request: HttpRequest, req: ValidateRequest):
         req: The req.
     """
 
+    require_auth(request, settings)
     engine = get_constitution_engine()
     if not engine:
         raise HttpError(503, "Constitution engine not initialized")
@@ -88,9 +92,10 @@ def validate(request: HttpRequest, req: ValidateRequest):
         raise HttpError(500, str(e))
 
 
-@router.post("/load")
+@router.post("/load", auth=api_key_auth)
 def load_constitution(request: HttpRequest, payload: dict[str, Any]):
     """Save a new constitution JSON to Redis."""
+    require_auth(request, settings)
     engine = get_constitution_engine()
     if not engine:
         raise HttpError(503, "Constitution engine not initialized")

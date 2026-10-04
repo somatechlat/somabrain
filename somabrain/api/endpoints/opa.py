@@ -52,19 +52,17 @@ def update_policy(request: HttpRequest):
     if pub_key_path and not opa_signature.verify_policy(policy_str, sig, pub_key_path):
         raise HttpError(500, "Signature verification failed")
 
+    # Fail-closed: a policy that is not persisted or not reloaded is not an
+    # update. Reporting success here would let the gate silently drift open.
     if not policy_manager.store_policy(policy_str, sig):
-        logging.getLogger("somabrain.opa").warning(
-            "Failed to store OPA policy in Redis – proceeding without persistence"
-        )
+        raise HttpError(500, "Failed to store OPA policy; refusing to report success")
 
     try:
-        if not opa_client.reload_policy():
-            logging.getLogger("somabrain.opa").warning(
-                "OPA reload failed – continuing without error"
-            )
-    except Exception:
-        logging.getLogger("somabrain.opa").exception(
-            "Exception during OPA reload – ignoring"
-        )
+        reloaded = opa_client.reload_policy()
+    except Exception as exc:
+        logging.getLogger("somabrain.opa").exception("OPA reload raised")
+        raise HttpError(500, f"OPA reload failed; refusing to report success: {exc}")
+    if not reloaded:
+        raise HttpError(500, "OPA reload failed; refusing to report success")
 
     return {"detail": "OPA policy updated and reloaded", "signature": sig}
