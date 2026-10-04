@@ -122,13 +122,9 @@ def configure_infra_secrets() -> None:
 # assignments fell through to ENV — a secret in ENV, which Rule 164 forbids.
 configure_infra_secrets()
 
-# Topology only (host/port/DB name) may arrive via ENV. The DSN itself —
-# especially its password — is assembled from Vault credentials below when
-# Vault has them. An ENV DSN is accepted only as the bootstrap topology the
-# operator is allowed to supply; it never carries a password that Vault owns.
-SOMABRAIN_POSTGRES_DSN = _resolved("SOMABRAIN_POSTGRES_DSN") or env.str(
-    "SOMABRAIN_POSTGRES_DSN", default=""
-)
+# Secret-bearing DSN: Vault only (somabrain/database). ENV never carries a
+# DSN — a DSN is a password (Rule 164). Assembled in configure_infra_secrets.
+SOMABRAIN_POSTGRES_DSN = _resolved("SOMABRAIN_POSTGRES_DSN")
 # Remove legacy DATABASE_URL fallback to avoid collisions
 # DATABASE_URL = env.str("DATABASE_URL", default=None)
 
