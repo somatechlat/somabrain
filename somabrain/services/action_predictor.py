@@ -43,9 +43,9 @@ logger = logging.getLogger("somabrain.services.action_predictor")
 
 # Kafka configuration (prod-like defaults, override via env)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = getattr(settings, "topic_next_event")
-PUBLISH_TOPIC = getattr(settings, "topic_action_updates")
-PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha"))
+CONSUME_TOPIC = getattr(settings, "TOPIC_NEXT_EVENT")
+PUBLISH_TOPIC = getattr(settings, "TOPIC_ACTION_UPDATES")
+PREDICTOR_ALPHA = float(getattr(settings, "PREDICTOR_ALPHA"))
 
 
 class ActionPredictorService:
@@ -90,7 +90,7 @@ class ActionPredictorService:
         self.producer = make_producer()
         self.consumer = self._create_consumer()
         # Tenant ID from Settings (fallback to default defined in Settings)
-        self.tenant_id = getattr(settings, "tenant_id")
+        self.tenant_id = getattr(settings, "TENANT_ID")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""

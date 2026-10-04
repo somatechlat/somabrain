@@ -52,10 +52,10 @@ class AgentPredictor(HeatDiffusionPredictor):
 
         apply_A, dim = _load_agent_operator()
         cfg = PredictorConfig(
-            diffusion_t=getattr(settings, "diffusion_t"),
-            alpha=getattr(settings, "predictor_alpha"),
-            chebyshev_K=getattr(settings, "chebyshev_K"),
-            lanczos_m=getattr(settings, "lanczos_m"),
+            diffusion_t=getattr(settings, "DIFFUSION_T"),
+            alpha=getattr(settings, "PREDICTOR_ALPHA"),
+            chebyshev_K=getattr(settings, "CHEBYSHEV_K"),
+            lanczos_m=getattr(settings, "LANCZOS_M"),
         )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 

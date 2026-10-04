@@ -11,7 +11,7 @@ import time
 
 from django.conf import settings
 from django.http import HttpRequest
-from ninja import Router
+from ninja import Body, Router
 from ninja.errors import HttpError
 
 from somabrain.api.auth import api_key_auth, require_auth
@@ -35,7 +35,7 @@ def feature_flags_endpoint(request: HttpRequest):
 
 
 @router.post("/evaluate", auth=api_key_auth)
-def evaluate_endpoint(request: HttpRequest, payload: dict):
+def evaluate_endpoint(request: HttpRequest, payload: dict = Body(...)):
     """Evaluate context and return prompt with memories."""
     ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
@@ -69,7 +69,7 @@ def evaluate_endpoint(request: HttpRequest, payload: dict):
 
 
 @router.post("/feedback", auth=api_key_auth)
-def feedback_endpoint(request: HttpRequest, payload: dict):
+def feedback_endpoint(request: HttpRequest, payload: dict = Body(...)):
     """Record feedback for learning adaptation."""
     ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
@@ -183,7 +183,7 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None
 
 
 @router.post("/adaptation/reset", auth=api_key_auth)
-def adaptation_reset_endpoint(request: HttpRequest, payload: dict):
+def adaptation_reset_endpoint(request: HttpRequest, payload: dict = Body(...)):
     """Reset adaptation engine to defaults (dev mode only)."""
     ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)

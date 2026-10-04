@@ -33,14 +33,14 @@ SOMABRAIN_TOPIC_CONFIG_UPDATES = env.str(
 SOMABRAIN_TOPIC_SEGMENTS = env.str("SOMABRAIN_TOPIC_SEGMENTS", default="cog.segments")
 
 # Lowercase aliases used by several cognitive service modules
-kafka_bootstrap_servers = _INFRA_KAFKA_BOOTSTRAP_SERVERS
-topic_next_event = SOMABRAIN_TOPIC_NEXT_EVENT
-topic_global_frame = SOMABRAIN_TOPIC_GLOBAL_FRAME
-topic_state_updates = SOMABRAIN_TOPIC_STATE_UPDATES
-topic_agent_updates = SOMABRAIN_TOPIC_AGENT_UPDATES
-topic_action_updates = SOMABRAIN_TOPIC_ACTION_UPDATES
+KAFKA_BOOTSTRAP_SERVERS = _INFRA_KAFKA_BOOTSTRAP_SERVERS
+TOPIC_NEXT_EVENT = SOMABRAIN_TOPIC_NEXT_EVENT
+TOPIC_GLOBAL_FRAME = SOMABRAIN_TOPIC_GLOBAL_FRAME
+TOPIC_STATE_UPDATES = SOMABRAIN_TOPIC_STATE_UPDATES
+TOPIC_AGENT_UPDATES = SOMABRAIN_TOPIC_AGENT_UPDATES
+TOPIC_ACTION_UPDATES = SOMABRAIN_TOPIC_ACTION_UPDATES
 topic_config_updates = SOMABRAIN_TOPIC_CONFIG_UPDATES
-topic_segments = SOMABRAIN_TOPIC_SEGMENTS
+TOPIC_SEGMENTS = SOMABRAIN_TOPIC_SEGMENTS
 
 # --- LEARNER SETTINGS ---
 SOMABRAIN_LEARNING_TENANTS_FILE = env.str(
@@ -50,11 +50,11 @@ SOMABRAIN_LEARNING_TENANTS_FILE = env.str(
 # --- SEGMENTATION SETTINGS ---
 ENABLE_COG_THREADS = env.bool("ENABLE_COG_THREADS", default=True)
 SEGMENTATION_HEALTH_PORT = env.int("SEGMENTATION_HEALTH_PORT", default=9016)
-segment_health_port = SEGMENTATION_HEALTH_PORT
-segment_health_enable = env.str("SEGMENTATION_HEALTH_ENABLE", default="1")
-segment_grad_threshold = env.float("SOMABRAIN_SEGMENT_GRAD_THRESHOLD", default=0.2)
-segment_hmm_enabled = env.bool("SOMABRAIN_SEGMENT_HMM_ENABLED", default=True)
-segment_hmm_threshold = env.float("SOMABRAIN_SEGMENT_HMM_THRESHOLD", default=0.6)
+SEGMENT_HEALTH_PORT = SEGMENTATION_HEALTH_PORT
+SEGMENT_HEALTH_ENABLE = env.str("SEGMENTATION_HEALTH_ENABLE", default="1")
+SEGMENT_GRAD_THRESHOLD = env.float("SOMABRAIN_SEGMENT_GRAD_THRESHOLD", default=0.2)
+SEGMENT_HMM_ENABLED = env.bool("SOMABRAIN_SEGMENT_HMM_ENABLED", default=True)
+SEGMENT_HMM_THRESHOLD = env.float("SOMABRAIN_SEGMENT_HMM_THRESHOLD", default=0.6)
 
 # --- MEMORY SETTINGS ---
 # Memory HTTP service
@@ -478,48 +478,48 @@ SOMABRAIN_REQUIRE_PROVENANCE = env.bool("SOMABRAIN_REQUIRE_PROVENANCE", default=
 SOMABRAIN_SLOW_PREDICTOR_DELAY_MS = env.int("SOMABRAIN_SLOW_PREDICTOR_DELAY_MS", default=1000)
 USE_MICROCIRCUITS = env.bool("USE_MICROCIRCUITS", default=False)
 USE_PLANNER = env.bool("USE_PLANNER", default=False)
-allow_tiny_embedder = env.bool("ALLOW_TINY_EMBEDDER", default=False)
-chebyshev_K = env.int("CHEBYSHEV_K", default=30)
-consumer_group = env.str("CONSUMER_GROUP", default="wm-updates-cache")
-diffusion_t = env.float("DIFFUSION_T", default=0.5)
-enable_learning_state_persistence = env.str("ENABLE_LEARNING_STATE_PERSISTENCE", default="")
-feedback_rate_limit_per_minute = env.int("FEEDBACK_RATE_LIMIT_PER_MINUTE", default=0)
-heat_method = env.str("HEAT_METHOD", default="chebyshev")
-http_keepalive_connections = env.str("HTTP_KEEPALIVE_CONNECTIONS", default="default_keepalive")
-http_max_connections = env.str("HTTP_MAX_CONNECTIONS", default="default_max")
-http_retries = env.str("HTTP_RETRIES", default="default_retries")
-journal_compression = env.bool("JOURNAL_COMPRESSION", default=True)
-journal_max_files = env.int("JOURNAL_MAX_FILES", default=10)
-journal_retention_days = env.int("JOURNAL_RETENTION_DAYS", default=7)
-journal_rotation_interval = env.int("JOURNAL_ROTATION_INTERVAL", default=86400)
-journal_sync_writes = env.bool("JOURNAL_SYNC_WRITES", default=True)
-lanczos_m = env.int("LANCZOS_M", default=20)
-learning_rate_dynamic = env.bool("LEARNING_RATE_DYNAMIC", default=False)
-learning_tenants_overrides = env.str("LEARNING_TENANTS_OVERRIDES", default="")
-memory_fast_ack = env.bool("MEMORY_FAST_ACK", default=False)
-mode_opa_policy_bundle = env.str("MODE_OPA_POLICY_BUNDLE", default="")
-opa_timeout_seconds = env.float("OPA_TIMEOUT_SECONDS", default=2.0)
-orchestrator_routing = env.str("ORCHESTRATOR_ROUTING", default="")
-outbox_tenant_quota_limit = env.int("OUTBOX_TENANT_QUOTA_LIMIT", default=1000)
-outbox_tenant_quota_window = env.int("OUTBOX_TENANT_QUOTA_WINDOW", default=60)
-predictor_alpha = env.float("PREDICTOR_ALPHA", default=2.0)
-redis_db = env.int("REDIS_DB", default=0)
-require_external_backends = env.bool("REQUIRE_EXTERNAL_BACKENDS", default=False)
-retrieval_alpha = env.float("RETRIEVAL_ALPHA", default=1.0)
-retrieval_beta = env.float("RETRIEVAL_BETA", default=0.3)
-retrieval_gamma = env.float("RETRIEVAL_GAMMA", default=0.1)
-retrieval_tau = env.float("RETRIEVAL_TAU", default=0.8)
-tau_anneal_interval = env.float("TAU_ANNEAL_INTERVAL", default=60.0)
-tau_decay_factor = env.float("TAU_DECAY_FACTOR", default=0.95)
-tau_min_floor = env.float("TAU_MIN_FLOOR", default=0.1)
-tenant_id = env.str("TENANT_ID", default="default")
-truth_appr_eps = env.str("TRUTH_APPR_EPS", default="1e-4")
-truth_chebyshev_K = env.int("TRUTH_CHEBYSHEV_K", default=32)
-utility_lambda_max = env.float("UTILITY_LAMBDA_MAX", default=5.0)
-utility_lambda_min = env.float("UTILITY_LAMBDA_MIN", default=0.0)
-utility_mu_max = env.float("UTILITY_MU_MAX", default=5.0)
-utility_mu_min = env.float("UTILITY_MU_MIN", default=0.0)
-utility_nu_max = env.float("UTILITY_NU_MAX", default=5.0)
-utility_nu_min = env.float("UTILITY_NU_MIN", default=0.0)
-wm_updates_max_items = env.int("WM_UPDATES_MAX_ITEMS", default=50)
-wm_updates_ttl_seconds = env.int("WM_UPDATES_TTL_SECONDS", default=8)
+ALLOW_TINY_EMBEDDER = env.bool("ALLOW_TINY_EMBEDDER", default=False)
+CHEBYSHEV_K = env.int("CHEBYSHEV_K", default=30)
+CONSUMER_GROUP = env.str("CONSUMER_GROUP", default="wm-updates-cache")
+DIFFUSION_T = env.float("DIFFUSION_T", default=0.5)
+ENABLE_LEARNING_STATE_PERSISTENCE = env.str("ENABLE_LEARNING_STATE_PERSISTENCE", default="")
+FEEDBACK_RATE_LIMIT_PER_MINUTE = env.int("FEEDBACK_RATE_LIMIT_PER_MINUTE", default=0)
+HEAT_METHOD = env.str("HEAT_METHOD", default="chebyshev")
+HTTP_KEEPALIVE_CONNECTIONS = env.str("HTTP_KEEPALIVE_CONNECTIONS", default="default_keepalive")
+HTTP_MAX_CONNECTIONS = env.str("HTTP_MAX_CONNECTIONS", default="default_max")
+HTTP_RETRIES = env.str("HTTP_RETRIES", default="default_retries")
+JOURNAL_COMPRESSION = env.bool("JOURNAL_COMPRESSION", default=True)
+JOURNAL_MAX_FILES = env.int("JOURNAL_MAX_FILES", default=10)
+JOURNAL_RETENTION_DAYS = env.int("JOURNAL_RETENTION_DAYS", default=7)
+JOURNAL_ROTATION_INTERVAL = env.int("JOURNAL_ROTATION_INTERVAL", default=86400)
+JOURNAL_SYNC_WRITES = env.bool("JOURNAL_SYNC_WRITES", default=True)
+LANCZOS_M = env.int("LANCZOS_M", default=20)
+LEARNING_RATE_DYNAMIC = env.bool("LEARNING_RATE_DYNAMIC", default=False)
+LEARNING_TENANTS_OVERRIDES = env.str("LEARNING_TENANTS_OVERRIDES", default="")
+MEMORY_FAST_ACK = env.bool("MEMORY_FAST_ACK", default=False)
+MODE_OPA_POLICY_BUNDLE = env.str("MODE_OPA_POLICY_BUNDLE", default="")
+OPA_TIMEOUT_SECONDS = env.float("OPA_TIMEOUT_SECONDS", default=2.0)
+ORCHESTRATOR_ROUTING = env.str("ORCHESTRATOR_ROUTING", default="")
+OUTBOX_TENANT_QUOTA_LIMIT = env.int("OUTBOX_TENANT_QUOTA_LIMIT", default=1000)
+OUTBOX_TENANT_QUOTA_WINDOW = env.int("OUTBOX_TENANT_QUOTA_WINDOW", default=60)
+PREDICTOR_ALPHA = env.float("PREDICTOR_ALPHA", default=2.0)
+REDIS_DB = env.int("REDIS_DB", default=0)
+REQUIRE_EXTERNAL_BACKENDS = env.bool("REQUIRE_EXTERNAL_BACKENDS", default=False)
+RETRIEVAL_ALPHA = env.float("RETRIEVAL_ALPHA", default=1.0)
+RETRIEVAL_BETA = env.float("RETRIEVAL_BETA", default=0.3)
+RETRIEVAL_GAMMA = env.float("RETRIEVAL_GAMMA", default=0.1)
+RETRIEVAL_TAU = env.float("RETRIEVAL_TAU", default=0.8)
+TAU_ANNEAL_INTERVAL = env.float("TAU_ANNEAL_INTERVAL", default=60.0)
+TAU_DECAY_FACTOR = env.float("TAU_DECAY_FACTOR", default=0.95)
+TAU_MIN_FLOOR = env.float("TAU_MIN_FLOOR", default=0.1)
+TENANT_ID = env.str("TENANT_ID", default="default")
+TRUTH_APPR_EPS = env.str("TRUTH_APPR_EPS", default="1e-4")
+TRUTH_CHEBYSHEV_K = env.int("TRUTH_CHEBYSHEV_K", default=32)
+UTILITY_LAMBDA_MAX = env.float("UTILITY_LAMBDA_MAX", default=5.0)
+UTILITY_LAMBDA_MIN = env.float("UTILITY_LAMBDA_MIN", default=0.0)
+UTILITY_MU_MAX = env.float("UTILITY_MU_MAX", default=5.0)
+UTILITY_MU_MIN = env.float("UTILITY_MU_MIN", default=0.0)
+UTILITY_NU_MAX = env.float("UTILITY_NU_MAX", default=5.0)
+UTILITY_NU_MIN = env.float("UTILITY_NU_MIN", default=0.0)
+WM_UPDATES_MAX_ITEMS = env.int("WM_UPDATES_MAX_ITEMS", default=50)
+WM_UPDATES_TTL_SECONDS = env.int("WM_UPDATES_TTL_SECONDS", default=8)

@@ -88,13 +88,13 @@ class JournalConfig:
             max_file_size=int(
                 getattr(settings, "SOMABRAIN_JOURNAL_MAX_FILE_SIZE")
             ),
-            max_files=int(getattr(settings, "journal_max_files")),
+            max_files=int(getattr(settings, "JOURNAL_MAX_FILES")),
             rotation_interval=int(
-                getattr(settings, "journal_rotation_interval")
+                getattr(settings, "JOURNAL_ROTATION_INTERVAL")
             ),
-            retention_days=int(getattr(settings, "journal_retention_days")),
-            compression=bool(getattr(settings, "journal_compression")),
-            sync_writes=bool(getattr(settings, "journal_sync_writes")),
+            retention_days=int(getattr(settings, "JOURNAL_RETENTION_DAYS")),
+            compression=bool(getattr(settings, "JOURNAL_COMPRESSION")),
+            sync_writes=bool(getattr(settings, "JOURNAL_SYNC_WRITES")),
         )
 
 

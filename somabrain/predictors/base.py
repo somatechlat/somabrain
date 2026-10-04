@@ -25,7 +25,7 @@ def _select_heat_method() -> str:
     The ``Settings`` model provides a ``heat_method`` attribute that defaults to
     ``"chebyshev"``. We use that attribute directly, normalising the value.
     """
-    m = getattr(settings, "heat_method")
+    m = getattr(settings, "HEAT_METHOD")
     if not isinstance(m, str):
         m = "chebyshev"
     m = m.strip().lower()

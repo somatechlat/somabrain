@@ -31,7 +31,7 @@ def _load_state_operator() -> tuple[callable, int]:
     # Fallback to the generic graph file if the state‑specific one is not set.
     # ``settings.getenv`` is prohibited; we use ``getattr`` which returns ``None``
     # when the attribute does not exist (mirroring the previous behaviour).
-    graph_path = settings.graph_file_state or getattr(settings, "graph_file", None)
+    graph_path = settings.graph_file_state or getattr(settings, "GRAPH_FILE", None)
     if not graph_path:
         raise RuntimeError(
             "State predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_STATE or SOMABRAIN_GRAPH_FILE."
@@ -52,10 +52,10 @@ class StatePredictor(HeatDiffusionPredictor):
 
         apply_A, dim = _load_state_operator()
         cfg = PredictorConfig(
-            diffusion_t=getattr(settings, "diffusion_t"),
-            alpha=getattr(settings, "predictor_alpha"),
-            chebyshev_K=getattr(settings, "chebyshev_K"),
-            lanczos_m=getattr(settings, "lanczos_m"),
+            diffusion_t=getattr(settings, "DIFFUSION_T"),
+            alpha=getattr(settings, "PREDICTOR_ALPHA"),
+            chebyshev_K=getattr(settings, "CHEBYSHEV_K"),
+            lanczos_m=getattr(settings, "LANCZOS_M"),
         )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 

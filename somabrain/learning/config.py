@@ -39,16 +39,16 @@ class UtilityWeights:
     def clamp(
         self,
         lambda_bounds: tuple[float, float] = (
-            float(getattr(settings, "utility_lambda_min") if settings else 0.0),
-            float(getattr(settings, "utility_lambda_max") if settings else 5.0),
+            float(getattr(settings, "UTILITY_LAMBDA_MIN") if settings else 0.0),
+            float(getattr(settings, "UTILITY_LAMBDA_MAX") if settings else 5.0),
         ),
         mu_bounds: tuple[float, float] = (
-            float(getattr(settings, "utility_mu_min") if settings else 0.0),
-            float(getattr(settings, "utility_mu_max") if settings else 5.0),
+            float(getattr(settings, "UTILITY_MU_MIN") if settings else 0.0),
+            float(getattr(settings, "UTILITY_MU_MAX") if settings else 5.0),
         ),
         nu_bounds: tuple[float, float] = (
-            float(getattr(settings, "utility_nu_min") if settings else 0.0),
-            float(getattr(settings, "utility_nu_max") if settings else 5.0),
+            float(getattr(settings, "UTILITY_NU_MIN") if settings else 0.0),
+            float(getattr(settings, "UTILITY_NU_MAX") if settings else 5.0),
         ),
     ) -> None:
         """Clamp all weights to their respective bounds."""

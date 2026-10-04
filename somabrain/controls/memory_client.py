@@ -14,9 +14,9 @@ from importlib import import_module
 from typing import Any, Protocol, cast
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 
 from somabrain.memory.client import MemoryClient as CanonicalMemoryClient
+from somabrain.settings.resolve import optional_setting, require_setting, require_url
 
 from .degradation import HealthStatus, degradation_manager
 
@@ -64,20 +64,18 @@ class MemoryClient:
     """Unified client for SomaFractalMemory (SFM)."""
 
     def __init__(self) -> None:
-        self.mode = getattr(settings, "SOMABRAIN_MEMORY_MODE")
-        endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT")
-        if not endpoint:
-            raise ImproperlyConfigured(
-                "SOMABRAIN_MEMORY_HTTP_ENDPOINT must be set to the "
-                "SomaFractalMemory HTTP endpoint. A missing endpoint is a "
-                "refusal — there is no hardcoded fallback URL."
-            )
-        self.endpoint = endpoint
+        # Every value comes through the one resolver (Rule 91). A missing
+        # required setting is a refusal naming the setting; there is no
+        # hardcoded fallback URL and no ``getattr(..., default)``.
+        self.mode = require_setting("SOMABRAIN_MEMORY_MODE")
+        self.endpoint = require_url("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         # Brain→SFM is a separate trust boundary from agent→brain. The bearer
         # SFM accepts is SOMA_API_TOKEN (its own get_api_token()), never the
         # agent↔brain somabrain_memory_http_token. Conflating the two is how a
-        # reseeded agent token silently broke every store write.
-        self.token = getattr(settings, "SOMA_API_TOKEN")
+        # reseeded agent token silently broke every store write. The token is
+        # optional at the settings layer: ``get_api_token()`` documents None as
+        # "this deployment deliberately runs without one".
+        self.token = optional_setting("SOMA_API_TOKEN")
 
         self._direct_service: _DirectMemoryService | None = None
         self._canonical: CanonicalMemoryClient | None = None

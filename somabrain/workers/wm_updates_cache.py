@@ -109,12 +109,12 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         require_opa=False,
     )
     r = _redis_client()
-    max_items = int(getattr(settings, "wm_updates_max_items") or 50)
-    ttl_seconds = int(getattr(settings, "wm_updates_ttl_seconds") or 8)
+    max_items = int(getattr(settings, "WM_UPDATES_MAX_ITEMS") or 50)
+    ttl_seconds = int(getattr(settings, "WM_UPDATES_TTL_SECONDS") or 8)
     consumer = CKConsumer(
         {
             "bootstrap.servers": _bootstrap(),
-            "group.id": getattr(settings, "consumer_group"),
+            "group.id": getattr(settings, "CONSUMER_GROUP"),
             "enable.auto.commit": True,
             "auto.offset.reset": "latest",
         }

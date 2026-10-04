@@ -29,7 +29,7 @@ def appr_push(
     # Use dictionaries for sparse vectors
     # resolve eps from truth-budget if not provided
     if eps is None:
-        eps = getattr(settings, "truth_appr_eps")
+        eps = getattr(settings, "TRUTH_APPR_EPS")
 
     r = {seed: 1.0}
     p = {}

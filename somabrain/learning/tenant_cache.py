@@ -40,7 +40,7 @@ class TenantOverridesCache:
 
         Returns cached overrides if available and path hasn't changed.
         """
-        path = getattr(settings, "learning_tenants_file", None) if settings else None
+        path = getattr(settings, "LEARNING_TENANTS_FILE", None) if settings else None
         # Reload if cache empty or path changed
         if self._overrides is not None and path == self._path:
             return self._overrides
@@ -76,7 +76,7 @@ class TenantOverridesCache:
         # Optional: overrides via env JSON string
         if not overrides:
             raw = (
-                getattr(settings, "learning_tenants_overrides") if settings else ""
+                getattr(settings, "LEARNING_TENANTS_OVERRIDES") if settings else ""
             )
             raw = (raw or "").strip()
             if raw:

@@ -38,9 +38,9 @@ def _load_config() -> dict[str, Any]:
     * ``tau_anneal_interval`` – interval in seconds between decays.
     """
     try:
-        factor = float(getattr(settings, "tau_decay_factor"))
-        floor = float(getattr(settings, "tau_min_floor"))
-        interval = float(getattr(settings, "tau_anneal_interval"))
+        factor = float(getattr(settings, "TAU_DECAY_FACTOR"))
+        floor = float(getattr(settings, "TAU_MIN_FLOOR"))
+        interval = float(getattr(settings, "TAU_ANNEAL_INTERVAL"))
     except Exception as exc:
         raise RuntimeError("Invalid temperature annealing configuration") from exc
     if factor <= 0 or factor >= 1:

@@ -24,7 +24,7 @@ def _load_action_operator() -> tuple[callable, int]:
     fast on missing configuration.
     """
     # Use Settings attributes for graph file configuration.
-    graph_path = getattr(settings, "graph_file_action", None) or getattr(
+    graph_path = getattr(settings, "GRAPH_FILE_ACTION", None) or getattr(
         settings, "graph_file", None
     )
     if not graph_path:
@@ -47,10 +47,10 @@ class ActionPredictor(HeatDiffusionPredictor):
 
         apply_A, dim = _load_action_operator()
         cfg = PredictorConfig(
-            diffusion_t=getattr(settings, "diffusion_t"),
-            alpha=getattr(settings, "predictor_alpha"),
-            chebyshev_K=getattr(settings, "chebyshev_K"),
-            lanczos_m=getattr(settings, "lanczos_m"),
+            diffusion_t=getattr(settings, "DIFFUSION_T"),
+            alpha=getattr(settings, "PREDICTOR_ALPHA"),
+            chebyshev_K=getattr(settings, "CHEBYSHEV_K"),
+            lanczos_m=getattr(settings, "LANCZOS_M"),
         )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 

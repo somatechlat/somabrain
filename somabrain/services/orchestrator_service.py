@@ -51,8 +51,8 @@ except Exception:  # pragma: no cover
 from common.infra_utils import assert_ready
 
 # Topic configuration constants (centralised settings only)
-GLOBAL_FRAME_TOPIC = getattr(settings, "topic_global_frame")
-SEGMENTS_TOPIC = getattr(settings, "topic_segments")
+GLOBAL_FRAME_TOPIC = getattr(settings, "TOPIC_GLOBAL_FRAME")
+SEGMENTS_TOPIC = getattr(settings, "TOPIC_SEGMENTS")
 
 
 @dataclass
@@ -157,10 +157,10 @@ class OrchestratorService:
             except Exception as e:
                 logger.debug("Failed to load segment_boundary Avro schema: %s", e)
                 self._serde_sb = None
-        self._ns = getattr(settings, "orchestrator_namespace", None) or "cog"
+        self._ns = getattr(settings, "ORCHESTRATOR_NAMESPACE", None) or "cog"
         # Minimal leader->tools routing (JSON via env)
         try:
-            routing_raw = getattr(settings, "orchestrator_routing") or ""
+            routing_raw = getattr(settings, "ORCHESTRATOR_ROUTING") or ""
             self._routing = json.loads(routing_raw) if routing_raw else {}
         except Exception as e:
             logger.warning("Failed to parse orchestrator routing config: %s", e)
@@ -288,7 +288,7 @@ class OrchestratorService:
             {
                 "bootstrap.servers": _bootstrap(),
                 # Use Settings attribute for consumer group; fallback to default.
-                "group.id": getattr(settings, "consumer_group"),
+                "group.id": getattr(settings, "CONSUMER_GROUP"),
                 "enable.auto.commit": True,
                 "auto.offset.reset": "latest",
             }

@@ -15,12 +15,12 @@ from django.conf import settings
 # Per-tenant quota configuration
 PER_TENANT_QUOTA_LIMIT = max(
     1,
-    int(getattr(settings, "outbox_tenant_quota_limit") or 1000),
+    int(getattr(settings, "OUTBOX_TENANT_QUOTA_LIMIT") or 1000),
 )
 
 PER_TENANT_QUOTA_WINDOW = max(
     1,
-    int(getattr(settings, "outbox_tenant_quota_window") or 60),
+    int(getattr(settings, "OUTBOX_TENANT_QUOTA_WINDOW") or 60),
 )
 
 

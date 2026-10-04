@@ -105,7 +105,7 @@ def _load_overrides() -> list[str]:
     """
     # Use the Settings attribute that holds the overrides file path.
     path = (
-        getattr(settings, "feature_overrides_path", None)
+        getattr(settings, "FEATURE_OVERRIDES_PATH", None)
         or getattr(settings, "SOMABRAIN_FEATURE_OVERRIDES", None)
         or "./data/feature_overrides.json"
     )

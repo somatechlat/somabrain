@@ -72,7 +72,7 @@ def chebyshev_heat_apply(
     """
     n = x.shape[0]
     if K is None:
-        K = int(getattr(settings, "truth_chebyshev_K"))
+        K = int(getattr(settings, "TRUTH_CHEBYSHEV_K"))
     # map operator to [-1,1]: A' = (2A - (b+a)I)/(b-a)
     if b <= a:
         raise ValueError("Invalid spectral interval")

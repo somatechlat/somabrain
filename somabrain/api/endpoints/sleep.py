@@ -16,7 +16,7 @@ import logging
 from django.conf import settings
 from django.http import HttpRequest
 from django.utils import timezone
-from ninja import Router
+from ninja import Body, Router
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
@@ -236,7 +236,7 @@ def _run_sleep_consolidation(tenant_id: str, target_state: SleepState) -> dict:
 
 
 @router.post("/brain/mode", auth=api_key_auth)
-def brain_sleep_mode(request: HttpRequest, payload: dict):
+def brain_sleep_mode(request: HttpRequest, payload: dict = Body(...)):
     """Cognitive-level sleep state transition (Brain)."""
     return _process_sleep_transition(
         request,
@@ -248,7 +248,7 @@ def brain_sleep_mode(request: HttpRequest, payload: dict):
 
 
 @router.post("/util/mode", auth=api_key_auth)
-def util_sleep_mode(request: HttpRequest, payload: dict):
+def util_sleep_mode(request: HttpRequest, payload: dict = Body(...)):
     """Utility sleep state transition (Util)."""
     return _process_sleep_transition(
         request,
@@ -260,7 +260,7 @@ def util_sleep_mode(request: HttpRequest, payload: dict):
 
 
 @router.post("/policy/mode", auth=api_key_auth)
-def policy_sleep_mode(request: HttpRequest, payload: dict):
+def policy_sleep_mode(request: HttpRequest, payload: dict = Body(...)):
     """Policy-driven sleep state transition."""
     return _process_sleep_transition(
         request,
@@ -273,7 +273,7 @@ def policy_sleep_mode(request: HttpRequest, payload: dict):
 
 # Retaining generic /state and /transition for backward compat or unified access
 @router.post("/state", auth=api_key_auth)
-def set_sleep_state(request: HttpRequest, payload: dict):
+def set_sleep_state(request: HttpRequest, payload: dict = Body(...)):
     """Set sleep state (Generic)."""
     # Map to brain mode for generic setting?
     return _process_sleep_transition(
@@ -282,7 +282,7 @@ def set_sleep_state(request: HttpRequest, payload: dict):
 
 
 @router.post("/transition", auth=api_key_auth)
-def transition_sleep_state(request: HttpRequest, payload: dict):
+def transition_sleep_state(request: HttpRequest, payload: dict = Body(...)):
     """Transition based on trigger."""
     # This logic was: manager.transition(trigger)
     # We should probably implement it similarly or map trigger to state

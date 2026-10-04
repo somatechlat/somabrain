@@ -39,23 +39,23 @@ logger = logging.getLogger("somabrain.services.segmentation")
 CONSUME_TOPIC = getattr(
     settings,
     "SOMABRAIN_TOPIC_GLOBAL_FRAME",
-    getattr(settings, "topic_global_frame"),
+    getattr(settings, "TOPIC_GLOBAL_FRAME"),
 )
 PUBLISH_TOPIC = getattr(
     settings,
     "SOMABRAIN_TOPIC_SEGMENTS",
-    getattr(settings, "topic_segments"),
+    getattr(settings, "TOPIC_SEGMENTS"),
 )
 
 # Thresholds are sourced from central settings – no hard‑coded literals.
-GRAD_THRESH = float(getattr(settings, "segment_grad_threshold"))
+GRAD_THRESH = float(getattr(settings, "SEGMENT_GRAD_THRESHOLD"))
 # HMM toggle respects feature flag and centralized Settings (which may incorporate env var fallback).
 HMM_ENABLED = (
-    getattr(settings, "segment_hmm_enabled")
+    getattr(settings, "SEGMENT_HMM_ENABLED")
     and feature_enabled("hmm_segmentation")
     and getattr(settings, "ENABLE_COG_THREADS")
 )
-HMM_THRESHOLD = float(getattr(settings, "segment_hmm_threshold"))
+HMM_THRESHOLD = float(getattr(settings, "SEGMENT_HMM_THRESHOLD"))
 
 
 class SegmentationService:
@@ -89,8 +89,8 @@ class SegmentationService:
         bs = (
             getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
             or getattr(settings, "SOMABRAIN_KAFKA_URL")
-            or getattr(settings, "kafka_bootstrap", None)
-            or getattr(settings, "kafka_bootstrap_servers")
+            or getattr(settings, "KAFKA_BOOTSTRAP", None)
+            or getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
         )
         if not bs:
             raise RuntimeError(
@@ -102,14 +102,14 @@ class SegmentationService:
                 "SegmentationService requires PUBLISH_TOPIC for segments"
             )
         self.consumer = self._create_consumer()
-        self.tenant = getattr(settings, "tenant_id")
+        self.tenant = getattr(settings, "TENANT_ID")
         self.producer = make_producer()
         try:
-            self._health_port = int(getattr(settings, "segment_health_port"))
+            self._health_port = int(getattr(settings, "SEGMENT_HEALTH_PORT"))
         except Exception:
             self._health_port = 9016
         start_health = str(
-            getattr(settings, "segment_health_enable")
+            getattr(settings, "SEGMENT_HEALTH_ENABLE")
         ).strip().lower() in {
             "1",
             "true",
@@ -125,10 +125,10 @@ class SegmentationService:
             self._health_thread = None
         # Runtime refresh of thresholds from settings/runtime_config
         self._grad_thresh = float(
-            getattr(settings, "segment_grad_threshold")
+            getattr(settings, "SEGMENT_GRAD_THRESHOLD")
         )
         self._hmm_thresh = float(
-            getattr(settings, "segment_hmm_threshold")
+            getattr(settings, "SEGMENT_HMM_THRESHOLD")
         )
 
     def _create_consumer(self) -> CKConsumer:
@@ -151,7 +151,7 @@ class SegmentationService:
             return []
         v = np.array(values, dtype=float)
         grad = np.abs(np.diff(v))
-        thresh = float(getattr(settings, "segment_grad_threshold"))
+        thresh = float(getattr(settings, "SEGMENT_GRAD_THRESHOLD"))
         return [i + 1 for i, g in enumerate(grad) if g >= thresh]
 
     def _run_hmm(self, values: list[float]) -> list[int]:
@@ -170,7 +170,7 @@ class SegmentationService:
             sigma=sigma,
         )
         probs = online_viterbi_probs(values, params, prior=(0.9, 0.1))
-        thresh = float(getattr(settings, "segment_hmm_threshold"))
+        thresh = float(getattr(settings, "SEGMENT_HMM_THRESHOLD"))
         return detect_boundaries(probs, threshold=thresh)
 
     def _serve_health(self) -> None:

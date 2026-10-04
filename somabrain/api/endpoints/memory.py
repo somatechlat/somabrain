@@ -210,7 +210,14 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     in ``results``; the legacy ``content/layer/coordinate`` keys are kept on
     each item as aliases.
     """
-    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
+    # Body namespace first — same source the remember path uses. Header
+    # X-Namespace and settings are the remaining chain (tenant.py::_resolve).
+    # Calling get_tenant with settings alone ignored payload.namespace and
+    # refused a recall whose write had succeeded (Rule 91 is fail-closed, not
+    # fail-blind to the request).
+    ctx = await get_tenant(
+        request, payload.namespace or getattr(settings, "SOMABRAIN_NAMESPACE")
+    )
     require_auth(request, settings)
 
     pool = _get_memory_pool()
@@ -443,7 +450,9 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
     silent success. ``ok: false`` with an ``error`` is returned only when the
     coordinate is not present.
     """
-    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
+    ctx = await get_tenant(
+        request, getattr(settings, "SOMABRAIN_NAMESPACE")
+    )
     require_auth(request, settings)
 
     tenant = (payload.tenant or payload.tenant_id or ctx.tenant_id or "").strip()

@@ -74,12 +74,12 @@ def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) ->
     try:
         from somabrain import runtime_config as _rt
 
-        env_mode = getattr(settings, "tau_anneal_mode", None) if settings else None
-        env_rate = getattr(settings, "tau_anneal_rate", None) if settings else None
+        env_mode = getattr(settings, "TAU_ANNEAL_MODE", None) if settings else None
+        env_rate = getattr(settings, "TAU_ANNEAL_RATE", None) if settings else None
         env_step = (
-            getattr(settings, "tau_anneal_step_interval", None) if settings else None
+            getattr(settings, "TAU_ANNEAL_STEP_INTERVAL", None) if settings else None
         )
-        env_tau_min = getattr(settings, "tau_min", None) if settings else None
+        env_tau_min = getattr(settings, "SOMABRAIN_TAU_MIN", None) if settings else None
 
         anneal_mode = (
             str(env_mode).strip().lower()
@@ -141,8 +141,8 @@ def get_decay_config(tenant_id: str, tenant_override: dict | None = None) -> dic
     try:
         from somabrain import runtime_config as _rt
 
-        env_enable = getattr(settings, "tau_decay_enabled", None) if settings else None
-        env_rate = getattr(settings, "tau_decay_rate", None) if settings else None
+        env_enable = getattr(settings, "TAU_DECAY_ENABLED", None) if settings else None
+        env_rate = getattr(settings, "TAU_DECAY_RATE", None) if settings else None
         enable_tau_decay = (
             (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
             if env_enable is not None
@@ -275,7 +275,7 @@ def get_entropy_cap(tenant_id: str) -> float:
     try:
         from somabrain import runtime_config as _rt
 
-        env_cap = getattr(settings, "entropy_cap", None) if settings else None
+        env_cap = getattr(settings, "ENTROPY_CAP", None) if settings else None
         entropy_cap = (
             float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
         )

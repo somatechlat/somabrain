@@ -119,19 +119,19 @@ class TransportMixin:
         # Allow tuning via environment variables for production/dev use
         default_max = _http_setting("http_max_connections", 64)
         try:
-            max_conns = int(getattr(settings, "http_max_connections"))
+            max_conns = int(getattr(settings, "HTTP_MAX_CONNECTIONS"))
         except Exception:
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
             keepalive = int(
-                getattr(settings, "http_keepalive_connections")
+                getattr(settings, "HTTP_KEEPALIVE_CONNECTIONS")
             )
         except Exception:
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
         try:
-            retries = int(getattr(settings, "http_retries"))
+            retries = int(getattr(settings, "HTTP_RETRIES"))
         except Exception:
             retries = default_retries
 
@@ -148,7 +148,7 @@ class TransportMixin:
         # a non-default port. Accept either a base URL or a full openapi.json
         # URL and normalise to the service base URL.
         candidate_base = get_memory_http_endpoint()
-        env_base = getattr(settings, "memory_http_endpoint", None) or getattr(
+        env_base = getattr(settings, "MEMORY_HTTP_ENDPOINT", None) or getattr(
             settings, "http_endpoint", None
         )
         if not env_base:

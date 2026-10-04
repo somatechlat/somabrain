@@ -165,7 +165,7 @@ class MemoryWriteRequest(BaseModel):
         "X-Tenant-ID header; the handler resolves and requires one of the two.",
     )
     namespace: str = Field(
-        "default", min_length=1, description="Logical namespace (e.g. wm, ltm)"
+        ..., min_length=1, description="Logical namespace (e.g. wm, ltm). No default (Rule 91)."
     )
     key: str = Field(
         ...,

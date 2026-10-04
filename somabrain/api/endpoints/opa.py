@@ -45,10 +45,10 @@ def update_policy(request: HttpRequest):
     constitution = engine.get_constitution()
     policy_str = build_policy(constitution)
 
-    priv_key_path = getattr(settings, "opa_privkey_path", None)
+    priv_key_path = getattr(settings, "OPA_PRIVKEY_PATH", None)
     sig = opa_signature.sign_policy(policy_str, priv_key_path)
 
-    pub_key_path = getattr(settings, "opa_pubkey_path", None)
+    pub_key_path = getattr(settings, "OPA_PUBKEY_PATH", None)
     if pub_key_path and not opa_signature.verify_policy(policy_str, sig, pub_key_path):
         raise HttpError(500, "Signature verification failed")
 
