@@ -5,10 +5,13 @@ edition = "2021"
 
 [lib]
 name = "somabrain_rs"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-pyo3 = { version = "0.27.0", features = ["extension-module"] }
+# `extension-module` is opt-in (see [features]) so that `cargo test` links
+# libpython and can run the unit-test binary. `maturin` enables it via
+# [tool.maturin] features in pyproject.toml when building the wheel.
+pyo3 = { version = "0.27.0" }
 ndarray = "0.15"
 ndarray-rand = "0.14"
 rand = "0.8"
@@ -16,6 +19,10 @@ rand_distr = "0.4"
 rand_pcg = "0.3"
 sha2 = "0.10"
 num-complex = "0.4"
+
+[features]
+default = []
+extension-module = ["pyo3/extension-module"]
 
 [profile.release]
 opt-level = 3

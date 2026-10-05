@@ -1,4 +1,16 @@
 # SomaBrain Learning: Mathematical Proof
+
+> ## ⚠️ NON-AUTHORITATIVE — SUPERSEDED BY CODE (DOC-A6)
+> **This document is ARCHIVED as a historical claim, not as truth.**
+> It overclaims learning/annealing behavior relative to the implementation.
+> **Authoritative sources (code is source of truth):**
+> - `docs/iso/SOMA-BR-MATH-TRUTH-001.md` — equations as implemented
+> - `docs/iso/SOMA-BR-DEBT-001.md` — proven defects (DEBT-002 DA→LR, DEBT-008 gains, DEBT-009 τ)
+> - `docs/iso/SOMA-BR-CONFIG-API-TEST-001.md` — testmap (tautologies, missing theorem tests)
+> Known false claims here include: DA-driven learning-rate adaptation as live wiring; annealing
+> uniqueness; entropy-cap as specified. Do not cite this file as evidence. History is preserved
+> unaltered below the banner (THE-SOMA-COVENANT Title V / Phase A DOC-A6).
+
 **Date**: 2026-02-04  
 **Type**: Reinforcement Learning with Weight Adaptation  
 **NOT**: Neural Network Backpropagation

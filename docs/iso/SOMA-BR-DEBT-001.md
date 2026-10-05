@@ -1,0 +1,555 @@
+# SOMA-BR-DEBT-001 — Defect & Architecture Debt Register
+
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | Defect & Architecture Debt Register |
+| Document Identifier | SOMA-BR-DEBT-001 |
+| Version | 1.0.0 |
+| Date | 2026-09-28 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 §8.7 Nonconforming outputs; ISO/IEC 25010 Maintainability |
+| Next Review | 2026-12-28 |
+| Related | `SOMA-BR-PLAN-MASTER-001.md`, `SOMA-BR-ARCH-001.md`, `SOMA-BR-RISK-001.md`, `SOMA-BR-VV-001.md` |
+| Source of truth | **The code.** Every row cites `file:line` as observed in this working tree. |
+| Audience | Wave leads (W1–W6), reviewers, auditors |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Every candidate claim was re-verified against the working tree. Unprovable claims were removed; newly discovered defects were added. |
+
+## 1. Purpose
+
+Master register of proven defects and architecture debt that later waves will fix.
+This document is **evidence**, not opinion. A row exists only when the cited code
+behaviour is observable at the cited `file:line`.
+
+### 1.1 Governing rules
+
+1. **CODE IS SOURCE OF TRUTH.** Docs, comments, and proof papers lose to code.
+2. **No shims, no fakes, no bypasses, no stubs as fixes.** Required-fix text never
+   uses those words as a strategy. Every fix is either **DELETE** or **FULL IMPLEMENT**.
+3. **Every row has `file:line`.** Speculative defects are forbidden.
+4. **Acceptance is executable.** Each row states a test that fails before the fix
+   and passes after.
+
+### 1.2 Severity scale
+
+| Severity | Meaning |
+|---|---|
+| **P0** | Incorrect values, wrong signs, or crashes on the production path. Learning, scoring, or memory ranking is wrong today. |
+| **P1** | Divergent dual implementations, dead production machinery, or numeric formulas that disagree with their own tests/docs. Silent wrong answers or unbounded drift. |
+| **P2** | Unused subsystem, incomplete cognitive module, or documentation debt with no direct runtime corruption. |
+
+### 1.3 Wave assignment
+
+| Wave | Scope |
+|---|---|
+| **W1** | Contracts — single source for λ*(p), gains, τ, recency, bounds |
+| **W2** | Neuromod — single store tree, clamped API, live dynamics or deletion |
+| **W3** | Mathcore — Wiener λ*, Theorem 1, gains signs, binder, predictors, Rust tests |
+| **W4** | Memory — recency, lexical bonus, scorer constructor, FD-off scoring |
+| **W5** | Cognition — basal ganglia, prefrontal, personality |
+| **W6** | Docs-sync — proof documents rewritten from code |
+
+---
+
+## 2. Summary Register
+
+| ID | Sev | Subsystem | Wave | One-line defect |
+|---|---|---|---|---|
+| DEBT-001 | P1 | Neuromod | W2 | Dual neuromodulator trees (`admin/brain` vs `runtime`) |
+| DEBT-002 | P0 | Neuromod | W2 | DA→LR reads a fresh empty `PerTenantNeuromodulators()` every call |
+| DEBT-003 | P0 | Neuromod | W2 | API `/neuromod/adjust` writes unclamped values |
+| DEBT-004 | P1 | Neuromod | W2 | Adaptive feedbacks are non-negative → parameters saturate at max |
+| DEBT-005 | P1 | Neuromod | W2 | ACh coupling disagrees with its own comment and with Supervisor |
+| DEBT-006 | P2 | Neuromod | W2 | Serotonin stored/exported but never consumed for control |
+| DEBT-007 | P1 | Neuromod | W2 | Rust neuromod ODE (`update`) is dead outside a migration script |
+| DEBT-008 | P0 | Learning | W3 | Python vs Rust adaptation gains differ in sign and magnitude |
+| DEBT-009 | P1 | Learning | W3 | Three τ mechanisms + four floors (0.4 / 0.1 / 0.05 / 0.01) |
+| DEBT-010 | P1 | Learning | W3 | Entropy cap rewrites τ (and all retrieval weights) in place |
+| DEBT-011 | P0 | Mathcore | W3 | Wiener λ* formula vs hardcoded `2.05e-5` |
+| DEBT-012 | P1 | Mathcore | W3 | Theorem 1 `p*` formula ≥ 0.5 vs comment/docs "p ≈ 0.1" |
+| DEBT-013 | P0 | Mathcore | W3 | Rust test constructs `BayesianMemory` with wrong arity (does not compile) |
+| DEBT-014 | P0 | Mathcore | W3 | Rust λ* unit test expects 2× the implementation |
+| DEBT-015 | P1 | Mathcore | W3 | Python binder `unbind` is plain division, not Wiener |
+| DEBT-016 | P1 | Mathcore | W3 | Python binder `mix="hadamard"` / FWHT is a silent no-op |
+| DEBT-017 | P1 | Mathcore | W3 | Chebyshev heat bounds are unexpanded Lanczos Ritz values |
+| DEBT-018 | P1 | Predictors | W3 | Rust `MahalanobisPredictor.distance` is Euclidean L2 |
+| DEBT-019 | P1 | Predictors | W3 | Rust `SlowPredictor.error` uses \|cos\| (opposites → error 0) |
+| DEBT-020 | P1 | Memory | W4 | Three recency formulas; `WM_RECENCY_TIME_SCALE` has three defaults |
+| DEBT-021 | P1 | Memory | W4 | Two lexical-bonus formulas (`max` vs `+`) |
+| DEBT-022 | P0 | Memory | W4 | `UnifiedScorer` ignores its constructor weight arguments |
+| DEBT-023 | P1 | Memory | W4 | FD-off score ceiling is 0.75 (weights not renormalised) |
+| DEBT-024 | P1 | Cognition | W5 | `BasalGangliaPolicy.decide` is the identity of its gates |
+| DEBT-025 | P1 | Cognition | W5 | `PrefrontalCortex.process` is a scalar gain on numeric fields |
+| DEBT-026 | P0 | Cognition | W5 | `PersonalityStore.get` references undefined name `t` |
+| DEBT-027 | P0 | Docs | W6 | `LEARNING_MATHEMATICAL_PROOF.md` contradicts code (gains, τ, entropy) |
+| DEBT-028 | P1 | Docs | W6 | GMD / proof-report λ* and p* claims contradict code and each other |
+
+**Totals:** P0 = 9, P1 = 17, P2 = 1. Wave: W2 = 7, W3 = 12, W4 = 4, W5 = 3, W6 = 2.
+
+### 2.1 Candidate claims removed after verification
+
+| Candidate claim | Disposition |
+|---|---|
+| "Supervisor unused" | **Removed.** `Supervisor` is constructed at `somabrain/bootstrap/core_singletons.py:177-184` and consumed at `somabrain/services/cognitive_loop_service.py:219`. It is default-disabled (`SOMABRAIN_USE_META_BRAIN=False`, `somabrain/settings/cognitive.py:233`), not dead. The adjacent real defect (dead Rust ODE) is DEBT-007. |
+| "SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md Wiener claims" | **Narrowed.** That file states only `delta = lr × gain × signal` and a multiplicative τ anneal (`SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md:93`, `:145`). The τ floor range it publishes (`floor ∈ [0.01, 0.1]`, `:155`) conflicts with settings default `SOMABRAIN_TAU_MIN=0.4` and is folded into DEBT-009 / DEBT-027. |
+
+---
+
+## 3. Detailed Defect Rows
+
+### DEBT-001 — Dual neuromodulator trees
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Neuromod |
+| **Wave** | W2 |
+| **Proof** | `somabrain/admin/brain/neuromodulators.py:1-424` and `somabrain/runtime/neuromodulators.py:1-449` |
+| **What code does** | Two near-identical modules each define `NeuromodState`, `Neuromodulators`, `PerTenantNeuromodulators`, `AdaptiveNeuromodulators`, and the four `_calculate_*_feedback` functions. The API writes through `runtime` (`somabrain/api/endpoints/neuromod.py:32-35`, `:71-80`). Learning reads through `admin/brain` (`somabrain/learning/adaptation/engine.py:435-437`). A write to one tree is invisible to the other. |
+| **What docs claim** | Module headers of both files claim the same single neuromodulatory system (`admin/brain/neuromodulators.py:1-37` = `runtime/neuromodulators.py:1-37`). |
+| **REQUIRED FIX** | **DELETE** one tree. Keep a single module; re-point every import. Remove the duplicate dataclass, store, and feedback functions entirely. |
+| **Acceptance test** | `rg -l "class PerTenantNeuromodulators" somabrain/` returns exactly one file. Integration test: `POST /neuromod/adjust` then `AdaptationEngine._get_dopamine_level()` observes the written dopamine. |
+| **Wave** | W2 |
+
+### DEBT-002 — DA→LR reads a fresh empty store
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Neuromod / Learning |
+| **Wave** | W2 |
+| **Proof** | `somabrain/learning/adaptation/engine.py:431-439` |
+| **What code does** | `_get_dopamine_level` does `PerTenantNeuromodulators().get_state(self._tenant_id).dopamine`. The `()` constructs a **new** store with empty `_states` (`admin/brain/neuromodulators.py:202-206`), so `get_state` falls through to `_global.get_state()` (`:217`), which is settings-default dopamine, never the tenant's adjusted value. Dynamic LR (`engine.py:356-359`) is therefore constant. |
+| **What docs claim** | `LEARNING_MATHEMATICAL_PROOF.md:27` presents `weight_{t+1} = weight_t + (learning_rate × gain × signal)` as adaptive; dynamic LR is presented as neuromodulator-driven. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** a process-lifetime shared per-tenant store (DI container or module-level registry with locking) and inject it into `AdaptationEngine`. Delete the per-call constructor. |
+| **Acceptance test** | Unit: set tenant dopamine to 1.0 in the shared store, call `_get_dopamine_level()`, assert return is 1.0 (today it returns the settings default, e.g. 0.4). |
+| **Wave** | W2 |
+
+### DEBT-003 — API neuromod adjust is unclamped
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Neuromod |
+| **Wave** | W2 |
+| **Proof** | `somabrain/api/endpoints/neuromod.py:20-24`, `:76-80` |
+| **What code does** | `NeuromodAdjustRequest` accepts any `float`. The handler copies `float(val)` straight into `NeuromodState(**current)` with no bounds check. Documented ranges (`admin/brain/neuromodulators.py:69-76`: DA [0.2, 0.8], 5-HT [0, 1], NE [0, 0.1], ACh [0, 0.1]) are not enforced anywhere on this path. Rust `Neuromodulators.update` clamps (`rust_core/src/neuro.rs:84-87`) but is not invoked here. |
+| **What docs claim** | Docstring ranges above; `somabrain/schemas/health.py:182` even types serotonin as `ge=0.0, le=1.0`. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** clamping at the boundary using the same bounds as `NeuromodState` / Rust `update`. Reject or clamp out-of-range requests; never store unbounded floats. |
+| **Acceptance test** | `POST /neuromod/adjust` with `dopamine=99.0` → stored state dopamine ≤ 0.8 (or 422). Same for negative values and for NE/ACh > 0.1. |
+| **Wave** | W2 |
+
+### DEBT-004 — Adaptive feedbacks saturate
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Neuromod |
+| **Wave** | W2 |
+| **Proof** | `somabrain/adaptive/core.py:66-71`; `somabrain/admin/brain/neuromodulators.py:322-382` (mirrored at `runtime/neuromodulators.py:324-384`) |
+| **What code does** | `AdaptiveParameter.update` does `current_value += learning_rate * delta` then clamps to `[min, max]`. All four feedback functions return **non-negative** quantities: DA = `success_rate + bias + boost` (`:332-336`), 5-HT = `1 - error_rate` (`:344`), NE = `min(NE_MAX, latency_term + urgency)` (`:363-366`), ACh = `accuracy * scale + memory_factor` (`:379-382`). Every parameter therefore only increases until it sticks at `max_value`. |
+| **What docs claim** | `admin/brain/neuromodulators.py:241` calls this a "True learning neuromodulator system with adaptive parameters". |
+| **REQUIRED FIX** | **FULL IMPLEMENT** signed error/PE-driven updates (e.g. `delta = f(target - current)` or a two-sided PE), or **DELETE** the adaptive layer if it is not the intended mechanism. Parameters must be able to decrease on adverse evidence. |
+| **Acceptance test** | After N updates with `success_rate=1.0` then N updates with `success_rate=0.0`, dopamine must fall from its peak (today it stays at max). |
+| **Wave** | W2 |
+
+### DEBT-005 — ACh coupling vs comment vs Supervisor
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Neuromod |
+| **Wave** | W2 |
+| **Proof** | `somabrain/admin/brain/neuromodulators.py:369-382`; `somabrain/runtime/supervisor.py:135-136`, `:143`, `:156` |
+| **What code does** | Adaptive path comment says "Higher acetylcholine for memory-intensive tasks" (`:372-373`) but the dominant term is `performance.accuracy * SOMABRAIN_NEURO_ACCURACY_SCALE` (scale default 0.05, `somabrain/settings/neuro.py:45-46`); `memory_factor` is added only when `task_type == "memory"` (`:374-377`, factor default 0.02). Supervisor comment says ACh responds to "novelty" and implements `raw_d_ach = g * novelty` (`:143`). Three distinct couplings for one variable. |
+| **What docs claim** | `admin/brain/neuromodulators.py:12`: "Acetylcholine: Attention, focus, and memory consolidation". |
+| **REQUIRED FIX** | **FULL IMPLEMENT** one documented ACh law used by every caller. Either drive ACh from attention demand (novelty/uncertainty) or from memory load — pick one, state it in the module docstring, and make adaptive + supervisor share it. |
+| **Acceptance test** | Single property test over the chosen law: given the same `(performance, task_type, novelty, pred_error)`, adaptive update and supervisor `adjust` produce the same ACh delta sign. |
+| **Wave** | W2 |
+
+### DEBT-006 — Serotonin unused for control
+
+| Field | Value |
+|---|---|
+| **Severity** | P2 |
+| **Subsystem** | Neuromod |
+| **Wave** | W2 |
+| **Proof** | `somabrain/runtime/supervisor.py:151`, `:154`; `somabrain/admin/brain/neuromodulators.py:339-344` |
+| **What code does** | Supervisor explicitly holds serotonin constant ("serotonin unchanged in this proxy", `:151`) and copies the prior value (`:154`). The adaptive layer computes a 5-HT feedback (`:339-344`) and stores it, but no decision, threshold, gain, or retrieval path reads serotonin to change behaviour. Consumers are state, API (`api/endpoints/neuromod.py:40`, `:76`), and Prometheus (`metrics/neuromodulator.py:37-38`). |
+| **What docs claim** | `admin/brain/neuromodulators.py:10`, `:18`: "Serotonin: Emotional stability and smoothing of neural responses" / "Serotonin: Provides emotional stability and response smoothing". |
+| **REQUIRED FIX** | **DELETE** serotonin from the control surface (keep only if a consumer is implemented), or **FULL IMPLEMENT** the documented smoothing/threshold coupling and wire it into supervisor + cognition. |
+| **Acceptance test** | If kept: a test showing a 5-HT change alters a documented downstream output (e.g. decision threshold). If deleted: `rg -n "serotonin" somabrain/ --type py` shows no control-path reads outside state/API/metrics. |
+| **Wave** | W2 |
+
+### DEBT-007 — Rust neuromod ODE is dead
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Neuromod / Rust core |
+| **Wave** | W2 |
+| **Proof** | `rust_core/src/neuro.rs:70-90` (ODE `dm/dt = k_d·x − k_r·m + bias + u_scale·u`); sole caller `scripts/verify_rust_migration.py:27` (`nm.update([0.5] * 4, [0.1] * 4, 0.1)`). Production Python only uses `set_state`/`get_state` (`admin/brain/neuromodulators.py:136-143`, `:148-155`; `runtime/neuromodulators.py:138-145`, `:150-155`). Dynamics constants `k_d`/`k_r`/`bias` are defined in `somabrain/brain_settings/models.py:454-520` and exposed via `set_dynamics`/`get_dynamics` (`neuro.rs:113-129`) but never loaded into a live ODE step. |
+| **What docs claim** | `brain_settings/models.py:454` documents the ODE `dm/dt = k_d*x - k_r*m + bias + u_scale*u` as the neuromodulator dynamics. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** the ODE as the single neuromodulator update path (load `k_d`/`k_r`/`bias`/`u_scale` from brain_settings, step it from the cognitive loop), **or DELETE** `Neuromodulators.update`, `set_dynamics`, `get_dynamics`, and the brain_settings dynamics keys. |
+| **Acceptance test** | If kept: production code path (not `scripts/`) invokes `update`; property test checks `dm/dt` formula against `brain_settings` constants. If deleted: `rg -n "fn update" rust_core/src/neuro.rs` returns nothing and no brain_settings dynamics keys remain. |
+| **Wave** | W2 |
+
+### DEBT-008 — Python vs Rust gains sign and magnitude mismatch
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Learning |
+| **Wave** | W3 |
+| **Proof** | Python: `somabrain/settings/cognitive.py:350-360` (`gain_alpha=1.0`, `gain_gamma=-0.5`, `gain_lambda=1.0`, `gain_mu=-0.25`, `gain_nu=-0.25`); `somabrain/learning/config.py:76-90` same defaults. Rust: `rust_core/src/adaptation.rs:118-122` (`gain_alpha=0.1`, `gain_gamma=0.05`, `gain_lambda=0.1`, `gain_mu=0.05`, `gain_nu=0.02`) — all positive. Update formulas are otherwise identical (`engine.py:369-386`; `adaptation.rs:169-179`). |
+| **What code does** | On the same positive feedback, Python **decreases** γ/μ/ν (negative gains) while Rust **increases** them. Magnitudes also differ by ~10× for α/λ. The two engines cannot agree on a single step. |
+| **What docs claim** | `LEARNING_MATHEMATICAL_PROOF.md:33` — "gain = direction and magnitude of update (can be positive or negative)"; the worked example at `:137` shows γ **increasing** on +1.0 reward (`0.1 → 0.1025`), which matches neither the settings default (−0.5 ⇒ decrease) nor Rust (+0.05 ⇒ increase by a different amount). |
+| **REQUIRED FIX** | **FULL IMPLEMENT** one gains source (W1 contract module) consumed by both Python and Rust. Delete the independent Rust hardcodes. Signs and magnitudes must be identical. |
+| **Acceptance test** | Cross-language parity test: same initial weights, gains, and 100 feedbacks ⇒ Python and Rust `get_retrieval`/`get_utility` match to 1e-12. Sign test: `gain_gamma < 0` and `signal > 0` ⇒ γ decreases in **both** engines. |
+| **Wave** | W3 |
+
+### DEBT-009 — Three τ mechanisms, four floors
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Learning |
+| **Wave** | W3 |
+| **Proof** | Mechanisms: (1) `apply_tau_annealing` `somabrain/learning/annealing.py:186-220` (linear/step multiplicative; **exp is a no-op per-feedback** at `:199-201`); (2) `apply_tau_decay` `:223-263` (multiplicative, hard floor `max(0.05, …)` at `:254`); (3) `check_entropy_cap` `:292-390` (reshapes τ with α/β/γ). Floors: `SOMABRAIN_TAU_MIN=0.4` `settings/cognitive.py:188`; `TAU_MIN_FLOOR=0.1` `:514`; decay hardcode `0.05` `annealing.py:254`; Rust `set_tau` clamp `[0.01, 10.0]` `rust_core/src/adaptation.rs:202`; engine inline clamp `0.01` `engine.py:572`. |
+| **What code does** | Which floor applies depends on which of the three functions runs last and which settings namespace is loaded. Exponential annealing is configured as a mode (`settings/cognitive.py:336`) but does nothing per-feedback. |
+| **What docs claim** | `LEARNING_MATHEMATICAL_PROOF.md:51` shows only `τ_{t+1} = max(τ_floor, τ_t × (1 - anneal_rate))` and uses `τ_floor = 0.01` at `:129-131`. `SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md:155` publishes `floor ∈ [0.01, 0.1]`. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** a single τ schedule API with one floor constant and one anneal semantic (linear **or** exp **or** step — not three stacked). **DELETE** the unused branches and the extra floor literals. |
+| **Acceptance test** | Property test: for any enabled schedule, τ is non-increasing and `τ ≥ τ_floor` where `τ_floor` is the single contract constant. `rg -n "max(0\\.05\|clamp(0\\.01\|TAU_MIN_FLOOR\|SOMABRAIN_TAU_MIN" somabrain/` shows one source. |
+| **Wave** | W3 |
+
+### DEBT-010 — Entropy cap rescales τ
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Learning |
+| **Wave** | W3 |
+| **Proof** | `somabrain/learning/annealing.py:315-370`, applied at `somabrain/learning/adaptation/engine.py:416-429` |
+| **What code does** | `check_entropy_cap` treats `(α, β, γ, τ)` as a probability vector, sharpens non-dominant components, then rescales all four so they sum to `α+β+γ+τ` (`:363-370`). τ is a temperature, not a mixture weight; folding it into the entropy vector overwrites the annealed value from `apply_tau_annealing`/`apply_tau_decay` in the same call (`engine.py:402-429`). |
+| **What docs claim** | `LEARNING_MATHEMATICAL_PROOF.md:183-207` claims entropy is `H = -Σ p_i log₂ p_i` with **softmax** `p_i = exp(w_i)/Σ exp(w_j)` (`:189`) and that learning reduces it. Code uses **linear** normalisation `probs = [v / s for v in vec]` (`annealing.py:321-322`). |
+| **REQUIRED FIX** | **FULL IMPLEMENT** entropy cap over mixture weights only (α, β, γ — or the true mixture components). τ must not be an input to entropy sharpening. Align the entropy formula with the implementation. |
+| **Acceptance test** | After `apply_tau_and_entropy`, τ equals the value produced by the schedule alone. Entropy property uses the implemented normalisation. |
+| **Wave** | W3 |
+
+### DEBT-011 — Wiener λ* formula vs default 2.05e-5
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Mathcore |
+| **Wave** | W3 |
+| **Proof** | Formula: `rust_core/src/mathcore.rs:318-331` implements `λ* = Δ² / (12 p (1-p))` with `Δ = 2/255`. Default: `rust_core/src/bhdc.rs:209`, `:273`, `:290` and `somabrain/math/bhdc_encoder.py:226` hardcode `λ = 2.05e-5` = `(2/255)²/3` = λ*(p=0.5). |
+| **What code does** | Production binder/unbind uses a constant valid only at p = 0.5 while the sparse encoder default is `SOMABRAIN_BHDC_SPARSITY = 0.1` (`settings/cognitive.py:264`, `:290`, `:462`). At p = 0.1 the formula gives `λ* ≈ 5.70e-5`, not `2.05e-5`. |
+| **What docs claim** | `docs/SomabrainGMD.md:204`, `:220-224` states `λ* = σ_ε²/σ_v² ≈ 5.126e-6 / (p(1-p))` and `λ* ≈ 5.70e-5` for p = 0.1; `:260` recommends p = 0.1. `rust_core/README.md:80` still shows `rs.wiener_unbind(memory, key, 2.05e-5)`. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** `λ* = compute_wiener_lambda(p, bits)` as the only source of the regularizer, evaluated at the production `p` from settings. **DELETE** the `2.05e-5` literals. |
+| **Acceptance test** | `PermutationBinder` default `lambda_reg` equals `compute_wiener_lambda(SOMABRAIN_BHDC_SPARSITY, 8)` within 1e-15. No `2.05e-5` remains in `rust_core/` or `somabrain/`. |
+| **Wave** | W3 |
+
+### DEBT-012 — Theorem 1 p* ≥ 0.5 vs "p ≈ 0.1"
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Mathcore |
+| **Wave** | W3 |
+| **Proof** | `rust_core/src/mathcore.rs:309-316`: `compute_optimal_p(delta) = (1 + sqrt(delta)) / 2`, which is **always ≥ 0.5** for δ ∈ (0, 1). Comment at `:311` says "p* ≈ 0.1 recommended". Unit tests lock the ≥ 0.5 behaviour (`rust_core/src/lib.rs:107-108`: (0.01, 0.55), (0.04, 0.60), …). |
+| **What code does** | The function computes a quantity that never recommends the sparse p = 0.1 actually used by BHDC defaults. |
+| **What docs claim** | `docs/SomabrainGMD.md:117-123` says p should be chosen for compute/quantisation, and `:260` recommends **p = 0.1**. Comment in code claims the same. |
+| **REQUIRED FIX** | **DELETE** `compute_optimal_p` and the "p* ≈ 0.1" claim if the real rule is "p = 0.1 by engineering choice", **or FULL IMPLEMENT** a Theorem 1 that actually yields the recommended sparsity and replace the tests. |
+| **Acceptance test** | If kept: `compute_optimal_p` returns ≈ 0.1 for the documented δ domain, or the API is renamed to match what it computes. If deleted: no exported `compute_optimal_p` and no "p*" recommendation in code comments. |
+| **Wave** | W3 |
+
+### DEBT-013 — Rust `BayesianMemory` test arity mismatch
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Mathcore / Rust tests |
+| **Wave** | W3 |
+| **Proof** | Constructor: `rust_core/src/mathcore.rs:370-372` `new(dimension, eta, lambda_reg)` — **3** parameters. Tests: `rust_core/src/lib.rs:159` and `:177` call `BayesianMemory::new(1024, 0.08, 2.05e-5, 640.0)` — **4** arguments. |
+| **What code does** | `cargo test` cannot compile the test module. The tests also reference a removed `compute_snr(p)` API (comment at `lib.rs:167-172` admits the signature change). |
+| **What docs claim** | `rust_core/README.md` presents `BayesianMemory` as a verified GMD Theorem 2 implementation. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** the tests against the live API (`new(dimension, eta, lambda_reg)`, `compute_snr_at_lag`, `estimate_horizon`). Delete the stale 4-arg constructor call and the unfinished in-test commentary. |
+| **Acceptance test** | `cargo test` compiles and passes in `rust_core/`. |
+| **Wave** | W3 |
+
+### DEBT-014 — Rust λ* unit test expects 2× implementation
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Mathcore / Rust tests |
+| **Wave** | W3 |
+| **Proof** | Implementation `rust_core/src/mathcore.rs:328-331`: `λ* = (Δ²/12) / (p(1-p)) = Δ² / (12 p (1-p))`. Test `rust_core/src/lib.rs:117-122`: `expected = (delta * delta) / (3.0 * 2.0 * p * (1.0 - p)) = Δ² / (6 p (1-p))`. |
+| **What code does** | The unit test expects exactly **twice** the value `compute_wiener_lambda` returns. Even after DEBT-013 is fixed, `test_wiener_lambda_theorem3` fails. |
+| **What docs claim** | `docs/SomabrainGMD.md:204` states `λ* = σ_ε² / σ_v²` with `σ_ε² = Δ²/12` (`:190`), matching the **implementation**, not the test. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** one λ* definition. Align test and implementation to `λ* = Δ² / (12 p (1-p))` (GMD text) and delete the factor-2 expectation. |
+| **Acceptance test** | `cargo test test_wiener_lambda_theorem3` passes. Cross-check: `compute_wiener_lambda(0.1, 8) ≈ 5.695e-5`. |
+| **Wave** | W3 |
+
+### DEBT-015 — Python binder unbind is not Wiener
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Mathcore |
+| **Wave** | W3 |
+| **Proof** | `somabrain/math/bhdc_encoder.py:119-126` (`_PythonPermutationBinder.unbind` is `c_vec / denom` with a ±1e-12 floor); `lambda_reg` is stored at `:96` and never used. Rust counterpart applies Wiener (`rust_core/src/bhdc.rs:288-290`, `v̂ = (c ⊙ π(b)) / (π(b)² + λ)`). `QuantumLayer.unbind_wiener` discards its Wiener parameters (`somabrain/admin/core/quantum.py:451` `_ = snr_db, k_est, alpha, whiten`) and delegates. |
+| **What code does** | When Rust is unavailable, unbind is exact division (numerically unstable on near-zero key elements) while the name and docs claim Wiener-optimal unbinding. `unbind_wiener` is an alias of `unbind`, not a Wiener filter. |
+| **What docs claim** | `quantum.py:289-290`: "Uses GMD Theorem 3 Wiener regularization"; `docs/SomabrainGMD.md:206-208` gives the Wiener unbind rule. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** Wiener unbind in the Python binder with `lambda_reg` from `compute_wiener_lambda`. Make `unbind_wiener` perform the Wiener rule (or **DELETE** the alias and its unused parameters). |
+| **Acceptance test** | Python and Rust `unbind` agree to 1e-10 on the same inputs. Zero-key-element case uses λ regularizer, not a 1e-12 floor. `unbind_wiener` parameters are consumed or removed. |
+| **Wave** | W3 |
+
+### DEBT-016 — Python FWHT / hadamard mix is a silent no-op
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Mathcore |
+| **Wave** | W3 |
+| **Proof** | `somabrain/math/bhdc_encoder.py:91-99` stores `self._mix` and accepts `mix="hadamard"`; `bind`/`unbind` (`:112-126`) never reference `_mix`. Rust applies FWHT when `mix == "hadamard"` (`rust_core/src/bhdc.rs:256-257`, `:280-282`). |
+| **What code does** | Python fallback silently ignores the hadamard mixing flag. Results differ from Rust with no error. |
+| **What docs claim** | `docs/SomabrainGMD.md:228-251` (Theorem 4) presents FWHT as the deterministic orthogonalisation step; `HRRConfig.mix` advertises `"hadamard"` (`admin/core/quantum.py:91-94`). |
+| **REQUIRED FIX** | **FULL IMPLEMENT** FWHT in the Python binder (same transform as `rust_core/src/mathcore.rs:273-307`) when `mix == "hadamard"`, **or DELETE** the `mix` parameter from the Python path and reject `"hadamard"` when Rust is absent. |
+| **Acceptance test** | With `mix="hadamard"` and Rust unavailable, `bind` output equals the Rust bind output to 1e-10 (or the call fails loudly). No silent divergence. |
+| **Wave** | W3 |
+
+### DEBT-017 — Chebyshev spectral bounds are unexpanded
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Mathcore / Predictors |
+| **Wave** | W3 |
+| **Proof** | `somabrain/math/graph_heat.py:31-34` takes `(a, b) = estimate_spectral_interval(apply_A, n=x.shape[0], m=20)` and passes them straight into `chebyshev_heat_apply`. `estimate_spectral_interval` returns Ritz values of an m-step Lanczos tridiagonal (`somabrain/math/lanczos_chebyshev.py:47-54`) with **no safety expansion**. `chebyshev_heat_apply` maps A to `[-1, 1]` via `(2A - (b+a)I)/(b-a)` (`:87`) and evaluates the Chebyshev series. |
+| **What code does** | Lanczos Ritz values need not contain the full spectrum. If a true eigenvalue lies outside `[a, b]`, the mapped operator leaves `[-1, 1]` and the Chebyshev approximation of `exp(-tA)` is unbounded. |
+| **What docs claim** | `docs/SomabrainGMD.md` and the module docstring present the heat-kernel apply as a controlled approximation. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** an explicit spectral-interval expansion (e.g. inflate `[a, b]` by a documented margin before the affine map) with the margin sourced from settings. |
+| **Acceptance test** | Property test: for random SPD `A` and `x`, `‖graph_heat_chebyshev(A, x, t) − expm(-t A) x‖ / ‖x‖ ≤ ε` with ε from the contract. Bounds are proven to contain the Gershgorin or exact extremal eigenvalues of the test operator. |
+| **Wave** | W3 |
+
+### DEBT-018 — Rust "Mahalanobis" is Euclidean
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Predictors |
+| **Wave** | W3 |
+| **Proof** | `rust_core/src/prediction.rs:66-93`. `MahalanobisPredictor::distance` computes `sqrt(Σ (x_i - mean_i)²)` (`:90-92`). The `covariance` field is `#[allow(dead_code)]` (`:68-69`) and is never read or updated. |
+| **What code does** | The type is named and exported as Mahalanobis (`rust_core/src/lib.rs:18`, `:47`) but the metric is Euclidean L2 from the mean — no whitening by covariance. Python `MahalanobisPredictor._mahal_bounded` at least divides by diagonal variance (`somabrain/admin/core/learning/prediction.py:314-318`). |
+| **What docs claim** | `prediction.py:247-253` and `docs` describe "Mahalanobis distance" / "distributional surprise". |
+| **REQUIRED FIX** | **FULL IMPLEMENT** diagonal (or full) covariance whitening in the Rust predictor and update `covariance` on `update`, **or DELETE** the Rust type and keep only the Python implementation with the honest name. |
+| **Acceptance test** | For a known anisotropic sample, Rust distance matches `sqrt((x-μ)ᵀ Σ⁻¹ (x-μ))` to 1e-10. Type name matches the metric. |
+| **Wave** | W3 |
+
+### DEBT-019 — Rust SlowPredictor uses \|cos\|
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Predictors |
+| **Wave** | W3 |
+| **Proof** | `rust_core/src/prediction.rs:37-42`: `1.0 - (dot / (norm_p * norm_a)).abs()`. Python canonical `cosine_error` is `clamp(1 - sim, 0, 1)` **without** absolute value (`somabrain/math/similarity.py:114-116`). |
+| **What code does** | Opposite vectors (cos = −1) yield Rust error `1 - 1 = 0` (perfect match) instead of the Python value 1.0 (maximum error). Antipodal predictions are scored as flawless by the Rust path. |
+| **What docs claim** | `similarity.py:96-116` documents "0.0 = identical, 1.0 = orthogonal, values > 1 clamped" and treats negative similarity as maximum error. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** the same `1 - sim` formula as `somabrain.math.similarity.cosine_error` in Rust. **DELETE** the `.abs()`. |
+| **Acceptance test** | Rust and Python `cosine_error([1,0], [-1,0])` both return 1.0 (today Rust returns 0.0). |
+| **Wave** | W3 |
+
+### DEBT-020 — Recency: three formulas, conflicting scales
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Memory |
+| **Wave** | W4 |
+| **Proof** | Formulas: (1) `compute_recency_features` `somabrain/memory/scoring.py:134-161` — `damp = exp(-(age/scale)^sharpness)`, `scale = SOMABRAIN_RECENCY_HALF_LIFE` (`:96`, default 60, `settings/cognitive.py:182`); (2) `UnifiedScorer._recency_component` `somabrain/admin/core/learning/scoring.py:119-131` — `exp(-age/τ)` with `SOMABRAIN_SCORER_RECENCY_TAU=32.0` (`settings/cognitive.py:175`); (3) WM salience `somabrain/memory/wm/wm_salience.py:172-175` and `wm_eviction.py:82-83` — `exp(-age/recency_scale)` with `SOMABRAIN_WM_RECENCY_TIME_SCALE`. Duplicated client formula: `somabrain/memory/client/ranking.py:244-261` (same shape as (1) but different config attribute names and defaults, `:213-220`). Scale conflicts for `SOMABRAIN_WM_RECENCY_TIME_SCALE`: `settings/cognitive.py:128-129` **default 1.0**; `settings/django_core.py:49` **default 60.0**; `bootstrap/core_singletons.py:48`, `:82` getattr fallback **3600**. |
+| **What code does** | The same "recency" concept is three different kernels with three different time constants depending on call site. Changing one setting does not change the others. |
+| **What docs claim** | `scoring.py:1-5` presents a single "scoring and recency" utility for SomaBrain Memory. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** one recency kernel and one time-scale constant in the W1 contract module. **DELETE** the duplicate implementations and the extra defaults. |
+| **Acceptance test** | One test vector `(age, expected_recency)` matches every remaining call site. `rg -n "SOMABRAIN_WM_RECENCY_TIME_SCALE" somabrain/settings/` shows one default. |
+| **Wave** | W4 |
+
+### DEBT-021 — Two lexical-bonus formulas
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Memory |
+| **Wave** | W4 |
+| **Proof** | `somabrain/memory/hit_processing.py:217-245` — token term `bonus = max(bonus, 0.3 + 0.1 * min(token_matches, 5))` (`:243-244`). `somabrain/memory/client/ranking.py:150-177` — token term `bonus += min(0.25 * token_matches, 1.0)` (`:175-176`). |
+| **What code does** | Same name, same field list, different aggregation (`max` vs `+=`) and different coefficients (0.3+0.1·n vs 0.25·n). Recall ranking depends on which module ranked the hits. |
+| **What docs claim** | `somabrain/memory/__init__.py:19`, `:97` exports a single `lexical_bonus`. |
+| **REQUIRED FIX** | **DELETE** one implementation. Keep one formula in one module and import it from both call sites. |
+| **Acceptance test** | For a fixed payload/query with 3 token matches, both call paths return the same bonus. |
+| **Wave** | W4 |
+
+### DEBT-022 — UnifiedScorer ignores constructor arguments
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Memory |
+| **Wave** | W4 |
+| **Proof** | `somabrain/admin/core/learning/scoring.py:50-74`. Parameters `w_cosine`, `w_fd`, `w_recency`, `recency_tau` are accepted (`:53-58`) then discarded; values are re-read from settings via `_gain_setting` (`:64-67`). Factory passes explicit weights (`somabrain/bootstrap/singletons.py:232-239`) that have no effect. |
+| **What code does** | Callers cannot configure a scorer instance. Tests or tenants that construct `UnifiedScorer(w_cosine=…, …)` get settings-global weights instead, with no warning. |
+| **What docs claim** | Constructor signature and factory docstring (`singletons.py:220-228`) present the arguments as the configuration surface. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** constructor arguments as the sole source of weights (factory reads settings, constructor trusts arguments), **or DELETE** the parameters and change the signature to take only `fd_backend`. |
+| **Acceptance test** | `UnifiedScorer(w_cosine=0.9, w_fd=0.0, w_recency=0.1, weight_min=0, weight_max=1, recency_tau=1.0, fd_backend=None).score(...)` uses 0.9/0.0/0.1 — today it uses 0.6/0.25/0.15. |
+| **Wave** | W4 |
+
+### DEBT-023 — FD-off score ceiling 0.75
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Memory |
+| **Wave** | W4 |
+| **Proof** | Weights: `settings/cognitive.py:170-172` (`w_cosine=0.6`, `w_fd=0.25`, `w_recency=0.15`). When `fd_backend is None`, `_fd_component` returns 0.0 (`scoring.py:112-113`). Score is `w_cosine·cos + w_fd·fd + w_recency·rec` clamped to `[0, 1]` (`:159-164`). |
+| **What code does** | With FD disabled, a perfect cosine match with full recency yields `0.6 + 0 + 0.15 = 0.75`. The missing 0.25 is not redistributed. Ranking is compressed into the top 75% of the nominal scale and can be beaten by a lower-cosine hit only through lexical side-channels. |
+| **What docs claim** | `scoring.py:41-48` presents a combined score with three components; no mention of a 0.75 ceiling when FD is off. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** weight renormalisation over active components (if FD is absent, divide by `w_cosine + w_recency`), **or DELETE** `w_fd` from the default weight set when no FD backend is configured. |
+| **Acceptance test** | With `fd_backend=None`, `score` of identical unit vectors with `recency_steps=0` is 1.0. With FD present, weights sum as configured. |
+| **Wave** | W4 |
+
+### DEBT-024 — Basal ganglia is the identity
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Cognition |
+| **Wave** | W5 |
+| **Proof** | `somabrain/admin/cognitive/basal_ganglia.py:52-68`: `return PolicyDecision(store=bool(store_gate), act=bool(act_gate))`. |
+| **What code does** | The module header claims "action selection", "habit formation", "integration with salience and neuromodulator systems" (`:9-16`) but `decide` only casts two booleans. No thresholds, no competition, no neuromodulator input. |
+| **What docs claim** | Same module docstring; `docs/SOMABRAIN_ARCHITECTURE.md` describes basal ganglia as the final decision component. |
+| **REQUIRED FIX** | **FULL IMPLEMENT** action selection (thresholded utility / gated competition, with the neuromodulator inputs the header describes), **or DELETE** the module and the architectural claim. |
+| **Acceptance test** | Two candidate actions with different utilities produce a non-trivial selection (not a pure pass-through of caller gates). |
+| **Wave** | W5 |
+
+### DEBT-025 — Prefrontal is a scalar gain
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Cognition |
+| **Wave** | W5 |
+| **Proof** | `somabrain/admin/cognitive/prefrontal.py:94-106`: dict numeric values are multiplied by `activation_threshold`; scalars multiplied by the same; other types unchanged. |
+| **What code does** | "Executive control" is a single scalar multiply. No attention allocation, no conflict resolution, no working-memory gating — despite the docstring listing those roles (`:4-12`, `:49-51`). |
+| **What docs claim** | `prefrontal.py:4-12` — "executive control functions … attention modulation". |
+| **REQUIRED FIX** | **FULL IMPLEMENT** the executive functions the header lists (attention weights, conflict thresholding, WM gating) **or DELETE** the module and narrow the architecture description to what exists. |
+| **Acceptance test** | A two-alternative input with conflicting evidence is resolved by the prefrontal policy, not by a uniform scale. |
+| **Wave** | W5 |
+
+### DEBT-026 — PersonalityStore.get raises NameError
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Cognition |
+| **Wave** | W5 |
+| **Proof** | `somabrain/admin/cognitive/personality.py:25-36`. Parameter is `tenant` (`:25`); line `:36` is `return self._states.setdefault(t, PersonalityState())`. `t` is not defined in this scope. `set` and `update_traits` correctly use `tenant` (`:50`, `:64`). |
+| **What code does** | Every `PersonalityStore.get(tenant)` call raises `NameError: name 't' is not defined`. The store is unreadable. |
+| **What docs claim** | Module docstring (`:4-6`) — "Maintains per-tenant personality traits … no fallback shims". |
+| **REQUIRED FIX** | **FULL IMPLEMENT** the key as `tenant` on line 36 (one-token fix of a real crash). |
+| **Acceptance test** | `PersonalityStore().get("acme")` returns a `PersonalityState` and a second call returns the same instance. Today it raises `NameError`. |
+| **Wave** | W5 |
+
+### DEBT-027 — LEARNING_MATHEMATICAL_PROOF.md contradicts code
+
+| Field | Value |
+|---|---|
+| **Severity** | P0 |
+| **Subsystem** | Docs |
+| **Wave** | W6 |
+| **Proof** | See table below. |
+| **What code does** | Live formulas in `somabrain/learning/adaptation/engine.py:369-386`, `somabrain/learning/config.py:76-90`, `somabrain/settings/cognitive.py:188`, `somabrain/learning/annealing.py:321-322`. |
+| **What docs claim** | `LEARNING_MATHEMATICAL_PROOF.md` as cited. |
+
+| Doc claim (file:line) | Code reality (file:line) |
+|---|---|
+| `gain_α = 0.5 (from config)` (`LEARNING_MATHEMATICAL_PROOF.md:105`) | `SOMABRAIN_ADAPTATION_GAIN_ALPHA` default **1.0** (`settings/cognitive.py:350-351`) |
+| γ increases on +reward: `0.1 → 0.1025` (`:137`) | `gain_gamma` default **−0.5** ⇒ γ **decreases** (`settings/cognitive.py:353-354`) |
+| τ floor `max(0.01, …)` (`:128-131`) | `SOMABRAIN_TAU_MIN` default **0.4** (`settings/cognitive.py:188`); decay hardcode **0.05** (`annealing.py:254`) |
+| Entropy `p_i = exp(w_i)/Σ exp(w_j)` softmax (`:189`) | Linear normalisation `v/sum(v)` (`annealing.py:321-322`) |
+| "Proof by Exhaustive Testing" / "PASSED" (`:67-72`, `:175-176`, `:206`) | Worked numbers do not match production defaults; see DEBT-008 |
+
+| **REQUIRED FIX** | **DELETE** the false proof content and **FULL IMPLEMENT** a proof document generated from the code formulas and production defaults after W1–W3 land. No claimed test that cannot be re-run against production symbols. |
+| **Acceptance test** | Every numeric example in the rewritten document is reproduced by a committed test that imports production modules. Document register compliance check passes. |
+| **Wave** | W6 |
+
+### DEBT-028 — GMD / proof-report claims vs code
+
+| Field | Value |
+|---|---|
+| **Severity** | P1 |
+| **Subsystem** | Docs |
+| **Wave** | W6 |
+| **Proof** | `docs/SomabrainGMD.md:204-224` (λ* formula + p=0.1 value) vs hardcoded `2.05e-5` (`bhdc.rs:273`, `bhdc_encoder.py:226`) — see DEBT-011. `docs/SomabrainGMD.md:260` recommends p = 0.1 while `compute_optimal_p` returns ≥ 0.5 (`mathcore.rs:313-316`) — see DEBT-012. `rust_core/README.md:80` still demonstrates `wiener_unbind(..., 2.05e-5)`. `SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md:155` publishes τ `floor ∈ [0.01, 0.1]` against `SOMABRAIN_TAU_MIN=0.4` (`settings/cognitive.py:188`). |
+| **What code does** | See DEBT-011 / DEBT-012 / DEBT-009. |
+| **What docs claim** | GMD Theorem 3 numbers and Theorem 1 sparsity guidance as above; proof-report τ floor range. |
+| **REQUIRED FIX** | **DELETE** numeric recommendations that do not match the implementation. After W3, **FULL IMPLEMENT** GMD/README regeneration from `compute_wiener_lambda`, `compute_optimal_p` (if kept), and the single τ floor. |
+| **Acceptance test** | `scripts/check_docs.py` links each GMD numeric claim to a running symbol. `rg -n "2\\.05e-5" docs/ rust_core/ somabrain/` returns nothing after DEBT-011. |
+| **Wave** | W6 |
+
+---
+
+## 4. Cross-cutting notes
+
+### 4.1 Highest-priority unblockers (P0)
+
+1. **DEBT-026** — one-token crash fix; can land immediately.
+2. **DEBT-002 + DEBT-001** — learning currently cannot see adjusted neuromodulator state.
+3. **DEBT-003** — unbounded neuromodulator writes.
+4. **DEBT-008** — Python and Rust learning engines disagree on sign.
+5. **DEBT-011 + DEBT-013 + DEBT-014** — mathcore constants and Rust tests.
+6. **DEBT-022** — scorer configuration is ignored.
+7. **DEBT-027** — proof document is actively wrong and must not be trusted by W1 design.
+
+### 4.2 W1 contract surface (feeds every other wave)
+
+The following single sources must exist before W2–W5 code changes, or the defects will reappear:
+
+| Contract | Consumers today (examples) | Related debt |
+|---|---|---|
+| λ*(p) | `bhdc.rs`, `bhdc_encoder.py`, `quantum.py` | DEBT-011, DEBT-014, DEBT-015 |
+| Adaptation gains (signed) | `learning/config.py`, `settings/cognitive.py`, `rust_core/src/adaptation.rs` | DEBT-008 |
+| τ schedule + floor | `learning/annealing.py`, `adaptation.rs`, `settings/cognitive.py` | DEBT-009, DEBT-010 |
+| Recency kernel + scale | `memory/scoring.py`, `memory/client/ranking.py`, `admin/core/learning/scoring.py`, `memory/wm/*` | DEBT-020 |
+| Scorer weights | `admin/core/learning/scoring.py`, `bootstrap/singletons.py` | DEBT-022, DEBT-023 |
+| Neuromodulator bounds + store | `api/endpoints/neuromod.py`, both neuromodulator trees, `rust_core/src/neuro.rs` | DEBT-001…007 |
+
+### 4.3 Fix-mode rule (non-negotiable)
+
+Every `REQUIRED FIX` above is either **DELETE** (remove the dead/false code or claim) or **FULL IMPLEMENT** (production-complete behaviour with tests). Intermediate tactics — wrappers that hide divergence, compatibility flags, silent fallbacks, or unfinished placeholders — are out of scope for this register and must not be used to close a row.
+
+---
+
+## 5. Traceability to waves
+
+| Wave | Debt IDs | Exit criterion |
+|---|---|---|
+| **W1** | (enables 008, 009, 011, 020, 022) | Contract module exists; consumers import it; contract tests green in Python and Rust |
+| **W2** | 001–007 | One neuromodulator store; clamped API; adaptive parameters can decrease; ODE wired or deleted |
+| **W3** | 008–019 | `cargo test` green; gains parity; λ* from formula; binder FWHT/Wiener parity; predictor metrics honest |
+| **W4** | 020–023 | One recency kernel; one lexical bonus; scorer constructor respected; FD-off score reaches 1.0 |
+| **W5** | 024–026 | Cognition modules either implement their stated role or are deleted with docs updated; personality store readable |
+| **W6** | 027–028 | Proof documents regenerated from code; every numeric claim test-backed |
+
+---
+
+*End of document — SOMA-BR-DEBT-001 v1.0.0*

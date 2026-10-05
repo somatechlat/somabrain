@@ -4,6 +4,7 @@
 //! Supports: tenant_id, model_version, seed bundles, binary_mode.
 
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
 use sha2::{Sha256, Digest};
 use rand_pcg::Pcg64;
 use rand::{SeedableRng, Rng};
@@ -206,16 +207,47 @@ pub struct PermutationBinder {
     perm_inv: Vec<usize>,
     #[pyo3(get)]
     pub mix: String,
-    /// Wiener regularization λ from GMD Theorem 3: λ* = (2/255)²/3
+    /// Wiener ridge regularizer λ* = Δ² / (12 p (1−p)) (GMD Theorem 3).
+    /// Defaults to [`crate::mathcore::production_wiener_lambda`] when the
+    /// caller does not pass one; `p` (or [`crate::mathcore::PRODUCTION_SPARSITY_P`])
+    /// selects the sparsity the formula is evaluated at.
     #[pyo3(get)]
     pub lambda_reg: f64,
 }
 
 #[pymethods]
 impl PermutationBinder {
+    /// Construct a binder.
+    ///
+    /// * `mix` — `"none"` or `"hadamard"`. `"hadamard"` requires a power-of-two
+    ///   `dim` and raises `ValueError` otherwise (FWHT is never a silent no-op).
+    /// * `lambda_reg` — Wiener ridge λ. When `None`, computed as
+    ///   `compute_wiener_lambda(p, 8)`.
+    /// * `p` — sparsity for the default λ formula. When `None`, uses
+    ///   [`crate::mathcore::PRODUCTION_SPARSITY_P`].
     #[new]
-    #[pyo3(signature = (dim, seed, _dtype="float32", mix="none", lambda_reg=2.05e-5))]
-    pub fn new(dim: usize, seed: u64, _dtype: &str, mix: &str, lambda_reg: f64) -> Self {
+    #[pyo3(signature = (dim, seed, _dtype="float32", mix="none", lambda_reg=None, p=None))]
+    pub fn new(
+        dim: usize,
+        seed: u64,
+        _dtype: &str,
+        mix: &str,
+        lambda_reg: Option<f64>,
+        p: Option<f64>,
+    ) -> PyResult<Self> {
+        if mix != "none" && mix != "hadamard" {
+            return Err(PyValueError::new_err(format!(
+                "mix must be 'none' or 'hadamard', got {mix:?}"
+            )));
+        }
+        if mix == "hadamard" && (dim == 0 || !dim.is_power_of_two()) {
+            return Err(PyValueError::new_err(format!(
+                "mix='hadamard' requires a power-of-two dim, got {dim}"
+            )));
+        }
+        let lambda_reg = lambda_reg.unwrap_or_else(|| {
+            crate::mathcore::compute_wiener_lambda(p.unwrap_or(crate::mathcore::PRODUCTION_SPARSITY_P), 8)
+        });
         let mut rng = Pcg64::seed_from_u64(seed);
 
         // Generate random permutation
@@ -231,13 +263,13 @@ impl PermutationBinder {
             perm_inv[p] = i;
         }
 
-        PermutationBinder {
+        Ok(PermutationBinder {
             dim,
             perm,
             perm_inv,
             mix: mix.to_string(),
             lambda_reg,
-        }
+        })
     }
 
     /// Bind: permute b, then elementwise multiply
@@ -249,12 +281,12 @@ impl PermutationBinder {
     ///   unbind(bind(a, b), b) = a * permute(b) * permute(b) = a * 1 = a
     ///
     /// For sparse vectors with zeros, we preserve the structure.
-    pub fn bind(&self, a: Vec<f64>, b: Vec<f64>) -> Vec<f64> {
+    pub fn bind(&self, a: Vec<f64>, b: Vec<f64>) -> PyResult<Vec<f64>> {
         let b_perm = self.apply_perm(&b, &self.perm);
         let mut result: Vec<f64> = a.iter().zip(b_perm.iter()).map(|(x, y)| x * y).collect();
 
         if self.mix == "hadamard" {
-            crate::mathcore::fwht_inplace(&mut result);
+            crate::mathcore::fwht_inplace(&mut result).map_err(PyValueError::new_err)?;
         }
 
         // Normalize to unit length
@@ -264,22 +296,22 @@ impl PermutationBinder {
                 *r /= norm;
             }
         }
-        result
+        Ok(result)
     }
 
     /// Unbind: inverse of bind (GMD White Paper Theorem 3)
     ///
     /// For sparse BHDC vectors with zeros, use Wiener-optimal unbinding:
-    ///   v̂ = (c ⊙ π(b)) / (π(b)² + λ), where λ = 2.05e-5
+    ///   v̂ = (c ⊙ π(b)) / (π(b)² + λ), λ = lambda_reg = λ*(p) = Δ² / (12 p (1−p))
     ///
     /// This handles the division-by-zero problem in sparse vectors by regularizing.
     /// Mathematical basis: MMSE estimator for quantized/noisy memory recall.
-    pub fn unbind(&self, c: Vec<f64>, b: Vec<f64>) -> Vec<f64> {
-        let mut work = c.clone();
+    pub fn unbind(&self, c: Vec<f64>, b: Vec<f64>) -> PyResult<Vec<f64>> {
+        let mut work = c;
 
         // If Hadamard was applied in bind, apply it in unbind (self-inverse: H*H = I)
         if self.mix == "hadamard" {
-            crate::mathcore::fwht_inplace(&mut work);
+            crate::mathcore::fwht_inplace(&mut work).map_err(PyValueError::new_err)?;
         }
 
         // Apply same permutation to b as in bind
@@ -287,7 +319,6 @@ impl PermutationBinder {
 
         // GMD Theorem 3: Wiener-optimal unbinding
         // v̂ = (c ⊙ π(b)) / (π(b)² + λ)
-        // λ from config (default: GMD Theorem 3 optimal λ* = (2/255)²/3)
         let lambda = self.lambda_reg;
 
         let mut result: Vec<f64> = work.iter().zip(b_perm.iter())
@@ -305,7 +336,7 @@ impl PermutationBinder {
                 *r /= norm;
             }
         }
-        result
+        Ok(result)
     }
 
     /// Permute vector n times

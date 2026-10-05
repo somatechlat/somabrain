@@ -336,6 +336,7 @@ OUTBOX_PRODUCER_RETRY_MS = env.int("OUTBOX_PRODUCER_RETRY_MS", default=1000)
 OUTBOX_API_TOKEN = _resolved("OUTBOX_API_TOKEN")
 
 # Journal
+SOMABRAIN_SPECTRAL_CACHE_DIR = env.str("SOMABRAIN_SPECTRAL_CACHE_DIR", default="")
 SOMABRAIN_JOURNAL_DIR = env.str(
     "SOMABRAIN_JOURNAL_DIR", default="/tmp/somabrain_journal"
 )

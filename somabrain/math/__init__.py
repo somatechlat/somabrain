@@ -10,7 +10,14 @@ CANONICAL IMPLEMENTATIONS (SINGLE SOURCE OF TRUTH):
     - normalize_batch: Batch L2 normalization
 """
 
-from .bhdc_encoder import BHDCEncoder, PermutationBinder
+from .bhdc_encoder import (
+    BHDCEncoder,
+    PermutationBinder,
+    compute_wiener_lambda,
+    fwht,
+    production_sparsity,
+    production_wiener_lambda,
+)
 from .fd_rho import FrequentDirections
 from .lanczos_chebyshev import chebyshev_heat_apply, estimate_spectral_interval
 from .normalize import (
@@ -40,6 +47,11 @@ __all__ = [
     # BHDC encoder
     "BHDCEncoder",
     "PermutationBinder",
+    # Wiener ridge λ* (GMD Theorem 3) and FWHT (GMD Theorem 4)
+    "compute_wiener_lambda",
+    "production_wiener_lambda",
+    "production_sparsity",
+    "fwht",
     # Frequent Directions
     "FrequentDirections",
     # Spectral methods

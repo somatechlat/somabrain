@@ -4,7 +4,9 @@ This module provides Python wrapper classes around the Rust implementation
 of BHDC in somabrain_rs. The Rust implementation is 18x faster than pure Python.
 
 All CPU-bound vector operations are in Rust, this module only provides
-the NumPy interface expected by QuantumLayer.
+the NumPy interface expected by QuantumLayer. The pure-Python fallbacks
+implement the **same** formulas as `rust_core/src/bhdc.rs` /
+`rust_core/src/mathcore.rs` (Wiener unbind, FWHT mix, λ*).
 """
 
 from __future__ import annotations
@@ -21,6 +23,66 @@ _SeedLike = Union[int, str, None]
 def _active_count(dim: int, sparsity: float) -> int:
     """Return the exact number of active dimensions for a sparse vector."""
     return max(1, min(dim, int(round(float(sparsity) * dim))))
+
+
+def compute_wiener_lambda(p: float, bits: int = 8) -> float:
+    """Wiener ridge λ* = σ_ε² / σ_v² (GMD Theorem 3).
+
+    σ_ε² = Δ²/12 with Δ = 2/(2^bits − 1) (Δ = 2/255 for the 8-bit quantizer),
+    σ_v² = p(1−p) for a sparse vector with active probability p.
+    At bits=8 this is exactly `Δ² / (12 p (1−p))`.
+
+    Matches `somabrain_rs.compute_wiener_lambda`.
+    """
+    p_clamped = min(max(float(p), 0.01), 0.99)
+    bits_clamped = max(int(bits), 1)
+    levels = float((1 << bits_clamped) - 1)
+    delta = 2.0 / levels
+    sigma_eps_sq = (delta * delta) / 12.0
+    sigma_v_sq = p_clamped * (1.0 - p_clamped)
+    return sigma_eps_sq / sigma_v_sq
+
+
+def production_sparsity() -> float:
+    """BHDC active probability p used in production.
+
+    Sourced from `SOMABRAIN_BHDC_SPARSITY` (default 0.1). This is an
+    engineering choice, not a theorem-derived optimum.
+    """
+    from somabrain.settings.cognitive import SOMABRAIN_BHDC_SPARSITY
+
+    return float(SOMABRAIN_BHDC_SPARSITY)
+
+
+def production_wiener_lambda(bits: int = 8) -> float:
+    """λ* evaluated at the production sparsity."""
+    return compute_wiener_lambda(production_sparsity(), bits)
+
+
+def fwht(values) -> list[float]:
+    """Orthonormal Fast Walsh–Hadamard Transform (scale 1/√n).
+
+    Matches `somabrain_rs.fwht` / `rust_core/src/mathcore.rs::fwht_inplace`.
+
+    Raises:
+        ValueError: if the input length is not a power of two. Never a
+            silent no-op.
+    """
+    v = [float(x) for x in values]
+    n = len(v)
+    if n == 0 or (n & (n - 1)) != 0:
+        raise ValueError(f"FWHT requires a power-of-two length, got {n}")
+    h = 1
+    while h < n:
+        for i in range(0, n, 2 * h):
+            for j in range(i, i + h):
+                x = v[j]
+                y = v[j + h]
+                v[j] = x + y
+                v[j + h] = x - y
+        h *= 2
+    scale = 1.0 / (n**0.5)
+    return [x * scale for x in v]
 
 
 class _PythonBHDCEngine:
@@ -81,7 +143,13 @@ class _PythonBHDCEngine:
 
 
 class _PythonPermutationBinder:
-    """Deterministic Python fallback for permutation-based binding."""
+    """Deterministic Python fallback for permutation-based binding.
+
+    Mirrors `rust_core/src/bhdc.rs::PermutationBinder` exactly:
+    bind applies `π(b)`, elementwise product, optional FWHT, L2 norm;
+    unbind applies optional FWHT (self-inverse) then the Wiener rule
+    `v̂ = (c ⊙ π(b)) / (π(b)² + λ)` with `λ = lambda_reg` and L2 norm.
+    """
 
     def __init__(
         self,
@@ -89,14 +157,28 @@ class _PythonPermutationBinder:
         dim: int,
         seed: int,
         mix: str = "none",
-        lambda_reg: float = 2.05e-5,
+        lambda_reg: float | None = None,
+        p: float | None = None,
     ) -> None:
+        if mix not in ("none", "hadamard"):
+            raise ValueError(f"mix must be 'none' or 'hadamard', got {mix!r}")
+        if mix == "hadamard" and (dim == 0 or (dim & (dim - 1)) != 0):
+            raise ValueError(f"mix='hadamard' requires a power-of-two dim, got {dim}")
         self._dim = dim
         self._mix = mix
-        self._lambda_reg = lambda_reg
+        if lambda_reg is None:
+            self._lambda_reg = compute_wiener_lambda(
+                production_sparsity() if p is None else p, 8
+            )
+        else:
+            self._lambda_reg = float(lambda_reg)
         rng = np.random.default_rng(np.uint64(seed))
         self._perm = rng.permutation(dim)
         self._inverse_perm = np.argsort(self._perm)
+
+    @property
+    def lambda_reg(self) -> float:
+        return self._lambda_reg
 
     def _permute(self, vec: np.ndarray, times: int = 1) -> np.ndarray:
         result = np.asarray(vec, dtype=np.float64)
@@ -110,19 +192,27 @@ class _PythonPermutationBinder:
         return result
 
     def bind(self, a, b) -> list[float]:
-        """Bind two vectors via permutation then elementwise multiplication."""
+        """Bind: permute b, elementwise multiply, optional FWHT, L2 norm."""
         a_vec = np.asarray(a, dtype=np.float64)
         b_vec = self._permute(np.asarray(b, dtype=np.float64), 1)
         result = a_vec * b_vec
+        if self._mix == "hadamard":
+            result = np.asarray(fwht(result.tolist()), dtype=np.float64)
+        norm = float(np.sqrt(np.sum(result * result)))
+        if norm > 1e-10:
+            result = result / norm
         return result.tolist()
 
     def unbind(self, c, b) -> list[float]:
-        """Invert bind by dividing by the permuted key."""
-        c_vec = np.asarray(c, dtype=np.float64)
+        """Wiener unbind: optional FWHT, then (c ⊙ π(b)) / (π(b)² + λ)."""
+        work = np.asarray(c, dtype=np.float64)
+        if self._mix == "hadamard":
+            work = np.asarray(fwht(work.tolist()), dtype=np.float64)
         b_vec = self._permute(np.asarray(b, dtype=np.float64), 1)
-        tiny = np.where(b_vec >= 0.0, 1e-12, -1e-12)
-        denom = np.where(np.abs(b_vec) < 1e-12, tiny, b_vec)
-        result = c_vec / denom
+        result = (work * b_vec) / (b_vec * b_vec + self._lambda_reg)
+        norm = float(np.sqrt(np.sum(result * result)))
+        if norm > 1e-10:
+            result = result / norm
         return result.tolist()
 
     def permute(self, vec, times: int = 1) -> list[float]:
@@ -213,7 +303,8 @@ class BHDCEncoder:
 class PermutationBinder:
     """Permutation-based binder - Rust accelerated.
 
-    Wraps somabrain_rs.PermutationBinder with NumPy interface.
+    Wraps somabrain_rs.PermutationBinder with NumPy interface. The Python
+    fallback implements the identical Wiener unbind and FWHT mix.
     """
 
     def __init__(
@@ -223,20 +314,39 @@ class PermutationBinder:
         seed: int,
         dtype: str | np.dtype = "float32",
         mix: str = "none",
-        lambda_reg: float = 2.05e-5,  # GMD Theorem 3: λ* = (2/255)²/3
+        lambda_reg: float | None = None,
+        p: float | None = None,
     ) -> None:
         self._dim = dim
         self._dtype = np.dtype(dtype)
-        self._lambda_reg = lambda_reg
+        # Resolve the Wiener ridge once so Rust and Python backends share it.
+        # Default: λ* = compute_wiener_lambda(p, 8) at the production sparsity.
+        if lambda_reg is None:
+            self._lambda_reg = compute_wiener_lambda(
+                production_sparsity() if p is None else p, 8
+            )
+        else:
+            self._lambda_reg = float(lambda_reg)
         if is_rust_available():
             rust = get_rust_module()
             self._rs = rust.PermutationBinder(
-                dim=dim, seed=seed, mix=mix, lambda_reg=lambda_reg
+                dim=dim,
+                seed=seed,
+                mix=mix,
+                lambda_reg=self._lambda_reg,
             )
         else:
             self._rs = _PythonPermutationBinder(
-                dim=dim, seed=seed, mix=mix, lambda_reg=lambda_reg
+                dim=dim,
+                seed=seed,
+                mix=mix,
+                lambda_reg=self._lambda_reg,
             )
+
+    @property
+    def lambda_reg(self) -> float:
+        """Wiener ridge λ actually in use (λ* = Δ²/(12 p (1−p)))."""
+        return self._lambda_reg
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Bind two vectors: permute b, then elementwise multiply."""
@@ -244,7 +354,7 @@ class PermutationBinder:
         return np.array(result, dtype=self._dtype)
 
     def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
-        """Unbind: inverse of bind."""
+        """Wiener unbind: v̂ = (c ⊙ π(b)) / (π(b)² + λ*)."""
         result = self._rs.unbind(c.tolist(), b.tolist())
         return np.array(result, dtype=self._dtype)
 

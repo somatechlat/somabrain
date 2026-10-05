@@ -6,12 +6,19 @@
 //!
 //! | Theorem | Function | Description |
 //! |---------|----------|-------------|
-//! | T1 | [`compute_optimal_p`] | Optimal sparsity p* for stability |
 //! | T2 | [`BayesianMemory`] | Truthful SNR dynamics and Horizon L* |
 //! | T3 | [`compute_wiener_lambda`] | Optimal Ridge λ* = σ_ε²/σ_v² |
 //! | T3 | [`quantize_8bit`] | 8-bit symmetric quantization Δ=2/255 |
 //! | T3 | [`wiener_unbind`] | MMSE-optimal unbinding |
 //! | T4 | [`fwht`] | Fast Walsh-Hadamard (Deterministic O(D log D)) |
+//!
+//! ## Sparsity p (engineering choice — NOT a theorem)
+//!
+//! Production BHDC sparsity is `p = 0.1` (see `SOMABRAIN_BHDC_SPARSITY`).
+//! That value is an **engineering choice**, not the output of a sparsity
+//! theorem. The former `compute_optimal_p` / "p* ≈ 0.1" claim was deleted:
+//! the formula it implemented, `(1 + √δ) / 2`, always returns ≥ 0.5 and
+//! never recommended `p = 0.1` (DEBT-012 / SOMA-BR-MATH-TRUTH-001 T12).
 //!
 //! ## Performance
 //!
@@ -23,19 +30,27 @@
 //! ```python
 //! import somabrain_rs as rs
 //!
-//! # Theorem 1: Optimal sparsity
-//! p_star = rs.compute_optimal_p(0.01)
+//! # Wiener ridge λ* at sparsity p (8-bit quantizer)
+//! lam = rs.compute_wiener_lambda(0.1, 8)
 //!
-//! # Theorem 2: Bayesian Memory
-//! mem = rs.BayesianMemory(2048, eta=0.08)
+//! # Bayesian Memory
+//! mem = rs.BayesianMemory(2048, eta=0.08, lambda_reg=lam)
 //! mem.update(binding)
 //! recalled = mem.recall(key)
 //! ```
 
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
 use sha2::{Sha256, Digest};
 use rand_pcg::Pcg64;
 use rand::{SeedableRng, Rng};
+
+/// Production BHDC sparsity `p` (active-element probability).
+///
+/// This is an **engineering choice** (default `SOMABRAIN_BHDC_SPARSITY = 0.1`),
+/// not a theorem-derived optimum. It is the `p` at which default Wiener
+/// ridge `λ*` is evaluated when callers do not pass their own `p`.
+pub const PRODUCTION_SPARSITY_P: f64 = 0.1;
 
 // ==================== FNOM Module ====================
 
@@ -272,18 +287,26 @@ pub fn batch_norm_inference(x: Vec<f64>, gamma: Vec<f64>, beta: Vec<f64>, runnin
 
 /// Theorem 4: FWHT - Fast Walsh-Hadamard Transform
 /// O(D log D) complexity, Deterministic Orthogonal Rotation
+///
+/// # Errors
+/// Returns `ValueError` unless `v.len()` is a power of two. A non-2^r input
+/// is a caller error, never a silent no-op.
 #[pyfunction]
-pub fn fwht(v: Vec<f64>) -> Vec<f64> {
-    let mut result = v.clone();
-    fwht_inplace(&mut result);
-    result
+pub fn fwht(v: Vec<f64>) -> PyResult<Vec<f64>> {
+    let mut result = v;
+    fwht_inplace(&mut result).map_err(PyValueError::new_err)?;
+    Ok(result)
 }
 
-/// In-place FWHT for maximum performance
-pub fn fwht_inplace(v: &mut [f64]) {
+/// In-place FWHT for maximum performance (orthonormal scale `1/√n`).
+///
+/// # Errors
+/// `Err("FWHT requires a power-of-two length")` when `v.len()` is 0 or not
+/// a power of two. Callers must surface this as `ValueError`, not swallow it.
+pub fn fwht_inplace(v: &mut [f64]) -> Result<(), &'static str> {
     let n = v.len();
     if n == 0 || (n & (n - 1)) != 0 {
-        return; // D must be power of 2
+        return Err("FWHT requires a power-of-two length");
     }
 
     let mut h = 1;
@@ -304,31 +327,33 @@ pub fn fwht_inplace(v: &mut [f64]) {
     for x in v.iter_mut() {
         *x *= scale;
     }
+    Ok(())
 }
 
-/// Theorem 1: Optimal Sparsity
-/// Controls computational stability, not just collision.
-/// p* ≈ 0.1 recommended for Agentic Formulation.
-#[pyfunction]
-pub fn compute_optimal_p(delta: f64) -> f64 {
-    let delta_clamped = delta.clamp(0.0001, 0.9999);
-    (1.0 + delta_clamped.sqrt()) / 2.0
-}
-
-/// Theorem 3: Optimal Ridge Regularizer for 8-bit quantization
+/// Theorem 3: Optimal Ridge Regularizer for quantization noise
 /// λ* = σ_ε² / σ_v²
-/// σ_ε² = Δ²/12 where Δ=2/255
-/// σ_v² = p(1-p) for sparse vectors
-/// Result: λ* ≈ 5.126e-6 / (p(1-p))
+/// σ_ε² = Δ²/12 where Δ = 2/(2^bits − 1) (2/255 for 8-bit on [-1, 1])
+/// σ_v² = p(1-p) for sparse vectors with active probability p
+/// Result at bits=8: λ* = (2/255)² / (12 p (1-p)) ≈ 5.126e-6 / (p(1-p))
 #[pyfunction]
 pub fn compute_wiener_lambda(p: f64, bits: u8) -> f64 {
     let p_clamped = p.clamp(0.01, 0.99);
-    // Delta = 2/255 for 8-bit [-1, 1]
-    let delta = 2.0 / 255.0; // Exact formulation
+    // Δ = 2/(2^bits − 1); for bits=8 this is exactly 2/255.
+    let bits_clamped = bits.max(1);
+    let levels = ((1u32 << bits_clamped.min(31)) - 1) as f64;
+    let delta = 2.0 / levels;
     let sigma_epsilon_sq = (delta * delta) / 12.0;
     let sigma_v_sq = p_clamped * (1.0 - p_clamped);
 
     sigma_epsilon_sq / sigma_v_sq
+}
+
+/// λ* evaluated at the production sparsity [`PRODUCTION_SPARSITY_P`].
+///
+/// Single source for default Wiener regularizers. Callers that know their own
+/// `p` should call [`compute_wiener_lambda`] directly instead.
+pub fn production_wiener_lambda(bits: u8) -> f64 {
+    compute_wiener_lambda(PRODUCTION_SPARSITY_P, bits)
 }
 
 /// Theorem 3: Quantization function Q(x) for 8-bit

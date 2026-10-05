@@ -31,8 +31,10 @@ class ContextPlanner:
     """Context-aware planner using utility-based scoring.
 
     Configuration via Settings:
-    - SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE: Scale for prompt length penalty (default 1024.0)
-    - SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE: Scale for memory count penalty (default 10.0)
+    - SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE: Scale for prompt length penalty
+    - SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE: Scale for memory count penalty
+
+    Both are declared in somabrain.settings.cognitive with their schema defaults.
     """
 
     def __init__(self, utility_weights: UtilityWeights | None = None) -> None:
@@ -40,13 +42,8 @@ class ContextPlanner:
 
         self._utility = utility_weights or UtilityWeights()
         # Load configuration from centralized Settings
-        self._length_penalty_scale = float(settings.planner_length_penalty_scale)
-        self._memory_penalty_scale = float(settings.planner_memory_penalty_scale)
-        # Ensure positive values
-        if self._length_penalty_scale <= 0:
-            self._length_penalty_scale = 1024.0
-        if self._memory_penalty_scale <= 0:
-            self._memory_penalty_scale = 10.0
+        self._length_penalty_scale = float(settings.SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE)
+        self._memory_penalty_scale = float(settings.SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE)
 
     @property
     def utility_weights(self) -> UtilityWeights:

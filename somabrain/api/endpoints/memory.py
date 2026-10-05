@@ -18,6 +18,7 @@ dialect. There is exactly one implementation behind all of them.
 from __future__ import annotations
 
 import logging
+import math
 import time
 from typing import Any
 
@@ -36,12 +37,67 @@ from somabrain.api.memory.helpers import (
 )
 from somabrain.api.memory.models import ForgetRequest, ForgetResponse, _iso_created_at
 from somabrain.core.exceptions import CircuitBreakerOpen, MemoryServiceError
+from somabrain.embed_dim import EmbeddingDimensionError, ensure_embedding_dim
 from somabrain.services.memory_service import MemoryService
 from somabrain.tenant import get_tenant, get_tenant_sync
 
 logger = logging.getLogger("somabrain.api.endpoints.memory")
 
 router = Router(tags=["memory"])
+
+
+def _require_valid_query_vector(embedding: list[float] | None) -> list[float] | None:
+    """Validate a precomputed query vector. ``None`` means the caller omitted it.
+
+    Wrong-dim and non-finite vectors are **400** (INVARIANTS §2: fail closed).
+    The expected length comes from the configured seam dim — never a literal.
+    """
+    if embedding is None:
+        return None
+    try:
+        ensure_embedding_dim(embedding)
+    except EmbeddingDimensionError as exc:
+        raise HttpError(400, str(exc)) from exc
+    for i, value in enumerate(embedding):
+        try:
+            finite = math.isfinite(float(value))
+        except (TypeError, ValueError) as exc:
+            raise HttpError(400, f"embedding[{i}] is not a real number") from exc
+        if not finite:
+            raise HttpError(400, f"embedding[{i}] is not finite")
+    return [float(v) for v in embedding]
+
+
+async def _arecall_ltm(
+    memsvc: MemoryService,
+    query: str,
+    *,
+    top_k: int,
+    universe: str | None,
+    embedding: list[float] | None,
+):
+    """Long-term recall via the existing SFM client search path.
+
+    When ``embedding`` is present it is forwarded as the query vector so the
+    store never re-embeds (INVARIANTS §2.1). ``MemoryService.arecall`` and
+    ``ReadMixin.arecall`` do not yet take ``embedding``; ``SearchMixin`` does,
+    and it is the same ``POST /memories/search`` hop those facades call.
+    """
+    client = memsvc.client()
+    if embedding is not None:
+        search = getattr(client, "_http_recall_aggregate_async", None)
+        if search is None:
+            raise HttpError(
+                500,
+                "memory client cannot accept a precomputed query vector "
+                "(search path missing)",
+            )
+        import uuid as _uuid
+
+        return await search(
+            query, top_k, universe or "real", str(_uuid.uuid4()), embedding=embedding
+        )
+    return await memsvc.arecall(query, top_k=top_k, universe=universe)
 
 
 def _map_memory_error(exc: Exception) -> HttpError:
@@ -156,6 +212,15 @@ class RecallRequest(BaseModel):
     """
 
     query: str = Field(..., description="Query text")
+    embedding: list[float] | None = Field(
+        None,
+        description=(
+            "PRECOMPUTED QUERY VECTOR from the gateway embedder. When present "
+            "it is the sole query representation and MUST NEVER be re-embedded "
+            "by this service or any store (INVARIANTS §2.1). Wrong-dim or "
+            "non-finite vectors are rejected (INVARIANTS §2)."
+        ),
+    )
     top_k: int = Field(10, description="Max results")
     layer: str = Field("both", description="wm, ltm, or both")
     tenant: str | None = None
@@ -220,6 +285,8 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     )
     require_auth(request, settings)
 
+    query_vec = _require_valid_query_vector(payload.embedding)
+
     pool = _get_memory_pool()
     if not pool:
         raise HttpError(503, "Memory pool not available")
@@ -244,6 +311,14 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     ltm_hits = 0
     degraded = False
     degraded_reasons: list[str] = []
+    if query_vec is None:
+        # Honest degradation: the caller sent text only, so the store will
+        # re-embed. INVARIANTS §2.1 forbids a store-side re-embed — report it
+        # rather than pretend the ranking is in the write-path vector space.
+        degraded_reasons.append(
+            "recall.reembed: no precomputed query vector; store re-embed "
+            "violates INVARIANTS §2.1"
+        )
 
     def _tenant_match(hit_payload: dict | None) -> bool:
         """Drop LTM hits that belong to a different tenant/namespace.
@@ -266,7 +341,13 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     # 1) Query long-term memory via SFM when requested
     if layer in ("ltm", "both"):
         try:
-            hits = await memsvc.arecall(payload.query, top_k=top_k, universe=universe)
+            hits = await _arecall_ltm(
+                memsvc,
+                payload.query,
+                top_k=top_k,
+                universe=universe,
+                embedding=query_vec,
+            )
             filtered_hits = []
             for hit in hits:
                 payload_data = (
@@ -325,16 +406,19 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
         wm = _get_wm()
         if wm:
             try:
-                query_vec = None
-                try:
-                    embedder = _get_embedder()
-                    if embedder is not None:
-                        query_vec = embedder.embed(payload.query)
-                except Exception:
-                    query_vec = None
+                wm_vec = query_vec
+                if wm_vec is None:
+                    # Degradation path (text-only request). The brain's
+                    # embedder is a different space from the gateway's — say so.
+                    try:
+                        embedder = _get_embedder()
+                        if embedder is not None:
+                            wm_vec = embedder.embed(payload.query)
+                    except Exception:
+                        wm_vec = None
 
-                if query_vec is not None:
-                    scored_wm = wm.recall(tenant, query_vec, top_k)
+                if wm_vec is not None:
+                    scored_wm = wm.recall(tenant, wm_vec, top_k)
                     wm_hits = len(scored_wm)
                     for score, item in scored_wm[:top_k]:
                         item_payload = (

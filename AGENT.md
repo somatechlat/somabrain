@@ -1,7 +1,35 @@
 # SomaBrain - Agent Context
 
 > Purpose: Provide a single, accurate reference for agents working on the SomaBrain repo.
-> Last updated: 2026-05-18
+> Last updated: 2026-10-04
+
+---
+
+## MANDATORY RULES (every agent, every task)
+
+These override convenience. Source of truth: `docs/VIBE_RULES.md` (SOMA-BR-GUIDE-VIBE-001) and `docs/THE-SOMA-COVENANT.md`.
+
+1. **NO SHIMS. NO FAKES. NO BYPASSES.**
+   - No mocks, stubs, placeholders, TODOs, compat facades, re-export shims, temporary hacks, hardcoded returns.
+   - No flags that hide unfinished behavior.
+   - If it is not real production behavior: **delete it or fully implement it**.
+2. **NO BULLSHIT** — no lies, guesses, invented APIs, "it probably works". Say what is true; if it may break, say so.
+3. **CHECK FIRST, CODE SECOND** — read architecture and call sites before writing. Request missing files. Do not assume.
+4. **REAL IMPLEMENTATIONS ONLY** — production-grade, type-annotated (Covenant Art 23).
+5. **DOCUMENTATION = TRUTH** — docs, comments, and math proofs must match the code. Wrong equations in docs are defects. No hype ("perfect/flawless") unless warranted.
+6. **COMPLETE CONTEXT** — data flow, callers, callees, dependencies, impact before any edit. Missing context → ASK.
+7. **REAL DATA & SERVERS** (Covenant Art 21/24) — verify against real infra. Django ORM + Milvus only (Art 22).
+8. **Math must be correct** and **docs must reflect the math**.
+
+### Multi-persona (always)
+
+PhD Software Developer · Analyst · QA · ISO-style Documenter (structure only) · Security Auditor · Performance Engineer · UX · Django Architect.
+
+### Agent fan-out standard
+
+When spawning subagents, **always** include: (1) this rules block, (2) full file paths for the scope, (3) relevant audit/equation context, (4) explicit no-shim/no-fake/no-bypass instruction, (5) acceptance criteria. Never send bare prompts.
+
+---
 
 ---
 

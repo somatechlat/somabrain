@@ -22,6 +22,15 @@ class RecallRequest(BaseModel):
     query: str
     top_k: int = 3
     universe: str | None = None
+    embedding: list[float] | None = Field(
+        None,
+        description=(
+            "PRECOMPUTED QUERY VECTOR from the gateway embedder. When present "
+            "it is the sole query representation and MUST NEVER be re-embedded "
+            "by this service or any store (INVARIANTS §2.1). Wrong-dim or "
+            "non-finite vectors are rejected (INVARIANTS §2)."
+        ),
+    )
 
 
 class MemoryPayload(BaseModel):

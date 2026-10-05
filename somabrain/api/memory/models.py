@@ -145,7 +145,12 @@ class MemoryWriteRequest(BaseModel):
     )
     embedding: list[float] | None = Field(
         None,
-        description="Optional precomputed embedding vector stored with the memory",
+        description=(
+            "PRECOMPUTED embedding vector (INVARIANTS §2/§5.5). When present it "
+            "is the sole vector for this write and MUST NEVER be re-embedded. "
+            "Sent top-level to the store; a nested value.embedding is accepted "
+            "only as a compatibility fallback and is lifted here."
+        ),
     )
     salience: float | None = Field(
         None, ge=0.0, le=1.0, description="Salience weight in [0,1] (seam)"
@@ -284,8 +289,19 @@ class MemoryWriteRequest(BaseModel):
             value.setdefault("salience", float(d["salience"]))
         if d.get("source"):
             value.setdefault("source", str(d["source"]))
-        if d.get("embedding") is not None:
-            value.setdefault("embedding", list(d["embedding"]))
+        # INVARIANTS §5.5 — the embedding MUST be sent at the top level to SFM.
+        # Prefer the first-class ``embedding`` field; lift a nested
+        # ``value["embedding"]`` so the write client emits it top-level.
+        # Keep the nested copy as a compatibility fallback until every writer
+        # sends top-level (the agent adapter still nests today).
+        emb = d.get("embedding")
+        if emb is None and isinstance(value, dict):
+            nested = value.get("embedding")
+            if nested is not None:
+                emb = nested
+        if emb is not None:
+            d["embedding"] = list(emb)
+            value.setdefault("embedding", list(emb))
 
         # key: required for deterministic identity when coord is absent
         key = d.get("key")
@@ -351,6 +367,15 @@ class MemoryRecallRequest(BaseModel):
     namespace: str = Field(..., min_length=1)
     query: str = Field(..., min_length=1)
     top_k: int = Field(3, ge=1, le=50)
+    embedding: list[float] | None = Field(
+        None,
+        description=(
+            "PRECOMPUTED QUERY VECTOR from the gateway embedder. When present "
+            "it is the sole query representation and MUST NEVER be re-embedded "
+            "by this service or any store (INVARIANTS §2.1). Wrong-dim or "
+            "non-finite vectors are rejected (INVARIANTS §2)."
+        ),
+    )
     layer: str | None = Field(
         None, description="Set to 'wm', 'ltm', or omit for both"
     )

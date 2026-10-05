@@ -34,11 +34,19 @@ impl SlowPredictor {
         }
     }
 
+    /// Cosine error `clamp(1 − cos(prediction, actual), 0, 1)`.
+    ///
+    /// Matches `somabrain.math.similarity.cosine_error`: opposite vectors
+    /// (cos = −1) are maximum error 1.0, never 0.0. No absolute value.
     pub fn error(&self, prediction: Vec<f64>, actual: Vec<f64>) -> f64 {
         let dot: f64 = prediction.iter().zip(actual.iter()).map(|(a, b)| a * b).sum();
         let norm_p: f64 = prediction.iter().map(|x| x * x).sum::<f64>().sqrt();
         let norm_a: f64 = actual.iter().map(|x| x * x).sum::<f64>().sqrt();
-        if norm_p == 0.0 || norm_a == 0.0 { 1.0 } else { 1.0 - (dot / (norm_p * norm_a)).abs() }
+        if norm_p == 0.0 || norm_a == 0.0 {
+            return 1.0;
+        }
+        let cos = (dot / (norm_p * norm_a)).clamp(-1.0, 1.0);
+        (1.0 - cos).clamp(0.0, 1.0)
     }
 }
 
@@ -62,12 +70,20 @@ impl BudgetedPredictor {
     }
 }
 
+/// Online diagonal Mahalanobis predictor.
+///
+/// Tracks an EWMA mean `μ` and diagonal variance `σ²` and scores inputs with
+/// the true diagonal Mahalanobis distance
+/// `d(x) = sqrt(Σ_i (x_i − μ_i)² / σ_i²)`.
 #[pyclass]
 pub struct MahalanobisPredictor {
-    mean: Vec<f64>,
-    #[allow(dead_code)]
-    covariance: Vec<Vec<f64>>,
+    #[pyo3(get)]
+    pub mean: Vec<f64>,
+    /// Diagonal variance σ²_i (EWMA), floored at 1e-6.
+    #[pyo3(get)]
+    pub var: Vec<f64>,
     ewma_alpha: f64,
+    initialized: bool,
 }
 
 #[pymethods]
@@ -76,20 +92,60 @@ impl MahalanobisPredictor {
     pub fn new(dimension: usize, ewma_alpha: f64) -> Self {
         MahalanobisPredictor {
             mean: vec![0.0; dimension],
-            covariance: vec![vec![0.0; dimension]; dimension],
+            var: vec![0.1; dimension],
             ewma_alpha,
+            initialized: false,
         }
     }
 
-    pub fn update(&mut self, input: Vec<f64>) {
+    /// EWMA update of the online mean and diagonal variance.
+    ///
+    /// First sample initialises `μ = x`, `σ² = 0.1`. Afterwards:
+    /// `μ ← (1−α)μ + αx`, `σ² ← (1−α)σ² + α(x−μ)²`, `σ² ≥ 1e-6`.
+    pub fn update(&mut self, input: Vec<f64>) -> PyResult<()> {
+        if input.len() != self.mean.len() {
+            return Err(PyValueError::new_err(format!(
+                "input length {} does not match dimension {}",
+                input.len(),
+                self.mean.len()
+            )));
+        }
+        if !self.initialized {
+            self.mean.copy_from_slice(&input);
+            for v in self.var.iter_mut() {
+                *v = 0.1;
+            }
+            self.initialized = true;
+            return Ok(());
+        }
+        let a = self.ewma_alpha;
         for i in 0..self.mean.len() {
-            self.mean[i] = (1.0 - self.ewma_alpha) * self.mean[i] + self.ewma_alpha * input[i];
+            let mu_new = (1.0 - a) * self.mean[i] + a * input[i];
+            let diff = input[i] - mu_new;
+            let var_new = (1.0 - a) * self.var[i] + a * (diff * diff);
+            self.mean[i] = mu_new;
+            self.var[i] = var_new.max(1e-6);
         }
+        Ok(())
     }
 
-    pub fn distance(&self, input: Vec<f64>) -> f64 {
-        let diff: Vec<f64> = input.iter().zip(self.mean.iter()).map(|(a, b)| a - b).collect();
-        diff.iter().map(|x| x * x).sum::<f64>().sqrt()
+    /// Diagonal Mahalanobis distance `sqrt((x−μ)ᵀ Σ⁻¹ (x−μ))` with
+    /// `Σ = diag(σ²)`. Before the first `update`, the mean is zero and the
+    /// variance is the 0.1 prior.
+    pub fn distance(&self, input: Vec<f64>) -> PyResult<f64> {
+        if input.len() != self.mean.len() {
+            return Err(PyValueError::new_err(format!(
+                "input length {} does not match dimension {}",
+                input.len(),
+                self.mean.len()
+            )));
+        }
+        let mut d2 = 0.0;
+        for i in 0..input.len() {
+            let diff = input[i] - self.mean[i];
+            d2 += (diff * diff) / self.var[i];
+        }
+        Ok(d2.sqrt())
     }
 }
 

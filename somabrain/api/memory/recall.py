@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import math
 import time
 import uuid
 from typing import Any
@@ -37,6 +38,7 @@ from somabrain.core.runtime.config_runtime import (
     ensure_supervisor_worker,
     submit_metrics_snapshot,
 )
+from somabrain.embed_dim import EmbeddingDimensionError, ensure_embedding_dim
 from somabrain.metrics import observe_recall_latency, record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.parameter_supervisor import MetricsSnapshot
@@ -167,6 +169,28 @@ def _decorated_item(
     )
 
 
+def _require_valid_query_vector(embedding: list[float] | None) -> list[float] | None:
+    """Validate a precomputed query vector. ``None`` means the caller omitted it.
+
+    Wrong-dim and non-finite vectors are **400** (INVARIANTS §2: fail closed).
+    The expected length comes from the configured seam dim — never a literal.
+    """
+    if embedding is None:
+        return None
+    try:
+        ensure_embedding_dim(embedding)
+    except EmbeddingDimensionError as exc:
+        raise HttpError(400, str(exc)) from exc
+    for i, value in enumerate(embedding):
+        try:
+            finite = math.isfinite(float(value))
+        except (TypeError, ValueError) as exc:
+            raise HttpError(400, f"embedding[{i}] is not a real number") from exc
+        if not finite:
+            raise HttpError(400, f"embedding[{i}] is not finite")
+    return [float(v) for v in embedding]
+
+
 async def perform_recall(
     payload: MemoryRecallRequest,
     *,
@@ -179,6 +203,10 @@ async def perform_recall(
     - Long-term memory (LTM) recall via MemoryService
     - Result filtering by tags, age, and score
     - Session management and chunking
+
+    When ``payload.embedding`` is present it is the PRECOMPUTED QUERY VECTOR
+    and is forwarded to the store (INVARIANTS §2.1: never re-embed). The
+    text-only path is the honest degradation and is reported as such.
     """
     from ninja.errors import HttpError
 
@@ -187,6 +215,8 @@ async def perform_recall(
     if layer not in {"wm", "ltm", "all"}:
         raise HttpError(400, "layer must be wm, ltm, or omitted")
 
+    query_vec_list = _require_valid_query_vector(payload.embedding)
+
     chunk_size = payload.chunk_size or default_chunk_size
     chunk_index = max(payload.chunk_index, 0)
 
@@ -194,18 +224,27 @@ async def perform_recall(
     ltm_hits: list[MemoryRecallItem] = []
     start = time.perf_counter()
 
-    # Get embedder and query vector
+    # Prefer the caller-supplied query vector. Re-embedding here would rank
+    # against a different vector space than the write path (INVARIANTS §2.1).
     embedder = None
     query_vec: np.ndarray | None = None
-    try:
-        embedder = _get_embedder()
-        query_vec = np.asarray(embedder.embed(payload.query), dtype=np.float32)
-    except HttpError:
-        if layer in {"wm", "all"}:
-            raise
-    except Exception:
-        embedder = None
-        query_vec = None
+    if query_vec_list is not None:
+        query_vec = np.asarray(query_vec_list, dtype=np.float32)
+    else:
+        logger.warning(
+            "recall.reembed: no precomputed query vector for namespace=%s; "
+            "store re-embed violates INVARIANTS §2.1",
+            payload.namespace,
+        )
+        try:
+            embedder = _get_embedder()
+            query_vec = np.asarray(embedder.embed(payload.query), dtype=np.float32)
+        except HttpError:
+            if layer in {"wm", "all"}:
+                raise
+        except Exception:
+            embedder = None
+            query_vec = None
 
     # WM recall
     if layer in {"wm", "all"} and query_vec is not None:

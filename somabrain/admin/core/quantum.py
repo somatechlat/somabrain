@@ -303,14 +303,16 @@ class QuantumLayer:
         fc = np.fft.rfft(c_vec).astype(np.complex128)
         fb = np.fft.rfft(b_vec).astype(np.complex128)
 
-        # Wiener filter λ from GMD Theorem 3 (λ* = (2/255)²/3)
-        # NO MAGIC NUMBERS: use brain_settings
+        # Wiener filter λ* = Δ² / (12 p (1−p)) (GMD Theorem 3).
+        # Single source: compute_wiener_lambda at production sparsity p.
         from somabrain.brain_settings.models import BrainSetting
+        from somabrain.math.bhdc_encoder import production_wiener_lambda
 
+        default_lambda = production_wiener_lambda()
         try:
-            lambda_reg = BrainSetting.get("gmd_lambda_reg", 1e-4)  # Use 1e-4 default
+            lambda_reg = float(BrainSetting.get("gmd_lambda_reg", default_lambda))
         except Exception:
-            lambda_reg = 1e-4
+            lambda_reg = default_lambda
 
         fb_conj = np.conj(fb)
         fb_power = np.abs(fb) ** 2 + lambda_reg
@@ -406,7 +408,7 @@ class QuantumLayer:
         return result
 
     # ------------------------------------------------------------------
-    # Exact / Wiener aliases (BHDC binder is perfectly invertible)
+    # Exact / Wiener aliases
     # ------------------------------------------------------------------
     def unbind_exact(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         """Execute unbind exact.
@@ -430,25 +432,12 @@ class QuantumLayer:
         role_vec = self.make_unitary_role(role_token)
         return self._renorm(self._binder.unbind(c_vec, role_vec))
 
-    def unbind_wiener(
-        self,
-        c: np.ndarray,
-        b: np.ndarray | str,
-        snr_db: float = 40.0,
-        *,
-        k_est: int | None = None,
-        alpha: float = 1e-3,
-        whiten: bool = False,
-    ) -> np.ndarray:
-        """Execute unbind wiener.
+    def unbind_wiener(self, c: np.ndarray, b: np.ndarray | str) -> np.ndarray:
+        """Wiener-optimal unbind (GMD Theorem 3).
 
-        Args:
-            c: The c.
-            b: The b.
-            snr_db: The snr_db.
+        Same rule as [`Self::unbind`]: spectral Wiener division for the FFT
+        path and elementwise `(c ⊙ π(b)) / (π(b)² + λ*)` for unitary roles.
         """
-
-        _ = snr_db, k_est, alpha, whiten  # parameters retained for compatibility
         if isinstance(b, str):
             return self.unbind_exact_unitary(c, b)
         return self.unbind(c, b)
@@ -554,32 +543,4 @@ def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
     return QuantumLayer(cfg)
 
 
-# ---------------------------------------------------------------------------
-# Backwards-compatible wrappers
-# ---------------------------------------------------------------------------
 
-
-def bind_unitary(a: np.ndarray, role: object) -> np.ndarray:
-    """Execute bind unitary."""
-    from somabrain.brain_settings.models import BrainSetting
-
-    seed = BrainSetting.get("global_seed", "default")
-    q = QuantumLayer(HRRConfig(dim=len(a), seed=seed))
-    if isinstance(role, str):
-        return q.bind_unitary(a, role)
-    return q.bind(a, np.asarray(role))
-
-
-def unbind_exact_or_tikhonov_or_wiener(
-    c: np.ndarray, role: object, snr_db: float | None = None
-) -> np.ndarray:
-    """Execute unbind exact or tikhonov or wiener."""
-    from somabrain.brain_settings.models import BrainSetting
-
-    seed = BrainSetting.get("global_seed", "default")
-    q = QuantumLayer(HRRConfig(dim=len(c), seed=seed))
-    if isinstance(role, str):
-        return q.unbind_exact_unitary(c, role)
-    if snr_db is None:
-        return q.unbind(c, np.asarray(role))
-    return q.unbind_wiener(c, np.asarray(role), snr_db=snr_db)

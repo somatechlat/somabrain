@@ -1,6 +1,19 @@
 # SomaBrain Mathematical Proof & Test Verification Report
+
+> ## ⚠️ NON-AUTHORITATIVE — SUPERSEDED BY CODE (DOC-A6)
+> **This document is ARCHIVED as a historical claim, not as truth.**
+> Status line "BRAIN WORKING FLAWLESSLY" is **FALSE** as of Phase A exit.
+> **Authoritative sources (code is source of truth):**
+> - `docs/iso/SOMA-BR-MATH-TRUTH-001.md` — equations as implemented (Appendix A lists false claims)
+> - `docs/iso/SOMA-BR-DEBT-001.md` — P0/P1 defect register with proofs
+> - `docs/iso/SOMA-BR-CONFIG-API-TEST-001.md` — testmap: several "proof" tests are TAUTOLOGY
+> Known false claims here include: 19/19 "mathematical proof" framing where property tests
+> re-implement local formulas; learning "mathematically proven"; overall "working flawlessly".
+> Do not cite this file as evidence. History is preserved unaltered below the banner
+> (THE-SOMA-COVENANT Title V / Phase A DOC-A6).
+
 **Date**: 2026-02-04  
-**Status**: ✅ **ALL TESTS PASSING - BRAIN WORKING FLAWLESSLY**  
+**Status**: ✅ **ALL TESTS PASSING - BRAIN WORKING FLAWLESSLY** *(historical claim — FALSE, see banner)*  
 **Test Framework**: pytest + Hypothesis (Property-Based Testing)  
 **Infrastructure**: REAL - No Mocks, No Bullshit
 

@@ -208,6 +208,18 @@ class BrainSetting(models.Model):
 
 # =========== BRAIN DEFAULTS (145 settings) ===========
 
+
+def _default_wiener_lambda() -> float:
+    """λ* = Δ² / (12 p (1−p)) at the production sparsity (GMD Theorem 3).
+
+    Computed from the formula — never a hardcoded constant. Same source as
+    `somabrain.math.bhdc_encoder.compute_wiener_lambda`.
+    """
+    from somabrain.math.bhdc_encoder import production_wiener_lambda
+
+    return production_wiener_lambda()
+
+
 BRAIN_DEFAULTS = {
     # ==================== OPERATIONAL MODES ====================
     "active_brain_mode": {"v": "ANALYTIC", "cat": "mode", "type": "text"},
@@ -216,7 +228,8 @@ BRAIN_DEFAULTS = {
     "gmd_delta": {"v": 0.01, "cat": "SYSTEM_CORE"},  # Max pairwise similarity
     "gmd_epsilon": {"v": 0.05, "cat": "SYSTEM_CORE"},  # Collision probability
     "gmd_alpha": {"v": 640.0, "cat": "SYSTEM_CORE"},  # Cleanup capacity constant
-    "gmd_lambda_reg": {"v": 2.05e-5, "cat": "SYSTEM_CORE"},  # Wiener Unbinding λ*
+    # Wiener Unbinding λ* = Δ² / (12 p (1−p)) at production sparsity p (GMD Thm 3)
+    "gmd_lambda_reg": {"v": _default_wiener_lambda(), "cat": "SYSTEM_CORE"},
     "gmd_quantization_bits": {"v": 8, "cat": "SYSTEM_CORE"},
     "hrr_dim": {"v": 8192, "cat": "SYSTEM_CORE"},
     "embed_dim": {"v": 768, "cat": "SYSTEM_CORE"},
