@@ -8,7 +8,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write("Initializing BrainSetting defaults...")
-        count = BrainSetting.initialize_defaults()
+        from somabrain.settings.resolve import require_setting
+        from somabrain.brain_settings.models import _base_profile
+        count = BrainSetting.initialize_defaults(_base_profile())
         self.stdout.write(self.style.SUCCESS(f"Initialized {count} settings."))
 
         # Ensure active mode is ANALYTIC for consistent testing

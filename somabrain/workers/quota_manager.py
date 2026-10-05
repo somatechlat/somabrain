@@ -10,18 +10,14 @@ import threading
 import time
 from typing import Any
 
-from django.conf import settings
+from somabrain.settings.resolve import require_setting, require_tenant
 
-# Per-tenant quota configuration
-PER_TENANT_QUOTA_LIMIT = max(
-    1,
-    int(getattr(settings, "OUTBOX_TENANT_QUOTA_LIMIT") or 1000),
-)
+# Per-tenant quota configuration. The declaration site is
+# ``settings/cognitive.py`` (OUTBOX_TENANT_QUOTA_LIMIT / _WINDOW); there is
+# no second default here (AP-03, Rule 2).
+PER_TENANT_QUOTA_LIMIT = max(1, int(require_setting("OUTBOX_TENANT_QUOTA_LIMIT")))
 
-PER_TENANT_QUOTA_WINDOW = max(
-    1,
-    int(getattr(settings, "OUTBOX_TENANT_QUOTA_WINDOW") or 60),
-)
+PER_TENANT_QUOTA_WINDOW = max(1, int(require_setting("OUTBOX_TENANT_QUOTA_WINDOW")))
 
 
 class TenantQuotaManager:
@@ -45,10 +41,13 @@ class TenantQuotaManager:
 
         Returns:
             True if within quota, False if would exceed quota
+
+        T-5: quota is tracked per real tenant. A missing tenant raises
+        (``require_tenant``) instead of sharing one bucket across partitions.
         """
         with self._lock:
             now = time.time()
-            tenant = tenant_id or "default"
+            tenant = require_tenant(tenant_id)
 
             # Check if tenant is in backoff
             backoff_until = self.tenant_backoff.get(tenant, 0.0)
@@ -77,10 +76,13 @@ class TenantQuotaManager:
         Args:
             tenant_id: The tenant identifier
             count: Number of events processed
+
+        T-5: usage is recorded against the real tenant. A missing tenant
+        raises (``require_tenant``) instead of sharing one bucket.
         """
         with self._lock:
             now = time.time()
-            tenant = tenant_id or "default"
+            tenant = require_tenant(tenant_id)
 
             # Record usage
             if tenant not in self.tenant_usage:

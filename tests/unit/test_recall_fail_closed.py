@@ -7,9 +7,9 @@ a failure. The two states are separated at the type level:
 * a genuine "no results" is a successful ``[]``
 * an outage raises ``MemoryRecallUnavailable``
 
-The same file guards the second half of T-5: no tenant/namespace path in the
-three fail-closed boundary modules may fall back to ``"default"``. The agent
-side already carries this guard
+The same file guards the second half of T-5: no tenant/namespace path in any
+fail-closed boundary module may fall back to ``"default"``. The agent side
+already carries this guard
 (``somaAgent01/tests/unit/test_no_silent_default_tenant.py``).
 """
 
@@ -33,6 +33,14 @@ BOUNDARY_FILES = (
     BRAIN_ROOT / "somabrain" / "memory" / "recall_ops.py",
     BRAIN_ROOT / "somabrain" / "db" / "outbox.py",
     BRAIN_ROOT / "somabrain" / "services" / "retrieval_pipeline.py",
+    # T-5 sweep: every remaining silent default tenant/namespace in the brain.
+    BRAIN_ROOT / "somabrain" / "db" / "outbox_replay.py",
+    BRAIN_ROOT / "somabrain" / "db" / "outbox_clean.py",
+    BRAIN_ROOT / "somabrain" / "metrics" / "memory_metrics.py",
+    BRAIN_ROOT / "somabrain" / "context" / "tenant_overrides.py",
+    BRAIN_ROOT / "somabrain" / "workers" / "quota_manager.py",
+    BRAIN_ROOT / "somabrain" / "services" / "outbox_sync.py",
+    BRAIN_ROOT / "somabrain" / "brain_settings" / "models.py",
 )
 
 
@@ -161,7 +169,12 @@ def test_endpoint_incompatible_is_typed_failure():
 
 
 def test_no_silent_default_tenant_on_boundary_paths():
-    """No tenant/namespace path may name a fallback partition (AP-04, T-5)."""
+    """No tenant/namespace path may name a fallback partition (AP-04, T-5).
+
+    Covers both shapes of the silent default: a call-site ``or "default"``
+    and a schema/parameter default that makes an uninitialised identity
+    look initialised (``tenant: str = "default"``, ``default="default"``).
+    """
     for path in BOUNDARY_FILES:
         source = path.read_text(encoding="utf-8")
         for lineno, line in enumerate(source.splitlines(), 1):
@@ -177,5 +190,15 @@ def test_no_silent_default_tenant_on_boundary_paths():
             if 'getattr(' in stripped and '"default"' in stripped:
                 raise AssertionError(
                     f"silent default tenant via getattr at "
+                    f"{path.name}:{lineno}: {stripped!r}"
+                )
+            if 'tenant: str = "default"' in stripped or "tenant: str = 'default'" in stripped:
+                raise AssertionError(
+                    f"silent default tenant parameter at "
+                    f"{path.name}:{lineno}: {stripped!r}"
+                )
+            if 'default="default"' in stripped or "default='default'" in stripped:
+                raise AssertionError(
+                    f"silent default tenant on the schema at "
                     f"{path.name}:{lineno}: {stripped!r}"
                 )

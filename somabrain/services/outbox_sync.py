@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Any
 
 from django.conf import settings
 from django.db import DatabaseError, OperationalError
@@ -25,6 +26,11 @@ from django.db import DatabaseError, OperationalError
 from somabrain.admin.core.models import OutboxEvent
 from somabrain.memory.client import MemoryClient
 from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL, report_outbox_pending
+from somabrain.settings.resolve import (
+    UnconfiguredServiceError,
+    require_setting,
+    require_tenant,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +82,7 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
     # Use settings if cfg not provided
     cfg = cfg or settings
     client = MemoryClient(cfg)
-    max_retries = getattr(settings, "OUTBOX_MAX_RETRIES")
+    max_retries = require_setting("OUTBOX_MAX_RETRIES")
     # Ensure the client is healthy before entering the loop – otherwise we
     # would generate a flood of failed attempts.
     backoff = poll_interval
@@ -101,12 +107,20 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
                 await asyncio.sleep(poll_interval)
                 continue
 
-            # Update pending gauge per tenant
+            # Update pending gauge per tenant. T-5: an event with no tenant
+            # is missing identity — it is never labelled ``default``, and it is
+            # denied below rather than delivered.
+            per_tenant: dict[str, int] = {}
+            for ev in pending_events:
+                try:
+                    tid = require_tenant(ev.tenant_id)
+                except UnconfiguredServiceError as exc:
+                    logger.error(
+                        "Outbox event %s has no tenant identity: %s", ev.id, exc
+                    )
+                    continue
+                per_tenant[tid] = per_tenant.get(tid, 0) + 1
             try:
-                per_tenant: dict[str, int] = {}
-                for ev in pending_events:
-                    tid = ev.tenant_id or "default"
-                    per_tenant[tid] = per_tenant.get(tid, 0) + 1
                 for tid, cnt in per_tenant.items():
                     report_outbox_pending(tid, cnt)
             except (ImportError, AttributeError) as exc:
@@ -114,6 +128,14 @@ async def outbox_sync_loop(cfg: Any = None, poll_interval: float = 10.0) -> None
 
             success_cnt = 0
             for ev in pending_events:
+                try:
+                    require_tenant(ev.tenant_id)
+                except UnconfiguredServiceError as exc:
+                    # Fail-closed (T-5): missing identity denies the event.
+                    ev.status = "failed"
+                    ev.last_error = str(exc)
+                    await ev.asave()
+                    continue
                 ok = await _send_event(client, ev)
                 if ok:
                     ev.status = "sent"

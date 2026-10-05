@@ -353,9 +353,16 @@ def record_memory_snapshot(
     margin: float | None = None,
     config_version: float | None = None,
 ) -> None:
-    """Update governance metrics for a tenant/namespace pair."""
-    t = str(tenant or "").strip() or "unknown"
-    ns = str(namespace or "").strip() or "default"
+    """Update governance metrics for a tenant/namespace pair.
+
+    T-5: the labels are real identity. A missing tenant or namespace raises
+    (``require_tenant`` / ``require_namespace``) instead of being recorded
+    under a shared partition.
+    """
+    from somabrain.settings.resolve import require_namespace, require_tenant
+
+    t = require_tenant(tenant)
+    ns = require_namespace(namespace)
 
     try:
         if items is not None:
@@ -373,8 +380,13 @@ def record_memory_snapshot(
 
 
 def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
-    """Record recall latency histogram sample for a namespace."""
-    ns = str(namespace or "").strip() or "default"
+    """Record recall latency histogram sample for a namespace.
+
+    T-5: a missing namespace raises; the sample is never labelled ``default``.
+    """
+    from somabrain.settings.resolve import require_namespace
+
+    ns = require_namespace(namespace)
     try:
         RECALL_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
     except Exception:
@@ -382,8 +394,13 @@ def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
 
 
 def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
-    """Record ANN lookup latency for a namespace."""
-    ns = str(namespace or "").strip() or "default"
+    """Record ANN lookup latency for a namespace.
+
+    T-5: a missing namespace raises; the sample is never labelled ``default``.
+    """
+    from somabrain.settings.resolve import require_namespace
+
+    ns = require_namespace(namespace)
     try:
         ANN_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
     except Exception:
@@ -391,8 +408,17 @@ def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
 
 
 def mark_controller_change(parameter: str) -> None:
-    """Increment supervisor change counter for a configuration parameter."""
-    name = str(parameter or "unknown").strip() or "unknown"
+    """Increment supervisor change counter for a configuration parameter.
+
+    T-5: the label is the real parameter name. A missing name raises rather
+    than being counted under a synthetic label.
+    """
+    name = str(parameter or "").strip()
+    if not name:
+        raise ValueError(
+            "parameter must be a non-empty string; a supervisor change is "
+            "labelled by its real knob name (Rule 91)."
+        )
     try:
         CONTROLLER_CHANGES.labels(parameter=name).inc()
     except Exception:

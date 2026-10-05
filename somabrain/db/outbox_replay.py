@@ -17,6 +17,7 @@ from django.db.models import Count
 
 from somabrain.admin.core.models import OutboxEvent
 from somabrain.metrics import report_outbox_replayed
+from somabrain.settings.resolve import require_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +34,18 @@ def mark_events_for_replay(limit: int = 100, tenant_id: str | None = None) -> in
 
     Returns:
         Number of events marked for replay
+
+    T-5: metrics are labelled with each event's real tenant. A cross-tenant
+    replay never folds every partition into one synthetic label, and a row
+    with no tenant raises (``require_tenant``) instead of borrowing one.
     """
     qs = OutboxEvent.objects.filter(status="failed")
     if tenant_id:
-        qs = qs.filter(tenant_id=tenant_id)
+        qs = qs.filter(tenant_id=require_tenant(tenant_id))
 
     events = list(qs.order_by("created_at")[:limit])
     count = 0
+    per_tenant: dict[str, int] = {}
 
     for ev in events:
         ev.status = "pending"
@@ -47,18 +53,20 @@ def mark_events_for_replay(limit: int = 100, tenant_id: str | None = None) -> in
         ev.last_error = None
         ev.save()
         count += 1
+        label = require_tenant(ev.tenant_id)
+        per_tenant[label] = per_tenant.get(label, 0) + 1
 
     # Report metrics
-    tenant_label = tenant_id or "default"
     if report_outbox_replayed is not None and count > 0:
-        try:
-            report_outbox_replayed(tenant_label, count)
-        except Exception as exc:
-            logger.debug(
-                "Failed to report outbox replayed for tenant=%s: %s",
-                tenant_label,
-                exc,
-            )
+        for label, n in per_tenant.items():
+            try:
+                report_outbox_replayed(label, n)
+            except Exception as exc:
+                logger.debug(
+                    "Failed to report outbox replayed for tenant=%s: %s",
+                    label,
+                    exc,
+                )
 
     return count
 
@@ -80,6 +88,7 @@ def mark_tenant_events_for_replay(
     if status not in VALID_OUTBOX_STATUSES:
         raise ValueError(f"Invalid outbox status: {status}")
 
+    tenant_id = require_tenant(tenant_id)
     limit = max(1, min(int(limit), 1000))
 
     events = list(
@@ -146,13 +155,16 @@ def get_failed_counts_by_tenant() -> dict[str, int]:
 
     Returns:
         Dict mapping tenant_id to failed event count
+
+    T-5: a row with no ``tenant_id`` is missing identity. It raises rather
+    than being folded into a shared partition key (``require_tenant``).
     """
     counts = (
         OutboxEvent.objects.filter(status="failed")
         .values("tenant_id")
         .annotate(count=Count("id"))
     )
-    return {row["tenant_id"] or "default": row["count"] for row in counts}
+    return {require_tenant(row["tenant_id"]): row["count"] for row in counts}
 
 
 def get_sent_counts_by_tenant() -> dict[str, int]:
@@ -160,10 +172,13 @@ def get_sent_counts_by_tenant() -> dict[str, int]:
 
     Returns:
         Dict mapping tenant_id to sent event count
+
+    T-5: a row with no ``tenant_id`` is missing identity. It raises rather
+    than being folded into a shared partition key (``require_tenant``).
     """
     counts = (
         OutboxEvent.objects.filter(status="sent")
         .values("tenant_id")
         .annotate(count=Count("id"))
     )
-    return {row["tenant_id"] or "default": row["count"] for row in counts}
+    return {require_tenant(row["tenant_id"]): row["count"] for row in counts}

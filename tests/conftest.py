@@ -150,7 +150,8 @@ def init_brain_settings(request):
     request.getfixturevalue("db")
     from somabrain.brain_settings.models import BrainSetting
 
-    BrainSetting.initialize_defaults()
+    from somabrain.brain_settings.models import _base_profile
+    BrainSetting.initialize_defaults(_base_profile())
 
 
 @pytest.fixture

@@ -11,6 +11,8 @@ from typing import Any
 
 from django.conf import settings
 
+from somabrain.settings.resolve import require_tenant
+
 
 def load_tenant_overrides() -> dict[str, dict[str, Any]]:
     """Load per-tenant overrides from YAML/JSON or env JSON string.
@@ -81,8 +83,11 @@ def get_entropy_cap_for_tenant(
 
     Returns:
         Entropy cap value if configured, None otherwise
+
+    T-5: the lookup key is the real tenant. A missing tenant raises
+    (``require_tenant``) instead of reading another partition's overrides.
     """
-    t = tenant_id or "default"
+    t = require_tenant(tenant_id)
 
     if cache is not None:
         ov = cache.get(t)
@@ -112,8 +117,11 @@ def get_tenant_retrieval_weights(
 
     Returns:
         Dict with alpha, beta, gamma, tau overrides if configured
+
+    T-5: the lookup key is the real tenant. A missing tenant raises
+    (``require_tenant``) instead of reading another partition's overrides.
     """
-    t = tenant_id or "default"
+    t = require_tenant(tenant_id)
 
     if cache is not None:
         ov = cache.get(t)
@@ -149,8 +157,11 @@ def get_tenant_decay_params(
 
     Returns:
         Dict with recency_half_life, recency_sharpness, recency_floor overrides
+
+    T-5: the lookup key is the real tenant. A missing tenant raises
+    (``require_tenant``) instead of reading another partition's overrides.
     """
-    t = tenant_id or "default"
+    t = require_tenant(tenant_id)
 
     if cache is not None:
         ov = cache.get(t)

@@ -4,6 +4,12 @@ BRAIN parameters only - no system/infrastructure settings.
 System settings (Redis, Kafka, Postgres URLs, secrets) stay in ENV/Vault.
 
 Multi-tenant. Hot-reload via cache. NO FALLBACKS - fail fast.
+
+T-5: there is no silent default tenant. Every read and write names its
+tenant; a missing tenant raises. Tenants with no rows of their own inherit
+from the operator-chosen base profile (``SOMABRAIN_DEFAULT_TENANT``) until
+they store an explicit override — that is inheritance of a real named
+profile, not a fallback identity.
 """
 
 import logging
@@ -25,12 +31,29 @@ class BrainSettingNotFound(ImproperlyConfigured):
     """
 
 
+def _base_profile() -> str:
+    """Return the operator-chosen base profile for brain-setting inheritance.
+
+    This is a **real tenant**, not a silent fallback: the name comes from the
+    ``SOMABRAIN_DEFAULT_TENANT`` setting (deployment topology) and a missing
+    or empty value raises (``require_setting`` / ``require_tenant``, Rule 91).
+    It is the inheritance parent every other tenant reads through, and the
+    only tenant allowed to write ``SYSTEM_CORE`` knobs.
+    """
+    from somabrain.settings.resolve import require_setting, require_tenant
+
+    return require_tenant(require_setting("SOMABRAIN_DEFAULT_TENANT"))
+
+
 
 class BrainSetting(models.Model):
     """Brain setting stored in database. Multi-tenant, hot-reload."""
 
     key = models.CharField(max_length=255, db_index=True)
-    tenant = models.CharField(max_length=100, default="default", db_index=True)
+    # Required identity (T-5). No schema default: an uninitialised tenant and
+    # an initialised one must never look identical. Call sites pass the real
+    # tenant through ``require_tenant``.
+    tenant = models.CharField(max_length=100, db_index=True)
     value_float = models.FloatField(null=True, blank=True)
     value_int = models.IntegerField(null=True, blank=True)
     value_bool = models.BooleanField(null=True, blank=True)
@@ -73,7 +96,11 @@ class BrainSetting(models.Model):
     CACHE_PREFIX, CACHE_TIMEOUT = "brain:", 30
 
     @classmethod
-    def get(cls, key: str, tenant: str = "default") -> Any:
+    def get(cls, key: str, tenant: str) -> Any:
+        """Return a brain knob for *tenant*. *tenant* is required (T-5)."""
+        from somabrain.settings.resolve import require_tenant
+
+        tenant = require_tenant(tenant)
         # Avoid recursion when looking up the mode itself
         if key == "active_brain_mode":
             return cls._get_raw_value(key, tenant)
@@ -100,8 +127,16 @@ class BrainSetting(models.Model):
         return cls._get_raw_value(key, tenant)
 
     @classmethod
-    def _get_raw_value(cls, key: str, tenant: str = "default") -> Any:
-        """Fetch raw value from cache or DB without overrides."""
+    def _get_raw_value(cls, key: str, tenant: str) -> Any:
+        """Fetch raw value from cache or DB without overrides.
+
+        *tenant* is required. A tenant with no rows of its own inherits from
+        the operator-chosen base profile (``_base_profile``) — a real named
+        tenant, not a silent default identity.
+        """
+        from somabrain.settings.resolve import require_tenant
+
+        tenant = require_tenant(tenant)
         cache_key = f"{cls.CACHE_PREFIX}{tenant}:{key}"
         cached = cache.get(cache_key)
         if cached is not None:
@@ -112,13 +147,14 @@ class BrainSetting(models.Model):
             cache.set(cache_key, v, cls.CACHE_TIMEOUT)
             return v
         except cls.DoesNotExist:
-            if tenant != "default":
-                # Tenants inherit the default profile until they store an explicit
+            base = _base_profile()
+            if tenant != base:
+                # Tenants inherit the base profile until they store an explicit
                 # override. This keeps per-tenant runtime components usable
                 # without pre-seeding every tenant row up front.
-                default_value = cls._get_raw_value(key, "default")
-                cache.set(cache_key, default_value, cls.CACHE_TIMEOUT)
-                return default_value
+                base_value = cls._get_raw_value(key, base)
+                cache.set(cache_key, base_value, cls.CACHE_TIMEOUT)
+                return base_value
             raise BrainSettingNotFound(
                 get_message(ErrorCode.BRAIN_SETTING_NOT_FOUND, key=key, tenant=tenant)
                 + f" Operator action: `python manage.py init_brain_settings "
@@ -126,7 +162,11 @@ class BrainSetting(models.Model):
             )
 
     @classmethod
-    def set(cls, key: str, value: Any, tenant: str = "default") -> "BrainSetting":
+    def set(cls, key: str, value: Any, tenant: str) -> "BrainSetting":
+        """Write a brain knob for *tenant*. *tenant* is required (T-5)."""
+        from somabrain.settings.resolve import require_tenant
+
+        tenant = require_tenant(tenant)
         # Extract base key if it's a mode-tuned key (e.g. gmd_eta:TRAINING)
         base_key = key.split(":")[0]
 
@@ -140,8 +180,8 @@ class BrainSetting(models.Model):
                 f"--tenant {tenant}`."
             )
 
-        # SAFETY POLICY: NO TOUCH for SYSTEM_CORE
-        if s_meta.category == "SYSTEM_CORE" and not tenant == "default":
+        # SAFETY POLICY: NO TOUCH for SYSTEM_CORE except the base profile
+        if s_meta.category == "SYSTEM_CORE" and tenant != _base_profile():
             raise PermissionError(
                 f"'{base_key}' is a SYSTEM_CORE knob and is NO TOUCH."
             )
@@ -171,8 +211,14 @@ class BrainSetting(models.Model):
         return s
 
     @classmethod
-    def invalidate_tenant_cache(cls, tenant: str = "default") -> None:
-        """Invalidate ALL brain settings for a tenant. Critical for Mode Switches."""
+    def invalidate_tenant_cache(cls, tenant: str) -> None:
+        """Invalidate ALL brain settings for a tenant. Critical for Mode Switches.
+
+        *tenant* is required (T-5).
+        """
+        from somabrain.settings.resolve import require_tenant
+
+        tenant = require_tenant(tenant)
         # Use a versioning or pattern-based approach since cache.delete_many doesn't support wildcards
         # in standard Django cache. For now, we clear the known keys if possible, or expect
         # a cache version bump/prefix clear.
@@ -194,7 +240,11 @@ class BrainSetting(models.Model):
             logger.error(f"Failed to invalidate tenant cache: {e}")
 
     @classmethod
-    def initialize_defaults(cls, tenant: str = "default") -> int:
+    def initialize_defaults(cls, tenant: str) -> int:
+        """Seed the declared schema for *tenant*. *tenant* is required (T-5)."""
+        from somabrain.settings.resolve import require_tenant
+
+        tenant = require_tenant(tenant)
         created = 0
         for key, cfg in BRAIN_DEFAULTS.items():
             obj, was_created = cls.objects.get_or_create(
@@ -215,7 +265,7 @@ class BrainSetting(models.Model):
         return created
 
     @classmethod
-    def ensure_seeded(cls, tenant: str = "default") -> bool:
+    def ensure_seeded(cls, tenant: str) -> bool:
         """Materialise the declared schema for a tenant that has no profile.
 
         ``BRAIN_DEFAULTS`` is the one declaration of every knob (R-VAL-01).
@@ -223,18 +273,23 @@ class BrainSetting(models.Model):
         read-time default: ``get`` still refuses on a miss, so an unseeded
         tenant never looks seeded.
 
-        The ``default`` profile is seeded first because it is the inheritance
-        base every other tenant reads through (``_get_raw_value``). A tenant
-        with no rows of its own is then seeded from the same declaration so it
-        can hold explicit overrides later.
+        The operator-chosen base profile (``_base_profile``) is seeded first
+        because it is the inheritance base every other tenant reads through
+        (``_get_raw_value``). A tenant with no rows of its own is then seeded
+        from the same declaration so it can hold explicit overrides later.
 
-        Returns True when this call created the profile.
+        *tenant* is required (T-5). Returns True when this call created the
+        profile.
         """
+        from somabrain.settings.resolve import require_tenant
+
+        tenant = require_tenant(tenant)
         created = False
-        if not cls.objects.filter(tenant="default").exists():
-            cls.initialize_defaults("default")
+        base = _base_profile()
+        if not cls.objects.filter(tenant=base).exists():
+            cls.initialize_defaults(base)
             created = True
-        if tenant != "default" and not cls.objects.filter(tenant=tenant).exists():
+        if tenant != base and not cls.objects.filter(tenant=tenant).exists():
             cls.initialize_defaults(tenant)
             created = True
         return created
@@ -508,11 +563,13 @@ BRAIN_DEFAULTS = {
         "max": 10.0,
     },
     "predictor_dim": {"v": 16, "cat": "predictor"},
+    # DEF-09 FIXED (W3): default is contracts.ADAPT_GAINS["gamma"] = -0.5.
+    # Bounds include that value so set() cannot reject the seeded default.
     "predictor_gamma": {
         "v": -0.5,
         "cat": "predictor",
         "learnable": True,
-        "min": 0.0,
+        "min": -1.0,
         "max": 1.0,
     },
     # HRR
@@ -680,9 +737,11 @@ BRAIN_DEFAULTS = {
 }
 
 
-def get(key: str, tenant: str = "default") -> Any:
+def get(key: str, tenant: str) -> Any:
+    """Read a brain knob. *tenant* is required (T-5) — there is no default."""
     return BrainSetting.get(key, tenant)
 
 
-def set(key: str, value: Any, tenant: str = "default") -> None:
+def set(key: str, value: Any, tenant: str) -> None:
+    """Write a brain knob. *tenant* is required (T-5) — there is no default."""
     BrainSetting.set(key, value, tenant)
