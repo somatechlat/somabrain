@@ -23,6 +23,7 @@ from django.db.models import Count
 
 from somabrain.admin.core.models import OutboxEvent
 from somabrain.journal import JournalEvent, get_journal
+from somabrain.settings.resolve import UnconfiguredServiceError, require_tenant
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +66,18 @@ class OutboxBackpressureError(Exception):
 def _idempotency_key(
     operation: str,
     coord: tuple[float, float, float] | None = None,
-    tenant: str = "default",
+    tenant: str | None = None,
     extra: str | None = None,
 ) -> str:
     """Generate idempotency key for deduplication.
 
     Per Requirement E2.4: Duplicate detection via idempotency key.
+
+    T-5: the tenant is part of the key's identity. A missing tenant raises
+    (``require_tenant``) — it is never folded into a shared "default" key,
+    which would let two partitions collide on one dedupe slot.
     """
+    tenant = require_tenant(tenant)
     parts = [operation, tenant]
     if coord is not None:
         parts.append(f"{coord[0]:.6f},{coord[1]:.6f},{coord[2]:.6f}")
@@ -194,7 +200,12 @@ def enqueue_event(
     """Enqueue a new event to the outbox.
 
     Returns the created OutboxEvent instance.
+
+    T-5: ``tenant_id`` is required. A missing tenant is a missing identity at
+    the write boundary — it raises rather than landing in a NULL-tenant row
+    that a later batch would have to remap (AP-04).
     """
+    tenant_id = require_tenant(tenant_id)
     if dedupe_key is None:
         dedupe_key = str(uuid.uuid4())
 
@@ -269,6 +280,11 @@ def get_pending_events_by_tenant_batch(
     """Fetch pending events grouped by tenant.
 
     Enables per-tenant batch processing for the outbox worker.
+
+    T-5: a pending event with no tenant is a corrupt partition boundary. It is
+    never labelled ``"default"`` — the batch raises naming the missing tenant,
+    so the poison row is visible instead of being published into a shared
+    partition (AP-04).
     """
     # Get distinct tenant IDs with pending events
     tenant_ids = list(
@@ -280,26 +296,21 @@ def get_pending_events_by_tenant_batch(
     if max_tenants:
         tenant_ids = tenant_ids[:max_tenants]
 
-    # If no tenants found, check for NULL tenant_id events
-    if not tenant_ids:
-        null_count = OutboxEvent.objects.filter(
-            status="pending", tenant_id__isnull=True
-        ).count()
-        if null_count > 0:
-            tenant_ids = [None]
+    missing = [t for t in tenant_ids if t is None or not str(t).strip()]
+    if missing:
+        raise UnconfiguredServiceError(
+            f"outbox has {len(missing)} pending event(s) with a missing tenant_id; "
+            "refusing to group them under a default tenant (T-5)."
+        )
 
     # Fetch events for each tenant
     results = {}
     for tenant_id in tenant_ids:
-        if tenant_id is None:
-            qs = OutboxEvent.objects.filter(status="pending", tenant_id__isnull=True)
-        else:
-            qs = OutboxEvent.objects.filter(status="pending", tenant_id=tenant_id)
-
+        label = require_tenant(tenant_id)
+        qs = OutboxEvent.objects.filter(status="pending", tenant_id=tenant_id)
         events = list(qs.order_by("created_at")[:limit_per_tenant])
         if events:
-            tenant_label = tenant_id or "default"
-            results[tenant_label] = events
+            results[label] = events
 
     return results
 
@@ -316,13 +327,21 @@ def get_pending_count(tenant_id: str | None = None) -> int:
 
 
 def get_pending_counts_by_tenant() -> dict[str, int]:
-    """Return the current pending event count per tenant."""
+    """Return the current pending event count per tenant.
+
+    T-5: a row with no tenant raises rather than being reported as tenant
+    ``"default"`` — metrics must not invent a partition either.
+    """
     counts = (
         OutboxEvent.objects.filter(status="pending")
         .values("tenant_id")
         .annotate(count=Count("id"))
     )
-    return {row["tenant_id"] or "default": row["count"] for row in counts}
+    result: dict[str, int] = {}
+    for row in counts:
+        label = require_tenant(row["tenant_id"])
+        result[label] = row["count"]
+    return result
 
 
 # Replay functions - Extracted to somabrain/db/outbox_replay.py

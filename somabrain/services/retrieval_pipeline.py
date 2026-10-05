@@ -34,13 +34,18 @@ logger = logging.getLogger(__name__)
 
 
 def _as_namespace(ctx: Any) -> str:
-    """Execute as namespace.
+    """Return the request's namespace or raise — never a silent default.
+
+    The namespace is a partition boundary on the retrieval path. A missing one
+    is missing identity (T-5): it raises naming the setting rather than being
+    remapped to a shared ``"default"`` partition (AP-04).
 
     Args:
         ctx: The ctx.
     """
+    from somabrain.settings.resolve import require_namespace
 
-    return getattr(ctx, "namespace", "") or "default"
+    return require_namespace(getattr(ctx, "namespace", None))
 
 
 def _candidate_from_payload(

@@ -22,6 +22,29 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+class MemoryRecallUnavailable(RuntimeError):
+    """Raised when the memory store cannot answer a recall (outage / transport failure).
+
+    Fail-closed (T-5): never report an outage as an empty recall. A genuine
+    "no results" is a successful empty list; this exception is the other state,
+    distinguishable at the type level. Name and base match the agent-side seam
+    (``services/common/memory_contract.py::MemoryRecallUnavailable``) so both
+    sides of the boundary share one vocabulary (AP-06).
+    """
+
+
+def _require_client_tenant(graph_client: Any) -> str:
+    """Return the graph client's tenant or raise — never a silent default.
+
+    ``MemoryClient`` exposes ``tenant`` (required at construction). Reading a
+    different attribute name and defaulting to a shared partition would put the
+    BrainSetting lookup on the wrong tenant (AP-04, T-5).
+    """
+    from somabrain.settings.resolve import require_tenant
+
+    return require_tenant(getattr(graph_client, "tenant", None))
+
+
 def _filter_by_tenant(hits: list[RecallHit], tenant: str | None) -> list[RecallHit]:
     """Filter hits to only include those belonging to the specified tenant.
 
@@ -78,6 +101,10 @@ def process_search_response(
 
     SECURITY: Results are filtered by tenant_id to prevent cross-tenant data leakage.
     See Requirements D1.1, D1.2.
+
+    Every ``return []`` here is a **successful empty**: the store answered and
+    nothing matched. An outage never reaches this function — the HTTP layer
+    raises :class:`MemoryRecallUnavailable` instead (T-5).
     """
     hits = normalize_recall_hits(data)
     if not hits:
@@ -136,10 +163,17 @@ def memories_search_sync(
         tenant: Tenant ID for filtering results (SECURITY: required for isolation).
 
     Returns:
-        List of RecallHit objects filtered by tenant.
+        List of RecallHit objects filtered by tenant. A genuine "no results"
+        is this successful empty list.
+
+    Raises:
+        MemoryRecallUnavailable: the store could not answer (T-5). Never an
+            empty list dressed as success.
     """
     if transport is None:
-        raise RuntimeError("HTTP memory service required but not configured")
+        raise MemoryRecallUnavailable(
+            "recall refused: HTTP memory service is not configured"
+        )
 
     headers = {"X-Request-ID": request_id}
     universe_value = str(universe or "real")
@@ -167,11 +201,13 @@ def memories_search_sync(
         )
 
     if status in (404, 405, 422):
-        raise RuntimeError(
+        raise MemoryRecallUnavailable(
             "Memory search endpoint unavailable or incompatible with current SomaBrain build."
         )
 
-    return []
+    raise MemoryRecallUnavailable(
+        f"Memory search failed with status {status}; recall unavailable."
+    )
 
 
 async def memories_search_async(
@@ -200,10 +236,17 @@ async def memories_search_async(
         tenant: Tenant ID for filtering results (SECURITY: required for isolation).
 
     Returns:
-        List of RecallHit objects filtered by tenant.
+        List of RecallHit objects filtered by tenant. A genuine "no results"
+        is this successful empty list.
+
+    Raises:
+        MemoryRecallUnavailable: the store could not answer (T-5). Never an
+            empty list dressed as success.
     """
     if transport is None or transport.async_client is None:
-        raise RuntimeError("Async HTTP memory service required but not configured")
+        raise MemoryRecallUnavailable(
+            "recall refused: async HTTP memory service is not configured"
+        )
 
     headers = {"X-Request-ID": request_id}
     universe_value = str(universe or "real")
@@ -231,11 +274,13 @@ async def memories_search_async(
         )
 
     if status in (404, 405, 422):
-        raise RuntimeError(
+        raise MemoryRecallUnavailable(
             "Memory search endpoint unavailable or incompatible with current SomaBrain build."
         )
 
-    return []
+    raise MemoryRecallUnavailable(
+        f"Memory search failed with status {status}; recall unavailable."
+    )
 
 
 def recall_with_graph_boost(
@@ -255,7 +300,9 @@ def recall_with_graph_boost(
     from somabrain.brain_settings.models import BrainSetting
 
     # NO MAGIC NUMBERS: use brain_settings with tenant isolation
-    tenant = getattr(graph_client, "tenant_id", "default")
+    # T-5 / AP-04: the tenant comes from the client; a missing one raises
+    # rather than quietly reading another partition's settings.
+    tenant = _require_client_tenant(graph_client)
     if graph_boost_factor is None:
         graph_boost_factor = BrainSetting.get("graph_boost_factor", tenant)
     if max_neighbors is None:
@@ -378,7 +425,7 @@ def recall_with_degradation(
             "SFM degraded mode: raising instead of empty results",
             extra={"tenant": tenant, "query_preview": query[:50] if query else ""},
         )
-        raise RuntimeError("SFM degraded mode - recall blocked")
+        raise MemoryRecallUnavailable("SFM degraded mode - recall blocked")
 
     try:
         require_healthy_fn()
@@ -431,14 +478,14 @@ async def arecall_with_degradation(
     if degradation_mgr.is_degraded(tenant):
         degradation_mgr.check_alert(tenant)
         degradation_mgr.mark_degraded(tenant)
-        raise RuntimeError("SFM degraded mode - recall blocked")
+        raise MemoryRecallUnavailable("SFM degraded mode - recall blocked")
 
     try:
         if has_async_client:
             results = await http_recall_async_fn(query, top_k, universe, request_id)
             degradation_mgr.mark_recovered(tenant)
             return results
-        raise RuntimeError("Async recall client unavailable")
+        raise MemoryRecallUnavailable("Async recall client unavailable")
     except RuntimeError as exc:
         degradation_mgr.mark_degraded(tenant)
         logger.warning(
