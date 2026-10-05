@@ -735,8 +735,6 @@ services:
         condition: service_healthy
       somabrain_standalone_postgres:
         condition: service_healthy
-    #      somabrain_standalone_milvus:
-    #        condition: service_healthy
     networks:
       somabrain_standalone_net:
         # RFC 1035 aliases. The compose container name contains underscores
@@ -780,6 +778,19 @@ services:
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:?set SOMABRAIN_WORKERS}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL:?set SOMABRAIN_OPA_URL}"
       SOMABRAIN_KAFKA_URL: "kafka://somabrain_standalone_kafka:9092"
+      # Plain host:port bootstrap. Readers are settings.KAFKA_BOOTSTRAP_SERVERS
+      # (outbox_publisher._bootstrap, assert_ready, health, event_store). Required —
+      # no default, so a missing value is a refusal naming the setting.
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:?set KAFKA_BOOTSTRAP_SERVERS}"
+      # Object storage + schema registry topology. Read by system_health.py and
+      # config/urls.py via optional_url(); both fail closed when unset.
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT:?set MINIO_ENDPOINT}"
+      SCHEMA_REGISTRY_URL: "${SCHEMA_REGISTRY_URL:?set SCHEMA_REGISTRY_URL}"
+      # OAK vector store (SFM-stack Milvus on soma-stack-net). Host+port are
+      # both required by milvus_client — it refuses to invent either.
+      SOMABRAIN_MILVUS_HOST: "${SOMABRAIN_MILVUS_HOST:?set SOMABRAIN_MILVUS_HOST}"
+      SOMABRAIN_MILVUS_PORT: "${SOMABRAIN_MILVUS_PORT:?set SOMABRAIN_MILVUS_PORT}"
+      ENABLE_OAK: "${ENABLE_OAK:?set ENABLE_OAK}"
       # Default memory endpoint:
       #   - Standalone on macOS/Windows Docker Desktop: http://host.docker.internal:10101
       #   - Shared network / Linux: override to http://somafractalmemory-standalone-api:10101
@@ -891,7 +902,9 @@ services:
       SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:?set SOMABRAIN_TOPIC_NEXT_EVENT}"
       SOMABRAIN_TOPIC_SEGMENTS: "${SOMABRAIN_TOPIC_SEGMENTS:?set SOMABRAIN_TOPIC_SEGMENTS}"
       SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:?set SOMABRAIN_TOPIC_CONFIG_UPDATES}"
-      # Milvus removed: brain uses SFM's Milvus instead
+      # No brain-local Milvus service: OAK rides the SFM-stack Milvus
+      # (somafractalmemory-standalone-milvus on soma-stack-net). Host and port
+      # are exported above as SOMABRAIN_MILVUS_HOST / SOMABRAIN_MILVUS_PORT.
     ports:
       # Reward producer HTTP (host default 30083)
       - "${COG_REWARD_PRODUCER_HOST_PORT:?set COG_REWARD_PRODUCER_HOST_PORT}:8083"
@@ -952,6 +965,9 @@ services:
       # Django settings MUST be first - required for all Django workers
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
+      # Host headers this worker's Django install will accept. Required, no
+      # default (django_core raises when the list is empty).
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:?set ALLOWED_HOSTS}"
 
       # VAULT BOOTSTRAP ONLY
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
@@ -969,12 +985,18 @@ services:
       # Propagate the global memory cap to the outbox publisher.
       SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:?set SOMABRAIN_MEMORY_MAX}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL:?set SOMABRAIN_KAFKA_URL}"
+      # Plain host:port bootstrap for assert_ready and the Kafka producer.
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:?set KAFKA_BOOTSTRAP_SERVERS}"
     # No journal mount required
     cap_drop: [ "ALL" ]
     read_only: true
     security_opt:
       - no-new-privileges:true
     volumes:
+      # Same live-code mount as the app: the worker must run the settings that
+      # resolve secrets from Vault via VAULT_TOKEN_FILE (Rule 164). The image's
+      # baked-in vault_client only reads VAULT_TOKEN from ENV, which is banned.
+      - ../../somabrain:/app/somabrain:ro
       - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
     tmpfs:
       - /app/logs:rw,size=64m,mode=1777
