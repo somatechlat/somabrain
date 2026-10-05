@@ -19,15 +19,12 @@ try:
         else:
             print("❌ BHDCEncoder MISSING random_vector")
 
-    # Check Neuromodulators
+    # Check Neuromodulators (state mirror; dynamics live in Python)
     if hasattr(rust, "Neuromodulators"):
         nm = rust.Neuromodulators()
         print(f"✅ Neuromodulators created: {nm.get_state()}")
-        try:
-            nm.update([0.5] * 4, [0.1] * 4, 0.1)
-            print("✅ Neuromodulators.update works")
-        except Exception as e:
-            print(f"❌ Neuromodulators.update failed: {e}")
+        nm.set_state([0.4, 0.5, 0.0, 0.0])
+        print(f"✅ Neuromodulators.set_state works: {nm.get_state()}")
 
 except ImportError as e:
     print(f"❌ Failed to import somabrain_rs: {e}")

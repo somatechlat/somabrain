@@ -1,6 +1,13 @@
 //! Neuromodulators and Amygdala modules.
 //!
 //! Part of GMD MathCore implementation.
+//!
+//! `Neuromodulators` is a state mirror of the single Python store
+//! (`somabrain.runtime.neuromodulators`). It holds the four modulator values
+//! and offers get/set/reset. Dynamics live exclusively in Python: the
+//! homeostatic law `m ← Π(m + η (δ − m))` (see DEBT-004 / W2.3). The former
+//! ODE (`update` / `set_dynamics` / `get_dynamics`, DEBT-007) was dead outside
+//! a migration script and is deleted.
 
 use pyo3::prelude::*;
 
@@ -16,46 +23,27 @@ pub struct Neuromodulators {
     pub noradrenaline: f64,
     #[pyo3(get, set)]
     pub acetylcholine: f64,
-    // Configurable dynamics constants (from brain_settings)
-    k_d: [f64; 4],  // Drive coefficients
-    k_r: [f64; 4],  // Recovery coefficients
-    bias: [f64; 4], // Baseline bias
-    u_scale: f64,   // Control input scale
 }
 
 #[pymethods]
 impl Neuromodulators {
     #[new]
-    #[pyo3(signature = (k_d=None, k_r=None, bias=None, u_scale=0.1))]
-    pub fn new(k_d: Option<Vec<f64>>, k_r: Option<Vec<f64>>, bias: Option<Vec<f64>>, u_scale: f64) -> Self {
-        // Default values from brain_settings: neuro_k_d_*, neuro_k_r_*
-        let k_d_arr = match k_d {
-            Some(v) if v.len() == 4 => [v[0], v[1], v[2], v[3]],
-            _ => [0.8, 0.3, 0.1, 0.2],  // dopamine, serotonin, norad, acetyl
-        };
-        let k_r_arr = match k_r {
-            Some(v) if v.len() == 4 => [v[0], v[1], v[2], v[3]],
-            _ => [0.1, 0.2, 0.3, 0.4],
-        };
-        let bias_arr = match bias {
-            Some(v) if v.len() == 4 => [v[0], v[1], v[2], v[3]],
-            _ => [0.0, 0.0, 0.0, 0.0],
-        };
+    pub fn new() -> Self {
         Neuromodulators {
             dopamine: 0.5,
             serotonin: 0.5,
             noradrenaline: 0.05,
             acetylcholine: 0.05,
-            k_d: k_d_arr,
-            k_r: k_r_arr,
-            bias: bias_arr,
-            u_scale,
         }
     }
 
-
     pub fn get_m(&self) -> Vec<f64> {
-        vec![self.dopamine, self.serotonin, self.noradrenaline, self.acetylcholine]
+        vec![
+            self.dopamine,
+            self.serotonin,
+            self.noradrenaline,
+            self.acetylcholine,
+        ]
     }
 
     pub fn set_m(&mut self, m: Vec<f64>) {
@@ -67,30 +55,13 @@ impl Neuromodulators {
         }
     }
 
-    pub fn update(&mut self, x: Vec<f64>, u: Vec<f64>, dt: f64) -> PyResult<()> {
-        // Use configurable constants from struct (loaded from brain_settings)
-        let mut d_m = [0.0; 4];
-        let m = self.get_m();
-        for i in 0..4 {
-            d_m[i] = self.k_d[i] * x[i] - self.k_r[i] * m[i] + self.bias[i] + self.u_scale * u[i];
-        }
-
-
-        self.dopamine += d_m[0] * dt;
-        self.serotonin += d_m[1] * dt;
-        self.noradrenaline += d_m[2] * dt;
-        self.acetylcholine += d_m[3] * dt;
-
-        self.dopamine = self.dopamine.clamp(0.2, 0.8);
-        self.serotonin = self.serotonin.clamp(0.0, 1.0);
-        self.noradrenaline = self.noradrenaline.clamp(0.0, 0.1);
-        self.acetylcholine = self.acetylcholine.clamp(0.0, 0.1);
-
-        Ok(())
-    }
-
     pub fn get_state(&self) -> Vec<f64> {
-        vec![self.dopamine, self.serotonin, self.noradrenaline, self.acetylcholine]
+        vec![
+            self.dopamine,
+            self.serotonin,
+            self.noradrenaline,
+            self.acetylcholine,
+        ]
     }
 
     pub fn set_state(&mut self, state: Vec<f64>) {
@@ -108,33 +79,13 @@ impl Neuromodulators {
         self.noradrenaline = 0.05;
         self.acetylcholine = 0.05;
     }
-
-    /// Set dynamics constants (from brain_settings)
-    pub fn set_dynamics(&mut self, k_d: Vec<f64>, k_r: Vec<f64>, bias: Vec<f64>, u_scale: f64) {
-        if k_d.len() == 4 {
-            self.k_d = [k_d[0], k_d[1], k_d[2], k_d[3]];
-        }
-        if k_r.len() == 4 {
-            self.k_r = [k_r[0], k_r[1], k_r[2], k_r[3]];
-        }
-        if bias.len() == 4 {
-            self.bias = [bias[0], bias[1], bias[2], bias[3]];
-        }
-        self.u_scale = u_scale;
-    }
-
-    /// Get current dynamics constants
-    pub fn get_dynamics(&self) -> (Vec<f64>, Vec<f64>, Vec<f64>, f64) {
-        (self.k_d.to_vec(), self.k_r.to_vec(), self.bias.to_vec(), self.u_scale)
-    }
 }
 
 impl Default for Neuromodulators {
     fn default() -> Self {
-        Self::new(None, None, None, 0.1)
+        Self::new()
     }
 }
-
 
 // ==================== Amygdala Module ====================
 

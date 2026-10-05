@@ -6,12 +6,17 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from somabrain.math.contracts import (
+    MATH_EPS,
+    RECENCY_FLOOR,
+    RECENCY_SHARPNESS,
+)
 from somabrain.math.recency import stretched_exponential_recency
 
 from .math import cosine_similarity
 from .salience import FDSalienceSketch
 
-_EPS = 1e-12
+_EPS = MATH_EPS
 
 try:
     from . import metrics as M
@@ -49,8 +54,8 @@ class UnifiedScorer:
         weight_min: float,
         weight_max: float,
         recency_scale: float,
-        recency_sharpness: float = 1.2,
-        recency_floor: float = 0.05,
+        recency_sharpness: float = RECENCY_SHARPNESS,
+        recency_floor: float = RECENCY_FLOOR,
         fd_backend: FDSalienceSketch | None = None,
     ) -> None:
         """Initialize the instance."""

@@ -12,6 +12,7 @@ from typing import Any
 
 from django.conf import settings
 
+from somabrain.math.contracts import RECENCY_CAP, RECENCY_FLOOR, RECENCY_SCALE, RECENCY_SHARPNESS
 from somabrain.math.recency import recency_features as _shared_recency_features
 from somabrain.memory.client.ranking import lexical_bonus
 from somabrain.memory.types import RecallHit
@@ -94,12 +95,12 @@ def get_recency_normalisation(cfg: Any) -> tuple[float, float]:
     Returns:
         Tuple of (time_scale, max_steps).
     """
-    scale = getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 60.0)
+    scale = getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", RECENCY_SCALE)
     if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
-        scale = 60.0
-    cap = getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000.0)
+        scale = RECENCY_SCALE
+    cap = getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", RECENCY_CAP)
     if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
-        cap = 1000.0
+        cap = RECENCY_CAP
     return float(scale), float(cap)
 
 
@@ -113,18 +114,18 @@ def get_recency_profile(cfg: Any) -> tuple[float, float, float, float]:
         Tuple of (time_scale, max_steps, sharpness, floor).
     """
     scale, cap = get_recency_normalisation(cfg)
-    sharpness = getattr(cfg, "SOMABRAIN_RECENCY_SHARPNESS", 1.2)
+    sharpness = getattr(cfg, "SOMABRAIN_RECENCY_SHARPNESS", RECENCY_SHARPNESS)
     try:
         sharpness = float(sharpness)
     except Exception:
-        sharpness = 1.2
+        sharpness = RECENCY_SHARPNESS
     if not math.isfinite(sharpness) or sharpness <= 0:
         sharpness = 1.0
-    floor = getattr(cfg, "SOMABRAIN_RECENCY_FLOOR", 0.05)
+    floor = getattr(cfg, "SOMABRAIN_RECENCY_FLOOR", RECENCY_FLOOR)
     try:
         floor = float(floor)
     except Exception:
-        floor = 0.05
+        floor = RECENCY_FLOOR
     if not math.isfinite(floor) or floor < 0:
         floor = 0.0
     if floor >= 1.0:

@@ -8,13 +8,36 @@ CANONICAL IMPLEMENTATIONS (SINGLE SOURCE OF TRUTH):
     - cosine_similarity: Vector similarity computation
     - normalize_vector: L2 normalization
     - normalize_batch: Batch L2 normalization
+
+Shared constants and the Wiener λ* formula live in ``somabrain.math.contracts``.
 """
 
 from .bhdc_encoder import (
     BHDCEncoder,
     PermutationBinder,
-    compute_wiener_lambda,
     fwht,
+)
+from .contracts import (
+    ADAPT_BOUNDS,
+    ADAPT_GAINS,
+    BHDC_D,
+    BHDC_P,
+    MATH_EPS,
+    NEURO_BOUNDS,
+    PROMOTE_THETA,
+    PROMOTE_TICKS,
+    QUANT_STEP,
+    RECENCY_CAP,
+    RECENCY_FLOOR,
+    RECENCY_SCALE,
+    RECENCY_SHARPNESS,
+    SCORER_WEIGHT_MAX,
+    SCORER_WEIGHT_MIN,
+    SCORER_WEIGHTS,
+    TAU_DECAY_FACTOR,
+    TAU_FLOOR,
+    TAU_INTERVAL,
+    compute_wiener_lambda,
     production_sparsity,
     production_wiener_lambda,
 )
@@ -57,6 +80,26 @@ __all__ = [
     "production_wiener_lambda",
     "production_sparsity",
     "fwht",
+    # Shared math contracts (single source)
+    "ADAPT_GAINS",
+    "ADAPT_BOUNDS",
+    "BHDC_D",
+    "BHDC_P",
+    "MATH_EPS",
+    "NEURO_BOUNDS",
+    "PROMOTE_THETA",
+    "PROMOTE_TICKS",
+    "QUANT_STEP",
+    "RECENCY_CAP",
+    "RECENCY_FLOOR",
+    "RECENCY_SCALE",
+    "RECENCY_SHARPNESS",
+    "SCORER_WEIGHTS",
+    "SCORER_WEIGHT_MIN",
+    "SCORER_WEIGHT_MAX",
+    "TAU_DECAY_FACTOR",
+    "TAU_FLOOR",
+    "TAU_INTERVAL",
     # Frequent Directions
     "FrequentDirections",
     # Spectral methods

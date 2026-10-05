@@ -313,7 +313,7 @@ class IntegratorHub:
                 "leader_tenure_seconds": 0.0,
                 "min_dwell_ms": 0,
                 "entropy_cap": float(
-                    getattr(settings, "SOMABRAIN_INTEGRATOR_ENTROPY_CAP") or 0.0
+                    getattr(settings, "SOMABRAIN_ENTROPY_CAP") or 0.0
                 ),
                 "current_entropy": float(entropy),
                 "dwell_satisfied": True,

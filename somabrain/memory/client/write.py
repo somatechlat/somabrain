@@ -154,7 +154,7 @@ class WriteMixin:
         fast_ack = False
         if settings is not None:
             try:
-                fast_ack = bool(getattr(settings, "MEMORY_FAST_ACK"))
+                fast_ack = bool(getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK"))
             except Exception:
                 pass
 

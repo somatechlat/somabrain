@@ -245,7 +245,7 @@ class TestPerTenantNeuromodulatorIsolation:
         """
         import time
 
-        from somabrain.admin.brain.neuromodulators import (
+        from somabrain.runtime.neuromodulators import (
             NeuromodState,
             PerTenantNeuromodulators,
         )

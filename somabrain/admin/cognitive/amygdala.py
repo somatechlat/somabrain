@@ -2,9 +2,16 @@
 
 Scores inputs with neuromod modulation and emits store/act gates (hard/soft).
 
+Neuromod couplings (W2.5):
+- Dopamine modulates the prediction-error weight of the salience score.
+- Acetylcholine (attention demand) adds to salience so attended input is
+  more likely to be stored and acted on.
+- Noradrenaline raises both gate thresholds (urgency focuses action).
+- Serotonin provides **response smoothing**: higher 5-HT increases gate
+  hysteresis and the soft-gate temperature, so decisions flap less.
+
 VIBE Compliance:
-    - Uses direct imports from metrics.salience (no lazy imports for circular avoidance)
-    - FD metrics imported at module level (no circular deps)
+    - Direct imports of metrics and salience backends (no lazy import shims)
     - All metrics calls are best-effort (silent failure on metrics errors)
 """
 
@@ -15,14 +22,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .metrics.salience import (
+from somabrain.admin.core.learning.salience import FDSalienceSketch
+from somabrain.metrics.salience import (
     FD_ENERGY_CAPTURE,
     FD_PSD_INVARIANT,
     FD_RESIDUAL,
     FD_TRACE_ERROR,
 )
-from .neuromodulators import NeuromodState
-from .salience import FDSalienceSketch
+from somabrain.runtime.neuromodulators import NeuromodState
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +184,7 @@ class AmygdalaSalience:
             self._last_fd_residual = 0.0
             self._last_fd_capture = 1.0
         s += fd_boost
-        # ACh increases focus -> require higher novelty
+        # ACh is attention demand: attended input gains salience (stored/acted)
         s += float(neuromod.acetylcholine)
         # bound
         return max(0.0, min(1.0, s))
@@ -241,7 +248,9 @@ class AmygdalaSalience:
         th_store, th_act = self._thresholds(neuromod)
         if not self.cfg.use_soft:
             return (1.0 if s >= th_store else 0.0, 1.0 if s >= th_act else 0.0)
-        T = max(1e-4, float(self.cfg.soft_temperature))
+        # 5-HT response smoothing: higher stability widens the sigmoid
+        stability = max(0.0, min(1.0, float(neuromod.serotonin)))
+        T = max(1e-4, float(self.cfg.soft_temperature) * (1.0 + stability))
 
         def _sig(x: float) -> float:
             # numerically stable sigmoid
@@ -261,18 +270,18 @@ class AmygdalaSalience:
         return ps, pa
 
     def _thresholds(self, neuromod: NeuromodState) -> tuple[float, float]:
-        # NE raises thresholds under urgency
-        """Execute thresholds.
+        """Gate thresholds with NE and 5-HT couplings.
 
-        Args:
-            neuromod: The neuromod.
+        NE raises thresholds under urgency. 5-HT provides response smoothing:
+        effective hysteresis is ``hysteresis · (1 + serotonin)``, so a stable
+        (high 5-HT) system keeps gates sticky and flaps less.
         """
-
         th_store = self.cfg.threshold_store + float(neuromod.noradrenaline)
         th_act = self.cfg.threshold_act + float(neuromod.noradrenaline)
-        # hysteresis to avoid flapping
+        # hysteresis to avoid flapping, scaled by serotonergic stability
+        hyst = self.cfg.hysteresis * (1.0 + max(0.0, min(1.0, neuromod.serotonin)))
         if self._last_store:
-            th_store -= self.cfg.hysteresis
+            th_store -= hyst
         if self._last_act:
-            th_act -= self.cfg.hysteresis
+            th_act -= hyst
         return th_store, th_act

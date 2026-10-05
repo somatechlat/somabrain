@@ -154,7 +154,7 @@ def eval_step(
         return {
             "pred_error": 0.0,
             "pred_latency": 0.0,
-            "neuromod": neuromods.get_state(),
+            "neuromod": neuromods.get_state(tenant_id),
             "salience": 0.0,
             "gate_store": False,
             "gate_act": False,
@@ -193,7 +193,7 @@ def eval_step(
             raise RuntimeError(f"Predictor failed: {exc}") from exc
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
-    base_nm = neuromods.get_state()
+    base_nm = neuromods.get_state(tenant_id)
     traits = None
     try:
         if hasattr(personality_store, "get"):

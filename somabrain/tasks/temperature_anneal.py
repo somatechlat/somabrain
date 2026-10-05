@@ -1,13 +1,13 @@
 """Temperature annealing background task.
 
 The task periodically decays the ``tau`` (softmax temperature) used by the
-integrator hub. The decay rate and minimum floor are read from the global
-``settings`` object (``common.config.settings``) so that there are no hard‑coded
-values, satisfying VIBE requirements.
+integrator hub.  The schedule constants (``TAU_DECAY_FACTOR``, ``TAU_FLOOR``,
+``TAU_INTERVAL``) come from ``somabrain.math.contracts`` — the single
+math-contract source (DEF-05/DEF-06 fixed: one set, no settings twins).
 
 The implementation is a simple ``asyncio`` coroutine that sleeps for the
-configured ``tau_anneal_interval`` (seconds) and then multiplies the current
-``tau`` by ``tau_decay_factor`` while respecting ``tau_min_floor``.
+configured interval (seconds) and then multiplies the current ``tau`` by
+the decay factor while respecting the floor.
 
 Usage example::
 
@@ -24,31 +24,28 @@ import asyncio
 import logging
 from typing import Any
 
-from django.conf import settings
+from somabrain.math.contracts import TAU_DECAY_FACTOR, TAU_FLOOR, TAU_INTERVAL
 
 logger = logging.getLogger(__name__)
 
 
 def _load_config() -> dict[str, Any]:
-    """Load annealing configuration from ``settings``.
+    """Load annealing configuration from ``somabrain.math.contracts``.
 
-    Expected keys:
-    * ``tau_decay_factor`` – multiplicative factor (e.g., 0.95).
-    * ``tau_min_floor`` – lower bound for ``tau``.
-    * ``tau_anneal_interval`` – interval in seconds between decays.
+    Returns keys:
+    * ``factor`` – multiplicative decay factor (e.g., 0.95).
+    * ``floor`` – lower bound for ``tau``.
+    * ``interval`` – interval in seconds between decays.
     """
-    try:
-        factor = float(getattr(settings, "TAU_DECAY_FACTOR"))
-        floor = float(getattr(settings, "TAU_MIN_FLOOR"))
-        interval = float(getattr(settings, "TAU_ANNEAL_INTERVAL"))
-    except Exception as exc:
-        raise RuntimeError("Invalid temperature annealing configuration") from exc
+    factor = TAU_DECAY_FACTOR
+    floor = TAU_FLOOR
+    interval = TAU_INTERVAL
     if factor <= 0 or factor >= 1:
-        raise RuntimeError("tau_decay_factor must be in (0, 1)")
+        raise RuntimeError("TAU_DECAY_FACTOR must be in (0, 1)")
     if floor <= 0:
-        raise RuntimeError("tau_min_floor must be positive")
+        raise RuntimeError("TAU_FLOOR must be positive")
     if interval <= 0:
-        raise RuntimeError("tau_anneal_interval must be positive")
+        raise RuntimeError("TAU_INTERVAL must be positive")
     return {"factor": factor, "floor": floor, "interval": interval}
 
 

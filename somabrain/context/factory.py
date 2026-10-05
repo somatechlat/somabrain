@@ -31,10 +31,10 @@ except Exception:
     _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
 _working_memory = WorkingMemoryBuffer()
 _retrieval_weights = RetrievalWeights(
-    alpha=float(getattr(settings, "RETRIEVAL_ALPHA")),
-    beta=float(getattr(settings, "RETRIEVAL_BETA")),
-    gamma=float(getattr(settings, "RETRIEVAL_GAMMA")),
-    tau=float(getattr(settings, "RETRIEVAL_TAU")),
+    alpha=float(getattr(settings, "SOMABRAIN_RETRIEVAL_ALPHA")),
+    beta=float(getattr(settings, "SOMABRAIN_RETRIEVAL_BETA")),
+    gamma=float(getattr(settings, "SOMABRAIN_RETRIEVAL_GAMMA")),
+    tau=float(getattr(settings, "SOMABRAIN_RETRIEVAL_TAU")),
 )
 _utility_weights = UtilityWeights()
 _memory_backend = MultiTenantMemory(cfg=settings)

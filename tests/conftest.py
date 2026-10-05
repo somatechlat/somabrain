@@ -63,7 +63,7 @@ def _apply_env(env_dict: dict) -> None:
 
 
 def pytest_configure(config):
-    """Register custom markers."""
+    """Register custom markers and seed test-only secret state."""
     config.addinivalue_line("markers", "aaas: AAAS mode tests (requires Docker infra)")
     config.addinivalue_line("markers", "standalone: Standalone mode tests")
     config.addinivalue_line("markers", "slow: Long-running tests")
@@ -73,6 +73,43 @@ def pytest_configure(config):
         "markers",
         "no_django: test covers a Django-free package and must not boot settings",
     )
+    # Pre-seed somabrain.settings.infra._RESOLVED with test-only secret state
+    # so the Django settings chain can import without a live Vault.  The infra
+    # module is loaded from its file (bypassing the package __init__ chain that
+    # runs credential gates) and registered under its real dotted name so the
+    # subsequent normal import reuses this module object and its state.
+    try:
+        import importlib.util as _ilu
+        import sys as _sys
+        from pathlib import Path as _Path
+
+        _infra_key = "somabrain.settings.infra"
+        if _infra_key not in _sys.modules:
+            _infra_path = (
+                _Path(__file__).resolve().parent.parent
+                / "somabrain"
+                / "settings"
+                / "infra.py"
+            )
+            _spec = _ilu.spec_from_file_location(_infra_key, str(_infra_path))
+            if _spec and _spec.loader:
+                _mod = _ilu.module_from_spec(_spec)
+                _sys.modules[_infra_key] = _mod
+                _spec.loader.exec_module(_mod)
+                # Seed test-only secrets before any credential gate reads them.
+                _mod._RESOLVED.setdefault(
+                    "SOMABRAIN_MEMORY_HTTP_TOKEN", "test-only-token"
+                )
+                _mod._RESOLVED.setdefault("POSTGRES_PASSWORD", "test-only-password")
+                _mod._RESOLVED.setdefault(
+                    "SOMABRAIN_PROVENANCE_SECRET", "test-only-provenance"
+                )
+                # The module-level constants were computed from the empty
+                # _RESOLVED dict during exec_module.  Refresh them now.
+                _mod.SOMABRAIN_MEMORY_HTTP_TOKEN = "test-only-token"
+                _mod.SOMABRAIN_PROVENANCE_SECRET = "test-only-provenance"
+    except Exception:
+        pass
 
 
 _DJANGO_READY = False

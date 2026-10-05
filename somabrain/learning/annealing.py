@@ -1,9 +1,11 @@
 """Tau annealing and entropy cap logic for the adaptation engine.
 
 This module handles:
-- Tau decay (exponential decay of tau parameter)
+- Tau decay (multiplicative decay of tau parameter)
 - Tau annealing (linear, exponential, step-based annealing)
 - Entropy cap enforcement
+
+The tau floor is ``somabrain.math.contracts.TAU_FLOOR`` (single source).
 
 PERFORMANCE: Uses Rust native functions when available for hot path optimization.
 """
@@ -14,6 +16,8 @@ import logging
 import math
 
 logger = logging.getLogger(__name__)
+
+from somabrain.math.contracts import TAU_FLOOR
 
 try:
     from django.conf import settings
@@ -99,13 +103,13 @@ def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) ->
         tau_min = (
             float(env_tau_min)
             if env_tau_min is not None
-            else _rt.get_float("tau_min", 0.05)
+            else _rt.get_float("tau_min", TAU_FLOOR)
         )
     except Exception:
         anneal_mode = ""
         anneal_rate = 0.0
         anneal_step_interval = 10
-        tau_min = 0.05
+        tau_min = TAU_FLOOR
 
     # Apply tenant-specific overrides
     ov = tenant_override if tenant_override is not None else {}
@@ -251,7 +255,7 @@ def apply_tau_decay(
 
     old_tau = float(current_tau)
     new_tau = old_tau * (1.0 - tau_decay_rate)
-    new_tau = max(0.05, new_tau)
+    new_tau = max(TAU_FLOOR, new_tau)
 
     try:
         from somabrain import metrics as _metrics

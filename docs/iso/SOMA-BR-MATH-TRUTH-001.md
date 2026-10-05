@@ -28,6 +28,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | Engineering | Initial extraction of equations, symbols, constants, and invariants from production code only. False-claims appendix for legacy proof docs. |
+| 1.1.0 | 2026-10-05 | Engineering | W2 neuromodulation: one store (`runtime/neuromodulators.py`; admin tree deleted), homeostatic law `m ← Π(m+η(δ−m))`, shared ACh/5-HT target laws, 5-HT gate consumer, Supervisor wired on `/act`, Rust ODE deleted. T32 DELETED, T33/T35 rewritten, T35b added. |
 
 ### Scope Files (read in full)
 
@@ -42,7 +43,7 @@
 | `somabrain/admin/core/learning/{math,prediction,salience,scoring}.py` | Learning math surface, predictors, FD salience, unified scorer |
 | `somabrain/admin/core/{quantum,quantum_pure,context_hrr,sdr,numerics}.py` | HRR/BHDC layer, pure HRR (test-only), HRR context, SDR/LSH, numeric primitives |
 | `somabrain/learning/adaptation/engine.py`, `somabrain/learning/annealing.py`, `somabrain/learning/config.py` | Python adaptation engine, tau annealing/entropy, config dataclasses |
-| `somabrain/admin/brain/neuromodulators.py`, `somabrain/runtime/neuromodulators.py`, `somabrain/admin/cognitive/amygdala.py` | Neuromodulator hubs, adaptive feedback, amygdala salience |
+| `somabrain/runtime/neuromodulators.py`, `somabrain/admin/cognitive/amygdala.py`, `somabrain/runtime/supervisor.py`, `somabrain/adaptive/core.py` | THE neuromodulator store, adaptive homeostatic feedback, amygdala salience, free-energy supervisor |
 | `somabrain/memory/scoring.py`, `somabrain/memory/wm/wm_salience.py`, `somabrain/context/builder.py` | Recall ranking/recency, WM salience, retrieval weight softmax |
 | `somabrain/calibration/temperature_scaling.py` | Temperature scaling, ECE, Brier |
 | `somabrain/predictors/base.py` | Heat-diffusion predictor |
@@ -83,8 +84,8 @@ Line ranges are inclusive and refer to the file as read at extraction time.
 | `gain_α…gain_ν` | per-parameter gains | `1.0, -0.5, 1.0, -0.25, -0.25` | `somabrain/learning/config.py:76-90`; `rust_core/src/adaptation.rs:118-122` (Rust defaults `0.1, 0.05, 0.1, 0.05, 0.02`) |
 | `w_cosine`, `w_fd`, `w_recency` | unified scorer weights | `0.6`, `0.25`, `0.15` | `somabrain/settings/cognitive.py:170-172` |
 | `w_novelty`, `w_error`, `w_fd` | salience weights | constructor; dense defaults `0.6`, `0.4`, `0.0` | `somabrain/admin/core/learning/salience.py:30-32`; `somabrain/admin/cognitive/amygdala.py:66-74` |
-| `m = (m₁…m₄)` | dopamine, serotonin, noradrenaline, acetylcholine | see §4 | `rust_core/src/neuro.rs:44-48` |
-| `k_d`, `k_r`, `bias`, `u_scale` | neuromod dynamics coefficients | `[0.8,0.3,0.1,0.2]`, `[0.1,0.2,0.3,0.4]`, `0`, `0.1` | `rust_core/src/neuro.rs:32-52` |
+| `m = (m₁…m₄)` | dopamine, serotonin, noradrenaline, acetylcholine | see §4 | `somabrain/runtime/neuromodulators.py` (`NeuromodState`); bounds `somabrain/math/contracts.py` (`NEURO_BOUNDS`) |
+| `k_d`, `k_r`, `bias`, `u_scale` | neuromod dynamics coefficients | **DELETED** (W2.6 / DEBT-007) | formerly `rust_core/src/neuro.rs`; no dynamics remain in Rust |
 | `ε`, `_EPS`, `tiny` | numerical floor | `1e-12` (Python math), `1e-10` (Rust), `1e-6`/`1e-12` (numerics dtype) | see §4 |
 | `K` | Chebyshev degree | `24` default; `30` in `PredictorConfig` | `somabrain/math/graph_heat.py:31`; `somabrain/predictors/base.py:52` |
 | `m_L`, `lanczos_m` | Lanczos steps | `16`/`20`/`32` by call site | `somabrain/math/lanczos_chebyshev.py:18`; `somabrain/math/graph_heat.py:33,38` |
@@ -376,6 +377,7 @@ lr       = base_lr · lr_scale
 ```
 - **file:line** `somabrain/learning/adaptation/engine.py:350-362`; Rust `rust_core/src/adaptation.rs:230-233`
 - **Status:** LIVE in Python only when `enable_dynamic_lr and gains == AdaptationGains.from_settings()` (`engine.py:353-355`); otherwise `lr = base_lr`. Rust version is EXPORTED.
+- **Note (FIXED, W2.2 / DEBT-002):** `dopamine` is read from the process-wide store (`bootstrap.singletons.get_neuromodulators().get_state(tenant)`). The former per-call `PerTenantNeuromodulators()` construction (always empty ⇒ constant LR) is gone.
 
 **(T25) Tau annealing (Python, multiplicative)**
 ```
@@ -460,29 +462,77 @@ else:   lr = clamp(base_lr,       0.001, 1.0)
 
 ### 2.4 Neuromodulation
 
-**(T32) Neuromodulator dynamics (Rust ODE step)**
+**Single store (W2 / DEBT-001 FIXED).** `somabrain/runtime/neuromodulators.py`
+is the only implementation. `somabrain/admin/brain/neuromodulators.py` is
+deleted. Every consumer — `/act` (`cognitive_loop_service.py`),
+`/neuromod/*` (`api/endpoints/neuromod.py`), AdaptationEngine DA→LR
+(`engine.py:_get_dopamine_level`), amygdala, Supervisor — goes through
+`bootstrap.singletons.get_neuromodulators()` (or a directly constructed store
+in tests).
+
+**(T32) Neuromodulator dynamics — DELETED (W2.6 / DEBT-007).** The Rust ODE
 ```
 ẋ_i = k_d[i] · x_i − k_r[i] · m_i + bias[i] + u_scale · u_i
 m_i ← m_i + ẋ_i · dt
-clamps: dopamine ∈ [0.2, 0.8]
-        serotonin ∈ [0.0, 1.0]
-        noradrenaline ∈ [0.0, 0.1]
-        acetylcholine ∈ [0.0, 0.1]
 ```
-- **file:line** `rust_core/src/neuro.rs:70-90` (defaults `32-52`)
-- **Status:** EXPORTED; Python hubs sync state to Rust when available (`somabrain/admin/brain/neuromodulators.py:123-153`, same in `somabrain/runtime/neuromodulators.py:125-155`)
+had no production caller (only `scripts/verify_rust_migration.py`). It is
+deleted from `rust_core/src/neuro.rs`, together with `set_dynamics` /
+`get_dynamics` and the `neuro_k_d_*` / `neuro_k_r_*` / `neuro_u_scale`
+brain_settings keys. `Neuromodulators` in Rust is a pure state mirror
+(`get_state`/`set_state`/`reset`); dynamics live in Python only.
 
-**(T33) Adaptive neuromod feedback (Python)**
+**Bounds Π (single clamp table).** `somabrain.math.contracts.NEURO_BOUNDS`:
 ```
-f_dopamine = success_rate + DOPAMINE_BIAS [+ DOPAMINE_REWARD_BOOST if task=="reward_learning"]
-f_serotonin = 1 − error_rate
-f_norad = min( NORAD_MAX,
-               (1 / max(latency_floor, latency)) · LATENCY_SCALE
-               + URGENCY_FACTOR·[task=="urgent"] )
-f_acetyl = accuracy · ACCURACY_SCALE + MEMORY_FACTOR·[task=="memory"]
+dopamine      ∈ [0.2, 0.8]
+serotonin     ∈ [0.0, 1.0]
+noradrenaline ∈ [0.0, 0.1]
+acetylcholine ∈ [0.0, 0.1]
 ```
-- **file:line** `somabrain/admin/brain/neuromodulators.py:322-384` (duplicate body `somabrain/runtime/neuromodulators.py:324-386`)
-- **Status:** LIVE (via `AdaptiveNeuromodulators.update_from_performance`)
+- **file:line** `somabrain/math/contracts.py` (`NEURO_BOUNDS`); projection
+  `project` / `NeuromodState.clamped` in `somabrain/runtime/neuromodulators.py`
+- **Status:** LIVE. `PerTenantNeuromodulators.set_state` and
+  `Neuromodulators.set_state` store `state.clamped()` (Π at the store).
+
+**(T33) Homeostatic update law (W2.3 / DEBT-004 FIXED)**
+```
+m_i ← Π( m_i + η_i (δ_i − m_i) )
+```
+`δ_i` is a *target level* in the modulator's bounds (not a velocity).
+Implemented by `AdaptiveParameter.update` (`somabrain/adaptive/core.py`) and
+by `Supervisor.adjust` (gain-limited, EWMA-smoothed variant of the same
+mean-revert). Parameters can decrease on adverse evidence and cannot drift
+monotonically into a bound.
+
+**Target laws δ_i (shared pure functions in
+`somabrain/runtime/neuromodulators.py`):**
+```
+δ_ACh = Π_ACh( 0.5·novelty + 0.3·pred_error + 0.2·memory_load )   # acetylcholine_target
+δ_5HT = 1 − clamp(pred_error, 0, 1)                                # serotonin_target
+δ_DA  = Π_DA ( clamp(success, 0, 1) )                              # dopamine_target
+δ_NE  = Π_NE ( clamp(arousal, 0, 1) )                              # noradrenaline_target
+```
+Adaptive feedback wiring (`update_from_performance`):
+```
+success = success_rate + DOPAMINE_BIAS [+ DOPAMINE_REWARD_BOOST if task=="reward_learning"]
+arousal = (1 / max(latency_floor, latency)) · LATENCY_SCALE + URGENCY_FACTOR·[task=="urgent"]
+memory_load = MEMORY_FACTOR·[task=="memory"]
+δ_DA  = dopamine_target(success)
+δ_5HT = serotonin_target(error_rate)
+δ_NE  = noradrenaline_target(arousal)
+δ_ACh = acetylcholine_target(novelty, pred_error or error_rate, memory_load)
+```
+- **file:line** `somabrain/runtime/neuromodulators.py` (laws + `_calculate_*_feedback`);
+  `somabrain/adaptive/core.py` (`AdaptiveParameter.update`)
+- **Status:** LIVE
+
+**ACh law (DEBT-005 FIXED).** ACh is **attention demand**. The same
+`acetylcholine_target` is used by the adaptive path and by
+`Supervisor.adjust`; given the same `(novelty, pred_error)` both move ACh in
+the same direction (property-tested in
+`tests/unit/test_neuromod_wiring.py::TestAChLaw`).
+
+**5-HT law (DEBT-006 FIXED).** 5-HT is stability `1 − pred_error` and has a
+real consumer: `AmygdalaSalience` gates (T35). No write-only modulator.
 
 **(T34) Amygdala salience (dense + FD)**
 ```
@@ -494,30 +544,47 @@ if method=="fd":
     fd_boost = w_fd · max(0, residual)
     if capture < fd_energy_floor:  fd_boost += w_fd·(fd_energy_floor − capture)
     s ← s + fd_boost
-s ← s + acetylcholine
+s ← s + acetylcholine          # ACh = attention demand raises salience
 s = clamp(s, 0, 1)
 ```
-- **file:line** `somabrain/admin/cognitive/amygdala.py:125-183`
+- **file:line** `somabrain/admin/cognitive/amygdala.py` (`AmygdalaSalience.score`)
 - **Status:** LIVE
 
-**(T35) Amygdala gates**
+**(T35) Amygdala gates (NE + 5-HT smoothing)**
 ```
-th_store = threshold_store + noradrenaline − hysteresis·[last_store]
-th_act   = threshold_act   + noradrenaline − hysteresis·[last_act]
+stability = clamp(serotonin, 0, 1)
+hyst      = hysteresis · (1 + stability)             # 5-HT response smoothing
+th_store = threshold_store + noradrenaline − hyst·[last_store]
+th_act   = threshold_act   + noradrenaline − hyst·[last_act]
 hard:  do_store = (s ≥ th_store);  do_act = (s ≥ th_act)
-soft:  p = σ( (s − th) / T ),  T = max(1e-4, soft_temperature)
+soft:  p = σ( (s − th) / T ),  T = max(1e-4, soft_temperature · (1 + stability))
        σ(x) = 1/(1+e^{−x}) with x clamped to [−20, 20]
        do_* = (p ≥ 0.5)
 ```
-- **file:line** `somabrain/admin/cognitive/amygdala.py:185-278` (thresholds `263-278`, sigmoid `244-261`)
-- **Status:** LIVE
+- **file:line** `somabrain/admin/cognitive/amygdala.py` (`_thresholds`, `gate_probs`)
+- **Status:** LIVE. Higher 5-HT widens hysteresis and the soft sigmoid
+  (decisions flap less). Documented consumer of serotonin.
+
+**(T35b) Supervisor free-energy P-controller (W2.6 wired)**
+```
+F = α_err · pred_error + β_nov · novelty
+δ_DA  = dopamine_target(1 − pred_error)
+δ_ACh = acetylcholine_target(novelty, pred_error)
+δ_NE  = noradrenaline_target(0.5 · (pred_error + novelty))
+δ_5HT = serotonin_target(pred_error)
+d_m   = clip(g · (δ_m − m), −lim, lim)      then EWMA-smoothed, then Π
+```
+- **file:line** `somabrain/runtime/supervisor.py` (`Supervisor.adjust`)
+- **Status:** LIVE when `SOMABRAIN_USE_META_BRAIN=True` — `get_supervisor()`
+  is wired into `POST /cognitive/act` (`api/endpoints/cognitive.py`).
+  Default-off is a product flag, not a missing wire.
 
 **(T36) Rust Amygdala linear salience / gate**
 ```
 salience = w₀·novelty + w₁·error + w₂·energy
 gate     = (salience > threshold)
 ```
-- **file:line** `rust_core/src/neuro.rs:156-162`
+- **file:line** `rust_core/src/neuro.rs` (`Amygdala`)
 - **Status:** EXPORTED
 
 ### 2.5 Memory / Scoring / Salience
@@ -542,12 +609,15 @@ projection:  p = √α ⊙ (Bᵀ v)
 
 **(T39) Unified scorer**
 ```
-score = clamp( w_cosine·cos(q,c) + w_fd·cos(P q, P c) + w_recency·exp(−age/τ_rec) , 0, 1 )
+terms   = [(w_cosine, cos(q,c))]
+        + [(w_fd, cos(Pq, Pc))]     if FD backend present
+        + [(w_recency, R(age))]     if age_seconds is not None
+score   = clamp( Σ w_i·v_i / Σ w_i , 0, 1 )      # renormalised over ACTIVE terms
 ```
-with `cos` from (T15); `P` = FD projection (T38); if no FD backend, `w_fd` term = 0; if `recency_steps is None`, recency term = 0. Weights themselves are read from settings and clamped to `[weight_min, weight_max]` (`scoring.py:63-73,78-97`).
-- **file:line** `somabrain/admin/core/learning/scoring.py:133-169` (components `104-131`)
+with `cos` from (T15); `P` = FD projection (T38); `R` = stretched-exponential recency (T41). Weights come from the **constructor** (factory reads `SOMABRAIN_SCORER_W_*` and passes them in) and are clamped to `[weight_min, weight_max]`. The class never re-reads settings.
+- **file:line** `somabrain/admin/core/learning/scoring.py:123-167` (components `96-121`, weights `43-68`)
 - **Status:** LIVE
-- **Note:** Constructor args `w_cosine,w_fd,w_recency` are **ignored**; values come from `SOMABRAIN_SCORER_*` settings (`scoring.py:64-72`).
+- **Note (FIXED, W5b / DEBT-022/023):** Constructor args are the sole weight source. Missing backends/terms are dropped and remaining weights renormalised, so the ceiling is always 1.0.
 
 **(T40) Working-memory salience**
 ```
@@ -555,21 +625,21 @@ novelty  = 1 − max_i cos(q, v_i)                 # 1.0 if empty / zero-norm
 recency  = 1 − cos(q, v_last)                    # query salience
 s_query  = clamp( α·novelty + β·reward + γ·recency, 0, 1 )
 s_item   = clamp( α·novelty + γ·item.recency, 0, 1 )
-s_evict  = clamp( α·novelty + γ·exp(−age/recency_scale), 0, 1 )
+s_evict  = clamp( α·novelty + γ·R(age), 0, 1 )
 ```
+`item.recency` and `R(age)` both come from the single kernel (T41).
 - **file:line** `somabrain/memory/wm/wm_salience.py:27-58` (query), `108-140` (item), `143-179` (evict), novelty `82-105`
-- **Status:** LIVE
+- **Status:** LIVE (FIXED, W5b — one kernel)
 
-**(T41) Recall recency features**
+**(T41) Canonical recency kernel (stretched exponential)**
 ```
-normalised   = age_seconds / max(scale, 1e-6)
-recency_steps = min( log1p(normalised)·sharpness , cap )
-damp         = exp( −normalised^sharpness )
-boost        = clamp(damp, floor, 1)
+R(age) = clamp( exp( −(age/scale)^sharpness ) , floor , 1 )
+recency_steps = min( log1p(age/scale)·sharpness , cap )
 ```
-defaults: `scale=60`, `cap=1000`, `sharpness=1.2`, `floor=0.05`.
-- **file:line** `somabrain/memory/scoring.py:134-161` (profile `105-131`)
-- **Status:** LIVE
+defaults from `somabrain.math.contracts`: `scale=RECENCY_SCALE=60` (`SOMABRAIN_WM_RECENCY_TIME_SCALE`),
+`cap=RECENCY_CAP=1000`, `sharpness=RECENCY_SHARPNESS=1.2`, `floor=RECENCY_FLOOR=0.05`.
+- **file:line** `somabrain/math/recency.py:19-95`; wrappers `memory/scoring.py:135-154`, `memory/client/ranking.py:251-266`, `admin/core/learning/scoring.py:111-121`, `memory/wm/wm_salience.py:178`, `memory/wm/wm_eviction.py:89`, `memory/wm/core.py:578`, `context/builder.py:489-502`
+- **Status:** LIVE — **single kernel** (FIXED, W5b / DEBT-020). The former `exp(-age/τ)` scorer path and the three conflicting `WM_RECENCY_TIME_SCALE` defaults are deleted.
 
 **(T42) Density factor**
 ```
@@ -588,8 +658,21 @@ final_rank_key = base·weight_factor + lex_bonus
 new_score = scorer.score(...) · recency_boost · density_factor
 new_score = clamp(new_score, 0, 1)
 ```
-- **file:line** `somabrain/memory/scoring.py:227-266` (rank), `349-441` (rescore)
+`lex_bonus` is the single implementation (T43b).
+- **file:line** `somabrain/memory/client/ranking.py:187-217` (rank), `381+` (rescore); re-exported by `memory/scoring.py:227-266`
 - **Status:** LIVE
+
+**(T43b) Lexical bonus (single formula)**
+```
+bonus = 0
+for field in {task, text, content, what, fact, headline, summary}:
+    if field == query:            bonus = max(bonus, 1.5)
+    elif query in field:          bonus = max(bonus, 1.0)
+token_matches = #{query tokens of length ≥ 3 appearing in any field}
+bonus += min(0.25 · token_matches, 1.0)
+```
+- **file:line** `somabrain/memory/client/ranking.py:152-184`
+- **Status:** LIVE — **one implementation** (FIXED, W5b / DEBT-021). The `hit_processing.py` `max(0.3+0.1·n)` copy is deleted.
 
 **(T44) Retrieval weight softmax + tau adaptation (context builder)**
 ```
@@ -773,6 +856,7 @@ early stop if β = 0
 
 **(T61) Chebyshev heat apply**
 ```
+(a, b) ← expand(a, b) = (max(0, a−ε), b+ε)     # ε = SPECTRAL_INTERVAL_EPSILON = 0.1
 A′ = (2A − (b+a)I)/(b−a)
 nodes_k = cos( π(k−0.5)/K ),  k=1..K
 λ_k = (b−a)/2 · nodes_k + (b+a)/2
@@ -780,8 +864,8 @@ f_k = exp(−t λ_k)
 c_k = (2/K) Σ f_j cos(k · arccos(nodes_j));  c_0 ← c_0/2
 y = Σ_{k=0}^{K} c_k T_k(A′) x        # Clenshaw recurrence
 ```
-- **file:line** `somabrain/math/lanczos_chebyshev.py:57-113` (coeffs `93-103`, Clenshaw `105-113`)
-- **Status:** LIVE
+- **file:line** `somabrain/math/lanczos_chebyshev.py:57-113` (coeffs `93-103`, Clenshaw `105-113`); expansion `somabrain/math/graph_heat.py:17-33,50-53`
+- **Status:** LIVE (FIXED, W5b / DEBT-017 — Lanczos Ritz bounds are expanded by ε before the affine map)
 
 **(T62) Lanczos expv (Krylov heat)**
 ```
@@ -977,18 +1061,20 @@ else:         return unbind(c, b)                    # T9
 | T29 | learning | EXPORTED | `adaptation.rs:281-305` |
 | T30 | learning | LIVE | `engine.py:532-541` |
 | T31 | learning | LIVE | `engine.py:571-573` |
-| T32 | neuromod | EXPORTED | `neuro.rs:70-90` |
-| T33 | neuromod | LIVE | `admin/brain/neuromodulators.py:322-384` |
-| T34 | neuromod | LIVE | `amygdala.py:125-183` |
-| T35 | neuromod | LIVE | `amygdala.py:185-278` |
-| T36 | neuromod | EXPORTED | `neuro.rs:156-162` |
+| T32 | neuromod | DELETED | Rust ODE removed (W2.6 / DEBT-007); homeostatic law is T33 |
+| T33 | neuromod | LIVE | `runtime/neuromodulators.py` (target laws) + `adaptive/core.py` (`m ← Π(m+η(δ−m))`) |
+| T34 | neuromod | LIVE | `amygdala.py` (`AmygdalaSalience.score`) |
+| T35 | neuromod | LIVE | `amygdala.py` (`_thresholds`, `gate_probs`) — 5-HT smoothing |
+| T35b | neuromod | LIVE* | `runtime/supervisor.py` (`Supervisor.adjust`) — gated `SOMABRAIN_USE_META_BRAIN` |
+| T36 | neuromod | EXPORTED | `neuro.rs` (`Amygdala`) |
 | T37 | memory | LIVE | `learning/salience.py:35-39` |
 | T38 | memory | LIVE | `learning/salience.py:71-192` |
-| T39 | memory | LIVE | `learning/scoring.py:133-169` |
-| T40 | memory | LIVE | `wm_salience.py:27-179` |
-| T41 | memory | LIVE | `memory/scoring.py:134-161` |
+| T39 | memory | LIVE | `learning/scoring.py:123-167` — constructor weights + FD-off renormalise (W5b) |
+| T40 | memory | LIVE | `wm_salience.py:27-179` — uses T41 kernel (W5b) |
+| T41 | memory | LIVE | `math/recency.py` — **single kernel** (W5b) |
 | T42 | memory | LIVE | `memory/scoring.py:164-202` |
-| T43 | memory | LIVE | `memory/scoring.py:227-441` |
+| T43 | memory | LIVE | `memory/client/ranking.py` — LIVE ranker (W5b) |
+| T43b | memory | LIVE | `memory/client/ranking.py:152-184` — **one lexical bonus** (W5b) |
 | T44 | memory | LIVE | `builder.py:315-464` |
 | T45 | memory | LIVE | `context_hrr.py:92-239` |
 | T46 | memory | LIVE | `context_hrr.py:107-128` |
@@ -1006,7 +1092,7 @@ else:         return unbind(c, b)                    # T9
 | T58 | calibration | LIVE | `temperature_scaling.py:93-100` |
 | T59 | calibration | LIVE | `temperature_scaling.py:103-200` |
 | T60 | cognition | LIVE | `lanczos_chebyshev.py:17-54` |
-| T61 | cognition | LIVE | `lanczos_chebyshev.py:57-113` |
+| T61 | cognition | LIVE | `lanczos_chebyshev.py:57-113` + `graph_heat.py` ε-expansion (W5b) |
 | T62 | cognition | LIVE | `lanczos_chebyshev.py:116-164` |
 | T63 | cognition | LIVE | `predictors/base.py:76-123` |
 | T64 | cognition | LIVE | `predictors/base.py:184-194` |
@@ -1030,46 +1116,49 @@ else:         return unbind(c, b)                    # T9
 
 ## 4. Constants Table
 
-Values are the coded defaults. "Appears in" lists every site found in the scope files (and settings sources they read).
+Values are the coded defaults. "Appears in" lists every site found in the scope files (and settings sources they read). **As of W1b**, shared constants have a single home: `somabrain/math/contracts.py`. Consumers import from there; duplicates are deleted.
 
 | Constant | Value | Symbol | Appears in | Duplicate? |
 |---|---|---|---|---|
-| Wiener λ default | `compute_wiener_lambda(p, 8)` at production `p` (≈ `5.696e-5` at `p=0.1`) | `lambda_reg` | `rust_core/src/mathcore.rs`; `somabrain/math/bhdc_encoder.py`; consumed by `bhdc.rs`, `quantum.py`, `brain_settings/models.py` (`gmd_lambda_reg`) | **No** — single formula source (W4.1 FIXED) |
-| λ\* closed form | `Δ² / (12 p (1−p))`, `Δ = 2/(2^bits − 1)` | `λ*` | `rust_core/src/mathcore.rs` (`compute_wiener_lambda`); Python mirror `somabrain/math/bhdc_encoder.py` | formula only; no constant |
-| Quantization Δ | `2/(2^bits − 1)` (`2/255` at 8-bit) | `Δ` | `rust_core/src/mathcore.rs` (`compute_wiener_lambda`, `quantize_8bit`) | — |
-| Quantization bits | `8` | `bits` | `brain_settings/models.py` (`gmd_quantization_bits`); honored by `compute_wiener_lambda` | live parameter (W4.1 FIXED) |
-| BayesianMemory η | `0.08` (DB), clamp `[0.01,0.5]` | `η` | `brain_settings/models.py:225-231`; `mathcore.rs:377` | — |
-| BayesianMemory α (capacity) | `640.0` | `α` | `mathcore.rs:379`; `brain_settings/models.py:218` | unused in formulas |
-| GMD δ (max pairwise sim) | `0.01` | `δ` | `brain_settings/models.py:216` | not read by mathcore |
-| GMD ε (collision) | `0.05` | `ε` | `brain_settings/models.py:217` | not read by mathcore |
-| BHDC sparsity | `0.1` | `p` | `settings/cognitive.py:264`; `settings/django_core.py:45,65` | consistent |
-| HRR dim | `8192` (brain_settings); env-dependent | `D` | `brain_settings/models.py:221` | — |
-| Global seed | `42` | `seed` | `brain_settings/models.py:223` | Dropout seed also 42 (`mathcore.rs:138`) |
-| Retrieval α/β/γ/τ | `1.0 / 0.2 / 0.1 / 0.7` | — | `settings/cognitive.py:178-181`; `adaptation.rs:24`; `engine.py:244` | consistent |
-| Utility λ/μ/ν | `1.0 / 0.1 / 0.05` | — | `learning/config.py:29-37`; `adaptation.rs:62` | consistent |
-| Adaptation gains (Python) | `1.0, −0.5, 1.0, −0.25, −0.25` | `gain_*` | `learning/config.py:76-90`; `settings/cognitive.py:350-360` | **CONFLICT with Rust** |
-| Adaptation gains (Rust) | `0.1, 0.05, 0.1, 0.05, 0.02` | `gain_*` | `rust_core/src/adaptation.rs:118-122` | **CONFLICT with Python** |
-| Adaptation bounds (Python) | α∈[0.1,5], γ∈[0,1], λ∈[0.1,5], μ∈[0.01,5], ν∈[0.01,5] | — | `learning/config.py:139-168`; `settings/cognitive.py:362-383` | **CONFLICT with Rust** |
-| Adaptation bounds (Rust) | α∈[0.1,2], γ∈[0,1], λ∈[0.1,2], μ∈[0,0.5], ν∈[0,0.2] | — | `rust_core/src/adaptation.rs:113-117` | **CONFLICT with Python** |
+| Wiener λ default | `compute_wiener_lambda(p, 8)` at production `p` (≈ `5.696e-5` at `p=0.1`) | `lambda_reg` | `somabrain/math/contracts.py` (`compute_wiener_lambda`); consumed by `bhdc_encoder.py`, `bhdc.rs`, `quantum.py`, `brain_settings/models.py` (`gmd_lambda_reg`) | **No** — single formula source in contracts (W4.1 + W1b FIXED) |
+| λ\* closed form | `Δ² / (12 p (1−p))`, `Δ = 2/(2^bits − 1)` | `λ*` | `somabrain/math/contracts.py` (`compute_wiener_lambda`); Rust mirror `rust_core/src/mathcore.rs` | formula only; no constant |
+| Quantization Δ | `2/(2^bits − 1)` (`2/255` at 8-bit) | `Δ` | `somabrain/math/contracts.py` (`QUANT_STEP`); `rust_core/src/mathcore.rs` | **No** — `contracts.QUANT_STEP` |
+| Quantization bits | `8` | `bits` | `somabrain/math/contracts.py` (`QUANT_BITS`); `brain_settings/models.py` (`gmd_quantization_bits`) | **No** — `contracts.QUANT_BITS` |
+| BHDC sparsity | `0.1` | `p` | `somabrain/math/contracts.py` (`BHDC_P`); `settings/cognitive.py:264` | **No** — `contracts.BHDC_P` (W1b) |
+| HRR dim | `8192` | `D` | `somabrain/math/contracts.py` (`BHDC_D`); `settings/cognitive.py` (`SOMABRAIN_HRR_DIM`, `HRR_DIM`) | **No** — `contracts.BHDC_D` (W1b DEF-10 FIXED) |
+| Adaptation gains (Python) | `1.0, −0.5, 1.0, −0.25, −0.25` | `gain_*` | `somabrain/math/contracts.py` (`ADAPT_GAINS`); `learning/config.py`; `settings/cognitive.py` | **No** — `contracts.ADAPT_GAINS` (W1b DEF-13 FIXED) |
+| Adaptation bounds (Python) | α∈[0.1,5], γ∈[0,1], λ∈[0.1,5], μ∈[0.01,5], ν∈[0.01,5] | — | `somabrain/math/contracts.py` (`ADAPT_BOUNDS`); `learning/config.py` | **No** — `contracts.ADAPT_BOUNDS` (W1b) |
+| Adaptation gains (Rust) | `0.1, 0.05, 0.1, 0.05, 0.02` | `gain_*` | `rust_core/src/adaptation.rs:118-122` | **CONFLICT with Python** (DEBT-008, W3) |
+| tau floor | `0.1` | `τ_min` | `somabrain/math/contracts.py` (`TAU_FLOOR`); `settings/cognitive.py` (`SOMABRAIN_TAU_MIN`); `learning/annealing.py`; `tasks/temperature_anneal.py` | **No** — `contracts.TAU_FLOOR` (W1b DEF-05 FIXED) |
+| tau decay factor | `0.95` | — | `somabrain/math/contracts.py` (`TAU_DECAY_FACTOR`); `tasks/temperature_anneal.py` | **No** — `contracts.TAU_DECAY_FACTOR` (W1b DEF-06 FIXED) |
+| tau anneal interval | `60.0` | — | `somabrain/math/contracts.py` (`TAU_INTERVAL`); `tasks/temperature_anneal.py` | **No** — `contracts.TAU_INTERVAL` (W1b) |
+| Recency scale | `60.0` | `scale` | `somabrain/math/contracts.py` (`RECENCY_SCALE`); `settings/cognitive.py`; `memory/scoring.py` | **No** — `contracts.RECENCY_SCALE` (W1b DEF-02 FIXED) |
+| Recency sharpness | `1.2` | `sharpness` | `somabrain/math/contracts.py` (`RECENCY_SHARPNESS`); `memory/scoring.py`; `builder.py` | **No** — `contracts.RECENCY_SHARPNESS` (W1b) |
+| Recency floor | `0.05` | `floor` | `somabrain/math/contracts.py` (`RECENCY_FLOOR`); `memory/scoring.py`; `builder.py` | **No** — `contracts.RECENCY_FLOOR` (W1b) |
+| Scorer weights | `0.6 / 0.25 / 0.15` | `w_*` | `somabrain/math/contracts.py` (`SCORER_WEIGHTS`); `settings/cognitive.py` | **No** — `contracts.SCORER_WEIGHTS` (W1b) |
+| Promotion θ / ticks | `0.85` / `3` | — | `somabrain/math/contracts.py` (`PROMOTE_THETA`, `PROMOTE_TICKS`); `memory/promotion.py` | **No** — `contracts.*` (W1b) |
+| Neuromod clamps | DA [0.2,0.8], 5HT [0,1], NE [0,0.1], ACh [0,0.1] | — | `somabrain/math/contracts.py` (`NEURO_BOUNDS`); `neuro.rs:84-87`; `settings/neuro.py` | **No** — `contracts.NEURO_BOUNDS` (W1b) |
 | adapt_lr | `0.05` (min 0, max 0.25) | `lr` | `brain_settings/models.py:232-238`; `adaptation.rs:105` | — |
-| Scorer weights | `0.6 / 0.25 / 0.15` | `w_*` | `settings/cognitive.py:170-172` | constructor args ignored |
+| Scorer weights | `0.6 / 0.25 / 0.15` from `contracts.SCORER_WEIGHTS` | `w_*` | `somabrain/math/contracts.py`; `settings/cognitive.py:191-195`; factory `bootstrap/singletons.py:232-241` | **No** — constructor honors args (W5b) |
+| Recency scale | `60.0` (`contracts.RECENCY_SCALE`) | `scale` | `math/contracts.py`; `settings/cognitive.py:149-151` | **No** — one key (W5b) |
+| Recency sharpness | `1.2` (`contracts.RECENCY_SHARPNESS`) | `sharpness` | `math/contracts.py`; `settings/cognitive.py:203` | **No** (W5b) |
+| Recency floor | `0.05` (`contracts.RECENCY_FLOOR`) | `floor` | `math/contracts.py`; `settings/cognitive.py:204` | **No** (W5b) |
+| Recency cap | `1000` (`contracts.RECENCY_CAP`) | `cap` | `math/contracts.py`; `settings/cognitive.py:152` | **No** (W5b) |
 | Salience dense weights | `0.6 / 0.4 / 0.0` | `w_novelty, w_error, w_fd` | `learning/salience.py:30-32` | — |
 | Amygdala soft T | settings default `0.1`, floor `1e-4` | `T` | `amygdala.py:79-82,244` | — |
 | Amygdala FD energy floor | `0.9` | `fd_energy_floor` | `amygdala.py:83-86` | — |
-| Dopamine base | **`0.5`** (Rust) / **`0.4`** (settings) | `m₁` | `neuro.rs:45` vs `settings/neuro.py:10` | **CONFLICT** |
-| Serotonin base | `0.5` both | `m₂` | `neuro.rs:46`; `settings/neuro.py:11-13` | consistent |
-| Noradrenaline base | **`0.05`** (Rust) / **`0.0`** (settings) | `m₃` | `neuro.rs:47` vs `settings/neuro.py:14` | **CONFLICT** |
-| Acetylcholine base | **`0.05`** (Rust) / **`0.0`** (settings) | `m₄` | `neuro.rs:48` vs `settings/neuro.py:15` | **CONFLICT** |
-| Neuromod clamps | DA [0.2,0.8], 5HT [0,1], NE [0,0.1], ACh [0,0.1] | — | `neuro.rs:84-87`; `settings/neuro.py:18-31` | consistent |
-| Neuromod `k_d` | `[0.8, 0.3, 0.1, 0.2]` | `k_d` | `neuro.rs:34` | brain_settings names exist, not auto-loaded into Rust |
-| Neuromod `k_r` | `[0.1, 0.2, 0.3, 0.4]` | `k_r` | `neuro.rs:38` | — |
-| Neuromod `u_scale` | `0.1` | `u_scale` | `neuro.rs:29,52` | — |
+| Dopamine base | `0.4` (settings; the live store default) | `m₁` | `settings/neuro.py:10`; `runtime/neuromodulators.py` | Rust mirror init `0.5` is overwritten by the first `set_state` sync |
+| Serotonin base | `0.5` | `m₂` | `settings/neuro.py:11-13` | consistent |
+| Noradrenaline base | `0.0` (settings) | `m₃` | `settings/neuro.py:14` | Rust mirror init `0.05` overwritten on sync |
+| Acetylcholine base | `0.0` (settings) | `m₄` | `settings/neuro.py:15` | Rust mirror init `0.05` overwritten on sync |
+| Neuromod clamps | DA [0.2,0.8], 5HT [0,1], NE [0,0.1], ACh [0,0.1] | Π | `math/contracts.py` (`NEURO_BOUNDS`); `runtime/neuromodulators.py` (`project`); `settings/neuro.py:18-31` | **No** — `contracts.NEURO_BOUNDS` |
+| Neuromod `k_d` / `k_r` / `u_scale` | **DELETED** | — | formerly `neuro.rs`, `brain_settings/models.py` | removed with the dead ODE (W2.6 / DEBT-007) |
 | Entropy sharpen rate | `0.8` | `sharpen_rate` | `annealing.py:339`; `brain_settings/models.py:399` | builder variant uses adaptive scale (T28b) |
 | Entropy final sharpen | `0.05` | `final_sharpen` | `annealing.py:340`; `brain_settings/models.py:400`; `builder.py:424` | consistent |
 | tau_min | **`0.05`** / **`0.01`** | `τ_min` | `annealing.py:254,102,108` vs `adaptation.rs:202` vs `engine.py:571-573` | **CONFLICT (3 values)** |
-| Recency half-life | `60.0` | `scale` | `memory/scoring.py:96-98`; `settings/cognitive.py:182` | consistent |
-| Recency sharpness | `1.2` | `sharpness` | `memory/scoring.py:115-121`; `builder.py:145-146` | consistent |
-| Recency floor | `0.05` | `floor` | `memory/scoring.py:122-130`; `builder.py:147-149` | consistent |
+| Recency half-life | `60.0` (`contracts.RECENCY_SCALE`) | `scale` | `math/recency.py`; `settings/cognitive.py:149-151` | **No** — single source (W5b) |
+| Recency sharpness | `1.2` | `sharpness` | `math/recency.py`; `contracts.py` | consistent |
+| Recency floor | `0.05` | `floor` | `math/recency.py`; `contracts.py` | consistent |
 | Density target/floor/weight | `0.2 / 0.6 / 0.35` | — | `memory/scoring.py:176-178`; `builder.py:150-156` | consistent |
 | Sinkhorn ε / tol / niter | `1e-2 / 1e-6 / 1000` (solver), maxiter `5000` (bridge) | `eps, tol` | `sinkhorn.py:16-17`; `bridge.py:35-40` | niter differs (1000 vs 5000) |
 | APPR α / eps | `0.85` / `TRUTH_APPR_EPS` default `"1e-4"` | `α` | `appr.py:18,32`; `settings/cognitive.py:516` | — |
@@ -1110,10 +1199,10 @@ These are clamps/floors/guards present in code.
 8. **Neuromodulator clamps** — DA [0.2, 0.8], 5HT [0, 1], NE [0, 0.1], ACh [0, 0.1] (`neuro.rs:84-87`).
 9. **Adaptation weight clamps** — Python `_constrain` (`engine.py:441-449`) + `UtilityWeights.clamp` (`config.py:39-57`); Rust `.clamp(...)` (`adaptation.rs:169-179`).
 10. **Tau floors** — Python `max(tau_min, ·)` after anneal (`annealing.py:212`); decay floor `0.05` (`annealing.py:254`); Rust `max(tau_min, ·)` (`adaptation.rs:261`); `set_tau` clamp [0.01, 10] (`adaptation.rs:202`); error-driven τ clamp [0.01, 10] (`engine.py:571-573`).
-11. **Scorer weights clamped to [weight_min, weight_max]** — `learning/scoring.py:78-97`.
-12. **Scorer total clamped to [0, 1]** — `learning/scoring.py:164`.
+11. **Scorer weights clamped to [weight_min, weight_max]** — `learning/scoring.py:70-89`.
+12. **Scorer total clamped to [0, 1]** after renormalisation over active terms — `learning/scoring.py:151-162` (FIXED, W5b — FD-off ceiling is 1.0).
 13. **Salience clamped to [0, 1]** — `learning/salience.py:39`; `amygdala.py:183`; `wm_salience.py:58,140,179`.
-14. **Recency boost clamped to [floor, 1]** — `memory/scoring.py:160`; `builder.py:537`.
+14. **Recency boost clamped to [floor, 1]** — `math/recency.py:55` (single kernel, W5b).
 15. **Density factor clamped to [floor, 1]** — `memory/scoring.py:202`; `builder.py:564`.
 16. **Rescored hit score clamped to [0, 1]** — `memory/scoring.py:434`.
 17. **FD residual/capture ratios clamped to [0, 1]** — `learning/salience.py:84,169-172`.

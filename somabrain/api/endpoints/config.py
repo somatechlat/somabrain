@@ -45,11 +45,11 @@ def get_config(request: HttpRequest):
             "consolidation_enabled": getattr(
                 settings, "SOMABRAIN_CONSOLIDATION_ENABLED", True
             ),
-            "use_planner": getattr(settings, "USE_PLANNER"),
-            "use_microcircuits": getattr(settings, "USE_MICROCIRCUITS"),
+            "use_planner": getattr(settings, "SOMABRAIN_USE_PLANNER"),
+            "use_microcircuits": getattr(settings, "SOMABRAIN_USE_MICROCIRCUITS"),
         },
         "limits": {
-            "plan_max_steps": getattr(settings, "PLAN_MAX_STEPS"),
+            "plan_max_steps": getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS"),
             "hrr_dim": getattr(settings, "HRR_DIM"),
         },
     }

@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class BrainSettingNotFound(ImproperlyConfigured):
-    """Brain setting not in DB. Run initialize_defaults() first."""
+    """Brain setting not in DB. Seed the profile first.
+
+    Operator action: ``python manage.py init_brain_settings --tenant <tenant>``.
+    """
 
 
 
@@ -118,6 +121,8 @@ class BrainSetting(models.Model):
                 return default_value
             raise BrainSettingNotFound(
                 get_message(ErrorCode.BRAIN_SETTING_NOT_FOUND, key=key, tenant=tenant)
+                + f" Operator action: `python manage.py init_brain_settings "
+                f"--tenant {tenant}`."
             )
 
     @classmethod
@@ -129,7 +134,11 @@ class BrainSetting(models.Model):
             # We look up the base setting to check metadata (category, validation)
             s_meta = cls.objects.get(key=base_key, tenant=tenant)
         except cls.DoesNotExist:
-            raise BrainSettingNotFound(f"Unknown base setting '{base_key}'.")
+            raise BrainSettingNotFound(
+                f"Unknown base setting '{base_key}' for tenant '{tenant}'. "
+                f"Operator action: `python manage.py init_brain_settings "
+                f"--tenant {tenant}`."
+            )
 
         # SAFETY POLICY: NO TOUCH for SYSTEM_CORE
         if s_meta.category == "SYSTEM_CORE" and not tenant == "default":
@@ -203,6 +212,31 @@ class BrainSetting(models.Model):
                 obj.save()
                 created += 1
         logger.info(f"Initialized {created} brain settings for {tenant}")
+        return created
+
+    @classmethod
+    def ensure_seeded(cls, tenant: str = "default") -> bool:
+        """Materialise the declared schema for a tenant that has no profile.
+
+        ``BRAIN_DEFAULTS`` is the one declaration of every knob (R-VAL-01).
+        This bootstrap turns that declaration into real rows. It is **not** a
+        read-time default: ``get`` still refuses on a miss, so an unseeded
+        tenant never looks seeded.
+
+        The ``default`` profile is seeded first because it is the inheritance
+        base every other tenant reads through (``_get_raw_value``). A tenant
+        with no rows of its own is then seeded from the same declaration so it
+        can hold explicit overrides later.
+
+        Returns True when this call created the profile.
+        """
+        created = False
+        if not cls.objects.filter(tenant="default").exists():
+            cls.initialize_defaults("default")
+            created = True
+        if tenant != "default" and not cls.objects.filter(tenant=tenant).exists():
+            cls.initialize_defaults(tenant)
+            created = True
         return created
 
 
@@ -383,19 +417,15 @@ BRAIN_DEFAULTS = {
         "max": 1.0,
     },
     "write_daily_limit": {"v": 100000, "cat": "RESOURCE", "learnable": True},
-    "adapt_gain_mu": {"v": -0.25, "cat": "adapt"},
-    "adapt_gain_nu": {"v": -0.25, "cat": "adapt"},
-    "adapt_gamma_max": {"v": 1.0, "cat": "adapt"},
-    "adapt_gamma_min": {"v": 0.0, "cat": "adapt"},
-    "adapt_lambda_max": {"v": 5.0, "cat": "adapt"},
-    "adapt_lambda_min": {"v": 0.1, "cat": "adapt"},
+    # DEF-13 FIXED: one adaptation namespace (adaptation_* matches
+    # SOMABRAIN_ADAPTATION_* env keys).  Duplicate adapt_* entries deleted.
     "adapt_max_history": {"v": 1000, "cat": "adapt"},
-    "adapt_mu_max": {"v": 5.0, "cat": "adapt"},
-    "adapt_mu_min": {"v": 0.01, "cat": "adapt"},
-    "adapt_nu_max": {"v": 5.0, "cat": "adapt"},
-    "adapt_nu_min": {"v": 0.01, "cat": "adapt"},
     "adaptation_gain_mu": {"v": -0.25, "cat": "adapt"},
     "adaptation_gain_nu": {"v": -0.25, "cat": "adapt"},
+    "adaptation_gamma_max": {"v": 1.0, "cat": "adapt"},
+    "adaptation_gamma_min": {"v": 0.0, "cat": "adapt"},
+    "adaptation_lambda_max": {"v": 5.0, "cat": "adapt"},
+    "adaptation_lambda_min": {"v": 0.1, "cat": "adapt"},
     "adaptation_mu_max": {"v": 5.0, "cat": "adapt"},
     "adaptation_mu_min": {"v": 0.01, "cat": "adapt"},
     "adaptation_nu_max": {"v": 5.0, "cat": "adapt"},
@@ -464,73 +494,6 @@ BRAIN_DEFAULTS = {
     "micro_max_tenants": {"v": 1000, "cat": "circuit"},
     # WM
     "mtwm_max_tenants": {"v": 1000, "cat": "wm"},
-    # NEURO - Dynamics Constants (dm/dt = k_d*x - k_r*m + bias + u_scale*u)
-    # k_d: drive coefficients [dopamine, serotonin, norad, acetyl]
-    "neuro_k_d_dopamine": {
-        "v": 0.8,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 2.0,
-    },
-    "neuro_k_d_serotonin": {
-        "v": 0.3,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 1.0,
-    },
-    "neuro_k_d_norad": {
-        "v": 0.1,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 0.5,
-    },
-    "neuro_k_d_acetyl": {
-        "v": 0.2,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 0.5,
-    },
-    # k_r: recovery coefficients
-    "neuro_k_r_dopamine": {
-        "v": 0.1,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 0.5,
-    },
-    "neuro_k_r_serotonin": {
-        "v": 0.2,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 0.5,
-    },
-    "neuro_k_r_norad": {
-        "v": 0.3,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 1.0,
-    },
-    "neuro_k_r_acetyl": {
-        "v": 0.4,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 1.0,
-    },
-    # u_scale: control input scaling
-    "neuro_u_scale": {
-        "v": 0.1,
-        "cat": "neuro",
-        "learnable": True,
-        "min": 0.0,
-        "max": 0.5,
-    },
     # PLANNER
     "plan_max_steps": {"v": 5, "cat": "planner"},
     "planner_rwr_max_items": {"v": 5, "cat": "planner"},
@@ -573,15 +536,9 @@ BRAIN_DEFAULTS = {
         "max": 0.25,
     },
     "recency_sharpness": {"v": 1.2, "cat": "recency"},
-    # SLEEP - Dynamic parameter scheduling
-    # SLEEP (Managed via RESOURCE)
-    "sleep_k_min": {"v": 1, "cat": "sleep"},
-    "sleep_t_min": {"v": 0.1, "cat": "sleep"},
-    "sleep_alpha_k": {"v": 0.8, "cat": "sleep"},
-    "sleep_alpha_t": {"v": 0.5, "cat": "sleep"},
-    "sleep_alpha_tau": {"v": 0.5, "cat": "sleep"},
-    "sleep_alpha_eta": {"v": 1.0, "cat": "sleep"},
-    "sleep_beta_b": {"v": 0.5, "cat": "sleep"},
+    # SLEEP (Managed via RESOURCE block above — DEF-12 fixed: duplicate
+    # sleep_k_min/t_min/alpha_* entries removed; the RESOURCE block at lines
+    # 336-383 is the single definition.)
     "rem_recomb_rate": {
         "v": 0.2,
         "cat": "sleep",

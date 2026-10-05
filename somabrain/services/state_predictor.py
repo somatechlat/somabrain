@@ -44,7 +44,7 @@ logger = logging.getLogger("somabrain.services.state_predictor")
 SCHEMA_NAME = "predictor_update"
 CONSUME_TOPIC = getattr(settings, "TOPIC_GLOBAL_FRAME")
 PUBLISH_TOPIC = getattr(settings, "TOPIC_STATE_UPDATES")
-PREDICTOR_ALPHA = float(getattr(settings, "PREDICTOR_ALPHA"))
+PREDICTOR_ALPHA = float(getattr(settings, "SOMABRAIN_PREDICTOR_ALPHA"))
 
 
 class StatePredictorService:

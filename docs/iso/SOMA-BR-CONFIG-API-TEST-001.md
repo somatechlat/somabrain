@@ -239,22 +239,22 @@
 
 Each row = same concept, different name and/or default. This is the W1 unification worklist.
 
-| ID | Concept | Variant A | Variant B | Variant C | Evidence | Risk |
-|---|---|---|---|---|---|---|
-| DEF-01 | WM weights + recency + salience threshold | cognitive.py:132-137 defaults α=0.6 β=0.3 γ=0.1 recency_scale=1.0 max_steps=1000 sal_thr=0.4 | django_core.py:46-51 same *names*, defaults α=0.5 β=0.2 γ=0.3 recency_scale=60.0 max_steps=**float 10.0** sal_thr=0.6 | brain_settings matches **cognitive** (models.py:709-713) | base.py:9-11 import order → django_core **overwrites** cognitive | Runtime WM math uses django_core values; DB brain_settings disagree. Silent math divergence. |
-| DEF-02 | WM recency time scale | cognitive.py:128 default **1.0** | django_core.py:49 default **60.0** | bootstrap/core_singletons.py:48,82 call-site `getattr(..., 3600)` | three defaults 1.0 / 60.0 / 3600 | Recency decay time constant off by 60×–3600× |
-| DEF-03 | Call-site defaults ≠ declared defaults | SOMABRAIN_SALIENCE_THRESHOLD_STORE declared 0.5 (cognitive.py:215) | core_singletons.py:136 `getattr` fallback **0.6** | SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL declared 0 (cognitive.py:338) vs annealing.py:97 fallback **10** | R-VAL-01 violated at call site | Value depends on whether settings object is complete |
-| DEF-04 | Retrieval weights / plan / entropy / learning-rate / BHDC / diffusion / predictor α | `SOMABRAIN_RETRIEVAL_BETA` 0.2 (cognitive.py:179) | `RETRIEVAL_BETA` 0.3 (cognitive.py:509) | `SOMABRAIN_RETRIEVAL_TAU` 0.7 vs `RETRIEVAL_TAU` 0.8 (cognitive.py:181 vs 511) | also PLAN_MAX_STEPS / SOMABRAIN_PLAN_MAX_STEPS; USE_PLANNER / SOMABRAIN_USE_PLANNER; USE_MICROCIRCUITS / SOMABRAIN_USE_MICROCIRCUITS; LEARNING_RATE_DYNAMIC; DIFFUSION_T; PREDICTOR_ALPHA; LANCZOS_M; MEMORY_FAST_ACK; MEMORY_HEALTH_POLL_INTERVAL | Two spellings, different defaults; one is dead |
-| DEF-05 | Tau floor | `SOMABRAIN_TAU_MIN` 0.4 (cognitive.py:188) | `TAU_MIN_FLOOR` 0.1 (cognitive.py:514) | brain_settings `tau_min` 0.4 (models.py:678) | annealing.py:82 reads SOMABRAIN_TAU_MIN; temperature_anneal.py:42 reads TAU_MIN_FLOOR | Two anneal paths, different floors |
-| DEF-06 | Tau decay rate | `SOMABRAIN_TAU_DECAY_RATE` 0.0 (cognitive.py:335) | `TAU_DECAY_FACTOR` 0.95 (cognitive.py:513) | — | multiplicative factor vs additive rate | Unify to one schedule |
-| DEF-07 | Wiener λ* | **FIXED (W4):** single source `compute_wiener_lambda(p, 8)` (Rust `mathcore.rs` + Python `math/bhdc_encoder.py`) | brain_settings `gmd_lambda_reg` computed from formula | quantum.py fallback uses `production_wiener_lambda()`; binder default = formula at production p | GMD doc λ*(p)=5.126e-6/(p(1−p)) | one formula, no constants |
-| DEF-08 | Chebyshev K | `CHEBYSHEV_K` **30** (cognitive.py:482) | `TRUTH_CHEBYSHEV_K` **32** (cognitive.py:517) | `SOMABRAIN_CHEB_K` **30** (cognitive.py:438) | predictors/* use CHEBYSHEV_K; math/lanczos_chebyshev.py:75 uses TRUTH_CHEBYSHEV_K | Heat-kernel approx order differs by path |
-| DEF-09 | Predictor gamma bounds | env default **-0.5** (cognitive.py:390) | brain_settings `predictor_gamma` min **0.0** max 1.0 (models.py:535-541) | — | default outside learnable bounds | set() would reject the seeded default |
-| DEF-10 | HRR dim | `SOMABRAIN_HRR_DIM` **8192** (cognitive.py:260) | `HRR_DIM` **512** (cognitive.py:425) | brain_settings `hrr_dim` 8192 (models.py:221) | cognitive.py:84 reads `HRR_DIM` | FocusState HRR dim 512 vs system 8192 |
-| DEF-11 | Sleep K0 | `SLEEP_K0` **10** (cognitive.py:314) | brain_settings `sleep_k0` **100** (models.py:287) | — | 10× divergence | Sleep schedule rate |
-| DEF-12 | Sleep α/min duplicates in BRAIN_DEFAULTS | RESOURCE block models.py:323-371 (k_min=5, t_min=0.5, α_k=0.1, α_t=0.05, α_tau=0.05, α_eta=0.01, β_b=0.1) | sleep block models.py:565-571 (**k_min=1, t_min=0.1, α_k=0.8, α_t=0.5, α_tau=0.5, α_eta=1.0, β_b=0.5**) | dict later entry silently overwrites earlier | Python dict literal — second value wins at models.py:565-571 | Seed data wrong; two "authoritative" tables in one dict |
-| DEF-13 | Adaptation gain/naming | `adapt_gain_mu/nu`, `adapt_*_min/max` (models.py:373-383) | `adaptation_gain_mu/nu`, `adaptation_*_min/max` (models.py:384-389) | env `SOMABRAIN_ADAPTATION_GAIN_*` (cognitive.py:350-360) | three naming schemes for one family | W1 must pick one |
-| DEF-14 | Settings attrs referenced but **not declared** | context/builder.py:92-101 reads `settings.retrieval_recency_half_life`, `retrieval_recency_sharpness`, `retrieval_recency_floor`, `retrieval_density_*`, `SOMABRAIN_RETRIEVAL_TAU_min/_max/_increment_up/_increment_down`, `retrieval_dup_ratio_threshold` | None of these names exist in settings/*.py (declared names are `SOMABRAIN_RECENCY_HALF_LIFE`, `SOMABRAIN_TAU_MIN`, `SOMABRAIN_TAU_INC_UP`, …) | — | AttributeError / silent wrong config at runtime | Missing keys must be created by **renaming readers to real settings**, not by adding shim attributes |
+| ID | Concept | Variant A | Variant B | Variant C | Evidence | Risk | Status |
+|---|---|---|---|---|---|---|---|
+| DEF-01 | WM weights + recency + salience threshold | cognitive.py:132-137 defaults α=0.6 β=0.3 γ=0.1 recency_scale=1.0 max_steps=1000 sal_thr=0.4 | django_core.py:46-51 same *names*, defaults α=0.5 β=0.2 γ=0.3 recency_scale=60.0 max_steps=**float 10.0** sal_thr=0.6 | brain_settings matches **cognitive** (models.py:709-713) | base.py:9-11 import order → django_core **overwrites** cognitive | Runtime WM math uses django_core values; DB brain_settings disagree. Silent math divergence. | **FIXED (W1b)** — django_core WM re-declarations deleted; cognitive.py is the single site |
+| DEF-02 | WM recency time scale | cognitive.py:128 default **1.0** | django_core.py:49 default **60.0** | bootstrap/core_singletons.py:48,82 call-site `getattr(..., 3600)` | three defaults 1.0 / 60.0 / 3600 | Recency decay time constant off by 60×–3600× | **FIXED (W1b)** — single default `contracts.RECENCY_SCALE` (60.0) |
+| DEF-03 | Call-site defaults ≠ declared defaults | SOMABRAIN_SALIENCE_THRESHOLD_STORE declared 0.5 (cognitive.py:215) | core_singletons.py:136 `getattr` fallback **0.6** | SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL declared 0 (cognitive.py:338) vs annealing.py:97 fallback **10** | R-VAL-01 violated at call site | Value depends on whether settings object is complete | **FIXED (W1b)** — call-site defaults reference `contracts.*` |
+| DEF-04 | Retrieval weights / plan / entropy / learning-rate / BHDC / diffusion / predictor α | `SOMABRAIN_RETRIEVAL_BETA` 0.2 (cognitive.py:179) | `RETRIEVAL_BETA` 0.3 (cognitive.py:509) | `SOMABRAIN_RETRIEVAL_TAU` 0.7 vs `RETRIEVAL_TAU` 0.8 (cognitive.py:181 vs 511) | also PLAN_MAX_STEPS / SOMABRAIN_PLAN_MAX_STEPS; USE_PLANNER / SOMABRAIN_USE_PLANNER; USE_MICROCIRCUITS / SOMABRAIN_USE_MICROCIRCUITS; LEARNING_RATE_DYNAMIC; DIFFUSION_T; PREDICTOR_ALPHA; LANCZOS_M; MEMORY_FAST_ACK; MEMORY_HEALTH_POLL_INTERVAL | Two spellings, different defaults; one is dead | **FIXED (W1b)** — dead twins deleted; readers re-pointed to `SOMABRAIN_*` |
+| DEF-05 | Tau floor | `SOMABRAIN_TAU_MIN` 0.4 (cognitive.py:188) | `TAU_MIN_FLOOR` 0.1 (cognitive.py:514) | brain_settings `tau_min` 0.4 (models.py:678) | annealing.py:82 reads SOMABRAIN_TAU_MIN; temperature_anneal.py:42 reads TAU_MIN_FLOOR | Two anneal paths, different floors | **FIXED (W1b)** — `contracts.TAU_FLOOR=0.1` is the single floor |
+| DEF-06 | Tau decay rate | `SOMABRAIN_TAU_DECAY_RATE` 0.0 (cognitive.py:335) | `TAU_DECAY_FACTOR` 0.95 (cognitive.py:513) | — | multiplicative factor vs additive rate | Unify to one schedule | **FIXED (W1b)** — `contracts.TAU_DECAY_FACTOR=0.95`; twins deleted |
+| DEF-07 | Wiener λ* | **FIXED (W4):** single source `compute_wiener_lambda(p, 8)` (Rust `mathcore.rs` + Python `math/bhdc_encoder.py`) | brain_settings `gmd_lambda_reg` computed from formula | quantum.py fallback uses `production_wiener_lambda()`; binder default = formula at production p | GMD doc λ*(p)=5.126e-6/(p(1−p)) | one formula, no constants | **FIXED (W4)** |
+| DEF-08 | Chebyshev K | `CHEBYSHEV_K` **30** (cognitive.py:482) | `TRUTH_CHEBYSHEV_K` **32** (cognitive.py:517) | `SOMABRAIN_CHEB_K` **30** (cognitive.py:438) | predictors/* use CHEBYSHEV_K; math/lanczos_chebyshev.py:75 uses TRUTH_CHEBYSHEV_K | Heat-kernel approx order differs by path | **FIXED (W1b)** — one key `SOMABRAIN_CHEB_K`; twins deleted |
+| DEF-09 | Predictor gamma bounds | env default **-0.5** (cognitive.py:390) | brain_settings `predictor_gamma` min **0.0** max 1.0 (models.py:535-541) | — | default outside learnable bounds | set() would reject the seeded default | **OPEN** (W3 gains parity) |
+| DEF-10 | HRR dim | `SOMABRAIN_HRR_DIM` **8192** (cognitive.py:260) | `HRR_DIM` **512** (cognitive.py:425) | brain_settings `hrr_dim` 8192 (models.py:221) | cognitive.py:84 reads `HRR_DIM` | FocusState HRR dim 512 vs system 8192 | **FIXED (W1b)** — `HRR_DIM` unified to `BHDC_D` (8192) |
+| DEF-11 | Sleep K0 | `SLEEP_K0` **10** (cognitive.py:314) | brain_settings `sleep_k0` **100** (models.py:287) | — | 10× divergence | Sleep schedule rate | **FIXED (W1b)** — `SLEEP_K0` default unified to 100 |
+| DEF-12 | Sleep α/min duplicates in BRAIN_DEFAULTS | RESOURCE block models.py:323-371 (k_min=5, t_min=0.5, α_k=0.1, α_t=0.05, α_tau=0.05, α_eta=0.01, β_b=0.1) | sleep block models.py:565-571 (**k_min=1, t_min=0.1, α_k=0.8, α_t=0.5, α_tau=0.5, α_eta=1.0, β_b=0.5**) | dict later entry silently overwrites earlier | Python dict literal — second value wins at models.py:565-571 | Seed data wrong; two "authoritative" tables in one dict | **FIXED (W1b)** — duplicate sleep block deleted |
+| DEF-13 | Adaptation gain/naming | `adapt_gain_mu/nu`, `adapt_*_min/max` (models.py:373-383) | `adaptation_gain_mu/nu`, `adaptation_*_min/max` (models.py:384-389) | env `SOMABRAIN_ADAPTATION_GAIN_*` (cognitive.py:350-360) | three naming schemes for one family | W1 must pick one | **FIXED (W1b)** — `adaptation_*` namespace kept; `adapt_*` deleted |
+| DEF-14 | Settings attrs referenced but **not declared** | context/builder.py:92-101 reads `settings.retrieval_recency_half_life`, `retrieval_recency_sharpness`, `retrieval_recency_floor`, `retrieval_density_*`, `SOMABRAIN_RETRIEVAL_TAU_min/_max/_increment_up/_increment_down`, `retrieval_dup_ratio_threshold` | None of these names exist in settings/*.py (declared names are `SOMABRAIN_RECENCY_HALF_LIFE`, `SOMABRAIN_TAU_MIN`, `SOMABRAIN_TAU_INC_UP`, …) | — | AttributeError / silent wrong config at runtime | Missing keys must be created by **renaming readers to real settings**, not by adding shim attributes | **FIXED (W1b)** — builder.py reads real `SOMABRAIN_*` keys |
 
 ## 1.10 Rust-core constants
 
@@ -276,7 +276,7 @@ Legend for **Clamps**: `Y` = request/schema clamps present; `N` = absent (unvali
 | Endpoint | Method | Request schema | Response schema | Clamps | Store touched | Unvalidated inputs |
 |---|---|---|---|---|---|---|
 | `/neuromod/state` | GET | (none) | inline dict `{tenant_id, dopamine, serotonin, noradrenaline, acetylcholine}` neuromod.py:58-61 | N/A | In-memory `PerTenantNeuromodulators.get_state` neuromod.py:35 via bootstrap/singletons | — |
-| `/neuromod/adjust` | POST | `NeuromodAdjustRequest` neuromod.py:20-24: `dopamine/serotonin/noradrenaline/acetylcholine: float\|None` | same dict shape neuromod.py:87-90 | **N — NO CLAMP** | `store.set_state(NeuromodState(**current))` neuromod.py:80 | **All four floats unclamped**. Documented ranges (DA [0.2,0.8], 5-HT [0,1], NA [0,0.1], ACh [0,0.1] at runtime/neuromodulators.py:72-78 and env MIN/MAX neuro.py:18-31) are **not enforced** at API. `float(val)` only neuromod.py:79. |
+| `/neuromod/adjust` | POST | `NeuromodAdjustRequest` neuromod.py: `dopamine/serotonin/noradrenaline/acetylcholine: float\|None` | same dict shape | **Y — REJECT out-of-box** | `checked_value` → `store.set_state(NeuromodState(**current))` | **FIXED (W2 / DEBT-003).** `checked_value` (runtime/neuromodulators.py) rejects non-finite and out-of-box values with HTTP 422 against `math.contracts.NEURO_BOUNDS` (DA [0.2,0.8], 5-HT [0,1], NA [0,0.1], ACh [0,0.1]). Store projects with Π on `set_state`. |
 
 ## 2.2 Cognitive (`somabrain/api/endpoints/cognitive.py`, mounted at `/cognitive/` — v1.py:66-68)
 
@@ -470,7 +470,7 @@ Legend: **VALID** = exercises a production function/equation; **TAUTOLOGY** = te
 | **Softmax temperature τ selection in production vote/selection** | docstring test_learning_math.py:113-121 | WM vote / planner selection | **MISSING (local softmax only)** | Pin production softmax with `SOMABRAIN_MICRO_VOTE_TEMPERATURE` / τ |
 | **Wiener vs exact optimality** (Wiener error ≤ exact under noise) | test claim A1.5 | quantum.py:302-318 | **WEAK** (3.5) | assert err_wiener ≤ err_exact for noisy binds |
 | **τ bounds SOMABRAIN_TAU_MIN/MAX respected by engine** | cognitive.py:188-189 | engine.py:402 + annealing | **MISSING** | engine-level floor/ceiling test (only pure-fn floor test exists) |
-| **Neuromod API range enforcement** | neuro.py MIN/MAX | neuromod.py:76-80 (unclamped) | **MISSING + contract gap** | After W1 clamp is added, test reject/clamp out-of-range |
+| **Neuromod API range enforcement** | `contracts.NEURO_BOUNDS` + neuro.py MIN/MAX | neuromod.py `checked_value` | **FIXED (W2)** | `tests/unit/test_neuromod_wiring.py::TestApiBounds` rejects out-of-box / NaN / inf |
 | **brain_settings mode-override math** (TRAINING/RECALL/ANALYTIC/SEARCH/SLEEP presets) | modes.py:11-55 | BrainSetting.get :81-94 | **MISSING** | Assert mode switch changes effective gmd_eta/tau/graph_hops as specified |
 | **Duplicate-default identity** (DEF-01…DEF-14) | this doc §1.9 | settings/*.py | **MISSING** | Contract tests: one name, one default per concept |
 
@@ -490,25 +490,25 @@ Legend: **VALID** = exercises a production function/equation; **TAUTOLOGY** = te
 
 # Part 4 — Defect register (feeds Wave W1)
 
-| ID | Class | Summary | Fix direction (no shims) |
-|---|---|---|---|
-| DEF-01 | config shadowing | django_core overwrites cognitive WM math defaults via base.py star-import | Single declaration site; delete one; align brain_settings seed |
-| DEF-02 | triple default | WM_RECENCY_TIME_SCALE 1.0 / 60.0 / 3600 | One key, one default; remove call-site fallbacks |
-| DEF-03 | call-site defaults | salience threshold 0.5 vs 0.6; anneal step interval 0 vs 10 | R-VAL-01: values declared once |
-| DEF-04 | dead twins | SOMABRAIN_RETRIEVAL_* vs RETRIEVAL_* (and ~10 more pairs) | Keep SOMABRAIN_* names; delete twins after reader audit |
-| DEF-05/06 | tau floor/schedule split | TAU_MIN 0.4 vs TAU_MIN_FLOOR 0.1; decay rate vs factor | Unify schedule API in learning/annealing + one settings family |
-| DEF-07 | Wiener λ* | **FIXED (W4)** — `compute_wiener_lambda(p, 8)` is the only source | done (PLAN W4.1) |
-| DEF-08 | Chebyshev K | 30 vs 32 vs 30 | One key consumed by predictors and lanczos_chebyshev |
-| DEF-09 | bounds vs default | predictor_gamma default −0.5 outside [0,1] | Align bounds or default |
-| DEF-10 | HRR dim | 8192 vs 512 | One dim (seam unity) |
-| DEF-11/12 | sleep schedule | K0 10 vs 100; duplicate BRAIN_DEFAULTS sleep keys | Deduplicate models.py dict; one seed |
-| DEF-13 | naming | adapt_* vs adaptation_* vs SOMABRAIN_ADAPTATION_* | One namespace |
-| DEF-14 | missing keys | context/builder.py:92-101 references undeclared settings attrs | Rename readers to real declared keys |
-| API-01 | unvalidated input | `/neuromod/adjust` floats unclamped | Clamp to neuro MIN/MAX at boundary |
-| API-02 | schema drift | sleep endpoints use raw dict; api/schemas/sleep.py unused | Bind endpoints to SleepRequest |
-| API-03 | auth gap | calibration router has no api_key_auth | Align with require_auth pattern |
-| TEST-01 | tautologies | learning_properties, salience_math, predictor_math, softmax tests | Rewrite against production imports |
-| TEST-02 | missing theorems | §3.6 twelve rows | Wave W4 contract tests |
+| ID | Class | Summary | Fix direction (no shims) | Status |
+|---|---|---|---|---|
+| DEF-01 | config shadowing | django_core overwrites cognitive WM math defaults via base.py star-import | Single declaration site; delete one; align brain_settings seed | **FIXED (W1b)** |
+| DEF-02 | triple default | WM_RECENCY_TIME_SCALE 1.0 / 60.0 / 3600 | One key, one default; remove call-site fallbacks | **FIXED (W1b)** |
+| DEF-03 | call-site defaults | salience threshold 0.5 vs 0.6; anneal step interval 0 vs 10 | R-VAL-01: values declared once | **FIXED (W1b)** |
+| DEF-04 | dead twins | SOMABRAIN_RETRIEVAL_* vs RETRIEVAL_* (and ~10 more pairs) | Keep SOMABRAIN_* names; delete twins after reader audit | **FIXED (W1b)** |
+| DEF-05/06 | tau floor/schedule split | TAU_MIN 0.4 vs TAU_MIN_FLOOR 0.1; decay rate vs factor | Unify schedule API in learning/annealing + one settings family | **FIXED (W1b)** |
+| DEF-07 | Wiener λ* | **FIXED (W4)** — `compute_wiener_lambda(p, 8)` is the only source | done (PLAN W4.1) | **FIXED (W4)** |
+| DEF-08 | Chebyshev K | 30 vs 32 vs 30 | One key consumed by predictors and lanczos_chebyshev | **FIXED (W1b)** |
+| DEF-09 | bounds vs default | predictor_gamma default −0.5 outside [0,1] | Align bounds or default | **OPEN** (W3) |
+| DEF-10 | HRR dim | 8192 vs 512 | One dim (seam unity) | **FIXED (W1b)** |
+| DEF-11/12 | sleep schedule | K0 10 vs 100; duplicate BRAIN_DEFAULTS sleep keys | Deduplicate models.py dict; one seed | **FIXED (W1b)** |
+| DEF-13 | naming | adapt_* vs adaptation_* vs SOMABRAIN_ADAPTATION_* | One namespace | **FIXED (W1b)** |
+| DEF-14 | missing keys | context/builder.py:92-101 references undeclared settings attrs | Rename readers to real declared keys | **FIXED (W1b)** |
+| API-01 | unvalidated input | `/neuromod/adjust` floats unclamped | Reject out-of-box at boundary via `checked_value` | **FIXED (W2 / DEBT-003)** |
+| API-02 | schema drift | sleep endpoints use raw dict; api/schemas/sleep.py unused | Bind endpoints to SleepRequest | OPEN (W2) |
+| API-03 | auth gap | calibration router has no api_key_auth | Align with require_auth pattern | OPEN |
+| TEST-01 | tautologies | learning_properties, salience_math, predictor_math, softmax tests | Rewrite against production imports | OPEN (W5) |
+| TEST-02 | missing theorems | §3.6 twelve rows | Wave W4 contract tests | OPEN (W4) |
 
 ---
 

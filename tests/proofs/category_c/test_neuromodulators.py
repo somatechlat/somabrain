@@ -56,7 +56,7 @@ class TestNeuromodulatorStateManagement:
         Dopamine modulates learning rate and motivation (0.2-0.8 range).
         Higher dopamine = higher reward prediction error weighting.
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, Neuromodulators
+        from somabrain.runtime.neuromodulators import NeuromodState, Neuromodulators
 
         neuromods = Neuromodulators()
 
@@ -96,7 +96,7 @@ class TestNeuromodulatorStateManagement:
         Serotonin provides emotional stability and response smoothing (0.0-1.0 range).
         Higher serotonin = more stable, less exploratory behavior.
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, Neuromodulators
+        from somabrain.runtime.neuromodulators import NeuromodState, Neuromodulators
 
         neuromods = Neuromodulators()
 
@@ -147,7 +147,7 @@ class TestNeuromodulatorStateManagement:
         Noradrenaline controls urgency and neural gain (0.0-0.1 range).
         Higher noradrenaline = narrower attention, higher arousal.
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, Neuromodulators
+        from somabrain.runtime.neuromodulators import NeuromodState, Neuromodulators
 
         neuromods = Neuromodulators()
 
@@ -182,7 +182,7 @@ class TestNeuromodulatorStateManagement:
         Acetylcholine enhances attention and focus (0.0-0.1 range).
         Higher acetylcholine = better memory formation and learning.
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, Neuromodulators
+        from somabrain.runtime.neuromodulators import NeuromodState, Neuromodulators
 
         neuromods = Neuromodulators()
 
@@ -218,7 +218,7 @@ class TestNeuromodulatorStateManagement:
         - Noradrenaline: [0.0, 0.1]
         - Acetylcholine: [0.0, 0.1]
         """
-        from somabrain.admin.brain.neuromodulators import Neuromodulators
+        from somabrain.runtime.neuromodulators import Neuromodulators
 
         neuromods = Neuromodulators()
 
@@ -265,7 +265,7 @@ class TestNeuromodulatorPubSub:
         **Feature: full-capacity-testing**
         **Validates: Requirements C1.1-C1.5**
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, Neuromodulators
+        from somabrain.runtime.neuromodulators import NeuromodState, Neuromodulators
 
         neuromods = Neuromodulators()
         received_states: list[NeuromodState] = []
@@ -305,7 +305,7 @@ class TestNeuromodulatorPubSub:
         **Feature: full-capacity-testing**
         **Validates: Requirements C1.1-C1.5**
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState, Neuromodulators
+        from somabrain.runtime.neuromodulators import NeuromodState, Neuromodulators
 
         neuromods = Neuromodulators()
         received_1: list[NeuromodState] = []
@@ -348,7 +348,7 @@ class TestPerTenantNeuromodulators:
         **Feature: full-capacity-testing**
         **Validates: Requirements D2.1**
         """
-        from somabrain.admin.brain.neuromodulators import (
+        from somabrain.runtime.neuromodulators import (
             NeuromodState,
             PerTenantNeuromodulators,
         )
@@ -392,7 +392,7 @@ class TestPerTenantNeuromodulators:
         **Feature: full-capacity-testing**
         **Validates: Requirements C1.5**
         """
-        from somabrain.admin.brain.neuromodulators import PerTenantNeuromodulators
+        from somabrain.runtime.neuromodulators import PerTenantNeuromodulators
 
         per_tenant = PerTenantNeuromodulators()
 
@@ -423,7 +423,7 @@ class TestAdaptiveNeuromodulators:
         **Feature: full-capacity-testing**
         **Validates: Requirements C1.5**
         """
-        from somabrain.admin.brain.neuromodulators import AdaptiveNeuromodulators
+        from somabrain.runtime.neuromodulators import AdaptiveNeuromodulators
 
         adaptive = AdaptiveNeuromodulators()
 
@@ -443,7 +443,7 @@ class TestAdaptiveNeuromodulators:
         **Validates: Requirements C3.1, C3.2**
         """
         from somabrain.adaptive.core import PerformanceMetrics
-        from somabrain.admin.brain.neuromodulators import AdaptiveNeuromodulators
+        from somabrain.runtime.neuromodulators import AdaptiveNeuromodulators
 
         adaptive = AdaptiveNeuromodulators()
 
@@ -480,10 +480,10 @@ class TestNeuromodulatorProperties:
     """
 
     @given(
-        dopamine=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+        dopamine=st.floats(min_value=0.2, max_value=0.8, allow_nan=False),
         serotonin=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
-        noradrenaline=st.floats(min_value=0.0, max_value=0.2, allow_nan=False),
-        acetylcholine=st.floats(min_value=0.0, max_value=0.2, allow_nan=False),
+        noradrenaline=st.floats(min_value=0.0, max_value=0.1, allow_nan=False),
+        acetylcholine=st.floats(min_value=0.0, max_value=0.1, allow_nan=False),
     )
     @hyp_settings(max_examples=50)
     def test_state_roundtrip(
@@ -498,10 +498,10 @@ class TestNeuromodulatorProperties:
         **Feature: full-capacity-testing, Property: State Roundtrip**
         **Validates: Requirements C1.5**
         """
-        from somabrain.admin.brain.neuromodulators import (
+        from somabrain.runtime.neuromodulators import (
             NeuromodState as NS,
         )
-        from somabrain.admin.brain.neuromodulators import (
+        from somabrain.runtime.neuromodulators import (
             Neuromodulators,
         )
 
@@ -536,7 +536,7 @@ class TestNeuromodulatorProperties:
         **Feature: full-capacity-testing, Property: Type Safety**
         **Validates: Requirements C1.5**
         """
-        from somabrain.admin.brain.neuromodulators import NeuromodState
+        from somabrain.runtime.neuromodulators import NeuromodState
 
         state = NeuromodState(dopamine=dopamine)
         assert isinstance(state.dopamine, float)

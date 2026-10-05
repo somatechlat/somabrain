@@ -48,6 +48,7 @@ from .history import HistoryManager
 from .metrics import update_metrics
 from .types import RetrievalWeights
 from .utils import clamp as _clamp
+from .utils import weight_delta
 
 
 class AdaptationEngine:
@@ -80,22 +81,23 @@ class AdaptationEngine:
             )
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
-        from somabrain.brain_settings.models import BrainSetting
 
         tid = tenant_id or "default"
-        lr = (
-            learning_rate
-            if learning_rate is not None
-            else BrainSetting.get("adapt_lr", tid)
-        )
+        if learning_rate is not None:
+            lr = learning_rate
+        else:
+            from somabrain.brain_settings.models import BrainSetting
+
+            lr = BrainSetting.get("adapt_lr", tid)
         self._lr = lr
         self._base_lr = lr
 
-        max_h = int(
-            max_history
-            if max_history is not None
-            else BrainSetting.get("adapt_max_history", tid)
-        )
+        if max_history is not None:
+            max_h = int(max_history)
+        else:
+            from somabrain.brain_settings.models import BrainSetting
+
+            max_h = int(BrainSetting.get("adapt_max_history", tid))
         self._history = HistoryManager(max_h)
 
         self._constraint_bounds = self._init_constraints(constraints)
@@ -154,7 +156,7 @@ class AdaptationEngine:
         if settings is not None:
             try:
                 dyn_lr = dyn_lr or bool(
-                    getattr(settings, "LEARNING_RATE_DYNAMIC")
+                    getattr(settings, "SOMABRAIN_LEARNING_RATE_DYNAMIC")
                 )
             except Exception:
                 pass
@@ -368,21 +370,26 @@ class AdaptationEngine:
 
         self._retrieval.alpha = self._constrain(
             "alpha",
-            self._retrieval.alpha + self._lr * self._gains.alpha * semantic_signal,
+            self._retrieval.alpha
+            + weight_delta(self._lr, self._gains.alpha, semantic_signal),
         )
         self._retrieval.gamma = self._constrain(
             "gamma",
-            self._retrieval.gamma + self._lr * self._gains.gamma * semantic_signal,
+            self._retrieval.gamma
+            + weight_delta(self._lr, self._gains.gamma, semantic_signal),
         )
         self._utility.lambda_ = self._constrain(
             "lambda_",
-            self._utility.lambda_ + self._lr * self._gains.lambda_ * utility_signal,
+            self._utility.lambda_
+            + weight_delta(self._lr, self._gains.lambda_, utility_signal),
         )
         self._utility.mu = self._constrain(
-            "mu", self._utility.mu + self._lr * self._gains.mu * utility_signal
+            "mu",
+            self._utility.mu + weight_delta(self._lr, self._gains.mu, utility_signal),
         )
         self._utility.nu = self._constrain(
-            "nu", self._utility.nu + self._lr * self._gains.nu * utility_signal
+            "nu",
+            self._utility.nu + weight_delta(self._lr, self._gains.nu, utility_signal),
         )
         self._utility.clamp(
             lambda_bounds=self._constraints["lambda_"],
@@ -429,14 +436,16 @@ class AdaptationEngine:
         )
 
     def _get_dopamine_level(self) -> float:
-        """Execute get dopamine level."""
+        """Stored tenant dopamine from the process-wide neuromodulator store.
 
-        try:
-            from somabrain.admin.brain.neuromodulators import PerTenantNeuromodulators
+        Reads the same singleton the API writes to
+        (``bootstrap.singletons.get_neuromodulators``). The former
+        ``PerTenantNeuromodulators()`` constructed a fresh empty store every
+        call, so dynamic LR never saw adjusted dopamine (DEBT-002).
+        """
+        from somabrain.bootstrap.singletons import get_neuromodulators
 
-            return PerTenantNeuromodulators().get_state(self._tenant_id).dopamine
-        except Exception:
-            return 0.0
+        return float(get_neuromodulators().get_state(self._tenant_id).dopamine)
 
     def _constrain(self, name: str, value: float) -> float:
         """Execute constrain."""

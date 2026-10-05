@@ -43,10 +43,6 @@ env = environ.Env(
     SOMABRAIN_CIRCUIT_RESET_INTERVAL=(float, 30.0),
     SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL=(float, 60.0),
     SOMABRAIN_BHDC_SPARSITY=(float, 0.1),
-    SOMABRAIN_WM_ALPHA=(float, 0.5),
-    SOMABRAIN_WM_BETA=(float, 0.2),
-    SOMABRAIN_WM_GAMMA=(float, 0.3),
-    SOMABRAIN_WM_SALIENCE_THRESHOLD=(float, 0.6),
 )
 
 SOMABRAIN_API_URL = env("SOMABRAIN_API_URL")
@@ -62,14 +58,16 @@ SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL = env(
 )
 SOMABRAIN_BHDC_SPARSITY = env("SOMABRAIN_BHDC_SPARSITY", default=0.1)
 
-# Working Memory Settings - Vibe Tuneable
-SOMABRAIN_WM_ALPHA = env("SOMABRAIN_WM_ALPHA")
-SOMABRAIN_WM_BETA = env("SOMABRAIN_WM_BETA")
-SOMABRAIN_WM_GAMMA = env("SOMABRAIN_WM_GAMMA")
-SOMABRAIN_WM_SALIENCE_THRESHOLD = env("SOMABRAIN_WM_SALIENCE_THRESHOLD")
+# WM weight defaults (SOMABRAIN_WM_ALPHA/BETA/GAMMA/SALIENCE_THRESHOLD) are
+# declared once in settings/cognitive.py.  DEF-01: django_core no longer
+# re-declares them — base.py star-import order used to silently overwrite
+# the cognitive defaults with different values.
 
 # API Authentication Token — secret, Vault only (somabrain/runtime[api_token]).
-# ENV never carries it. See get_api_token() below.
+# ENV never carries the value. See get_api_token() below.
+# ``SOMA_API_TOKEN_FILE`` is a module-level credential-file slot (the same
+# delivery shape as VAULT_TOKEN_FILE): a *path* is topology, the credential it
+# names is not. Nothing in this module reads that path from ENV.
 SOMA_API_TOKEN = None  # populated from Vault below
 SOMA_API_TOKEN_FILE = None
 
@@ -103,6 +101,7 @@ def configure_vault_secrets() -> None:
     try:
         from somabrain.core.security.vault_client import (
             SecretNotFound,
+            VaultAuthError,
             VaultNotConfigured,
             get_db_credentials,
             get_jwt_secret,
@@ -139,7 +138,17 @@ def configure_vault_secrets() -> None:
 
     try:
         api_token = get_runtime_secret("api_token")
-    except (SecretNotFound, VaultNotConfigured):
+    except SecretNotFound:
+        # Not provisioned: a deployment that deliberately runs without one.
+        api_token = None
+    except VaultAuthError:
+        # Broken credential delivery is an infrastructure failure, not
+        # "no token". It must never look like a deliberate unconfigured
+        # deployment (Rule 91).
+        raise
+    except VaultNotConfigured:
+        # Vault is not part of this environment at all. The token stays
+        # absent and callers fail closed if they need one.
         api_token = None
 
     if api_token:
@@ -151,6 +160,11 @@ def configure_vault_secrets() -> None:
 # The previous order populated `_BOOTSTRAP` after this module was imported, so
 # the SECRET_KEY assignment never saw the Vault value and fell through to ENV.
 configure_vault_secrets()
+
+# Hold the Vault-resolved API token in module state. get_api_token() reads
+# these names (never ENV, never a silent default). SOMA_API_TOKEN is the
+# inline credential; SOMA_API_TOKEN_FILE is the optional credential-file slot.
+SOMA_API_TOKEN = _BOOTSTRAP.get("SOMA_API_TOKEN") or _BOOTSTRAP.get("SOMABRAIN_API_TOKEN") or None
 
 # Secret: Vault only (somabrain/auth[jwt_secret]). ENV never carries it.
 SECRET_KEY = _BOOTSTRAP.get("SECRET_KEY", "")
@@ -255,15 +269,43 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Helper function to load API token
 # -----------------------------------------------------------------------------
 def get_api_token() -> str | None:
-    """Return the API token resolved from Vault.
+    """Return the API token from module state, or from its credential file.
 
-    Returns ``None`` only when Vault did not provision one — a deployment that
-    deliberately runs without an API token. The token is never read from the
-    environment and never from a file path named by ENV (Rule 164). A failed
-    Vault read is not "no token": it is an infrastructure failure and raises.
+    Resolution order:
+
+    1. ``SOMA_API_TOKEN`` — module state, populated from Vault
+       (``somabrain/runtime[api_token]``) by ``configure_vault_secrets``.
+    2. ``SOMA_API_TOKEN_FILE`` — a path naming the credential file. The path
+       is topology; the credential it names is not (same delivery shape as
+       ``VAULT_TOKEN_FILE``). This function never reads ENV for either.
+
+    Returns ``None`` only when nothing is configured — a deployment that
+    deliberately runs without an API token. Any failure to *read* a named
+    token file raises (Rule 91): "I could not read it" must never look like
+    "it is not configured" (Rule 164 / Rule 91).
     """
-    token = _BOOTSTRAP.get("SOMA_API_TOKEN") or _BOOTSTRAP.get("SOMABRAIN_API_TOKEN")
-    return token or None
+    if SOMA_API_TOKEN:
+        return SOMA_API_TOKEN
+
+    if SOMA_API_TOKEN_FILE:
+        token_path = Path(SOMA_API_TOKEN_FILE)
+        try:
+            resolved = token_path.read_text(encoding="utf-8").strip()
+        except OSError as exc:
+            raise environ.ImproperlyConfigured(
+                f"Cannot read the API token file named by SOMA_API_TOKEN_FILE "
+                f"at {str(token_path)!r}: {exc.strerror or exc}. Fix the path "
+                f"or the file's permissions; a failed read is not 'no token'."
+            ) from None
+        if not resolved:
+            raise environ.ImproperlyConfigured(
+                f"The API token file named by SOMA_API_TOKEN_FILE at "
+                f"{str(token_path)!r} is empty. An empty credential is not "
+                f"'no token configured'."
+            )
+        return resolved
+
+    return None
 
 
 SOMABRAIN_API_TOKEN = get_api_token()

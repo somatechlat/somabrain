@@ -203,7 +203,7 @@ class TestLatencySLOs:
         WHEN neuromodulator state is accessed
         THEN p95 latency SHALL be under 50ms.
         """
-        from somabrain.admin.brain.neuromodulators import (
+        from somabrain.runtime.neuromodulators import (
             NeuromodState,
             PerTenantNeuromodulators,
         )

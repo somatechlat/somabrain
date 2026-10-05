@@ -119,7 +119,7 @@ def make_quantum_layer(cfg) -> QuantumLayer | None:
             binding_method=getattr(
                 settings, "SOMABRAIN_MATH_BINDING_METHOD", "circular"
             ),
-            sparsity=getattr(settings, "SOMABRAIN_MATH_BHDC_SPARSITY"),
+            sparsity=getattr(settings, "SOMABRAIN_BHDC_SPARSITY"),
             binary_mode=getattr(settings, "SOMABRAIN_MATH_BHDC_BINARY_MODE"),
             mix=getattr(settings, "SOMABRAIN_MATH_BHDC_MIX"),
             binding_seed=getattr(settings, "SOMABRAIN_MATH_BINDING_SEED"),
@@ -282,6 +282,18 @@ def get_neuromodulators():
     from somabrain.runtime.neuromodulators import PerTenantNeuromodulators
 
     return _singleton("per_tenant_neuromodulators", PerTenantNeuromodulators)
+
+
+def get_supervisor():
+    """Free-energy Supervisor, or None when ``SOMABRAIN_USE_META_BRAIN`` is off.
+
+    Wired into ``eval_step`` so the P-controller and free-energy ``F`` are
+    reachable from ``/act`` whenever the feature is enabled (DEBT-007-adjacent:
+    the factory used to be defined and never called).
+    """
+    from somabrain.bootstrap.core_singletons import create_supervisor
+
+    return _singleton("supervisor", lambda: create_supervisor(settings))
 
 
 def get_personality_store():

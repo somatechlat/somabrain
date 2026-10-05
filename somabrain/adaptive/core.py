@@ -64,9 +64,17 @@ class AdaptiveParameter:
         )
 
     def update(self, perf: PerformanceMetrics, delta: float) -> float:
-        """Apply an update scaled by learning_rate; returns new value."""
+        """Homeostatic (mean-reverting) update; returns the new value.
+
+        Implements ``m ← Π(m + η (δ − m))`` where ``δ`` is the feedback
+        *target level* (not an increment) and ``Π`` projects onto
+        ``[min_value, max_value]``. The parameter is pulled toward the
+        feedback instead of integrating a velocity, so it cannot drift
+        monotonically into a bound and stick there.
+        """
         perf.clamp()
-        self.current_value += self.learning_rate * float(delta)
+        target = float(delta)
+        self.current_value += self.learning_rate * (target - self.current_value)
         self._clamp()
         return self.current_value
 

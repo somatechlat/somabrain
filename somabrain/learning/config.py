@@ -1,6 +1,9 @@
 """Configuration dataclasses for the adaptation engine.
 
-This module contains the configuration dataclasses used by the AdaptationEngine:
+Defaults come from ``somabrain.math.contracts`` — the single math-contract
+source (W1.1).  Settings may override; the contract values are the baseline.
+
+Dataclasses:
 - UtilityWeights: Trade-off weights for utility calculations
 - AdaptationGains: Per-parameter gains applied to learning signals
 - AdaptationConstraints: Bounds for parameter values during adaptation
@@ -10,10 +13,33 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from somabrain.math.contracts import ADAPT_BOUNDS, ADAPT_GAINS
+
 try:
     from django.conf import settings
 except Exception:  # pragma: no cover - optional dependency
     settings = None
+
+
+def _setting(name: str, default: float) -> float:
+    """Read a numeric Django setting, falling back to ``default``.
+
+    Django's ``LazySettings`` is always truthy, so ``getattr(settings, …) if
+    settings else default`` raises ``ImproperlyConfigured`` when the settings
+    module is not booted. Resolve lazily and treat any failure as "unset".
+    """
+    if settings is None:
+        return default
+    try:
+        value = getattr(settings, name)
+    except Exception:
+        return default
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
 
 
 @dataclass
@@ -26,32 +52,32 @@ class UtilityWeights:
         nu: Tertiary utility weight (default from settings or 0.05)
     """
 
-    lambda_: float = float(
-        getattr(settings, "SOMABRAIN_UTILITY_LAMBDA") if settings else 1.0
-    )
-    mu: float = float(
-        getattr(settings, "SOMABRAIN_UTILITY_MU") if settings else 0.1
-    )
-    nu: float = float(
-        getattr(settings, "SOMABRAIN_UTILITY_NU") if settings else 0.05
-    )
+    lambda_: float = _setting("SOMABRAIN_UTILITY_LAMBDA", 1.0)
+    mu: float = _setting("SOMABRAIN_UTILITY_MU", 0.1)
+    nu: float = _setting("SOMABRAIN_UTILITY_NU", 0.05)
 
     def clamp(
         self,
-        lambda_bounds: tuple[float, float] = (
-            float(getattr(settings, "UTILITY_LAMBDA_MIN") if settings else 0.0),
-            float(getattr(settings, "UTILITY_LAMBDA_MAX") if settings else 5.0),
-        ),
-        mu_bounds: tuple[float, float] = (
-            float(getattr(settings, "UTILITY_MU_MIN") if settings else 0.0),
-            float(getattr(settings, "UTILITY_MU_MAX") if settings else 5.0),
-        ),
-        nu_bounds: tuple[float, float] = (
-            float(getattr(settings, "UTILITY_NU_MIN") if settings else 0.0),
-            float(getattr(settings, "UTILITY_NU_MAX") if settings else 5.0),
-        ),
+        lambda_bounds: tuple[float, float] | None = None,
+        mu_bounds: tuple[float, float] | None = None,
+        nu_bounds: tuple[float, float] | None = None,
     ) -> None:
         """Clamp all weights to their respective bounds."""
+        if lambda_bounds is None:
+            lambda_bounds = (
+                _setting("UTILITY_LAMBDA_MIN", 0.0),
+                _setting("UTILITY_LAMBDA_MAX", 5.0),
+            )
+        if mu_bounds is None:
+            mu_bounds = (
+                _setting("UTILITY_MU_MIN", 0.0),
+                _setting("UTILITY_MU_MAX", 5.0),
+            )
+        if nu_bounds is None:
+            nu_bounds = (
+                _setting("UTILITY_NU_MIN", 0.0),
+                _setting("UTILITY_NU_MAX", 5.0),
+            )
         self.lambda_ = min(max(self.lambda_, lambda_bounds[0]), lambda_bounds[1])
         self.mu = min(max(self.mu, mu_bounds[0]), mu_bounds[1])
         self.nu = min(max(self.nu, nu_bounds[0]), nu_bounds[1])
@@ -59,11 +85,11 @@ class UtilityWeights:
 
 @dataclass(frozen=True)
 class AdaptationGains:
-    """Per-parameter gains applied to the learning signal (settings-driven).
+    """Per-parameter gains applied to the learning signal.
 
-    These gains control how strongly each parameter responds to feedback signals.
-    Positive gains increase the parameter on positive feedback, negative gains
-    decrease it.
+    Defaults from ``somabrain.math.contracts.ADAPT_GAINS`` (single source).
+    Positive gains increase the parameter on positive feedback; negative
+    gains decrease it.  γ/μ/ν are negative by design.
 
     Attributes:
         alpha: Gain for retrieval alpha parameter
@@ -73,51 +99,21 @@ class AdaptationGains:
         nu: Gain for utility nu parameter
     """
 
-    alpha: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_ALPHA") if settings else 1.0
-    )
-    gamma: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_GAMMA") if settings else -0.5
-    )
-    lambda_: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_LAMBDA") if settings else 1.0
-    )
-    mu: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_MU") if settings else -0.25
-    )
-    nu: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_NU") if settings else -0.25
-    )
+    alpha: float = _setting("SOMABRAIN_ADAPTATION_GAIN_ALPHA", ADAPT_GAINS["alpha"])
+    gamma: float = _setting("SOMABRAIN_ADAPTATION_GAIN_GAMMA", ADAPT_GAINS["gamma"])
+    lambda_: float = _setting("SOMABRAIN_ADAPTATION_GAIN_LAMBDA", ADAPT_GAINS["lambda_"])
+    mu: float = _setting("SOMABRAIN_ADAPTATION_GAIN_MU", ADAPT_GAINS["mu"])
+    nu: float = _setting("SOMABRAIN_ADAPTATION_GAIN_NU", ADAPT_GAINS["nu"])
 
     @classmethod
     def from_settings(cls) -> AdaptationGains:
         """Construct gains from centralized settings only."""
         return cls(
-            alpha=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_ALPHA")
-                if settings
-                else 1.0
-            ),
-            gamma=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_GAMMA")
-                if settings
-                else -0.5
-            ),
-            lambda_=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_LAMBDA")
-                if settings
-                else 1.0
-            ),
-            mu=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_MU")
-                if settings
-                else -0.25
-            ),
-            nu=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAIN_NU")
-                if settings
-                else -0.25
-            ),
+            alpha=_setting("SOMABRAIN_ADAPTATION_GAIN_ALPHA", ADAPT_GAINS["alpha"]),
+            gamma=_setting("SOMABRAIN_ADAPTATION_GAIN_GAMMA", ADAPT_GAINS["gamma"]),
+            lambda_=_setting("SOMABRAIN_ADAPTATION_GAIN_LAMBDA", ADAPT_GAINS["lambda_"]),
+            mu=_setting("SOMABRAIN_ADAPTATION_GAIN_MU", ADAPT_GAINS["mu"]),
+            nu=_setting("SOMABRAIN_ADAPTATION_GAIN_NU", ADAPT_GAINS["nu"]),
         )
 
 
@@ -125,6 +121,7 @@ class AdaptationGains:
 class AdaptationConstraints:
     """Bounds for parameter values during adaptation.
 
+    Defaults from ``somabrain.math.contracts.ADAPT_BOUNDS`` (single source).
     These constraints prevent parameters from drifting too far from reasonable
     values during online learning.
 
@@ -136,89 +133,29 @@ class AdaptationConstraints:
         nu_min/max: Bounds for utility nu
     """
 
-    alpha_min: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MIN") if settings else 0.1
-    )
-    alpha_max: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MAX") if settings else 5.0
-    )
-    gamma_min: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MIN") if settings else 0.0
-    )
-    gamma_max: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MAX") if settings else 1.0
-    )
-    lambda_min: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MIN") if settings else 0.1
-    )
-    lambda_max: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MAX") if settings else 5.0
-    )
-    mu_min: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_MU_MIN") if settings else 0.01
-    )
-    mu_max: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_MU_MAX") if settings else 5.0
-    )
-    nu_min: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_NU_MIN") if settings else 0.01
-    )
-    nu_max: float = float(
-        getattr(settings, "SOMABRAIN_ADAPTATION_NU_MAX") if settings else 5.0
-    )
+    alpha_min: float = _setting("SOMABRAIN_ADAPTATION_ALPHA_MIN", ADAPT_BOUNDS["alpha"][0])
+    alpha_max: float = _setting("SOMABRAIN_ADAPTATION_ALPHA_MAX", ADAPT_BOUNDS["alpha"][1])
+    gamma_min: float = _setting("SOMABRAIN_ADAPTATION_GAMMA_MIN", ADAPT_BOUNDS["gamma"][0])
+    gamma_max: float = _setting("SOMABRAIN_ADAPTATION_GAMMA_MAX", ADAPT_BOUNDS["gamma"][1])
+    lambda_min: float = _setting("SOMABRAIN_ADAPTATION_LAMBDA_MIN", ADAPT_BOUNDS["lambda_"][0])
+    lambda_max: float = _setting("SOMABRAIN_ADAPTATION_LAMBDA_MAX", ADAPT_BOUNDS["lambda_"][1])
+    mu_min: float = _setting("SOMABRAIN_ADAPTATION_MU_MIN", ADAPT_BOUNDS["mu"][0])
+    mu_max: float = _setting("SOMABRAIN_ADAPTATION_MU_MAX", ADAPT_BOUNDS["mu"][1])
+    nu_min: float = _setting("SOMABRAIN_ADAPTATION_NU_MIN", ADAPT_BOUNDS["nu"][0])
+    nu_max: float = _setting("SOMABRAIN_ADAPTATION_NU_MAX", ADAPT_BOUNDS["nu"][1])
 
     @classmethod
     def from_settings(cls) -> AdaptationConstraints:
         """Construct constraints from centralized settings only."""
         return cls(
-            alpha_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MIN")
-                if settings
-                else 0.1
-            ),
-            alpha_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_ALPHA_MAX")
-                if settings
-                else 5.0
-            ),
-            gamma_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MIN")
-                if settings
-                else 0.0
-            ),
-            gamma_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_GAMMA_MAX")
-                if settings
-                else 1.0
-            ),
-            lambda_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MIN")
-                if settings
-                else 0.1
-            ),
-            lambda_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_LAMBDA_MAX")
-                if settings
-                else 5.0
-            ),
-            mu_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_MU_MIN")
-                if settings
-                else 0.01
-            ),
-            mu_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_MU_MAX")
-                if settings
-                else 5.0
-            ),
-            nu_min=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_NU_MIN")
-                if settings
-                else 0.01
-            ),
-            nu_max=float(
-                getattr(settings, "SOMABRAIN_ADAPTATION_NU_MAX")
-                if settings
-                else 5.0
-            ),
+            alpha_min=_setting("SOMABRAIN_ADAPTATION_ALPHA_MIN", ADAPT_BOUNDS["alpha"][0]),
+            alpha_max=_setting("SOMABRAIN_ADAPTATION_ALPHA_MAX", ADAPT_BOUNDS["alpha"][1]),
+            gamma_min=_setting("SOMABRAIN_ADAPTATION_GAMMA_MIN", ADAPT_BOUNDS["gamma"][0]),
+            gamma_max=_setting("SOMABRAIN_ADAPTATION_GAMMA_MAX", ADAPT_BOUNDS["gamma"][1]),
+            lambda_min=_setting("SOMABRAIN_ADAPTATION_LAMBDA_MIN", ADAPT_BOUNDS["lambda_"][0]),
+            lambda_max=_setting("SOMABRAIN_ADAPTATION_LAMBDA_MAX", ADAPT_BOUNDS["lambda_"][1]),
+            mu_min=_setting("SOMABRAIN_ADAPTATION_MU_MIN", ADAPT_BOUNDS["mu"][0]),
+            mu_max=_setting("SOMABRAIN_ADAPTATION_MU_MAX", ADAPT_BOUNDS["mu"][1]),
+            nu_min=_setting("SOMABRAIN_ADAPTATION_NU_MIN", ADAPT_BOUNDS["nu"][0]),
+            nu_max=_setting("SOMABRAIN_ADAPTATION_NU_MAX", ADAPT_BOUNDS["nu"][1]),
         )

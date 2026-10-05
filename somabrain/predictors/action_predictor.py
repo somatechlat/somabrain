@@ -47,10 +47,10 @@ class ActionPredictor(HeatDiffusionPredictor):
 
         apply_A, dim = _load_action_operator()
         cfg = PredictorConfig(
-            diffusion_t=getattr(settings, "DIFFUSION_T"),
-            alpha=getattr(settings, "PREDICTOR_ALPHA"),
-            chebyshev_K=getattr(settings, "CHEBYSHEV_K"),
-            lanczos_m=getattr(settings, "LANCZOS_M"),
+            diffusion_t=getattr(settings, "SOMABRAIN_DIFFUSION_T"),
+            alpha=getattr(settings, "SOMABRAIN_PREDICTOR_ALPHA"),
+            chebyshev_K=getattr(settings, "SOMABRAIN_CHEB_K"),
+            lanczos_m=getattr(settings, "SOMABRAIN_LANCZOS_M"),
         )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 

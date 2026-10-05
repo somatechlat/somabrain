@@ -79,7 +79,16 @@ def feedback_endpoint(request: HttpRequest, payload: dict = Body(...)):
 
     try:
         from somabrain.api.context_state import get_context_route_state
+        from somabrain.brain_settings.models import (
+            BrainSetting,
+            BrainSettingNotFound,
+        )
         from somabrain.context.factory import get_context_builder, get_context_planner
+
+        # Bootstrap: materialise the declared brain-settings schema for this
+        # tenant (and the default profile it inherits from). Without rows the
+        # learning loop cannot read active_brain_mode / adapt_lr and refuses.
+        BrainSetting.ensure_seeded(tenant_id)
 
         builder = get_context_builder()
         planner = get_context_planner()
@@ -128,6 +137,13 @@ def feedback_endpoint(request: HttpRequest, payload: dict = Body(...)):
             "elapsed_ms": round(elapsed * 1000, 2),
         }
     except Exception as exc:
+        from somabrain.brain_settings.models import BrainSettingNotFound
+
+        if isinstance(exc, BrainSettingNotFound):
+            # Fail-closed refusal: the profile is not seeded and the message
+            # names the exact operator action. Not a 500 — the request is
+            # well-formed, the deployment is not initialised (Rule 6 / 91).
+            raise HttpError(503, str(exc))
         raise HttpError(500, f"Feedback processing failed: {exc}")
 
 

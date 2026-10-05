@@ -446,7 +446,7 @@ This enables:
 
 | File | Purpose |
 |------|---------|
-| `somabrain/admin/brain/neuromodulators.py` | Dopamine, serotonin, etc. |
+| `somabrain/runtime/neuromodulators.py` | Dopamine, serotonin, noradrenaline, acetylcholine (single store) |
 | `somabrain/admin/brain/focus_state.py` | Attention state |
 | `somabrain/admin/brain/fnom.py` | False negatives/positives |
 

@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from somabrain.math import cosine_similarity
+from somabrain.math.contracts import RECENCY_FLOOR, RECENCY_SHARPNESS
 from somabrain.math.recency import stretched_exponential_recency
 
 if TYPE_CHECKING:
@@ -147,8 +148,8 @@ def compute_eviction_salience(
     gamma: float,
     now: float,
     recency_scale: float,
-    recency_sharpness: float = 1.2,
-    recency_floor: float = 0.05,
+    recency_sharpness: float = RECENCY_SHARPNESS,
+    recency_floor: float = RECENCY_FLOOR,
 ) -> float:
     """Compute salience for eviction decision.
 

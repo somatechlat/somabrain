@@ -76,10 +76,10 @@ adaptation `somabrain/learning/adaptation/engine.py:53-348`, Rust module `rust_c
 | `somabrain/admin/core/learning/prediction.py` | Python `MahalanobisPredictor`, `BudgetedPredictor`, `LLMPredictor`, `SlowPredictor` | IMPLEMENTED (live predictor path) |
 | `somabrain/predictors/base.py` + `predictors/{agent,action,state}_predictor.py` | Heat-diffusion predictors (`HeatDiffusionPredictor`) | DEAD (package never imported; see §3) |
 | `somabrain/runtime/neuromodulators.py` | `NeuromodState`, `Neuromodulators`, `PerTenantNeuromodulators`, adaptive variants | IMPLEMENTED (live: `singletons.py:278-282`) |
-| `somabrain/admin/brain/neuromodulators.py` | Near-duplicate neuromodulator tree | DUPLICATE (see §6) |
+| `somabrain/admin/brain/neuromodulators.py` | (deleted W2) | DELETED — single tree is `runtime/neuromodulators.py` |
 | `somabrain/admin/brain/unified_core.py` | `UnifiedBrainCore.process_memory` / `retrieve_memory` | DEAD on live path (only factory `create_unified_brain`, never called) |
 | `somabrain/admin/cognitive/basal_ganglia.py` | `BasalGangliaPolicy` | DEAD (never imported) |
-| `somabrain/runtime/supervisor.py` | `Supervisor.free_energy` / `adjust` | DEAD on `/act` path (see §3, §7) |
+| `somabrain/runtime/supervisor.py` | `Supervisor.free_energy` / `adjust` | LIVE when `SOMABRAIN_USE_META_BRAIN` (wired via `get_supervisor()` on `/act`; default-off flag) |
 | `somabrain/learning/adaptation/engine.py` | Online weight adaptation (retrieval αβγτ, utility λμν) | IMPLEMENTED (live via `/context/*`, `api/endpoints/context.py:73-217`) |
 | `somabrain/lifecycle/startup.py` | Startup handlers (Kafka/OPA enforce, outbox sync, Milvus reconcile, …) | DEAD (never registered; `admin/core/apps.py:26-33` `ready()` is side-effect free) |
 | `somabrain/settings/` (`infra.py`, `cognitive.py`, `django_core.py`, …) | Env-backed configuration | IMPLEMENTED |
@@ -116,11 +116,11 @@ Legend:
 | `IntegratorHub.run` | Kafka integrator loop | `somabrain/services/integrator_hub_triplet.py:384-418`; process entry `:428-450`; compose `infra/standalone/docker-compose.yml:1068` | LIVE (sidecar process) |
 | `StatePredictorService` / `AgentPredictorService` / `ActionPredictorService` | Kafka domain predictors | `somabrain/services/state_predictor.py:239-240`; `agent_predictor.py:271`; `action_predictor.py:298`; launched `infra/standalone/ops/supervisor/supervisord.conf:25,38,51` | LIVE (sidecar processes) |
 | `AdaptationEngine.apply_feedback` | Weight learning | `somabrain/learning/adaptation/engine.py:322-348`; used `somabrain/api/endpoints/context.py:101-106` | LIVE |
-| `create_supervisor` / `Supervisor` | Free-energy supervisor | Factory `somabrain/bootstrap/core_singletons.py:165-184`; **never called**; `/act` passes `supervisor=None` (`cognitive.py:216`) | DEAD |
-| `Supervisor.free_energy` / `adjust` | Free energy F | `somabrain/runtime/supervisor.py:88-134` | DEAD on request path |
+| `create_supervisor` / `Supervisor` | Free-energy supervisor | Factory `somabrain/bootstrap/core_singletons.py:165-184`; invoked by `bootstrap/singletons.get_supervisor()` and passed to `eval_step` from `/act` (W2). Returns `None` when `SOMABRAIN_USE_META_BRAIN=False` | LIVE (flag-gated) |
+| `Supervisor.free_energy` / `adjust` | Free energy F | `somabrain/runtime/supervisor.py`; `/act` passes `get_supervisor()` | LIVE when meta-brain enabled |
 | `BasalGangliaPolicy` | BG selection / store-act policy | `somabrain/admin/cognitive/basal_ganglia.py:45`; **zero imports** in `somabrain/` | DEAD |
 | `UnifiedBrainCore.process_memory` / `retrieve_memory` | Unified math core | `somabrain/admin/brain/unified_core.py:23-56`; only factory `core_singletons.py:273-289` (never invoked) | DEAD |
-| `AdaptiveNeuromodulators` / `AdaptivePerTenantNeuromodulators` | Performance-adaptive neurochem | `somabrain/runtime/neuromodulators.py:241-422`; `admin/brain/neuromodulators.py:239-420`; tests `tests/proofs/category_d/test_state_isolation.py:149-280` | TEST-ONLY |
+| `AdaptiveNeuromodulators` / `AdaptivePerTenantNeuromodulators` | Performance-adaptive neurochem | `somabrain/runtime/neuromodulators.py` (single tree); tests `tests/unit/test_neuromod_wiring.py`, `tests/proofs/category_d/test_state_isolation.py` | TEST-ONLY |
 | `run_retrieval_pipeline` | Retrieval pipeline | `somabrain/services/retrieval_pipeline.py:98-211`; **no callers** (recall uses `MemoryService.arecall` / `perform_recall`) | DEAD |
 | `somabrain.memory.scoring.rank_hits` / `rescore_and_rank_hits` / `apply_weighting_to_hits` | Scoring helpers | `somabrain/memory/scoring.py:227,269,349`; exported `memory/__init__.py:50-59` but **never imported**; live twin is `memory/client/ranking.py:_rank_hits/_rescore_and_rank_hits` used by `memory/client/search.py:68,138` | DEAD |
 | `HeatDiffusionPredictor` + `build_predictor_from_env` + domain wrappers | Graph-heat predictors | `somabrain/predictors/base.py:56-269`, `predictors/agent_predictor.py:42`, etc.; package **never imported** outside itself | DEAD |
@@ -166,8 +166,10 @@ Numbered steps as implemented:
       `cognitive_loop_service.py:172-181`.
    4. Neuromod state + optional personality modulation:
       `cognitive_loop_service.py:196-211`.
-   5. Supervisor adjustment — **`supervisor=None` on this path**, so free energy `F`
-      stays `None`: `cognitive.py:216`, `cognitive_loop_service.py:212-223,267`.
+   5. Supervisor adjustment — `supervisor=get_supervisor()` (W2). When
+      `SOMABRAIN_USE_META_BRAIN=True`, `supervisor.adjust` runs and free energy `F`
+      is populated; default-off yields `F = None`:
+      `cognitive.py` (`get_supervisor`), `cognitive_loop_service.py:212-223,267`.
    6. Salience `amygdala.score(...)` and gates `amygdala.gates(s, nm)`:
       `cognitive_loop_service.py:225-231`; trait uplift forces `s = 1.0`:
       `cognitive_loop_service.py:226-228`.
@@ -210,7 +212,7 @@ Background (not on the HTTP request path): Kafka domain predictors
 
 | Domain | Implementation A | Implementation B | Divergence / risk | Evidence |
 |---|---|---|---|---|
-| **Neuromodulators tree** | `somabrain/runtime/neuromodulators.py` (live; lazy adaptive registry `:425-442`) | `somabrain/admin/brain/neuromodulators.py` (module-level `adaptive_per_tenant_neuromods` `:424`) | Near-identical duplicated module (~420 lines). Live `/act` uses **runtime** tree (`bootstrap/singletons.py:280`). Adaptation engine dopamine lookup uses **admin** tree (`learning/adaptation/engine.py:435-437`). Tests import admin tree. Two mutable global registries can diverge. | `runtime/neuromodulators.py:1-449` vs `admin/brain/neuromodulators.py:1-424` |
+| **Neuromodulators tree** | `somabrain/runtime/neuromodulators.py` (THE store; lazy adaptive registry) | — | **RESOLVED (W2 / DEBT-001).** Admin tree deleted. `/act`, `/neuromod/*`, and AdaptationEngine DA→LR all use `bootstrap.singletons.get_neuromodulators()`. | `runtime/neuromodulators.py` |
 | **Binder algebra** | Rust `PermutationBinder` (`rust_core/src/bhdc.rs` via `math/bhdc_encoder.py:231-235`) | Python `_PythonPermutationBinder` fallback (`math/bhdc_encoder.py:83+,237-239`) | Dual backend chosen at runtime by `is_rust_available()`. GMD doc states binding is pure element-wise multiply (`docs/SomabrainGMD.md:69-73`); code is **permute-then-multiply** (`math/bhdc_encoder.py:242`). Math claim ≠ implementation. | `math/bhdc_encoder.py:213-249`, `admin/core/quantum.py:130-140` |
 | **Scoring / ranking copies** | `somabrain/memory/scoring.py` (`rank_hits` `:227`, `rescore_and_rank_hits` `:349`) — DEAD | `somabrain/memory/client/ranking.py` (`_rank_hits` `:180`, `_rescore_and_rank_hits` `:381`) — LIVE via `memory/client/search.py:68,138` | Two parallel scoring utilities with overlapping names. Only the `client/ranking.py` copy is on the recall path. `memory/scoring.py` is exported (`memory/__init__.py:50-59`) but never imported. | see file:line |
 | **UnifiedScorer vs memory scoring** | `admin/core/learning/scoring.py:41` `UnifiedScorer` (WM + memory pool + retrieval) | `memory/scoring.py` hit ranking utilities | Different layers, but both named "scoring"; risk of wrong import. | `bootstrap/singletons.py:230-240`, `runtime/manager.py:167-174` |
@@ -225,7 +227,7 @@ Background (not on the HTTP request path): Kafka domain predictors
 
 | Claim (source) | What the code actually does | Verdict | Evidence |
 |---|---|---|---|
-| **Free energy minimization on `/act`**: "supervisor.adjust() modulates the neuromod state and returns free-energy/magnitude" (`docs/SOMABRAIN_ARCHITECTURE.md` §6.1 step 6) | `/act` passes `supervisor=None` (`cognitive.py:216`). `eval_step` only calls `supervisor.adjust` if supervisor is not None (`cognitive_loop_service.py:214-223`). Result key `free_energy` is therefore always `None` on the live path (`cognitive_loop_service.py:267`). `Supervisor.free_energy` is a weighted sum proxy (`runtime/supervisor.py:88-110`), and `create_supervisor` is never invoked. | **NOT IMPLEMENTED on live path** | cited |
+| **Free energy minimization on `/act`** | `/act` passes `get_supervisor()` (W2). With `SOMABRAIN_USE_META_BRAIN=True`, `supervisor.adjust` runs and `free_energy` is populated; default-off leaves `F = None` by product flag, not by missing wire. | **IMPLEMENTED, flag-gated** | cited |
 | **BG selection / basal ganglia policy** — documented cognitive component (`SOMABRAIN_CODEBASE_DOCUMENTATION.md` implies full brain stack; `basal_ganglia.py` docstring "Policy decision making based on store/act gates") | `BasalGangliaPolicy` (`admin/cognitive/basal_ganglia.py:45`) has **zero importers** in production code. Store/act gates come from `AmygdalaSalience.gates` instead (`cognitive_loop_service.py:231`). | **DEAD code** | grep: no `from somabrain.admin.cognitive.basal_ganglia` / `BasalGangliaPolicy(` outside its module |
 | **RPE (reward prediction error)** — dopamine "reward prediction errors" (`admin/brain/neuromodulators.py:325`, `runtime/neuromodulators.py:327`) | `_calculate_dopamine_feedback` returns `success_rate + bias + optional boost` (`runtime/neuromodulators.py:324-338`) — no temporal-difference / RPE term. Rust exposes `compute_td_error` / `compute_td_return` (`rust_core/src/lib.rs:90-93`) but nothing in Python calls them. Adaptive path itself is TEST-ONLY (§3). | **NOT IMPLEMENTED** (label only) | cited |
 | **Mahalanobis in Rust** — GMD/ARCH treat Rust as the math runtime (`docs/SomabrainGMD.md:29` "Implementation Target: Deterministic Rust Runtime") | Live predictor is Python `MahalanobisPredictor` (`bootstrap/singletons.py:70`). Rust `MahalanobisPredictor.distance` is L2-to-mean, covariance unused (`rust_core/src/prediction.rs:66-93`) — **not** a Mahalanobis distance. Never constructed from Python. | **MISNAMED / UNUSED** | cited |
@@ -260,7 +262,7 @@ Background (not on the HTTP request path): Kafka domain predictors
 | `somabrain/predictors/*` heat-diffusion stack | DEAD |
 | `lifecycle/startup.py` handlers | DEAD |
 | `BasalGangliaPolicy` | DEAD |
-| `Supervisor` / free energy on `/act` | DEAD |
+| `Supervisor` / free energy on `/act` | LIVE when `SOMABRAIN_USE_META_BRAIN` |
 | `UnifiedBrainCore` | DEAD |
 | `AdaptiveNeuromodulators` | TEST-ONLY |
 | `admin/core/integrator_hub.py` | BROKEN |

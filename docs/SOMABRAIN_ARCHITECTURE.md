@@ -331,14 +331,18 @@ cog.global.frame → StatePredictor → cog.state.updates
 
 ### 6.3 Neuromodulators
 
-`somabrain/admin/brain/neuromodulators.py` and `somabrain/runtime/neuromodulators.py` implement a four-chemical state model:
+`somabrain/runtime/neuromodulators.py` is the single four-chemical state store
+(`somabrain/admin/brain/neuromodulators.py` was a duplicate and is deleted):
 
-- **Dopamine** — prediction-error / reward signal.
-- **Serotonin** — confidence / stability.
-- **Noradrenaline** — arousal / urgency.
-- **Acetylcholine** — attention / memory encoding bias.
+- **Dopamine** — reward weighting; scales the adaptation engine's learning rate.
+- **Serotonin** — stability / response smoothing (consumed by amygdala gates).
+- **Noradrenaline** — arousal / urgency (raises gate thresholds).
+- **Acetylcholine** — attention demand (shared law `acetylcholine_target`).
 
-`AdaptiveNeuromodulators` update these based on performance feedback (`adapt_from_performance`).
+`AdaptiveNeuromodulators` update these via the homeostatic law
+`m ← Π(m + η (δ − m))` from performance feedback (`update_from_performance`).
+Bounds are `somabrain.math.contracts.NEURO_BOUNDS`; the `/neuromod` API rejects
+out-of-box values.
 
 ### 6.4 Sleep / consolidation
 
@@ -620,7 +624,7 @@ This section records the real state observed in the running standalone deploymen
 | Cognitive loop | `somabrain/services/cognitive_loop_service.py` |
 | Cognitive endpoints | `somabrain/api/endpoints/cognitive.py` |
 | Predictors / integrator | `somabrain/services/state_predictor.py`, `agent_predictor.py`, `action_predictor.py`, `integrator_hub_triplet.py` |
-| Neuromodulators | `somabrain/admin/brain/neuromodulators.py`, `somabrain/runtime/neuromodulators.py` |
+| Neuromodulators | `somabrain/runtime/neuromodulators.py` (single store) |
 | Focus state | `somabrain/admin/brain/focus_state.py` |
 | Sleep | `somabrain/api/endpoints/sleep.py` |
 | Settings / bootstrap | `somabrain/settings/django_core.py`, `somabrain/settings/infra.py`, `somabrain/settings/standalone.py` |

@@ -7,64 +7,32 @@ All CPU-bound vector operations are in Rust, this module only provides
 the NumPy interface expected by QuantumLayer. The pure-Python fallbacks
 implement the **same** formulas as `rust_core/src/bhdc.rs` /
 `rust_core/src/mathcore.rs` (Wiener unbind, FWHT mix, λ*).
+
+Wiener λ* helpers and BHDC constants live in ``somabrain.math.contracts``
+(single home).  This module imports them so existing call sites keep working
+without a re-export facade — the definition is in contracts only.
 """
 
 from __future__ import annotations
 
-import os
 from typing import Union
 
 import numpy as np
 
 from somabrain.core.rust_bridge import get_rust_module, is_rust_available
+from somabrain.math.contracts import (
+    PRODUCTION_SPARSITY_P,
+    compute_wiener_lambda,
+    production_sparsity,
+    production_wiener_lambda,
+)
 
 _SeedLike = Union[int, str, None]
-
-# Production BHDC sparsity p (active-element probability): an engineering
-# choice, not a theorem-derived optimum. Matches the default of
-# `SOMABRAIN_BHDC_SPARSITY` in `somabrain.settings.cognitive` /
-# `somabrain.settings.django_core` and `PRODUCTION_SPARSITY_P` in
-# `rust_core/src/mathcore.rs`. Callers that know their configured p must
-# pass it (see `PermutationBinder(p=...)`).
-PRODUCTION_SPARSITY_P = 0.1
 
 
 def _active_count(dim: int, sparsity: float) -> int:
     """Return the exact number of active dimensions for a sparse vector."""
     return max(1, min(dim, int(round(float(sparsity) * dim))))
-
-
-def compute_wiener_lambda(p: float, bits: int = 8) -> float:
-    """Wiener ridge λ* = σ_ε² / σ_v² (GMD Theorem 3).
-
-    σ_ε² = Δ²/12 with Δ = 2/(2^bits − 1) (Δ = 2/255 for the 8-bit quantizer),
-    σ_v² = p(1−p) for a sparse vector with active probability p.
-    At bits=8 this is exactly `Δ² / (12 p (1−p))`.
-
-    Matches `somabrain_rs.compute_wiener_lambda`.
-    """
-    p_clamped = min(max(float(p), 0.01), 0.99)
-    bits_clamped = max(int(bits), 1)
-    levels = float((1 << bits_clamped) - 1)
-    delta = 2.0 / levels
-    sigma_eps_sq = (delta * delta) / 12.0
-    sigma_v_sq = p_clamped * (1.0 - p_clamped)
-    return sigma_eps_sq / sigma_v_sq
-
-
-def production_sparsity() -> float:
-    """BHDC active probability p used in production.
-
-    Reads `SOMABRAIN_BHDC_SPARSITY` — the same environment variable (and
-    default) as `somabrain.settings.cognitive.SOMABRAIN_BHDC_SPARSITY`.
-    This is an engineering choice, not a theorem-derived optimum.
-    """
-    return float(os.environ.get("SOMABRAIN_BHDC_SPARSITY", PRODUCTION_SPARSITY_P))
-
-
-def production_wiener_lambda(bits: int = 8) -> float:
-    """λ* evaluated at the production sparsity."""
-    return compute_wiener_lambda(production_sparsity(), bits)
 
 
 def fwht(values) -> list[float]:

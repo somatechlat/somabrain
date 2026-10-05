@@ -81,7 +81,11 @@ def _get_or_create_focus_state(
     try:
         from somabrain.admin.core.context_hrr import HRRContext
 
-        dim = int(getattr(cfg, "HRR_DIM", 512) or 512)
+        dim = int(getattr(cfg, "HRR_DIM", 0) or 0)
+        if dim <= 0:
+            from somabrain.math.contracts import BHDC_D
+
+            dim = BHDC_D
         hrr = HRRContext(dim=dim)
         focus = FocusState(
             hrr_context=hrr, cfg=cfg, session_id=session_id, tenant_id=tenant_id
@@ -182,12 +186,14 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
         get_neuromodulators,
         get_personality_store,
         get_predictor,
+        get_supervisor,
     )
 
     predictor = get_predictor()
     per_tenant_neuromodulators = get_neuromodulators()
     personality_store = get_personality_store()
     amygdala = get_amygdala()
+    supervisor = get_supervisor()
     wm_vec = embedder.embed(body.task) if embedder else None
     session_id = request.headers.get("X-Session-ID") or f"{ctx.tenant_id}:default"
     focus_state = _get_or_create_focus_state(session_id, ctx.tenant_id, settings)
@@ -213,7 +219,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
         predictor=predictor,
         neuromods=per_tenant_neuromodulators,
         personality_store=personality_store,
-        supervisor=None,
+        supervisor=supervisor,
         amygdala=amygdala,
         tenant_id=ctx.tenant_id,
         previous_focus_vec=previous_focus_vec,
