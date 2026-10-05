@@ -1,50 +1,80 @@
-# Build context exclusions for SomaBrain standalone image
-# Context root is the repo root; Dockerfile is at infra/standalone/Dockerfile
+# Build context exclusions for SomaBrain standalone image.
+# Context root is the repo root; Dockerfile is at infra/standalone/Dockerfile.
+# Rule 164: a secret is Vault material and must never be baked into an image.
 
-# Secrets and local config
-.env
-.env.*
-!.env.example
+# --- secret MATERIAL (directories and formats, not name substrings) ---------
+# Do NOT use *token* / *password* / *credential* globs: they match real source
+# (vault_secrets.py, unified_secret_manager.py, secret_policy.py, test_*_token_*.py).
+infra/standalone/secrets/
+**/vault_root_token
+**/vault_unseal_key
+**/*_vault_root_token
+**/*_vault_unseal_key
 
-# Git
+# --- env files at every depth ----------------------------------------------
+# A bare `.env` matched only the repo root; `infra/standalone/.env` is a real
+# file here and was NOT excluded before.
+**/.env
+**/.env.*
+!**/.env.example
+
+# --- key and certificate FORMATS -------------------------------------------
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ecdsa*
+id_ed25519*
+
+# --- VCS --------------------------------------------------------------------
 .git
 .gitignore
 
-# Python virtual environments
+# --- Python -----------------------------------------------------------------
 .venv
 venv
 __pycache__
 *.pyc
 *.pyo
+*.pyd
 *.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.hypothesis
+.benchmarks
 
-# Rust build artifacts
+# --- Rust build artifacts ---------------------------------------------------
+# never in an image; 841 of these were once tracked in git
 rust_core/target
-*.lock
+target
 
-# Node / TypeScript
+# --- Node / TypeScript ------------------------------------------------------
 node_modules
 dist
+build
 
-# IDE / OS
+# --- IDE / OS ---------------------------------------------------------------
 .idea
 .vscode
 .DS_Store
 
-# CI/build caches
-.mypy_cache
-.pytest_cache
-.ruff_cache
-.benchmarks
-.hypothesis
-
-# Documentation and misc files not needed at runtime
+# --- docs not needed at runtime ---------------------------------------------
 docs
 *.md
 !README.md
 !rust_core/README.md
 
-# Data and logs
+# --- data and logs ----------------------------------------------------------
 data
 data/drift
 *.log
+tmp
