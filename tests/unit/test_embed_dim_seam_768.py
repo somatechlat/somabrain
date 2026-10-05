@@ -195,3 +195,95 @@ class TestClientPayloadContract:
             or "check_embedding_dim" in src
             or "EmbeddingDimensionError" in src
         ), "remember ingest must enforce the 768 embedding contract"
+
+
+class TestRecallAcceptsPrecomputedQueryVector:
+    """The public recall surface must accept a precomputed query vector.
+
+    INVARIANTS §2.1: the embedding is computed once, in the gateway, and sent
+    precomputed. When present, the brain MUST NOT call embedder.embed — a
+    store-side re-embed ranks a different vector space and recall is noise.
+
+    These checks are source + resolver proofs so they run without booting the
+    Django settings module (which requires the Vault-sourced
+    SOMABRAIN_MEMORY_HTTP_TOKEN). A live round-trip is the integration gate.
+    """
+
+    def test_all_three_recall_models_carry_embedding(self):
+        """Every public recall request model declares the first-class field.
+
+        Pydantic v2 extra=ignore would silently drop an undeclared key — that
+        is why each of the three surfaces must name it.
+        """
+        paths = [
+            "api/endpoints/memory.py",
+            "api/memory/models.py",
+            "schemas/memory.py",
+        ]
+        for rel in paths:
+            src = _read(rel)
+            assert re.search(
+                r"embedding:\s*list\[float\]\s*\|\s*None", src
+            ), f"{rel} has no first-class embedding field (precomputed query vector)"
+
+    def test_descriptions_forbid_reembed(self):
+        for rel in ("api/endpoints/memory.py", "api/memory/models.py", "schemas/memory.py"):
+            src = _read(rel)
+            assert "MUST NEVER be re-embedded" in src, (
+                f"{rel} does not state that a present vector is authoritative"
+            )
+
+    def test_wrong_dim_rejected(self):
+        from somabrain.embed_dim import (
+            EmbeddingDimensionError,
+            ensure_embedding_dim,
+            resolve_embed_dim,
+        )
+
+        class _S:
+            SOMABRAIN_EMBED_DIM = 768
+            SOMABRAIN_EMBED_DIM_SEAM = 768
+
+        dim = resolve_embed_dim(_S)
+        assert ensure_embedding_dim(None, settings=_S) is None
+        bad = [0.0] * (dim + 1)
+        try:
+            ensure_embedding_dim(bad, settings=_S)
+        except EmbeddingDimensionError as exc:
+            assert str(dim) in str(exc)
+        else:
+            raise AssertionError("expected EmbeddingDimensionError for wrong dim")
+
+    def test_validator_maps_dim_and_finite_to_400(self):
+        recall_src = _read("api/memory/recall.py")
+        assert "def _require_valid_query_vector" in recall_src
+        assert "HttpError(400" in recall_src
+        assert "ensure_embedding_dim" in recall_src
+        assert "math.isfinite" in recall_src
+        # The same validator backs the public /memory/recall handler.
+        mem_src = _read("api/endpoints/memory.py")
+        assert "_require_valid_query_vector" in mem_src
+
+    def test_recall_handlers_never_reembed_when_vector_present(self):
+        """Source proof: embedder.embed sits only on the degradation branch."""
+        recall_src = _read("api/memory/recall.py")
+        mem_src = _read("api/endpoints/memory.py")
+
+        # The precomputed vector is what is forwarded to the store.
+        assert "embedding=query_vec_list" in recall_src
+        assert "embedding=query_vec" in mem_src
+        assert "_arecall_ltm" in recall_src and "_arecall_ltm" in mem_src
+
+        # embedder.embed is reached only when the caller omitted the vector.
+        assert "if query_vec_list is not None:" in recall_src
+        assert "if wm_vec is None:" in mem_src
+        assert "recall.reembed" in recall_src
+        assert "recall.reembed" in mem_src
+
+    def test_write_path_prefers_top_level_embedding(self):
+        """INVARIANTS §5.5: top-level embedding wins; nested is fallback only."""
+        src = _read("api/memory/models.py")
+        assert "Prefer the first-class" in src or "prefer the first-class" in src.lower()
+        # Nested value.embedding is lifted, not silently dropped.
+        assert 'value.get("embedding")' in src
+        assert 'd["embedding"] = list(emb)' in src

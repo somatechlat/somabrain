@@ -18,7 +18,6 @@ dialect. There is exactly one implementation behind all of them.
 from __future__ import annotations
 
 import logging
-import math
 import time
 from typing import Any
 
@@ -36,68 +35,14 @@ from somabrain.api.memory.helpers import (
     _serialize_coord,
 )
 from somabrain.api.memory.models import ForgetRequest, ForgetResponse, _iso_created_at
+from somabrain.api.memory.recall import _arecall_ltm, _require_valid_query_vector
 from somabrain.core.exceptions import CircuitBreakerOpen, MemoryServiceError
-from somabrain.embed_dim import EmbeddingDimensionError, ensure_embedding_dim
 from somabrain.services.memory_service import MemoryService
 from somabrain.tenant import get_tenant, get_tenant_sync
 
 logger = logging.getLogger("somabrain.api.endpoints.memory")
 
 router = Router(tags=["memory"])
-
-
-def _require_valid_query_vector(embedding: list[float] | None) -> list[float] | None:
-    """Validate a precomputed query vector. ``None`` means the caller omitted it.
-
-    Wrong-dim and non-finite vectors are **400** (INVARIANTS §2: fail closed).
-    The expected length comes from the configured seam dim — never a literal.
-    """
-    if embedding is None:
-        return None
-    try:
-        ensure_embedding_dim(embedding)
-    except EmbeddingDimensionError as exc:
-        raise HttpError(400, str(exc)) from exc
-    for i, value in enumerate(embedding):
-        try:
-            finite = math.isfinite(float(value))
-        except (TypeError, ValueError) as exc:
-            raise HttpError(400, f"embedding[{i}] is not a real number") from exc
-        if not finite:
-            raise HttpError(400, f"embedding[{i}] is not finite")
-    return [float(v) for v in embedding]
-
-
-async def _arecall_ltm(
-    memsvc: MemoryService,
-    query: str,
-    *,
-    top_k: int,
-    universe: str | None,
-    embedding: list[float] | None,
-):
-    """Long-term recall via the existing SFM client search path.
-
-    When ``embedding`` is present it is forwarded as the query vector so the
-    store never re-embeds (INVARIANTS §2.1). ``MemoryService.arecall`` and
-    ``ReadMixin.arecall`` do not yet take ``embedding``; ``SearchMixin`` does,
-    and it is the same ``POST /memories/search`` hop those facades call.
-    """
-    client = memsvc.client()
-    if embedding is not None:
-        search = getattr(client, "_http_recall_aggregate_async", None)
-        if search is None:
-            raise HttpError(
-                500,
-                "memory client cannot accept a precomputed query vector "
-                "(search path missing)",
-            )
-        import uuid as _uuid
-
-        return await search(
-            query, top_k, universe or "real", str(_uuid.uuid4()), embedding=embedding
-        )
-    return await memsvc.arecall(query, top_k=top_k, universe=universe)
 
 
 def _map_memory_error(exc: Exception) -> HttpError:

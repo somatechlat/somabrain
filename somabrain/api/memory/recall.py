@@ -40,6 +40,7 @@ from somabrain.core.runtime.config_runtime import (
 )
 from somabrain.embed_dim import EmbeddingDimensionError, ensure_embedding_dim
 from somabrain.metrics import observe_recall_latency, record_memory_snapshot
+from ninja.errors import HttpError
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.parameter_supervisor import MetricsSnapshot
 
@@ -191,6 +192,36 @@ def _require_valid_query_vector(embedding: list[float] | None) -> list[float] | 
     return [float(v) for v in embedding]
 
 
+async def _arecall_ltm(
+    memsvc: MemoryService,
+    query: str,
+    *,
+    top_k: int,
+    universe: str | None,
+    embedding: list[float] | None,
+):
+    """Long-term recall via the existing SFM client search path.
+
+    When ``embedding`` is present it is forwarded as the query vector so the
+    store never re-embeds (INVARIANTS §2.1). ``MemoryService.arecall`` and
+    ``ReadMixin.arecall`` do not yet take ``embedding``; ``SearchMixin`` does,
+    and it is the same ``POST /memories/search`` hop those facades call.
+    """
+    client = memsvc.client()
+    if embedding is not None:
+        search = getattr(client, "_http_recall_aggregate_async", None)
+        if search is None:
+            raise HttpError(
+                500,
+                "memory client cannot accept a precomputed query vector "
+                "(search path missing)",
+            )
+        return await search(
+            query, top_k, universe, str(uuid.uuid4()), embedding=embedding
+        )
+    return await memsvc.arecall(query, top_k=top_k, universe=universe)
+
+
 async def perform_recall(
     payload: MemoryRecallRequest,
     *,
@@ -208,8 +239,6 @@ async def perform_recall(
     and is forwarded to the store (INVARIANTS §2.1: never re-embed). The
     text-only path is the honest degradation and is reported as such.
     """
-    from ninja.errors import HttpError
-
     await _ensure_config_runtime_started()
     layer = (payload.layer or "all").lower()
     if layer not in {"wm", "ltm", "all"}:
@@ -286,10 +315,12 @@ async def perform_recall(
         memsvc = MemoryService(pool, resolved_ns)
         stage_start = time.perf_counter()
         try:
-            hits = await memsvc.arecall(
+            hits = await _arecall_ltm(
+                memsvc,
                 payload.query,
                 top_k=payload.top_k,
                 universe=payload.universe or "real",
+                embedding=query_vec_list,
             )
         except RuntimeError as exc:
             raise HttpError(503, str(exc)) from exc
@@ -419,9 +450,11 @@ async def perform_recall(
 
 
 __all__ = [
+    "_arecall_ltm",
     "_decorated_item",
     "_match_tags",
     "_prune_sessions",
+    "_require_valid_query_vector",
     "_store_recall_session",
     "_within_age",
     "perform_recall",
