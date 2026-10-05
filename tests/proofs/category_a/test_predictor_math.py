@@ -58,27 +58,15 @@ def vector_strategy(draw: st.DrawFn, dim: int = 10) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Mahalanobis Distance Implementation (for testing)
+# Production predictor (real code under test — no local metric reimplementation)
 # ---------------------------------------------------------------------------
 
 
-def mahalanobis_distance(x: np.ndarray, mu: np.ndarray, cov: np.ndarray) -> float:
-    """Compute Mahalanobis distance with regularization for singular matrices.
+def _rust_mahalanobis(dim: int, alpha: float) -> object:
+    """Return the production Rust diagonal-Mahalanobis predictor."""
+    import somabrain_rs as rs
 
-    d_M(x, μ, Σ) = sqrt((x - μ)^T Σ^{-1} (x - μ))
-    """
-    diff = x - mu
-    try:
-        # Try direct inverse
-        cov_inv = np.linalg.inv(cov)
-    except np.linalg.LinAlgError:
-        # Regularize if singular
-        cov_reg = cov + 1e-6 * np.eye(len(cov))
-        cov_inv = np.linalg.inv(cov_reg)
-
-    dist_sq = diff @ cov_inv @ diff
-    # Ensure non-negative due to numerical precision
-    return float(np.sqrt(max(0.0, dist_sq)))
+    return rs.MahalanobisPredictor(dimension=dim, ewma_alpha=alpha)
 
 
 # ---------------------------------------------------------------------------
@@ -89,6 +77,9 @@ def mahalanobis_distance(x: np.ndarray, mu: np.ndarray, cov: np.ndarray) -> floa
 @pytest.mark.math_proof
 class TestPredictorMathematicalCorrectness:
     """Property-based tests for predictor mathematical correctness.
+
+    Assertions target the **production** `MahalanobisPredictor.distance`
+    (diagonal Mahalanobis `sqrt(Σ (x−μ)²/σ²)`), not a test-local metric.
 
     **Feature: full-capacity-testing, Property 9-10: Predictor Math**
     """
@@ -106,7 +97,12 @@ class TestPredictorMathematicalCorrectness:
         For any point x, mean μ, and covariance Σ, Mahalanobis distance
         SHALL be non-negative: d_M(x, μ, Σ) ≥ 0.
         """
-        dist = mahalanobis_distance(x, mu, cov)
+        dim = len(x)
+        pred = _rust_mahalanobis(dim, 0.0)
+        # Seed the online mean with mu via a zero-alpha held state: feed mu
+        # first so the EWMA mean is mu, then measure x.
+        pred.update(mu.tolist())
+        dist = float(pred.distance(x.tolist()))
 
         assert dist >= 0.0, f"Mahalanobis distance negative: {dist}"
         assert not np.isnan(dist), "Mahalanobis distance is NaN"
@@ -120,34 +116,50 @@ class TestPredictorMathematicalCorrectness:
         **Feature: full-capacity-testing, Property 9 (edge case)**
         **Validates: Requirements A3.3**
         """
-        cov = np.eye(len(x))  # Identity covariance
-        dist = mahalanobis_distance(x, x, cov)
+        dim = len(x)
+        pred = _rust_mahalanobis(dim, 0.5)
+        pred.update(x.tolist())
+        dist = float(pred.distance(x.tolist()))
 
         assert abs(dist) < 1e-10, f"Self-distance not zero: {dist}"
 
-    def test_singular_covariance_handling(self) -> None:
-        """A3.5: Singular covariance matrices are handled with regularization.
+    def test_diagonal_mahalanobis_matches_definition(self) -> None:
+        """A3.5: Production distance equals sqrt((x−μ)ᵀ Σ⁻¹ (x−μ)) for diagonal Σ.
 
-        **Feature: full-capacity-testing, Property 9 (edge case)**
+        **Feature: full-capacity-testing, Property 9 (anisotropic case)**
         **Validates: Requirements A3.5**
-
-        When covariance matrix is singular, the system SHALL use
-        regularization without failure.
         """
-        dim = 10
-        x = np.random.randn(dim)
-        mu = np.random.randn(dim)
+        dim = 3
+        pred = _rust_mahalanobis(dim, 0.5)
+        # Build anisotropic variance along the axes by alternating extremes.
+        for i in range(200):
+            pred.update([float(i % 2) * 4.0, float((i + 1) % 2) * 0.1, 0.0])
+        mean = np.asarray(pred.mean, dtype=np.float64)
+        var = np.asarray(pred.var, dtype=np.float64)
+        x = mean + np.array([0.5, 0.5, 0.5])
 
-        # Create singular covariance (rank-deficient)
-        A = np.random.randn(dim, 5)  # Only 5 columns -> rank 5
-        cov_singular = A @ A.T  # Rank at most 5, singular for dim=10
+        expected = float(np.sqrt(np.sum((x - mean) ** 2 / var)))
+        actual = float(pred.distance(x.tolist()))
+        assert abs(actual - expected) < 1e-10, (
+            f"diagonal Mahalanobis mismatch: {actual} != {expected}"
+        )
+        # Name equals math: low-variance axis dominates (Euclidean would not).
+        d_axis0 = float(pred.distance((mean + np.array([1.0, 0.0, 0.0])).tolist()))
+        d_axis1 = float(pred.distance((mean + np.array([0.0, 1.0, 0.0])).tolist()))
+        assert d_axis1 > 10.0 * d_axis0
 
-        # Should not raise, should return valid distance
-        dist = mahalanobis_distance(x, mu, cov_singular)
+    def test_python_predictor_bounded_mahalanobis(self) -> None:
+        """Python `MahalanobisPredictor` uses the diagonal metric too."""
+        from somabrain.admin.core.learning.prediction import MahalanobisPredictor
 
-        assert dist >= 0.0, f"Distance negative for singular cov: {dist}"
-        assert not np.isnan(dist), "NaN for singular covariance"
-        assert not np.isinf(dist), "Infinity for singular covariance"
+        pred = MahalanobisPredictor(alpha=0.5)
+        x = np.zeros(4, dtype="float32")
+        pred._update_stats(x)
+        # Zero surprise on the learned mean.
+        assert pred._mahal_bounded(x) == 0.0
+        # Off-mean input is positive surprise, bounded in [0, 1].
+        s = pred._mahal_bounded(np.ones(4, dtype="float32"))
+        assert 0.0 < s <= 1.0
 
 
 # ---------------------------------------------------------------------------

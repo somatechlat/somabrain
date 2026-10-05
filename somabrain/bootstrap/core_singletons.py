@@ -44,9 +44,7 @@ def create_mt_wm(cfg, scorer: UnifiedScorer):
                 getattr(settings, "SOMABRAIN_WM_SIZE"),
             ),
             max_tenants=getattr(settings, "SOMABRAIN_MTWM_MAX_TENANTS"),
-            recency_time_scale=getattr(
-                settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
-            ),
+            recency_time_scale=float(settings.SOMABRAIN_WM_RECENCY_TIME_SCALE),
             recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS"),
         ),
         scorer=scorer,
@@ -78,9 +76,7 @@ def create_mc_wm(cfg, scorer: UnifiedScorer):
             per_col_capacity=per_col_capacity,
             vote_temperature=getattr(settings, "SOMABRAIN_MICRO_VOTE_TEMPERATURE"),
             max_tenants=getattr(settings, "SOMABRAIN_MICRO_MAX_TENANTS"),
-            recency_time_scale=getattr(
-                settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 3600
-            ),
+            recency_time_scale=float(settings.SOMABRAIN_WM_RECENCY_TIME_SCALE),
             recency_max_steps=getattr(settings, "SOMABRAIN_WM_RECENCY_MAX_STEPS"),
         ),
         scorer=scorer,

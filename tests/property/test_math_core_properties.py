@@ -225,8 +225,8 @@ class TestBindingRoundTrip:
         # Compute cosine similarity
         cosine_sim = ql.cosine(a, recovered)
 
-        # The Rust binder applies a small regularizer (1e-8) during unbind for
-        # numerical stability, so the round trip is approximate rather than exact.
+        # The binder unbind uses the GMD Theorem 3 Wiener ridge λ* = Δ²/(12p(1−p)),
+        # so the round trip is approximate rather than exact.
         assert (
             cosine_sim >= 0.90
         ), f"Unitary round-trip cosine similarity {cosine_sim} < 0.90"

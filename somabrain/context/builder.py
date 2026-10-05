@@ -19,6 +19,7 @@ from cachetools import TTLCache
 from django.conf import settings
 
 from somabrain.math import cosine_similarity
+from somabrain.math.recency import stretched_exponential_recency
 from somabrain.memory.client import RecallHit
 from somabrain.memory.pool import MultiTenantMemory
 from somabrain.services.memory_service import MemoryService
@@ -89,7 +90,7 @@ class ContextBuilder:
         # Tenant identifier for per‑tenant metrics (default value)
         self._tenant_id: str = getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
         # Align temporal decay and density penalties with runtime configuration when available
-        self._recency_half_life = settings.SOMABRAIN_RECENCY_HALF_LIFE
+        self._recency_half_life = settings.SOMABRAIN_WM_RECENCY_TIME_SCALE
         self._recency_sharpness = settings.SOMABRAIN_RECENCY_SHARPNESS
         self._recency_floor = settings.SOMABRAIN_RECENCY_FLOOR
         self._density_target = settings.SOMABRAIN_DENSITY_TARGET
@@ -485,7 +486,7 @@ class ContextBuilder:
         return accum.tolist()
 
     def _temporal_decay(self, ts: float) -> float:
-        """Execute temporal decay.
+        """Canonical stretched-exponential recency for a timestamp.
 
         Args:
             ts: The ts.
@@ -494,15 +495,12 @@ class ContextBuilder:
         if ts <= 0:
             return max(self._recency_floor, 0.0)
         age = max(time.time() - ts, 0.0)
-        half_life = max(self._recency_half_life, 1e-6)
-        try:
-            normalised = age / half_life
-            if normalised <= 0:
-                return 1.0
-            damp = math.exp(-(normalised ** max(self._recency_sharpness, 1e-3)))
-        except Exception:
-            damp = 0.0
-        return float(max(self._recency_floor, min(1.0, damp)))
+        return stretched_exponential_recency(
+            age,
+            scale=self._recency_half_life,
+            sharpness=self._recency_sharpness,
+            floor=self._recency_floor,
+        )
 
     def _density_factor(self, metadata: dict) -> float:
         """Execute density factor.

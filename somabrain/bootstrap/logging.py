@@ -64,9 +64,8 @@ def setup_logging() -> None:
         handlers: list[logging.Handler] = [logging.StreamHandler()]
 
         # Resolve a writable file path for logs under hardened containers
-        # Priority: SOMABRAIN_LOG_PATH > /app/logs/somabrain.log > CWD/somabrain.log
         # Use centralized Settings for log path
-        log_path = settings.log_path
+        log_path = settings.SOMABRAIN_LOG_PATH
         candidate = log_path
         try:
             if not os.path.isabs(candidate):

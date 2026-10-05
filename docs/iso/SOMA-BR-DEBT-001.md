@@ -74,15 +74,15 @@ behaviour is observable at the cited `file:line`.
 | DEBT-008 | P0 | Learning | W3 | Python vs Rust adaptation gains differ in sign and magnitude |
 | DEBT-009 | P1 | Learning | W3 | Three τ mechanisms + four floors (0.4 / 0.1 / 0.05 / 0.01) |
 | DEBT-010 | P1 | Learning | W3 | Entropy cap rewrites τ (and all retrieval weights) in place |
-| DEBT-011 | P0 | Mathcore | W3 | Wiener λ* formula vs hardcoded `2.05e-5` |
-| DEBT-012 | P1 | Mathcore | W3 | Theorem 1 `p*` formula ≥ 0.5 vs comment/docs "p ≈ 0.1" |
-| DEBT-013 | P0 | Mathcore | W3 | Rust test constructs `BayesianMemory` with wrong arity (does not compile) |
-| DEBT-014 | P0 | Mathcore | W3 | Rust λ* unit test expects 2× the implementation |
-| DEBT-015 | P1 | Mathcore | W3 | Python binder `unbind` is plain division, not Wiener |
-| DEBT-016 | P1 | Mathcore | W3 | Python binder `mix="hadamard"` / FWHT is a silent no-op |
+| DEBT-011 | P0 | Mathcore | W3 | Wiener λ* formula vs hardcoded constant — **FIXED (W4)** |
+| DEBT-012 | P1 | Mathcore | W3 | Theorem 1 `p*` formula ≥ 0.5 vs comment/docs "p ≈ 0.1" — **FIXED (W4)** |
+| DEBT-013 | P0 | Mathcore | W3 | Rust test constructs `BayesianMemory` with wrong arity (does not compile) — **FIXED (W4)** |
+| DEBT-014 | P0 | Mathcore | W3 | Rust λ* unit test expects 2× the implementation — **FIXED (W4)** |
+| DEBT-015 | P1 | Mathcore | W3 | Python binder `unbind` is plain division, not Wiener — **FIXED (W4)** |
+| DEBT-016 | P1 | Mathcore | W3 | Python binder `mix="hadamard"` / FWHT is a silent no-op — **FIXED (W4)** |
 | DEBT-017 | P1 | Mathcore | W3 | Chebyshev heat bounds are unexpanded Lanczos Ritz values |
-| DEBT-018 | P1 | Predictors | W3 | Rust `MahalanobisPredictor.distance` is Euclidean L2 |
-| DEBT-019 | P1 | Predictors | W3 | Rust `SlowPredictor.error` uses \|cos\| (opposites → error 0) |
+| DEBT-018 | P1 | Predictors | W3 | Rust `MahalanobisPredictor.distance` is Euclidean L2 — **FIXED (W4)** |
+| DEBT-019 | P1 | Predictors | W3 | Rust `SlowPredictor.error` uses \|cos\| (opposites → error 0) — **FIXED (W4)** |
 | DEBT-020 | P1 | Memory | W4 | Three recency formulas; `WM_RECENCY_TIME_SCALE` has three defaults |
 | DEBT-021 | P1 | Memory | W4 | Two lexical-bonus formulas (`max` vs `+`) |
 | DEBT-022 | P0 | Memory | W4 | `UnifiedScorer` ignores its constructor weight arguments |
@@ -245,19 +245,19 @@ behaviour is observable at the cited `file:line`.
 | **Acceptance test** | After `apply_tau_and_entropy`, τ equals the value produced by the schedule alone. Entropy property uses the implemented normalisation. |
 | **Wave** | W3 |
 
-### DEBT-011 — Wiener λ* formula vs default 2.05e-5
+### DEBT-011 — Wiener λ* formula vs default constant
 
 | Field | Value |
 |---|---|
 | **Severity** | P0 |
 | **Subsystem** | Mathcore |
 | **Wave** | W3 |
-| **Proof** | Formula: `rust_core/src/mathcore.rs:318-331` implements `λ* = Δ² / (12 p (1-p))` with `Δ = 2/255`. Default: `rust_core/src/bhdc.rs:209`, `:273`, `:290` and `somabrain/math/bhdc_encoder.py:226` hardcode `λ = 2.05e-5` = `(2/255)²/3` = λ*(p=0.5). |
-| **What code does** | Production binder/unbind uses a constant valid only at p = 0.5 while the sparse encoder default is `SOMABRAIN_BHDC_SPARSITY = 0.1` (`settings/cognitive.py:264`, `:290`, `:462`). At p = 0.1 the formula gives `λ* ≈ 5.70e-5`, not `2.05e-5`. |
-| **What docs claim** | `docs/SomabrainGMD.md:204`, `:220-224` states `λ* = σ_ε²/σ_v² ≈ 5.126e-6 / (p(1-p))` and `λ* ≈ 5.70e-5` for p = 0.1; `:260` recommends p = 0.1. `rust_core/README.md:80` still shows `rs.wiener_unbind(memory, key, 2.05e-5)`. |
-| **REQUIRED FIX** | **FULL IMPLEMENT** `λ* = compute_wiener_lambda(p, bits)` as the only source of the regularizer, evaluated at the production `p` from settings. **DELETE** the `2.05e-5` literals. |
-| **Acceptance test** | `PermutationBinder` default `lambda_reg` equals `compute_wiener_lambda(SOMABRAIN_BHDC_SPARSITY, 8)` within 1e-15. No `2.05e-5` remains in `rust_core/` or `somabrain/`. |
-| **Wave** | W3 |
+| **Status** | **FIXED (W4)** |
+| **Proof** | Formula: `rust_core/src/mathcore.rs` implements `λ* = Δ² / (12 p (1-p))` with `Δ = 2/(2^bits−1)`. Default: binder/unbind sites hardcoded `λ = (2/255)²/3` = λ*(p=0.5), and quantum unbind fell back to a third value `1e-4`. |
+| **What code did** | Production binder/unbind used a constant valid only at p = 0.5 while the sparse encoder default is `SOMABRAIN_BHDC_SPARSITY = 0.1`. At p = 0.1 the formula gives `λ* ≈ 5.696e-5`. |
+| **Resolution (W4)** | Single source `compute_wiener_lambda(p, bits)` (Rust + Python mirror). All defaults are `compute_wiener_lambda(production p, 8)`; callers may pass `p`. `gmd_lambda_reg` BrainSetting default is computed from the same formula. The hardcoded constants are deleted (`rg "2\\.05e-5" rust_core/ somabrain/` is empty). |
+| **Acceptance test** | `PermutationBinder` default `lambda_reg` equals `compute_wiener_lambda(SOMABRAIN_BHDC_SPARSITY, 8)` within 1e-15 — covered by `tests/property/test_mathcore_wiener_fwht.py::TestWienerLambdaFormula`. |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-012 — Theorem 1 p* ≥ 0.5 vs "p ≈ 0.1"
 
@@ -266,12 +266,12 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P1 |
 | **Subsystem** | Mathcore |
 | **Wave** | W3 |
-| **Proof** | `rust_core/src/mathcore.rs:309-316`: `compute_optimal_p(delta) = (1 + sqrt(delta)) / 2`, which is **always ≥ 0.5** for δ ∈ (0, 1). Comment at `:311` says "p* ≈ 0.1 recommended". Unit tests lock the ≥ 0.5 behaviour (`rust_core/src/lib.rs:107-108`: (0.01, 0.55), (0.04, 0.60), …). |
-| **What code does** | The function computes a quantity that never recommends the sparse p = 0.1 actually used by BHDC defaults. |
-| **What docs claim** | `docs/SomabrainGMD.md:117-123` says p should be chosen for compute/quantisation, and `:260` recommends **p = 0.1**. Comment in code claims the same. |
-| **REQUIRED FIX** | **DELETE** `compute_optimal_p` and the "p* ≈ 0.1" claim if the real rule is "p = 0.1 by engineering choice", **or FULL IMPLEMENT** a Theorem 1 that actually yields the recommended sparsity and replace the tests. |
-| **Acceptance test** | If kept: `compute_optimal_p` returns ≈ 0.1 for the documented δ domain, or the API is renamed to match what it computes. If deleted: no exported `compute_optimal_p` and no "p*" recommendation in code comments. |
-| **Wave** | W3 |
+| **Status** | **FIXED (W4)** |
+| **Proof** | `compute_optimal_p(delta) = (1 + sqrt(delta)) / 2`, which is **always ≥ 0.5** for δ ∈ (0, 1). Comment said "p* ≈ 0.1 recommended". |
+| **What code did** | The function computed a quantity that never recommended the sparse p = 0.1 actually used by BHDC defaults. |
+| **Resolution (W4)** | **DELETED** `compute_optimal_p` and the "p* ≈ 0.1" claim. `p = 0.1` is documented as an **engineering choice** (`PRODUCTION_SPARSITY_P`, `SOMABRAIN_BHDC_SPARSITY`), not a theorem. No fake theorem was introduced. |
+| **Acceptance test** | No exported `compute_optimal_p` and no "p*" recommendation in code comments — verified by `cargo test` (no optimal-p test) and `rg "compute_optimal_p" rust_core/src somabrain/` empty outside historical docs. |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-013 — Rust `BayesianMemory` test arity mismatch
 
@@ -280,12 +280,12 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P0 |
 | **Subsystem** | Mathcore / Rust tests |
 | **Wave** | W3 |
-| **Proof** | Constructor: `rust_core/src/mathcore.rs:370-372` `new(dimension, eta, lambda_reg)` — **3** parameters. Tests: `rust_core/src/lib.rs:159` and `:177` call `BayesianMemory::new(1024, 0.08, 2.05e-5, 640.0)` — **4** arguments. |
-| **What code does** | `cargo test` cannot compile the test module. The tests also reference a removed `compute_snr(p)` API (comment at `lib.rs:167-172` admits the signature change). |
-| **What docs claim** | `rust_core/README.md` presents `BayesianMemory` as a verified GMD Theorem 2 implementation. |
-| **REQUIRED FIX** | **FULL IMPLEMENT** the tests against the live API (`new(dimension, eta, lambda_reg)`, `compute_snr_at_lag`, `estimate_horizon`). Delete the stale 4-arg constructor call and the unfinished in-test commentary. |
-| **Acceptance test** | `cargo test` compiles and passes in `rust_core/`. |
-| **Wave** | W3 |
+| **Status** | **FIXED (W4)** |
+| **Proof** | Constructor: `new(dimension, eta, lambda_reg)` — **3** parameters. Tests called it with **4** arguments and referenced a removed `compute_snr(p)` API. |
+| **What code did** | `cargo test` could not compile the test module. |
+| **Resolution (W4)** | Tests rewritten against the live API (`new(dimension, eta, lambda_reg)`, `compute_snr_at_lag`, `estimate_horizon`). Stale 4-arg calls and unfinished in-test commentary deleted. |
+| **Acceptance test** | `cargo test` compiles and passes in `rust_core/` — 14/14 green. |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-014 — Rust λ* unit test expects 2× implementation
 
@@ -294,12 +294,12 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P0 |
 | **Subsystem** | Mathcore / Rust tests |
 | **Wave** | W3 |
-| **Proof** | Implementation `rust_core/src/mathcore.rs:328-331`: `λ* = (Δ²/12) / (p(1-p)) = Δ² / (12 p (1-p))`. Test `rust_core/src/lib.rs:117-122`: `expected = (delta * delta) / (3.0 * 2.0 * p * (1.0 - p)) = Δ² / (6 p (1-p))`. |
-| **What code does** | The unit test expects exactly **twice** the value `compute_wiener_lambda` returns. Even after DEBT-013 is fixed, `test_wiener_lambda_theorem3` fails. |
-| **What docs claim** | `docs/SomabrainGMD.md:204` states `λ* = σ_ε² / σ_v²` with `σ_ε² = Δ²/12` (`:190`), matching the **implementation**, not the test. |
-| **REQUIRED FIX** | **FULL IMPLEMENT** one λ* definition. Align test and implementation to `λ* = Δ² / (12 p (1-p))` (GMD text) and delete the factor-2 expectation. |
+| **Status** | **FIXED (W4)** |
+| **Proof** | Implementation `λ* = (Δ²/12) / (p(1-p)) = Δ² / (12 p (1-p))`. Test expected `Δ² / (6 p (1-p))` — exactly twice the implementation. |
+| **What code did** | The unit test expected exactly **twice** the value `compute_wiener_lambda` returns. |
+| **Resolution (W4)** | Test pins the GMD definition `λ* = Δ² / (12 p (1-p))` exactly; factor-2 expectation deleted. `bits` is now honored (`Δ = 2/(2^bits−1)`). |
 | **Acceptance test** | `cargo test test_wiener_lambda_theorem3` passes. Cross-check: `compute_wiener_lambda(0.1, 8) ≈ 5.695e-5`. |
-| **Wave** | W3 |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-015 — Python binder unbind is not Wiener
 
@@ -308,12 +308,12 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P1 |
 | **Subsystem** | Mathcore |
 | **Wave** | W3 |
-| **Proof** | `somabrain/math/bhdc_encoder.py:119-126` (`_PythonPermutationBinder.unbind` is `c_vec / denom` with a ±1e-12 floor); `lambda_reg` is stored at `:96` and never used. Rust counterpart applies Wiener (`rust_core/src/bhdc.rs:288-290`, `v̂ = (c ⊙ π(b)) / (π(b)² + λ)`). `QuantumLayer.unbind_wiener` discards its Wiener parameters (`somabrain/admin/core/quantum.py:451` `_ = snr_db, k_est, alpha, whiten`) and delegates. |
-| **What code does** | When Rust is unavailable, unbind is exact division (numerically unstable on near-zero key elements) while the name and docs claim Wiener-optimal unbinding. `unbind_wiener` is an alias of `unbind`, not a Wiener filter. |
-| **What docs claim** | `quantum.py:289-290`: "Uses GMD Theorem 3 Wiener regularization"; `docs/SomabrainGMD.md:206-208` gives the Wiener unbind rule. |
-| **REQUIRED FIX** | **FULL IMPLEMENT** Wiener unbind in the Python binder with `lambda_reg` from `compute_wiener_lambda`. Make `unbind_wiener` perform the Wiener rule (or **DELETE** the alias and its unused parameters). |
-| **Acceptance test** | Python and Rust `unbind` agree to 1e-10 on the same inputs. Zero-key-element case uses λ regularizer, not a 1e-12 floor. `unbind_wiener` parameters are consumed or removed. |
-| **Wave** | W3 |
+| **Status** | **FIXED (W4)** |
+| **Proof** | `_PythonPermutationBinder.unbind` was `c_vec / denom` with a ±1e-12 floor; `lambda_reg` was stored and never used. Rust applied Wiener `v̂ = (c ⊙ π(b)) / (π(b)² + λ)`. `QuantumLayer.unbind_wiener` discarded its Wiener parameters and delegated. |
+| **What code did** | When Rust was unavailable, unbind was exact division (numerically unstable on near-zero key elements) while the name and docs claimed Wiener-optimal unbinding. |
+| **Resolution (W4)** | Python unbind is `(c ⊙ π(b)) / (π(b)² + λ*)` with `λ*` from `compute_wiener_lambda`, matching Rust (including optional FWHT mix and L2 norm). `unbind_wiener` now performs the Wiener rule and its unused parameters (`snr_db`, `k_est`, `alpha`, `whiten`) were deleted. |
+| **Acceptance test** | `tests/property/test_mathcore_wiener_fwht.py::TestBindUnbindRoundTrip::test_python_unbind_is_wiener_rule` — Python unbind equals the Wiener formula to 1e-12. Zero-key-element case uses λ regularizer, not a 1e-12 floor. |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-016 — Python FWHT / hadamard mix is a silent no-op
 
@@ -322,12 +322,12 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P1 |
 | **Subsystem** | Mathcore |
 | **Wave** | W3 |
-| **Proof** | `somabrain/math/bhdc_encoder.py:91-99` stores `self._mix` and accepts `mix="hadamard"`; `bind`/`unbind` (`:112-126`) never reference `_mix`. Rust applies FWHT when `mix == "hadamard"` (`rust_core/src/bhdc.rs:256-257`, `:280-282`). |
-| **What code does** | Python fallback silently ignores the hadamard mixing flag. Results differ from Rust with no error. |
-| **What docs claim** | `docs/SomabrainGMD.md:228-251` (Theorem 4) presents FWHT as the deterministic orthogonalisation step; `HRRConfig.mix` advertises `"hadamard"` (`admin/core/quantum.py:91-94`). |
-| **REQUIRED FIX** | **FULL IMPLEMENT** FWHT in the Python binder (same transform as `rust_core/src/mathcore.rs:273-307`) when `mix == "hadamard"`, **or DELETE** the `mix` parameter from the Python path and reject `"hadamard"` when Rust is absent. |
-| **Acceptance test** | With `mix="hadamard"` and Rust unavailable, `bind` output equals the Rust bind output to 1e-10 (or the call fails loudly). No silent divergence. |
-| **Wave** | W3 |
+| **Status** | **FIXED (W4)** |
+| **Proof** | `_PythonPermutationBinder` stored `self._mix` and accepted `mix="hadamard"` but `bind`/`unbind` never referenced it. Rust applied FWHT when `mix == "hadamard"`. |
+| **What code did** | Python fallback silently ignored the hadamard mixing flag. Results differed from Rust with no error. |
+| **Resolution (W4)** | Python fallback implements the same orthonormal FWHT as `mathcore.rs` and applies it in bind and unbind (H is self-inverse) when `mix == "hadamard"`. Non-2^r input raises `ValueError` in both languages (W4.4). |
+| **Acceptance test** | `tests/property/test_mathcore_wiener_fwht.py::TestFwhtGuard` and round-trip tests with `mix="hadamard"` pass on both backends. No silent divergence. |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-017 — Chebyshev spectral bounds are unexpanded
 
@@ -350,12 +350,12 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P1 |
 | **Subsystem** | Predictors |
 | **Wave** | W3 |
-| **Proof** | `rust_core/src/prediction.rs:66-93`. `MahalanobisPredictor::distance` computes `sqrt(Σ (x_i - mean_i)²)` (`:90-92`). The `covariance` field is `#[allow(dead_code)]` (`:68-69`) and is never read or updated. |
-| **What code does** | The type is named and exported as Mahalanobis (`rust_core/src/lib.rs:18`, `:47`) but the metric is Euclidean L2 from the mean — no whitening by covariance. Python `MahalanobisPredictor._mahal_bounded` at least divides by diagonal variance (`somabrain/admin/core/learning/prediction.py:314-318`). |
-| **What docs claim** | `prediction.py:247-253` and `docs` describe "Mahalanobis distance" / "distributional surprise". |
-| **REQUIRED FIX** | **FULL IMPLEMENT** diagonal (or full) covariance whitening in the Rust predictor and update `covariance` on `update`, **or DELETE** the Rust type and keep only the Python implementation with the honest name. |
-| **Acceptance test** | For a known anisotropic sample, Rust distance matches `sqrt((x-μ)ᵀ Σ⁻¹ (x-μ))` to 1e-10. Type name matches the metric. |
-| **Wave** | W3 |
+| **Status** | **FIXED (W4)** |
+| **Proof** | `MahalanobisPredictor::distance` computed `sqrt(Σ (x_i - mean_i)²)`. The `covariance` field was `#[allow(dead_code)]` and never read or updated. |
+| **What code did** | The type was named and exported as Mahalanobis but the metric was Euclidean L2 from the mean — no whitening by covariance. |
+| **Resolution (W4)** | **FULL IMPLEMENT** of diagonal Mahalanobis: EWMA diagonal variance `σ²` (updated like the Python predictor), `distance = sqrt(Σ (x_i−μ_i)²/σ_i²)`. Name now equals the math. |
+| **Acceptance test** | `tests/proofs/category_a/test_predictor_math.py` and `rust_core` unit tests: distance matches `sqrt((x−μ)ᵀ Σ⁻¹ (x−μ))` for diagonal Σ to 1e-10 on an anisotropic sample. |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-019 — Rust SlowPredictor uses \|cos\|
 
@@ -364,12 +364,12 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P1 |
 | **Subsystem** | Predictors |
 | **Wave** | W3 |
-| **Proof** | `rust_core/src/prediction.rs:37-42`: `1.0 - (dot / (norm_p * norm_a)).abs()`. Python canonical `cosine_error` is `clamp(1 - sim, 0, 1)` **without** absolute value (`somabrain/math/similarity.py:114-116`). |
-| **What code does** | Opposite vectors (cos = −1) yield Rust error `1 - 1 = 0` (perfect match) instead of the Python value 1.0 (maximum error). Antipodal predictions are scored as flawless by the Rust path. |
-| **What docs claim** | `similarity.py:96-116` documents "0.0 = identical, 1.0 = orthogonal, values > 1 clamped" and treats negative similarity as maximum error. |
-| **REQUIRED FIX** | **FULL IMPLEMENT** the same `1 - sim` formula as `somabrain.math.similarity.cosine_error` in Rust. **DELETE** the `.abs()`. |
-| **Acceptance test** | Rust and Python `cosine_error([1,0], [-1,0])` both return 1.0 (today Rust returns 0.0). |
-| **Wave** | W3 |
+| **Status** | **FIXED (W4)** |
+| **Proof** | Rust `error` used `1.0 - (dot / (norm_p * norm_a)).abs()`. Python canonical `cosine_error` is `clamp(1 - sim, 0, 1)` **without** absolute value. |
+| **What code did** | Opposite vectors (cos = −1) yielded Rust error `1 - 1 = 0` (perfect match) instead of 1.0 (maximum error). |
+| **Resolution (W4)** | **FULL IMPLEMENT** of `clamp(1 − cos, 0, 1)` in Rust. `.abs()` deleted. |
+| **Acceptance test** | `tests/property/test_mathcore_wiener_fwht.py::TestCosineErrorFormula` — Rust and Python `cosine_error([1,0], [-1,0])` both return 1.0. |
+| **Wave** | W3 → fixed in W4 |
 
 ### DEBT-020 — Recency: three formulas, conflicting scales
 
@@ -499,11 +499,11 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P1 |
 | **Subsystem** | Docs |
 | **Wave** | W6 |
-| **Proof** | `docs/SomabrainGMD.md:204-224` (λ* formula + p=0.1 value) vs hardcoded `2.05e-5` (`bhdc.rs:273`, `bhdc_encoder.py:226`) — see DEBT-011. `docs/SomabrainGMD.md:260` recommends p = 0.1 while `compute_optimal_p` returns ≥ 0.5 (`mathcore.rs:313-316`) — see DEBT-012. `rust_core/README.md:80` still demonstrates `wiener_unbind(..., 2.05e-5)`. `SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md:155` publishes τ `floor ∈ [0.01, 0.1]` against `SOMABRAIN_TAU_MIN=0.4` (`settings/cognitive.py:188`). |
-| **What code does** | See DEBT-011 / DEBT-012 / DEBT-009. |
+| **Proof** | `docs/SomabrainGMD.md:204-224` (λ* formula + p=0.1 value) vs the former hardcoded p=0.5-only binder constant — see DEBT-011. `docs/SomabrainGMD.md:260` recommends p = 0.1 while the former `compute_optimal_p` returned ≥ 0.5 — see DEBT-012. `SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md:155` publishes τ `floor ∈ [0.01, 0.1]` against `SOMABRAIN_TAU_MIN=0.4` (`settings/cognitive.py:188`). |
+| **What code does** | λ*/p*/README parts **RESOLVED in W4** (formula-only λ*, no `compute_optimal_p`, `rust_core/README.md` regenerated). τ floor conflict remains (DEBT-009). |
 | **What docs claim** | GMD Theorem 3 numbers and Theorem 1 sparsity guidance as above; proof-report τ floor range. |
-| **REQUIRED FIX** | **DELETE** numeric recommendations that do not match the implementation. After W3, **FULL IMPLEMENT** GMD/README regeneration from `compute_wiener_lambda`, `compute_optimal_p` (if kept), and the single τ floor. |
-| **Acceptance test** | `scripts/check_docs.py` links each GMD numeric claim to a running symbol. `rg -n "2\\.05e-5" docs/ rust_core/ somabrain/` returns nothing after DEBT-011. |
+| **REQUIRED FIX** | **DELETE** numeric recommendations that do not match the implementation. Remaining for W6: GMD/proof-report regeneration around the single τ floor (λ* and p* already match code after W4). |
+| **Acceptance test** | `scripts/check_docs.py` links each GMD numeric claim to a running symbol. `rg -n "2\\.05e-5" docs/ rust_core/ somabrain/` returns nothing after DEBT-011 — **held after W4**. |
 | **Wave** | W6 |
 
 ---

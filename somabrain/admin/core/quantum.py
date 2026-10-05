@@ -142,6 +142,8 @@ class QuantumLayer:
             seed=int(cfg.seed),
             dtype=cfg.dtype,
             mix=cfg.mix,
+            # λ* = Δ² / (12 p (1−p)) evaluated at the configured sparsity.
+            p=cfg.sparsity,
         )
         self._perm = self._binder.permutation
         self._perm_inv = self._binder.inverse_permutation

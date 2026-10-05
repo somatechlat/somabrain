@@ -125,8 +125,10 @@ SOMABRAIN_EMBED_DIM = env.int("EMBED_DIM", default=768)
 # Certified seam contract the effective dim must match (fail-closed on mismatch).
 SOMABRAIN_EMBED_DIM_SEAM = env.int("EMBED_DIM_SEAM", default=768)
 SOMABRAIN_WM_SIZE = env.int("SOMABRAIN_WM_SIZE", default=64)
+# Single recency time scale (seconds) for the stretched-exponential kernel.
+# WM, recall ranking, unified scorer, and context decay all use this key.
 SOMABRAIN_WM_RECENCY_TIME_SCALE = env.float(
-    "SOMABRAIN_WM_RECENCY_TIME_SCALE", default=1.0
+    "SOMABRAIN_WM_RECENCY_TIME_SCALE", default=60.0
 )
 SOMABRAIN_WM_RECENCY_MAX_STEPS = env.int("SOMABRAIN_WM_RECENCY_MAX_STEPS", default=1000)
 SOMABRAIN_WM_ALPHA = env.float("SOMABRAIN_WM_ALPHA", default=0.6)
@@ -172,14 +174,13 @@ SOMABRAIN_SCORER_W_FD = env.float("SOMABRAIN_SCORER_W_FD", default=0.25)
 SOMABRAIN_SCORER_W_RECENCY = env.float("SOMABRAIN_SCORER_W_RECENCY", default=0.15)
 SOMABRAIN_SCORER_WEIGHT_MIN = env.float("SOMABRAIN_SCORER_WEIGHT_MIN", default=0.0)
 SOMABRAIN_SCORER_WEIGHT_MAX = env.float("SOMABRAIN_SCORER_WEIGHT_MAX", default=1.0)
-SOMABRAIN_SCORER_RECENCY_TAU = env.float("SOMABRAIN_SCORER_RECENCY_TAU", default=32.0)
 
 # Retrieval weights
 SOMABRAIN_RETRIEVAL_ALPHA = env.float("SOMABRAIN_RETRIEVAL_ALPHA", default=1.0)
 SOMABRAIN_RETRIEVAL_BETA = env.float("SOMABRAIN_RETRIEVAL_BETA", default=0.2)
 SOMABRAIN_RETRIEVAL_GAMMA = env.float("SOMABRAIN_RETRIEVAL_GAMMA", default=0.1)
 SOMABRAIN_RETRIEVAL_TAU = env.float("SOMABRAIN_RETRIEVAL_TAU", default=0.7)
-SOMABRAIN_RECENCY_HALF_LIFE = env.float("SOMABRAIN_RECENCY_HALF_LIFE", default=60.0)
+# Kernel shape for the single recency family (scale is SOMABRAIN_WM_RECENCY_TIME_SCALE).
 SOMABRAIN_RECENCY_SHARPNESS = env.float("SOMABRAIN_RECENCY_SHARPNESS", default=1.2)
 SOMABRAIN_RECENCY_FLOOR = env.float("SOMABRAIN_RECENCY_FLOOR", default=0.05)
 SOMABRAIN_DENSITY_TARGET = env.float("SOMABRAIN_DENSITY_TARGET", default=0.2)

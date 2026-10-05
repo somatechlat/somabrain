@@ -10,13 +10,13 @@ This module provides:
 
 from .client import MemoryClient
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
+from .client.ranking import lexical_bonus
 from .hit_processing import (
     coerce_timestamp_value,
     deduplicate_hits,
     hit_identity,
     hit_score,
     hit_timestamp,
-    lexical_bonus,
     normalize_recall_hits,
     prefer_candidate_hit,
 )

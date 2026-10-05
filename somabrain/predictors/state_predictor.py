@@ -23,18 +23,15 @@ from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_fi
 def _load_state_operator() -> tuple[callable, int]:
     """Load the Laplacian operator for the *state* domain.
 
-    The environment variable ``SOMABRAIN_GRAPH_FILE_STATE`` is consulted first;
-    if not set, ``SOMABRAIN_GRAPH_FILE`` is used as a fallback. When neither
-    variable is defined the function raises ``RuntimeError`` – this matches the
-    VIBE rule of refusing to operate with implicit defaults.
+    Reads the declared setting ``SOMABRAIN_GRAPH_FILE_STATE``
+    (somabrain.settings.cognitive). When it is not defined the function raises
+    ``RuntimeError`` – this matches the VIBE rule of refusing to operate with
+    implicit defaults.
     """
-    # Fallback to the generic graph file if the state‑specific one is not set.
-    # ``settings.getenv`` is prohibited; we use ``getattr`` which returns ``None``
-    # when the attribute does not exist (mirroring the previous behaviour).
-    graph_path = settings.graph_file_state or getattr(settings, "GRAPH_FILE", None)
+    graph_path = settings.SOMABRAIN_GRAPH_FILE_STATE
     if not graph_path:
         raise RuntimeError(
-            "State predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_STATE or SOMABRAIN_GRAPH_FILE."
+            "State predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_STATE."
         )
     return load_operator_from_file(graph_path)
 

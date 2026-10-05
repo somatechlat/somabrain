@@ -271,7 +271,7 @@ class TestHRRMathematicalCorrectness:
         recovered_exact = ql.unbind_exact(noisy_bound, b)
 
         # Unbind with Wiener filter
-        recovered_wiener = ql.unbind_wiener(noisy_bound, b, snr_db=20.0)
+        recovered_wiener = ql.unbind_wiener(noisy_bound, b)
 
         # Both should recover reasonably well
         sim_exact = cosine_similarity(a, recovered_exact)

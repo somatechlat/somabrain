@@ -33,7 +33,7 @@ class PersonalityStore:
         if not tenant:
             raise ValueError("tenant is required")
         with self._lock:
-            return self._states.setdefault(t, PersonalityState())  # validated default
+            return self._states.setdefault(tenant, PersonalityState())  # validated default
 
     def set(self, state: PersonalityState, tenant: str) -> PersonalityState:
         """Replace the personality state for ``tenant``.

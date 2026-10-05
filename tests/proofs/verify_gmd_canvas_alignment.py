@@ -30,8 +30,8 @@ def test_variance_of_similarity(D: int = 8192, N: int = 1000):
 def test_snr_decay(D: int = 2048, L_max: int = 50, eta: float = 0.08):
     """Measure SNR(L) vs L and confirm power law decay (1-eta)^{2L}."""
     # We use BayesianMemory from Rust
-    # lambda matched to quantization noise
-    lambda_reg = 2.05e-5
+    # λ* from the GMD Theorem 3 formula at production sparsity p = 0.1
+    lambda_reg = rs.compute_wiener_lambda(0.1, 8)
     mem = rs.BayesianMemory(D, eta=eta, lambda_reg=lambda_reg)
 
     # Generate items to store
@@ -123,14 +123,10 @@ def test_quantization_lambda_optimality(D: int = 1024, samples: int = 100):
 
         mses.append(total_mse / samples)
 
-    # Calculate theoretical min lambda
-    # sigma_eps^2 = (2/255)^2 / 12 = 5.126e-6
-    # sigma_v^2 = p(1-p) for standardized vectors?
-    # For sparse pm_one vectors with sparsity p: average energy per element is p.
-    # p = 0.1
+    # Theoretical λ* from the production formula (GMD Theorem 3):
+    # λ* = Δ² / (12 p (1−p)) with Δ = 2/255 — same function the binder uses.
     p = 0.1
-    sigma_v_sq = p  # Energy is p
-    theoretical_lambda = ((2.0 / 255.0) ** 2 / 12.0) / sigma_v_sq
+    theoretical_lambda = rs.compute_wiener_lambda(p, 8)
 
     experimental_min_lambda = lambdas[np.argmin(mses)]
 

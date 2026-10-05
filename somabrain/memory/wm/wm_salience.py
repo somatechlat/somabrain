@@ -13,12 +13,12 @@ Key Functions:
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 from somabrain.math import cosine_similarity
+from somabrain.math.recency import stretched_exponential_recency
 
 if TYPE_CHECKING:
     from somabrain.memory.wm.core import WMItem
@@ -147,6 +147,8 @@ def compute_eviction_salience(
     gamma: float,
     now: float,
     recency_scale: float,
+    recency_sharpness: float = 1.2,
+    recency_floor: float = 0.05,
 ) -> float:
     """Compute salience for eviction decision.
 
@@ -161,6 +163,8 @@ def compute_eviction_salience(
         gamma: Weight for recency component.
         now: Current timestamp.
         recency_scale: Time scale for recency decay.
+        recency_sharpness: Stretch exponent for the recency kernel.
+        recency_floor: Lower clamp for the recency kernel.
 
     Returns:
         Salience score between 0.0 and 1.0.
@@ -169,10 +173,14 @@ def compute_eviction_salience(
     others = [other for other in items if other is not item]
     novelty = _min_novelty_against(item.vector, others)
 
-    # Compute recency based on time since admission
+    # Compute recency based on time since admission (canonical kernel)
     age = max(0.0, now - item.admitted_at)
-    recency_decay = math.exp(-age / recency_scale) if age > 0 else 1.0
-    recency = float(recency_decay)
+    recency = stretched_exponential_recency(
+        age,
+        scale=recency_scale,
+        sharpness=recency_sharpness,
+        floor=recency_floor,
+    )
 
     # Compute salience: alpha * novelty + gamma * recency
     salience = alpha * novelty + gamma * recency

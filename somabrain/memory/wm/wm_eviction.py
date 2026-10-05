@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from somabrain.math import cosine_similarity
+from somabrain.math.recency import stretched_exponential_recency
 
 if TYPE_CHECKING:
     from somabrain.memory.wm.core import WMItem
@@ -36,6 +37,8 @@ def find_lowest_salience_idx(
     gamma: float,
     now: float,
     recency_scale: float,
+    recency_sharpness: float = 1.2,
+    recency_floor: float = 0.05,
 ) -> int:
     """Find the index of the item with lowest salience score.
 
@@ -52,6 +55,8 @@ def find_lowest_salience_idx(
         gamma: Weight for recency component.
         now: Current timestamp.
         recency_scale: Time scale for recency decay.
+        recency_sharpness: Stretch exponent for the recency kernel.
+        recency_floor: Lower clamp for the recency kernel.
 
     Returns:
         Index of the item with the lowest salience.
@@ -79,10 +84,18 @@ def find_lowest_salience_idx(
         novelty[~valid] = 1.0
 
     ages = np.array([max(0.0, now - it.admitted_at) for it in items], dtype=np.float64)
-    if recency_scale > 0:
-        recency = np.exp(-ages / recency_scale)
-    else:
-        recency = np.ones(n, dtype=np.float64)
+    recency = np.array(
+        [
+            stretched_exponential_recency(
+                float(age),
+                scale=recency_scale,
+                sharpness=recency_sharpness,
+                floor=recency_floor,
+            )
+            for age in ages
+        ],
+        dtype=np.float64,
+    )
 
     salience = alpha * novelty + gamma * recency
     return int(np.argmin(salience))

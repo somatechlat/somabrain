@@ -7,6 +7,8 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
+from somabrain.math.recency import recency_features as _shared_recency_features
+
 from .serialization import _extract_memory_coord
 from .types import RecallHit
 
@@ -147,7 +149,12 @@ def _deduplicate_hits(hits: list[RecallHit]) -> list[RecallHit]:
     return [winners[idx] for idx in order]
 
 
-def _lexical_bonus(payload: dict, query: str) -> float:
+def lexical_bonus(payload: dict, query: str) -> float:
+    """Lexical bonus for a payload against a query.
+
+    Exact field match → 1.5, query substring of a field → 1.0, plus a token
+    overlap term ``min(0.25 * token_matches, 1.0)``.
+    """
     q = str(query or "").strip()
     if not q or not isinstance(payload, dict):
         return 0.0
@@ -181,7 +188,7 @@ def _rank_hits(hits: list[RecallHit], query: str) -> list[RecallHit]:
     ranked: list[tuple[float, float, float, int, RecallHit]] = []
     for idx, hit in enumerate(hits):
         payload = hit.payload if isinstance(hit.payload, dict) else {}
-        lex_bonus = _lexical_bonus(payload, query)
+        lex_bonus = lexical_bonus(payload, query)
         base = 0.0
         if hit.score is not None:
             try:
@@ -211,25 +218,25 @@ def _rank_hits(hits: list[RecallHit], query: str) -> list[RecallHit]:
 
 
 def _recency_normalisation(cfg: Any) -> tuple[float, float]:
-    scale = getattr(cfg, "recall_recency_time_scale", 60.0)
+    scale = getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 60.0)
     if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
         scale = 60.0
-    cap = getattr(cfg, "recall_recency_max_steps", 4096.0)
+    cap = getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000.0)
     if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
-        cap = 4096.0
+        cap = 1000.0
     return float(scale), float(cap)
 
 
 def _recency_profile(cfg: Any) -> tuple[float, float, float, float]:
     scale, cap = _recency_normalisation(cfg)
-    sharpness = getattr(cfg, "recall_recency_sharpness", 1.2)
+    sharpness = getattr(cfg, "SOMABRAIN_RECENCY_SHARPNESS", 1.2)
     try:
         sharpness = float(sharpness)
     except Exception:
         sharpness = 1.2
     if not math.isfinite(sharpness) or sharpness <= 0:
         sharpness = 1.0
-    floor = getattr(cfg, "recall_recency_floor", 0.05)
+    floor = getattr(cfg, "SOMABRAIN_RECENCY_FLOOR", 0.05)
     try:
         floor = float(floor)
     except Exception:
@@ -250,15 +257,13 @@ def _recency_features(
     age_seconds = max(0.0, now_ts - ts_epoch)
     if age_seconds <= 0:
         return 0.0, 1.0
-    normalised = age_seconds / max(scale, 1e-6)
-    damp_steps = math.log1p(normalised) * sharpness
-    recency_steps = min(damp_steps, cap)
-    try:
-        damp = math.exp(-(normalised**sharpness))
-    except Exception:
-        damp = 0.0
-    boost = max(floor, min(1.0, damp))
-    return recency_steps, boost
+    return _shared_recency_features(
+        age_seconds,
+        scale=scale,
+        sharpness=sharpness,
+        floor=floor,
+        cap=cap,
+    )
 
 
 def _extract_cleanup_margin(hit: RecallHit) -> float | None:
@@ -403,6 +408,7 @@ def _rescore_and_rank_hits(
             candidate_vec = embedder.embed(text)
             recency_steps: float | None = None
             recency_boost = 1.0
+            age_seconds: float | None = None
             ts_epoch = None
             for key in ("timestamp", "ts", "created_at"):
                 if key in payload:
@@ -410,12 +416,13 @@ def _rescore_and_rank_hits(
                     if ts_epoch is not None:
                         break
             if ts_epoch is not None:
+                age_seconds = max(0.0, now_ts - ts_epoch)
                 recency_steps, recency_boost = _recency_features(cfg, ts_epoch, now_ts)
 
             new_score = scorer.score(
                 query_vec,
                 candidate_vec,
-                recency_steps=recency_steps,
+                age_seconds=age_seconds,
                 cosine=hit.score,  # Pass original score as cosine hint
             )
             new_score *= recency_boost

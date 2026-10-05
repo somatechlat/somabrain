@@ -131,7 +131,7 @@
 | `LEARNING_RATE_DYNAMIC` | False | bool | settings/cognitive.py:497 | (no direct reader) | |
 | `adapt_lr` (DB) | 0.05 | float | brain_settings/models.py:232-238 | learning/adaptation/engine.py:89; learning/rust_engine.py:43 | learnable [0, 0.25] |
 | `gmd_eta` (DB) | 0.08 | float | brain_settings/models.py:225-231 | GMD plasticity | learnable [0.03, 0.10]; mode overrides modes.py:15,24,33,41,52 |
-| `gmd_lambda_reg` (DB) | **2.05e-5** | float | brain_settings/models.py:219 | admin/core/quantum.py:311 (fallback **1e-4**) | Wiener λ*. DEF-07 |
+| `gmd_lambda_reg` (DB) | `compute_wiener_lambda(p, 8)` (formula, ≈5.696e-5 at p=0.1) | float | brain_settings/models.py (`_default_wiener_lambda`) | admin/core/quantum.py (same source) | Wiener λ*. DEF-07 **FIXED (W4)** |
 | `gmd_delta` (DB) | 0.01 | float | brain_settings/models.py:216 | GMD MathCore | SYSTEM_CORE |
 | `gmd_epsilon` (DB) | 0.05 | float | brain_settings/models.py:217 | GMD MathCore | SYSTEM_CORE |
 | `gmd_alpha` (DB) | 640.0 | float | brain_settings/models.py:218 | GMD cleanup capacity | SYSTEM_CORE |
@@ -247,7 +247,7 @@ Each row = same concept, different name and/or default. This is the W1 unificati
 | DEF-04 | Retrieval weights / plan / entropy / learning-rate / BHDC / diffusion / predictor α | `SOMABRAIN_RETRIEVAL_BETA` 0.2 (cognitive.py:179) | `RETRIEVAL_BETA` 0.3 (cognitive.py:509) | `SOMABRAIN_RETRIEVAL_TAU` 0.7 vs `RETRIEVAL_TAU` 0.8 (cognitive.py:181 vs 511) | also PLAN_MAX_STEPS / SOMABRAIN_PLAN_MAX_STEPS; USE_PLANNER / SOMABRAIN_USE_PLANNER; USE_MICROCIRCUITS / SOMABRAIN_USE_MICROCIRCUITS; LEARNING_RATE_DYNAMIC; DIFFUSION_T; PREDICTOR_ALPHA; LANCZOS_M; MEMORY_FAST_ACK; MEMORY_HEALTH_POLL_INTERVAL | Two spellings, different defaults; one is dead |
 | DEF-05 | Tau floor | `SOMABRAIN_TAU_MIN` 0.4 (cognitive.py:188) | `TAU_MIN_FLOOR` 0.1 (cognitive.py:514) | brain_settings `tau_min` 0.4 (models.py:678) | annealing.py:82 reads SOMABRAIN_TAU_MIN; temperature_anneal.py:42 reads TAU_MIN_FLOOR | Two anneal paths, different floors |
 | DEF-06 | Tau decay rate | `SOMABRAIN_TAU_DECAY_RATE` 0.0 (cognitive.py:335) | `TAU_DECAY_FACTOR` 0.95 (cognitive.py:513) | — | multiplicative factor vs additive rate | Unify to one schedule |
-| DEF-07 | Wiener λ* | brain_settings `gmd_lambda_reg` **2.05e-5** (models.py:219) | quantum.py:311 `BrainSetting.get(..., 1e-4)` fallback **1e-4** | bhdc_encoder.py:92,226 hardcode **2.05e-5** | GMD doc λ*(p)=5.126e-6/(p(1−p)) (docs/SomabrainGMD.md:220) → at p=0.5 gives 2.05e-5 | λ* not computed from production p; three constants |
+| DEF-07 | Wiener λ* | **FIXED (W4):** single source `compute_wiener_lambda(p, 8)` (Rust `mathcore.rs` + Python `math/bhdc_encoder.py`) | brain_settings `gmd_lambda_reg` computed from formula | quantum.py fallback uses `production_wiener_lambda()`; binder default = formula at production p | GMD doc λ*(p)=5.126e-6/(p(1−p)) | one formula, no constants |
 | DEF-08 | Chebyshev K | `CHEBYSHEV_K` **30** (cognitive.py:482) | `TRUTH_CHEBYSHEV_K` **32** (cognitive.py:517) | `SOMABRAIN_CHEB_K` **30** (cognitive.py:438) | predictors/* use CHEBYSHEV_K; math/lanczos_chebyshev.py:75 uses TRUTH_CHEBYSHEV_K | Heat-kernel approx order differs by path |
 | DEF-09 | Predictor gamma bounds | env default **-0.5** (cognitive.py:390) | brain_settings `predictor_gamma` min **0.0** max 1.0 (models.py:535-541) | — | default outside learnable bounds | set() would reject the seeded default |
 | DEF-10 | HRR dim | `SOMABRAIN_HRR_DIM` **8192** (cognitive.py:260) | `HRR_DIM` **512** (cognitive.py:425) | brain_settings `hrr_dim` 8192 (models.py:221) | cognitive.py:84 reads `HRR_DIM` | FocusState HRR dim 512 vs system 8192 |
@@ -461,7 +461,7 @@ Legend: **VALID** = exercises a production function/equation; **TAUTOLOGY** = te
 
 | Theorem / claim | Spec source | Production site | Test status | Required test |
 |---|---|---|---|---|
-| **Wiener λ*(p) = σ_ε²/σ_v² ≈ 5.126e-6 / (p(1−p))** | docs/SomabrainGMD.md:204-224; PLAN-MASTER W4.1 | constants at brain_settings/models.py:219 (2.05e-5), quantum.py:311 (fallback 1e-4), bhdc_encoder.py:92 (2.05e-5) | **MISSING** | Compute λ* from production quantizer p; assert constant == formula; unbind error ≤ exact |
+| **Wiener λ*(p) = σ_ε²/σ_v² ≈ 5.126e-6 / (p(1−p))** | docs/SomabrainGMD.md:204-224; PLAN-MASTER W4.1 | `compute_wiener_lambda` (mathcore.rs / bhdc_encoder.py) feeding binder + quantum + `gmd_lambda_reg` | **TESTED (W4)** `tests/property/test_mathcore_wiener_fwht.py::TestWienerLambdaFormula` | (done) formula == default λ at production p |
 | **DA → LR wiring** (dopamine scales learning rate) | runtime/neuromodulators.py:17 "Dopamine: Modulates learning rate" | `AdaptationEngine._update_learning_rate` engine.py:350-358 (`lr_scale = clip(0.5+DA, 0.5, 1.2)`); `RustAdaptationEngine.update_learning_rate` rust_engine.py:98-100 | **MISSING** | Set DA high/low, assert `engine.learning_rate` scales per formula; assert bounds [0.5, 1.2] |
 | **Anneal uniqueness** (single closed-form schedule; linear/exp/step consistent Python↔Rust) | PLAN-MASTER W1/W4 | annealing.py:199-209 (modes) vs :396-428 (decay fns) vs tasks/temperature_anneal.py (factor×interval) | **MISSING** | For fixed (τ0, rate, t) assert linear_decay ≡ apply_tau_annealing(linear) ≡ rust; exp path currently "doesn't apply per-feedback annealing" annealing.py:200-201 — pin that too |
 | **Entropy cap H ≤ cap** with configured cap (not 1.4) | cognitive.py:341-342 | check_entropy_cap / entropy_guard.py:30 | **WEAK only** (3.2) | Assert returned entropy ≤ `SOMABRAIN_ENTROPY_CAP` when enabled |
@@ -497,7 +497,7 @@ Legend: **VALID** = exercises a production function/equation; **TAUTOLOGY** = te
 | DEF-03 | call-site defaults | salience threshold 0.5 vs 0.6; anneal step interval 0 vs 10 | R-VAL-01: values declared once |
 | DEF-04 | dead twins | SOMABRAIN_RETRIEVAL_* vs RETRIEVAL_* (and ~10 more pairs) | Keep SOMABRAIN_* names; delete twins after reader audit |
 | DEF-05/06 | tau floor/schedule split | TAU_MIN 0.4 vs TAU_MIN_FLOOR 0.1; decay rate vs factor | Unify schedule API in learning/annealing + one settings family |
-| DEF-07 | Wiener λ* | 2.05e-5 vs 1e-4 vs formula λ*(p) | Compute λ* from production p in one module (PLAN W4.1) |
+| DEF-07 | Wiener λ* | **FIXED (W4)** — `compute_wiener_lambda(p, 8)` is the only source | done (PLAN W4.1) |
 | DEF-08 | Chebyshev K | 30 vs 32 vs 30 | One key consumed by predictors and lanczos_chebyshev |
 | DEF-09 | bounds vs default | predictor_gamma default −0.5 outside [0,1] | Align bounds or default |
 | DEF-10 | HRR dim | 8192 vs 512 | One dim (seam unity) |

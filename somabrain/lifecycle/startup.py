@@ -36,25 +36,19 @@ async def startup_mode_banner(app: Any) -> None:
 
     lg = logging.getLogger("somabrain")
     try:
-        mode = getattr(_shared, "mode", "prod") if _shared else "prod"
-        mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
+        mode = _shared.SOMABRAIN_MODE if _shared else None
+        mode_norm = getattr(_shared, "mode_normalized", None) if _shared else None
         api_auth = (
-            bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
+            bool(getattr(_shared, "mode_api_auth_enabled", None)) if _shared else None
         )
         mem_auth = (
-            bool(getattr(_shared, "mode_memory_auth_required", True))
+            bool(getattr(_shared, "mode_memory_auth_required", None))
             if _shared
-            else True
+            else None
         )
         opa_closed = True  # Strict: always fail-closed
-        log_level = (
-            str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
-        )
-        bundle = (
-            str(getattr(_shared, "mode_opa_policy_bundle", "prod"))
-            if _shared
-            else "prod"
-        )
+        log_level = str(_shared.SOMABRAIN_LOG_LEVEL) if _shared else ""
+        bundle = str(_shared.MODE_OPA_POLICY_BUNDLE) if _shared else ""
         lg.warning(
             "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memory_auth=%s "
             "opa_fail_closed=%s log_level=%s opa_bundle=%s",
@@ -271,7 +265,7 @@ async def startup_diagnostics(cfg: Any) -> None:
         # Use centralized Settings flag for Docker detection
         from django.conf import settings
 
-        in_docker = bool(_os.path.exists("/.dockerenv")) or settings.running_in_docker
+        in_docker = bool(_os.path.exists("/.dockerenv")) or settings.RUNNING_IN_DOCKER
 
         # Prefer shared settings for mode and policy flags
         try:
@@ -284,11 +278,9 @@ async def startup_diagnostics(cfg: Any) -> None:
         require_memory = True
         try:
             if _shared is not None:
-                mode = str(getattr(_shared, "mode", "") or "").strip()
-                ext_req = bool(
-                    getattr(_shared, "mode_require_external_backends", False)
-                )
-                require_memory = bool(getattr(_shared, "require_memory", True))
+                mode = str(_shared.SOMABRAIN_MODE or "").strip()
+                ext_req = bool(_shared.SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS)
+                require_memory = bool(_shared.REQUIRE_MEMORY)
             else:
                 mode = settings.SOMABRAIN_MODE.strip()
                 ext_req = settings.SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS

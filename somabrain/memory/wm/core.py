@@ -30,6 +30,7 @@ import numpy as np
 from django.conf import settings
 
 from somabrain.math import cosine_similarity, normalize_vector
+from somabrain.math.recency import stretched_exponential_recency
 from somabrain.memory.wm.wm_eviction import (
     evict_item,
     find_duplicate,
@@ -78,6 +79,7 @@ class WMItem:
     admitted_at: float = 0.0
     cleanup_overlap: float = 0.0
     recency: float = 1.0  # B1.3: Starts at 1.0, decays exponentially
+    recency_age: float = 0.0  # accumulated age (s) for the recency kernel
     item_id: str = ""  # B1.4: For duplicate detection
 
 
@@ -170,6 +172,8 @@ class WorkingMemory:
         self._recency_cap = self._validate_scale(
             r_cap, settings.SOMABRAIN_WM_RECENCY_MAX_STEPS
         )
+        self._recency_sharpness = float(settings.SOMABRAIN_RECENCY_SHARPNESS)
+        self._recency_floor = float(settings.SOMABRAIN_RECENCY_FLOOR)
         self._default_salience_threshold = float(
             settings.SOMABRAIN_WM_SALIENCE_THRESHOLD
             if salience_threshold is None
@@ -181,8 +185,6 @@ class WorkingMemory:
         self._item_ids: list[str] = []
         # WM-LTM Promotion (A2.1-A2.5): Optional promoter for salient items
         self._promoter: WMLTMPromoter | None = promoter
-        # B1.3: Exponential decay rate for recency (per second)
-        self._recency_decay_rate: float = 0.1  # Decay constant (higher = faster decay)
         # B1.4: Duplicate detection threshold (cosine similarity)
         self._duplicate_threshold: float = 0.95  # Items with sim > 0.95 are duplicates
 
@@ -301,6 +303,7 @@ class WorkingMemory:
             existing.admitted_at = float(now)
             existing.cleanup_overlap = float(overlap)
             existing.recency = 1.0  # Reset recency on update
+            existing.recency_age = 0.0
             return False  # Existing item updated, not new
 
         item = WMItem(
@@ -310,6 +313,7 @@ class WorkingMemory:
             admitted_at=float(now),
             cleanup_overlap=float(overlap),
             recency=1.0,  # B1.3: Initial recency is 1.0
+            recency_age=0.0,
             item_id=item_id,
         )
         self._items.append(item)
@@ -361,7 +365,13 @@ class WorkingMemory:
 
         now = self._now()
         min_idx = find_lowest_salience_idx(
-            self._items, self.alpha, self.gamma, now, self._recency_scale
+            self._items,
+            self.alpha,
+            self.gamma,
+            now,
+            self._recency_scale,
+            self._recency_sharpness,
+            self._recency_floor,
         )
         evict_item(self._items, self._item_ids, min_idx, self._persister)
 
@@ -428,11 +438,11 @@ class WorkingMemory:
         for idx, it in enumerate(self._items):
             cos = cosine_similarity(query_vec, it.vector)
             if self._scorer is not None:
-                steps = self._recency_steps(now, it.admitted_at)
+                age_seconds = max(0.0, float(now) - float(it.admitted_at))
                 s = self._scorer.score(
                     query_vec,
                     it.vector,
-                    recency_steps=steps,
+                    age_seconds=age_seconds,
                     cosine=cos,
                 )
             else:
@@ -544,30 +554,33 @@ class WorkingMemory:
         return compute_item_salience(item, self._items, self.alpha, self.gamma)
 
     def decay_recency(self, elapsed_seconds: float | None = None) -> None:
-        """Apply exponential decay to all items' recency scores.
+        """Refresh every item's recency with the canonical kernel.
 
-        Per Requirement B1.3: Recency decays exponentially over time.
-        Formula: recency = recency * exp(-decay_rate * elapsed_seconds)
-
-        This method should be called periodically (e.g., each cognitive cycle)
-        to update recency scores based on elapsed time.
+        Per Requirement B1.3: Recency is the stretched-exponential kernel
+        evaluated at the item's accumulated age. Passing ``elapsed_seconds``
+        advances that age by the given amount (synthetic time); omitting it
+        uses wall-clock age since admission.
 
         Args:
-            elapsed_seconds: Time elapsed since last decay. If None, uses
-                time since each item's last update based on admitted_at.
+            elapsed_seconds: Time to advance each item's age. If None, uses
+                wall-clock time since admission.
         """
         now = self._now()
         for item in self._items:
             if elapsed_seconds is not None:
-                # Use provided elapsed time
-                decay = math.exp(-self._recency_decay_rate * elapsed_seconds)
+                item.recency_age = max(
+                    0.0, item.recency_age + max(0.0, float(elapsed_seconds))
+                )
+                age = item.recency_age
             else:
-                # Compute decay based on time since admission
                 age = max(0.0, now - item.admitted_at)
-                decay = math.exp(-self._recency_decay_rate * age)
-
-            # Apply decay, ensuring recency stays in [0, 1]
-            item.recency = max(0.0, min(1.0, item.recency * decay))
+                item.recency_age = age
+            item.recency = stretched_exponential_recency(
+                age,
+                scale=self._recency_scale,
+                sharpness=self._recency_sharpness,
+                floor=self._recency_floor,
+            )
 
     def get_item_recency(self, item_id: str) -> float | None:
         """Get the current recency score for an item by ID.

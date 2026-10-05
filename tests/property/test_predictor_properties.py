@@ -118,6 +118,7 @@ def mse(approx: np.ndarray, exact: np.ndarray) -> float:
 # Import the actual implementations
 # ---------------------------------------------------------------------------
 
+from somabrain.math.graph_heat import expand_spectral_interval
 from somabrain.math.lanczos_chebyshev import (
     chebyshev_heat_apply,
     estimate_spectral_interval,
@@ -161,12 +162,9 @@ class TestChebyshevHeatApproximation:
         # Compute exact solution
         y_exact = exact_heat_kernel(L, x0, t)
 
-        # Estimate spectral bounds
+        # Estimate spectral bounds and expand exactly as production does
         a, b = estimate_spectral_interval(apply_A, n, m=16)
-
-        # Ensure bounds are valid (add small margin for numerical stability)
-        a = max(0.0, a - 0.1)
-        b = b + 0.1
+        a, b = expand_spectral_interval(a, b)
 
         # Compute Chebyshev approximation with K=40
         y_cheb = chebyshev_heat_apply(apply_A, x0, t, K=40, a=a, b=b)
@@ -197,8 +195,7 @@ class TestChebyshevHeatApproximation:
         y_exact = exact_heat_kernel(L, x0, t)
 
         a, b = estimate_spectral_interval(apply_A, n, m=16)
-        a = max(0.0, a - 0.1)
-        b = b + 0.1
+        a, b = expand_spectral_interval(a, b)
 
         # Compute errors for increasing K
         errors = []
@@ -236,8 +233,7 @@ class TestChebyshevHeatApproximation:
         x0 = rng.normal(size=n)
 
         a, b = estimate_spectral_interval(apply_A, n, m=16)
-        a = max(0.0, a - 0.1)
-        b = b + 0.1
+        a, b = expand_spectral_interval(a, b)
 
         y_cheb = chebyshev_heat_apply(apply_A, x0, t, K=40, a=a, b=b)
 
@@ -265,8 +261,7 @@ class TestChebyshevHeatApproximation:
         y = rng.normal(size=n)
 
         a, b = estimate_spectral_interval(apply_A, n, m=16)
-        a = max(0.0, a - 0.1)
-        b = b + 0.1
+        a, b = expand_spectral_interval(a, b)
 
         t = 0.5
         exp_x = chebyshev_heat_apply(apply_A, x, t, K=40, a=a, b=b)
@@ -453,8 +448,7 @@ class TestChebyshevLanczosConsistency:
 
         # Estimate spectral bounds for Chebyshev
         a, b = estimate_spectral_interval(apply_A, n, m=16)
-        a = max(0.0, a - 0.1)
-        b = b + 0.1
+        a, b = expand_spectral_interval(a, b)
 
         # Compute both approximations
         y_cheb = chebyshev_heat_apply(apply_A, x0, t, K=40, a=a, b=b)
@@ -485,8 +479,7 @@ class TestChebyshevLanczosConsistency:
 
         # Chebyshev
         a, b = estimate_spectral_interval(apply_A, n, m=16)
-        a = max(0.0, a - 0.1)
-        b = b + 0.1
+        a, b = expand_spectral_interval(a, b)
         y_cheb = chebyshev_heat_apply(apply_A, x0, t, K=40, a=a, b=b)
 
         # Lanczos

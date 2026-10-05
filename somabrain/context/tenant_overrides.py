@@ -17,7 +17,7 @@ def load_tenant_overrides() -> dict[str, dict[str, Any]]:
 
     Reads from:
     1. SOMABRAIN_LEARNING_TENANTS_FILE (YAML or JSON file)
-    2. SOMABRAIN_LEARNING_TENANTS_OVERRIDES (JSON string in env)
+    2. LEARNING_TENANTS_OVERRIDES (JSON string in env)
 
     Returns:
         Dict mapping tenant IDs to their override configurations
@@ -51,7 +51,7 @@ def load_tenant_overrides() -> dict[str, dict[str, Any]]:
                 overrides = {}
 
     if not overrides:
-        raw = settings.learning_tenants_overrides.strip()
+        raw = settings.LEARNING_TENANTS_OVERRIDES.strip()
         if raw:
             try:
                 import json as _json

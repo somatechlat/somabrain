@@ -9,7 +9,6 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -212,34 +211,3 @@ def deduplicate_hits(hits: list[RecallHit]) -> list[RecallHit]:
         if prefer_candidate_hit(existing, hit):
             winners[ident] = hit
     return [winners[idx] for idx in order]
-
-
-def lexical_bonus(payload: dict, query: str) -> float:
-    """Calculate lexical bonus for a payload based on query match."""
-    q = str(query or "").strip()
-    if not q or not isinstance(payload, dict):
-        return 0.0
-    ql = q.lower()
-    bonus = 0.0
-    fields = ("task", "text", "content", "what", "fact", "headline", "summary")
-    for field in fields:
-        value = payload.get(field)
-        if isinstance(value, str) and value:
-            vl = value.lower()
-            if vl == ql:
-                bonus = max(bonus, 1.5)
-            elif ql in vl:
-                bonus = max(bonus, 1.0)
-    token_matches = 0
-    for token in re.split(r"[\s,;:/-]+", q):
-        token = token.strip().lower()
-        if len(token) < 3:
-            continue
-        for field in fields:
-            value = payload.get(field)
-            if isinstance(value, str) and token in value.lower():
-                token_matches += 1
-                break
-    if token_matches > 0:
-        bonus = max(bonus, 0.3 + 0.1 * min(token_matches, 5))
-    return bonus

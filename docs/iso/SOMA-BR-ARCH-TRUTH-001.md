@@ -133,7 +133,7 @@ Legend:
 | Rust `MahalanobisPredictor` | Rust predictor | `rust_core/src/prediction.rs:66-94`; never constructed from Python (Python uses `admin/core/learning/prediction.py`) | DEAD (from Python) |
 | Rust TD API (`compute_td_error`, `compute_td_return`, `compute_n_step_return`, `decay_eligibility`) | Sutton TD | Registered `rust_core/src/lib.rs:90-93`; no Python importers of these symbols | DEAD (from Python) |
 | Rust `Neuromodulators` sync | Rust neurochem mirror | Used by both Python trees via `rust_bridge` (`runtime/neuromodulators.py:126-155`) | LIVE (optional) |
-| `lib.rs` unit tests `test_bayesian_memory_snr`, `test_capacity_estimation` | Rust tests | `rust_core/src/lib.rs:157-180` — bodies empty / wrong constructor arity (`BayesianMemory::new` takes 3 args at `mathcore.rs:371-372`, test calls 4 at `lib.rs:159`) | BROKEN / non-asserting |
+| `lib.rs` unit tests `test_bayesian_memory_snr`, `test_capacity_estimation` | Rust tests | Rewritten in W4 against the live API (`BayesianMemory::new(dimension, eta, lambda_reg)`, `compute_snr_at_lag`, `estimate_horizon`) | GREEN (W4) |
 
 ---
 
@@ -236,7 +236,7 @@ Background (not on the HTTP request path): Kafka domain predictors
 | **`services/entry.py` as orchestrator** (`SOMABRAIN_CODEBASE_DOCUMENTATION.md` §2.2) | Would crash on integrator start: `hub.run_forever()` (`entry.py:45`) vs `IntegratorHub.run()` (`integrator_hub_triplet.py:384`). Compose launches triplet module directly instead (`docker-compose.yml:1068`). | **BROKEN / unused** | cited |
 | **AAAS routers conditional on INSTALLED_APPS** (`SOMABRAIN_ARCHITECTURE.md` §5, `SOMABRAIN_CODEBASE_DOCUMENTATION.md` §2.1) | `v1.py` loads cognitive/memory/config/… routers unconditionally (`v1.py:41-155`). Comment states commerce overlay removed (`v1.py:6-9`). AAAS conditional block is not present in `v1.py`. | **PARTIALLY OBSOLETE** | `api/v1.py:1-155` |
 | **`UnifiedBrainCore` as "unified mathematical core replacing complex component interactions"** (`unified_core.py:12`) | Only constructed via `create_unified_brain` (`core_singletons.py:273-289`), which has no callers. Not on `/act` or memory paths. | **DEAD** | grep: only factory + adapters/tests |
-| **Rust unit tests as proof of Theorems 1–4** (`lib.rs:100-180`) | `test_optimal_p_theorem1`, `test_wiener_lambda_theorem3`, `test_quantize_8bit_theorem3`, `test_fwht_*` assert real values. `test_bayesian_memory_snr` and `test_capacity_estimation` have empty/wrong-arity bodies (`lib.rs:157-180`) and would not compile as written against `BayesianMemory::new(dimension, eta, lambda_reg)` (`mathcore.rs:371`). | **PARTIAL / BROKEN tests** | cited |
+| **Rust unit tests as proof of Theorems 1–4** (`lib.rs` test module) | W4: tests rewritten against the live API. `compute_optimal_p` (false "Theorem 1") is deleted; `test_wiener_lambda_theorem3` pins `λ* = Δ²/(12p(1−p))`; `test_fwht_*`, `test_bayesian_memory_snr`, `test_capacity_estimation` assert real values. `cargo test` 14/14 green. | **GREEN tests (W4)** | cited |
 
 ---
 

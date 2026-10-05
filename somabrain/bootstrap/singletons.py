@@ -235,7 +235,9 @@ def make_unified_scorer(cfg, fd_sketch=None):
         w_recency=getattr(settings, "SOMABRAIN_SCORER_W_RECENCY"),
         weight_min=getattr(settings, "SOMABRAIN_SCORER_WEIGHT_MIN"),
         weight_max=getattr(settings, "SOMABRAIN_SCORER_WEIGHT_MAX"),
-        recency_tau=getattr(settings, "SOMABRAIN_SCORER_RECENCY_TAU"),
+        recency_scale=getattr(settings, "SOMABRAIN_WM_RECENCY_TIME_SCALE"),
+        recency_sharpness=getattr(settings, "SOMABRAIN_RECENCY_SHARPNESS"),
+        recency_floor=getattr(settings, "SOMABRAIN_RECENCY_FLOOR"),
         fd_backend=fd_sketch,
     )
 

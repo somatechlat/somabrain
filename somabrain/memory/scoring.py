@@ -12,7 +12,8 @@ from typing import Any
 
 from django.conf import settings
 
-from somabrain.memory.hit_processing import lexical_bonus
+from somabrain.math.recency import recency_features as _shared_recency_features
+from somabrain.memory.client.ranking import lexical_bonus
 from somabrain.memory.types import RecallHit
 
 
@@ -88,12 +89,12 @@ def get_recency_normalisation(cfg: Any) -> tuple[float, float]:
     """Get recency normalization parameters from config.
 
     Args:
-        cfg: Configuration object with recall_recency_* attributes.
+        cfg: Configuration object with recency parameters.
 
     Returns:
         Tuple of (time_scale, max_steps).
     """
-    scale = getattr(cfg, "SOMABRAIN_RECENCY_HALF_LIFE", 60.0)
+    scale = getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 60.0)
     if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
         scale = 60.0
     cap = getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000.0)
@@ -106,7 +107,7 @@ def get_recency_profile(cfg: Any) -> tuple[float, float, float, float]:
     """Get full recency profile parameters from config.
 
     Args:
-        cfg: Configuration object with recall_recency_* attributes.
+        cfg: Configuration object with recency parameters.
 
     Returns:
         Tuple of (time_scale, max_steps, sharpness, floor).
@@ -150,15 +151,13 @@ def compute_recency_features(
     age_seconds = max(0.0, now_ts - ts_epoch)
     if age_seconds <= 0:
         return 0.0, 1.0
-    normalised = age_seconds / max(scale, 1e-6)
-    damp_steps = math.log1p(normalised) * sharpness
-    recency_steps = min(damp_steps, cap)
-    try:
-        damp = math.exp(-(normalised**sharpness))
-    except Exception:
-        damp = 0.0
-    boost = max(floor, min(1.0, damp))
-    return recency_steps, boost
+    return _shared_recency_features(
+        age_seconds,
+        scale=scale,
+        sharpness=sharpness,
+        floor=floor,
+        cap=cap,
+    )
 
 
 def compute_density_factor(margin: float | None, cfg: Any) -> float:
@@ -396,9 +395,10 @@ def rescore_and_rank_hits(
         else:
             candidate_vec = embedder.embed(text)
 
-            # Calculate recency_steps from timestamp
+            # Calculate recency features from timestamp
             recency_steps: float | None = None
             recency_boost = 1.0
+            age_seconds: float | None = None
             ts_epoch = None
             for key in ("timestamp", "ts", "created_at"):
                 if key in payload:
@@ -406,6 +406,7 @@ def rescore_and_rank_hits(
                     if ts_epoch is not None:
                         break
             if ts_epoch is not None:
+                age_seconds = max(0.0, now_ts - ts_epoch)
                 recency_steps, recency_boost = compute_recency_features(
                     ts_epoch, now_ts, cfg
                 )
@@ -413,7 +414,7 @@ def rescore_and_rank_hits(
             new_score = scorer.score(
                 query_vec,
                 candidate_vec,
-                recency_steps=recency_steps,
+                age_seconds=age_seconds,
                 cosine=hit.score,  # Pass original score as cosine hint
             )
             new_score *= recency_boost

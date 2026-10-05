@@ -642,13 +642,6 @@ BRAIN_DEFAULTS = {
     "salience_w_error": {"v": 0.4, "cat": "salience"},
     # salience_w_novelty (Managed via ELASTICITY)
     # SCORER
-    "scorer_recency_tau": {
-        "v": 32.0,
-        "cat": "scorer",
-        "learnable": True,
-        "min": 0.0,
-        "max": 160.0,
-    },
     "scorer_w_cosine": {"v": 0.6, "cat": "scorer"},
     "scorer_w_fd": {"v": 0.25, "cat": "scorer"},
     "scorer_w_recency": {"v": 0.15, "cat": "scorer"},

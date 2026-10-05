@@ -69,8 +69,8 @@ Line ranges are inclusive and refer to the file as read at extraction time.
 | `D`, `dim`, `n` | hypervector dimension | `SOMABRAIN_HRR_DIM` via `HRRConfig` | `somabrain/admin/core/quantum.py:67-68`; `rust_core/src/mathcore.rs:372` |
 | `p`, `sparsity` | active-dimension fraction | `0.1` (`SOMABRAIN_BHDC_SPARSITY`) | `somabrain/settings/cognitive.py:264`; `rust_core/src/bhdc.rs:69` |
 | `active_count` | `round(p·D)` active bits | clamped to `[1, D]` | `rust_core/src/bhdc.rs:69,76`; `somabrain/math/bhdc_encoder.py:21-23` |
-| `λ`, `lambda`, `lambda_reg` | Wiener ridge regularizer | `2.05e-5` (binder default); `1e-4` (quantum unbind fallback) | `rust_core/src/bhdc.rs:217`; `somabrain/math/bhdc_encoder.py:226`; `somabrain/admin/core/quantum.py:311-313` |
-| `Δ` | quantization step on `[-1,1]` | `2/255` hard-coded | `rust_core/src/mathcore.rs:327` |
+| `λ`, `lambda`, `lambda_reg` | Wiener ridge regularizer | `compute_wiener_lambda(p, 8)` at production `p` (≈ `5.696e-5` at `p=0.1`); single source everywhere | `rust_core/src/mathcore.rs` (`compute_wiener_lambda`); `somabrain/math/bhdc_encoder.py` (`compute_wiener_lambda`, `production_wiener_lambda`); consumed by `rust_core/src/bhdc.rs`, `somabrain/admin/core/quantum.py`, `somabrain/brain_settings/models.py` (`gmd_lambda_reg`) |
+| `Δ` | quantization step on `[-1,1]` | `2/(2^bits − 1)` (`2/255` at 8-bit) | `rust_core/src/mathcore.rs` (`compute_wiener_lambda`, `quantize_8bit`) |
 | `η`, `eta` | BayesianMemory learning rate | clamped `[0.01, 0.5]`; `gmd_eta` default `0.08` | `rust_core/src/mathcore.rs:377`; `somabrain/brain_settings/models.py:225-231` |
 | `α`, `alpha` | retrieval semantic weight | `1.0` | `somabrain/settings/cognitive.py:178`; `rust_core/src/adaptation.rs:24` |
 | `β`, `beta` | retrieval graph weight | `0.2` | `somabrain/settings/cognitive.py:179`; `rust_core/src/adaptation.rs:24` |
@@ -93,7 +93,7 @@ Line ranges are inclusive and refer to the file as read at extraction time.
 | `eps_ot` | Sinkhorn entropy regularization | `1e-2` | `somabrain/math/sinkhorn.py:16` |
 | `φ` | golden-section ratio | `(√5−1)/2` | `somabrain/calibration/temperature_scaling.py:68` |
 | `T_cal` | calibration temperature | fitted; clamp `[0.05, 10]` | `somabrain/calibration/temperature_scaling.py:89` |
-| `b` | quantization bits | param present; **ignored** in `compute_wiener_lambda` | `rust_core/src/mathcore.rs:324-332` |
+| `b` | quantization bits | honored: `Δ = 2/(2^b − 1)` in `compute_wiener_lambda` | `rust_core/src/mathcore.rs` (`compute_wiener_lambda`); `somabrain/math/bhdc_encoder.py` (`compute_wiener_lambda`) |
 | `H` | Shannon entropy of weight distribution | natural log, linear-normalized probs | `rust_core/src/mathcore.rs:218-223`; `somabrain/learning/annealing.py:325` |
 | `S` | Frequent-Directions sketch matrix | `0 × d` init | `somabrain/math/fd_rho.py:26` |
 | `ℓ` | FD sketch rank | constructor arg | `somabrain/math/fd_rho.py:21-24` |
@@ -114,11 +114,11 @@ while h < n:
     for j in i..i+h:
       (v[j], v[j+h]) ← (v[j]+v[j+h], v[j]−v[j+h])
   h ← 2h
-v ← v / √n          # only if n is a power of 2; else early return unchanged
+v ← v / √n          # only if n is a power of 2; else RAISE ValueError
 ```
-- **file:line** `rust_core/src/mathcore.rs:283-307` (public wrapper `fwht` at `276-280`)
-- **Status:** LIVE (used by `PermutationBinder` when `mix == "hadamard"`, `rust_core/src/bhdc.rs:256-257,281-282`)
-- **Note:** Non-power-of-two `n` returns the input unchanged (`mathcore.rs:285-287`) — silent no-op, not an error.
+- **file:line** `rust_core/src/mathcore.rs` (`fwht`, `fwht_inplace`); Python mirror `somabrain/math/bhdc_encoder.py` (`fwht`)
+- **Status:** LIVE (used by `PermutationBinder` when `mix == "hadamard"`, `rust_core/src/bhdc.rs`)
+- **Note (FIXED, W4.4):** Non-power-of-two `n` **raises `ValueError`** in both languages. `PermutationBinder` with `mix="hadamard"` validates `dim` at construction and raises `ValueError` for non-2^r `dim`. The former silent no-op is gone.
 
 **(T2) BHDC active count**
 ```
@@ -184,21 +184,23 @@ c  = c / ‖c‖                   # L2 if ‖c‖ > 1e-10
 ```
 if mix == "hadamard": c ← FWHT(c)        # H is self-inverse
 b′ = π(b)
-v̂_i = (c_i · b′_i) / (b′_i² + λ)        # λ = lambda_reg, default 2.05e-5
+v̂_i = (c_i · b′_i) / (b′_i² + λ)        # λ = lambda_reg = λ*(p) = Δ²/(12p(1−p))
 v̂  = v̂ / ‖v̂‖                             # if ‖v̂‖ > 1e-10
 ```
-- **file:line** `rust_core/src/bhdc.rs:277-309`
-- **Status:** LIVE (via `QuantumLayer.unbind_exact_unitary`, `somabrain/admin/core/quantum.py:421-431`)
-- **DOC-DRIFT vs Python fallback (T7b):** Python fallback unbind is plain division `c / π(b)` with a ±1e-12 sign-preserving tiny (`somabrain/math/bhdc_encoder.py:119-126`) — **not** Wiener. Different inverse.
+- **file:line** `rust_core/src/bhdc.rs` (`PermutationBinder::unbind`)
+- **Status:** LIVE (via `QuantumLayer.unbind_exact_unitary`, `somabrain/admin/core/quantum.py`)
+- **Note (FIXED, W4.1):** λ defaults to `compute_wiener_lambda(p, 8)` evaluated at the production sparsity `p` (`SOMABRAIN_BHDC_SPARSITY`, engineering choice 0.1). No hardcoded regularizer constant remains.
 
-**(T7b) PermutationBinder unbind (Python fallback, non-Wiener)**
+**(T7b) PermutationBinder unbind (Python fallback, Wiener)**
 ```
+if mix == "hadamard": c ← FWHT(c)        # same transform as T1
 b′ = π(b)
-denom_i = b′_i  if |b′_i| ≥ 1e-12  else  sign(b′_i)·1e-12
-v̂ = c / denom
+v̂_i = (c_i · b′_i) / (b′_i² + λ)        # identical rule to T7
+v̂  = v̂ / ‖v̂‖                             # if ‖v̂‖ > 1e-10
 ```
-- **file:line** `somabrain/math/bhdc_encoder.py:119-126`
-- **Status:** LIVE-FALLBACK
+- **file:line** `somabrain/math/bhdc_encoder.py` (`_PythonPermutationBinder.unbind`)
+- **Status:** LIVE-FALLBACK (FIXED, W4.3/DEBT-015/DEBT-016)
+- **Note:** The former plain division `c / π(b)` with a ±1e-12 floor is deleted. Python fallback bind also applies FWHT when `mix == "hadamard"` and L2-normalizes like the Rust path.
 
 **(T8) `QuantumLayer.bind` — FFT circular convolution**
 ```
@@ -212,13 +214,14 @@ c = normalize_array(c)                  # if cfg.renorm
 **(T9) `QuantumLayer.unbind` — spectral Wiener division**
 ```
 fc = rfft(c);  fb = rfft(b)
-λ  = BrainSetting("gmd_lambda_reg") or 1e-4
+λ  = BrainSetting("gmd_lambda_reg") or production_wiener_lambda()
 fa = fc · conj(fb) / (|fb|² + λ)
 a  = irfft(fa, n=D);  a = normalize_array(a)
 ```
-- **file:line** `somabrain/admin/core/quantum.py:283-322` (core at `302-322`)
+- **file:line** `somabrain/admin/core/quantum.py` (`QuantumLayer.unbind`)
 - **Status:** LIVE
-- **Note:** Docstring claims `unbind(bind(a,b),b) ≈ a` with "similarity > 0.95" (`quantum.py:287`) — that threshold is **not** enforced anywhere in this function.
+- **Note (FIXED, W4.1):** The former `1e-4` fallback is deleted; both the BrainSetting default (`gmd_lambda_reg`) and the fallback come from `compute_wiener_lambda(p, 8)` at the production sparsity.
+- **Note:** Docstring claims `unbind(bind(a,b),b) ≈ a` with "similarity > 0.95" — that threshold is **not** enforced anywhere in this function.
 
 **(T10) Pure HRR bind / unbind (test-only)**
 ```
@@ -236,23 +239,24 @@ Q(x) = ( clamp(round((x+1)/2 · 255), 0, 255) / 255 ) · 2 − 1
 - **file:line** `rust_core/src/mathcore.rs:338-344` (vector map at `348-350`)
 - **Status:** EXPORTED (`quantize_8bit`, `quantize_vector`)
 
-**(T12) Optimal sparsity `p*`**
+**(T12) Optimal sparsity `p*` — DELETED (no theorem)**
 ```
-p* = (1 + √clamp(δ, 1e-4, 1−1e-4)) / 2
+(no exported function)
+p = 0.1 is an ENGINEERING CHOICE (SOMABRAIN_BHDC_SPARSITY default),
+not the output of a sparsity theorem.
 ```
-- **file:line** `rust_core/src/mathcore.rs:313-316`
-- **Status:** EXPORTED (`compute_optimal_p`). Comment claims "p* ≈ 0.1 recommended" (`mathcore.rs:311`) which is **not** what this formula returns for small δ (e.g. δ=0.01 → p*≈0.55). Comment is wrong; formula is as written.
+- **Status:** DELETED (FIXED, W4.2 / DEBT-012). The former `compute_optimal_p` implemented `(1 + √clamp(δ, 1e-4, 1−1e-4)) / 2`, which is **always ≥ 0.5** and never recommended the production `p = 0.1`. The formula and the "p* ≈ 0.1" claim were both removed. No false theorem is asserted.
 
-**(T13) Wiener ridge `λ*` (as coded)**
+**(T13) Wiener ridge `λ*`**
 ```
-Δ = 2/255                         # hard-coded; argument `bits` is IGNORED
+Δ = 2/(2^bits − 1)                # 2/255 at bits=8; `bits` is honored
 σ_ε² = Δ² / 12
 σ_v² = clamp(p, 0.01, 0.99) · (1 − clamp(p, 0.01, 0.99))
-λ*   = σ_ε² / σ_v²                # ≈ 5.126e-6 / (p(1−p))
+λ*   = σ_ε² / σ_v²                # = Δ² / (12 p (1−p)) ≈ 5.126e-6 / (p(1−p)) at 8-bit
 ```
-- **file:line** `rust_core/src/mathcore.rs:324-332`
-- **Status:** EXPORTED (`compute_wiener_lambda`)
-- **Note:** At `p = 0.5`, `λ* = Δ²/3 = (2/255)²/3 ≈ 2.0505e-5`, which is the constant hard-coded as `lambda_reg` default in T7. The comment "λ* = (2/255)²/3" (`bhdc.rs:209`) is therefore **only true at p = 0.5**, not the general (T13) formula.
+- **file:line** `rust_core/src/mathcore.rs` (`compute_wiener_lambda`, `production_wiener_lambda`); Python mirror `somabrain/math/bhdc_encoder.py` (`compute_wiener_lambda`)
+- **Status:** EXPORTED — **single source** of every default regularizer (W4.1 / DEBT-011 FIXED)
+- **Note:** Defaults are evaluated at the production sparsity `p` (`PRODUCTION_SPARSITY_P = 0.1`, or caller-supplied `p`). At `p = 0.1`, `bits = 8`: `λ* ≈ 5.6958e-5`. The former binder default that equaled `λ*(p=0.5)` and the former `1e-4` quantum fallback are deleted.
 
 **(T14) `ensure_binary`**
 ```
@@ -657,11 +661,11 @@ exceeded = (entropy_cap > 0) ∧ (H > entropy_cap)
 
 **(T49) SlowPredictor error (Rust)**
 ```
-e = 1 − |cos(pred, actual)|     if both norms > 0
-e = 1                           otherwise
+e = clamp(1 − cos(pred, actual), 0, 1)     # identical to (T16) cosine_error; no |cos|
+e = 1                                      if either norm == 0
 ```
-- **file:line** `rust_core/src/prediction.rs:37-42`
-- **Status:** EXPORTED
+- **file:line** `rust_core/src/prediction.rs` (`SlowPredictor::error`)
+- **Status:** EXPORTED (FIXED, W4.6 / DEBT-019 — the former `1 − |cos|` is deleted; antipodal vectors score 1.0, matching Python)
 
 **(T50) Python `SlowPredictor` / `BudgetedPredictor` / `LLMPredictor`**
 ```
@@ -685,12 +689,14 @@ err = clamp( 0.8 · cosine_error + 0.2 · surprise, 0, 1 )
 
 **(T52) Mahalanobis distance (Rust)**
 ```
-mean ← (1−α)·mean + α·x          # covariance stored but UNUSED
-distance = ‖x − mean‖₂            # Euclidean, not Mahalanobis
+# first update:  μ ← x,  σ² ← 0.1
+μ    ← (1−α)·μ + α·x
+σ²   ← max( (1−α)·σ² + α·(x−μ_new)² , 1e-6 )       # diagonal only
+d(x) = sqrt( Σ_i (x_i − μ_i)² / σ_i² )             # true diagonal Mahalanobis
 ```
-- **file:line** `rust_core/src/prediction.rs:84-93`
-- **Status:** EXPORTED
-- **DOC-DRIFT:** Named `MahalanobisPredictor` but computes plain L2 distance; `covariance` field is `#[allow(dead_code)]` (`prediction.rs:68-69`).
+- **file:line** `rust_core/src/prediction.rs` (`MahalanobisPredictor::update`, `::distance`)
+- **Status:** EXPORTED (FIXED, W4.6 / DEBT-018)
+- **Note:** The name now equals the math: diagonal covariance whitening is implemented (same EWMA mean/var as (T51)), and `distance` returns `sqrt((x−μ)ᵀ Σ⁻¹ (x−μ))` for `Σ = diag(σ²)`. The former Euclidean `‖x−μ‖₂` with a dead `covariance` field is deleted.
 
 **(T53) Consolidation**
 ```
@@ -934,23 +940,23 @@ else:         return unbind(c, b)                    # T9
 
 | Eq | Subsystem | Status | Primary site |
 |---|---|---|---|
-| T1 | binding | LIVE | `mathcore.rs:283-307` |
-| T2 | binding | LIVE | `bhdc.rs:69,76` |
-| T3 | binding | LIVE | `bhdc.rs:166-195` |
-| T3b | binding | LIVE-FALLBACK | `bhdc_encoder.py:59-71` |
-| T4 | binding | LIVE | `bhdc.rs:14-40` |
-| T4b | binding | LIVE-FALLBACK | `bhdc_encoder.py:49-57` |
-| T5 | binding | EXPORTED | `bhdc.rs:111-141` |
-| T6 | binding | LIVE | `bhdc.rs:252-268` |
-| T7 | binding | LIVE | `bhdc.rs:277-309` |
-| T7b | binding | LIVE-FALLBACK | `bhdc_encoder.py:119-126` |
-| T8 | binding | LIVE | `quantum.py:254-259` |
-| T9 | binding | LIVE | `quantum.py:302-322` |
-| T10 | binding | TEST-ONLY | `quantum_pure.py:121-161` |
-| T11 | binding | EXPORTED | `mathcore.rs:338-344` |
-| T12 | binding | EXPORTED | `mathcore.rs:313-316` |
-| T13 | binding | EXPORTED | `mathcore.rs:324-332` |
-| T14 | binding | EXPORTED | `bhdc.rs:418-419` |
+| T1 | binding | LIVE | `mathcore.rs` (`fwht`) — raises on non-2^r (W4.4) |
+| T2 | binding | LIVE | `bhdc.rs` (`BHDCEncoder::new`) |
+| T3 | binding | LIVE | `bhdc.rs` (`vector_from_rng`) |
+| T3b | binding | LIVE-FALLBACK | `bhdc_encoder.py` (`_PythonBHDCEngine._render_sparse_vector`) |
+| T4 | binding | LIVE | `bhdc.rs` (`build_seed_bundle`, `seed_to_uint64`) |
+| T4b | binding | LIVE-FALLBACK | `bhdc_encoder.py` (`_compose_seed`) |
+| T5 | binding | EXPORTED | `bhdc.rs` (`bind`/`unbind`/`bundle`) |
+| T6 | binding | LIVE | `bhdc.rs` (`PermutationBinder::bind`) |
+| T7 | binding | LIVE | `bhdc.rs` (`PermutationBinder::unbind`) — λ* from formula (W4.1) |
+| T7b | binding | LIVE-FALLBACK | `bhdc_encoder.py` (`_PythonPermutationBinder.unbind`) — Wiener + FWHT (W4.3) |
+| T8 | binding | LIVE | `quantum.py` (`QuantumLayer.bind`) |
+| T9 | binding | LIVE | `quantum.py` (`QuantumLayer.unbind`) — same λ* source (W4.1) |
+| T10 | binding | TEST-ONLY | `quantum_pure.py` |
+| T11 | binding | EXPORTED | `mathcore.rs` (`quantize_8bit`) — 256-level |
+| T12 | binding | DELETED | no `compute_optimal_p`; p = 0.1 is an engineering choice (W4.2) |
+| T13 | binding | EXPORTED | `mathcore.rs` (`compute_wiener_lambda`) — bits honored (W4.1) |
+| T14 | binding | EXPORTED | `bhdc.rs` (`ensure_binary`) |
 | T15 | similarity | LIVE | `similarity.py:34-93` |
 | T16 | similarity | LIVE | `similarity.py:96-135` |
 | T17 | similarity | LIVE | `similarity.py:138-182` |
@@ -988,10 +994,10 @@ else:         return unbind(c, b)                    # T9
 | T46 | memory | LIVE | `context_hrr.py:107-128` |
 | T47 | annealing | EXPORTED | `adaptation.rs:193-195` |
 | T48 | annealing | EXPORTED | `mathcore.rs:205-241` |
-| T49 | prediction | EXPORTED | `prediction.rs:37-42` |
+| T49 | prediction | EXPORTED | `prediction.rs` (`SlowPredictor::error`) — `1 − cos` (W4.6) |
 | T50 | prediction | LIVE | `learning/prediction.py:100-423` |
 | T51 | prediction | LIVE | `learning/prediction.py:275-347` |
-| T52 | prediction | EXPORTED | `prediction.rs:84-93` |
+| T52 | prediction | EXPORTED | `prediction.rs` (`MahalanobisPredictor`) — diagonal Mahalanobis (W4.6) |
 | T53 | prediction | EXPORTED | `prediction.rs:131-216` |
 | T54 | prediction | EXPORTED | `prediction.rs:23-28` |
 | T55 | prediction | DEAD-STUB | `prediction.rs:109-111` |
@@ -1028,11 +1034,10 @@ Values are the coded defaults. "Appears in" lists every site found in the scope 
 
 | Constant | Value | Symbol | Appears in | Duplicate? |
 |---|---|---|---|---|
-| Wiener λ binder default | `2.05e-5` | `lambda_reg` | `rust_core/src/bhdc.rs:217`; `somabrain/math/bhdc_encoder.py:92,226`; `somabrain/brain_settings/models.py:219` (`gmd_lambda_reg`) | **YES** — see λ fallback |
-| Wiener λ unbind fallback | `1e-4` | `lambda_reg` | `somabrain/admin/core/quantum.py:311-313` | **CONFLICT with 2.05e-5** |
-| λ\* closed form | `(2/255)²/(12 p(1−p))` | `λ*` | `rust_core/src/mathcore.rs:324-332` | Comment claims `(2/255)²/3` which equals λ\* only at p=0.5 |
-| Quantization Δ | `2/255 ≈ 0.007843` | `Δ` | `rust_core/src/mathcore.rs:327` | — |
-| Quantization bits | `8` | `bits` | `brain_settings/models.py:220`; param of `compute_wiener_lambda` **ignored** | parameter dead |
+| Wiener λ default | `compute_wiener_lambda(p, 8)` at production `p` (≈ `5.696e-5` at `p=0.1`) | `lambda_reg` | `rust_core/src/mathcore.rs`; `somabrain/math/bhdc_encoder.py`; consumed by `bhdc.rs`, `quantum.py`, `brain_settings/models.py` (`gmd_lambda_reg`) | **No** — single formula source (W4.1 FIXED) |
+| λ\* closed form | `Δ² / (12 p (1−p))`, `Δ = 2/(2^bits − 1)` | `λ*` | `rust_core/src/mathcore.rs` (`compute_wiener_lambda`); Python mirror `somabrain/math/bhdc_encoder.py` | formula only; no constant |
+| Quantization Δ | `2/(2^bits − 1)` (`2/255` at 8-bit) | `Δ` | `rust_core/src/mathcore.rs` (`compute_wiener_lambda`, `quantize_8bit`) | — |
+| Quantization bits | `8` | `bits` | `brain_settings/models.py` (`gmd_quantization_bits`); honored by `compute_wiener_lambda` | live parameter (W4.1 FIXED) |
 | BayesianMemory η | `0.08` (DB), clamp `[0.01,0.5]` | `η` | `brain_settings/models.py:225-231`; `mathcore.rs:377` | — |
 | BayesianMemory α (capacity) | `640.0` | `α` | `mathcore.rs:379`; `brain_settings/models.py:218` | unused in formulas |
 | GMD δ (max pairwise sim) | `0.01` | `δ` | `brain_settings/models.py:216` | not read by mathcore |
@@ -1117,12 +1122,12 @@ These are clamps/floors/guards present in code.
 20. **Temperature fit clamped to [0.05, 10]** — `temperature_scaling.py:89`; NLL input `T ≥ 1e-6` (`:59`).
 21. **Confidence/error blends clamped to [0, 1]** — `learning/prediction.py:344,416`.
 22. **Amygdala soft-temperature floor `1e-4`** — `amygdala.py:244`; sigmoid input clamp ±20 (`:256`).
-23. **`compute_optimal_p` input clamp** — `δ ∈ [1e-4, 0.9999]` (`mathcore.rs:314`).
+23. ~~**`compute_optimal_p` input clamp**~~ — function deleted (W4.2 / DEBT-012); no `p*` theorem exists.
 24. **`compute_wiener_lambda` p clamp** — `p ∈ [0.01, 0.99]` (`mathcore.rs:325`).
 25. **`quantize_8bit` output clamp** — scaled to [0, 255] (`mathcore.rs:341`).
 26. **BayesianMemory η clamp** — `[0.01, 0.5]` (`mathcore.rs:377`).
 27. **BHDC active_count clamp** — `[1, D]` (`bhdc.rs:76`; `bhdc_encoder.py:23`).
-28. **FWHT power-of-two guard** — non-power-of-two returns input unchanged (`mathcore.rs:285-287`) — enforced as a silent no-op, **not** as an error.
+28. **FWHT power-of-two guard** — non-power-of-two length raises `ValueError` (`mathcore.rs` `fwht_inplace`; `bhdc_encoder.py` `fwht`). Never a silent no-op (FIXED, W4.4).
 29. **Reciprocal-tau guard** — `max(tau, 1e-6)` in softmax weights (`builder.py:357`).
 30. **Finite-value repair** — non-finite normalizer outputs replaced by baseline (`numerics.py:275-280`).
 
@@ -1138,12 +1143,12 @@ These are clamps/floors/guards present in code.
 | "normalize.py is the ONLY implementation of vector normalization" | `somabrain/math/normalize.py:17-20` | `normalize_array` in `somabrain/admin/core/numerics.py:117-282` is live on the HRR path and is *not* a redirect to `normalize.py`. |
 | "similarity.py is the ONLY implementation of cosine similarity" | `somabrain/math/similarity.py:15-18` | Rust `cosine_similarity` (`mathcore.rs:245-257`) and `BHDCEncoder::similarity` (`bhdc.rs:144-149`) implement cosine with a different ε and no clamp. |
 | Binding is "BHDC permutation binding" | `quantum.py:1-12` | `QuantumLayer.bind` uses FFT circular convolution (`quantum.py:254-258`). Permutation binding is only in `bind_unitary` (`quantum.py:392`). |
-| λ\* = (2/255)²/3 | `bhdc.rs:209,290`; `bhdc_encoder.py:226` | General coded λ\* is `(2/255)²/(12 p(1−p))` (`mathcore.rs:324-332`). The quoted constant equals λ\* only at p = 0.5. Quantum unbind further falls back to `1e-4` (`quantum.py:311-313`). |
+| λ\* = Δ² / (12 p (1−p)) at production p | `bhdc.rs`, `bhdc_encoder.py`, `quantum.py`, `brain_settings/models.py` | **FIXED (W4.1).** All regularizer defaults come from `compute_wiener_lambda(p, 8)`. The former p=0.5-only constant and the former `1e-4` fallback are deleted. |
 | Monotonic annealing `τ_{t+1} ≤ τ_t` "always" | `LEARNING_MATHEMATICAL_PROOF.md:374` | Python linear anneal multiplies by (1−rate) only when mode is configured (`annealing.py:192-212`); exponential mode is a **no-op** per feedback (`annealing.py:199-201`); tau can also *increase* under builder diversity adaptation (`builder.py:373-376`) and be restored by entropy sharpening magnitude restore (`annealing.py:368-370`). |
 | Entropy `H = −Σ p log₂ p` with `p = softmax(w)` | `LEARNING_MATHEMATICAL_PROOF.md:185-190` | Code uses `p_i = w_i/Σw` (linear) and natural log (`annealing.py:315-325`; `mathcore.rs:218-223`). |
-| "Mahalanobis distance" | `prediction.rs:66` name; `learning/prediction.py:247-253` docstring | Rust computes Euclidean `‖x−μ‖` (`prediction.rs:90-93`); covariance unused. Python computes a **diagonal-variance** quadratic form, not full Mahalanobis (`learning/prediction.py:299-318`). |
-| `compute_wiener_lambda(p, bits)` honors `bits` | signature `mathcore.rs:324` | `bits` is never read; Δ is hard-coded `2/255` (`mathcore.rs:327`). |
-| Unbind is Wiener on all paths | `bhdc.rs:270-276` docs | Python fallback `_PythonPermutationBinder.unbind` is plain signed division (`bhdc_encoder.py:119-126`). |
+| "Mahalanobis distance" | `prediction.rs` (`MahalanobisPredictor`); `learning/prediction.py:247-253` docstring | **FIXED (W4.6).** Rust implements the diagonal Mahalanobis `sqrt(Σ (x−μ)²/σ²)` with EWMA mean/var (same rule as Python). Python `_mahal_bounded` squashes `d²` to `[0,1)`; both are the diagonal metric. |
+| `compute_wiener_lambda(p, bits)` honors `bits` | `mathcore.rs` (`compute_wiener_lambda`) | **FIXED (W4.1).** `Δ = 2/(2^bits − 1)`; `bits` is read. |
+| Unbind is Wiener on all paths | `bhdc.rs` docs | **FIXED (W4.3).** Python fallback `_PythonPermutationBinder.unbind` is `(c ⊙ π(b)) / (π(b)² + λ*)` plus optional FWHT — identical to the Rust rule. |
 | Deterministic BHDC vectors across backends | `bhdc_encoder.py:3-7` "matches Python API" | Seed composition (T4 vs T4b) and `pm_one` inactive fill (T3 vs T3b) differ between Rust and Python fallback. Same key → different vector. |
 | "Perfect binding invertibility" for sparse BHDC | `quantum.py:9`; `bhdc.rs:245-250` comments | Sparse `{−1,0,+1}` products are **not** algebraically invertible under zeros; T7 exists precisely because of this. |
 | Confidence `exp(-α·error)` uses MSE of salience | `base.py:63` contract | Implemented as stated (T63) — **this claim matches**; listed only to confirm. No issue. |
@@ -1191,9 +1196,9 @@ The following are the **highest-priority discrepancies** if the goal is to make 
 
 1. **Two live annealing laws** (T25 vs T25b) with different `linear` semantics and different `exponential` behavior.
 2. **Two live entropy-cap sharpeners** (T28 vs T28b) with different shrink schedules and magnitude handling.
-3. **Two live Wiener λ constants** (`2.05e-5` vs `1e-4`) and a closed form (T13) that only matches the constant at p=0.5.
+3. ~~**Two live Wiener λ constants**~~ — **RESOLVED (W4.1):** one formula source `compute_wiener_lambda(p, 8)` everywhere.
 4. **Two live binding algebras** under one class: FFT HRR (T8/T9) vs permutation BHDC (T6/T7), with a docstring that claims the latter for the former.
-5. **Rust vs Python fallback disagree** on seeds (T4/T4b), vector fill (T3/T3b), and unbind (T7/T7b).
+5. **Rust vs Python fallback disagree** on seeds (T4/T4b) and vector fill (T3/T3b). Unbind now agrees (W4.3).
 6. **Rust vs Python adaptation disagree** on gains and bounds (T23 vs T23b).
 7. **Neuromodulator baselines disagree** (Rust 0.5/0.05/0.05 vs settings 0.4/0.0/0.0).
 8. **Entropy of weights is not softmax entropy** (linear-normalized natural log) — any prior "proof" using softmax/log2 is void.

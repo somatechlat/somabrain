@@ -6,13 +6,12 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from somabrain.math.recency import stretched_exponential_recency
+
 from .math import cosine_similarity
 from .salience import FDSalienceSketch
 
 _EPS = 1e-12
-
-# Import settings at the top to avoid E402 import order violations.
-from django.conf import settings
 
 try:
     from . import metrics as M
@@ -29,22 +28,16 @@ class ScorerWeights:
     w_recency: float
 
 
-def _gain_setting(name: str) -> float:
-    """Fetch required float setting from shared settings or environment."""
-    env_name = f"SOMABRAIN_SCORER_{name.upper()}"
-    value = getattr(settings, env_name, None)
-    if value is not None:
-        return float(value)
-    raise RuntimeError(f"Required scorer setting '{env_name}' not configured")
-
-
 class UnifiedScorer:
     """Combine multiple similarity signals.
 
     Components:
     - Cosine similarity in the base space
     - FD subspace cosine (projection via Frequent-Directions sketch)
-    - Recency boost based on admission age (exponential decay)
+    - Recency boost via the canonical stretched-exponential kernel
+
+    Weights come from the constructor arguments (the factory reads settings and
+    passes them in). This class never re-reads settings.
     """
 
     def __init__(
@@ -55,23 +48,22 @@ class UnifiedScorer:
         w_recency: float,
         weight_min: float,
         weight_max: float,
-        recency_tau: float,
+        recency_scale: float,
+        recency_sharpness: float = 1.2,
+        recency_floor: float = 0.05,
         fd_backend: FDSalienceSketch | None = None,
     ) -> None:
         """Initialize the instance."""
 
         lo, hi = sorted((float(weight_min), float(weight_max)))
-        cosine_val = _gain_setting("w_cosine")
-        fd_val = _gain_setting("w_fd")
-        recency_val = _gain_setting("w_recency")
-        tau_val = _gain_setting("recency_tau")
-
         self._weights = ScorerWeights(
-            w_cosine=self._clamp("cosine", cosine_val, lo, hi),
-            w_fd=self._clamp("fd", fd_val, lo, hi),
-            w_recency=self._clamp("recency", recency_val, lo, hi),
+            w_cosine=self._clamp("cosine", w_cosine, lo, hi),
+            w_fd=self._clamp("fd", w_fd, lo, hi),
+            w_recency=self._clamp("recency", w_recency, lo, hi),
         )
-        self._recency_tau = max(tau_val, _EPS)
+        self._recency_scale = max(float(recency_scale), _EPS)
+        self._recency_sharpness = float(recency_sharpness)
+        self._recency_floor = float(recency_floor)
         self._fd = fd_backend
         self._weight_bounds = (lo, hi)
 
@@ -116,52 +108,58 @@ class UnifiedScorer:
         # Use canonical cosine_similarity for FD-projected vectors
         return cosine_similarity(q_proj, c_proj)
 
-    def _recency_component(self, recency_steps: int | None) -> float:
-        """Execute recency component.
+    def _recency_component(self, age_seconds: float | None) -> float:
+        """Canonical stretched-exponential recency for an admission age."""
 
-        Args:
-            recency_steps: The recency_steps.
-        """
-
-        if recency_steps is None:
+        if age_seconds is None:
             return 0.0
-        age = max(0.0, float(recency_steps))
-        tau = max(self._recency_tau, _EPS)
-        val = float(np.exp(-age / tau))
-        return max(0.0, min(1.0, val))
+        return stretched_exponential_recency(
+            float(age_seconds),
+            scale=self._recency_scale,
+            sharpness=self._recency_sharpness,
+            floor=self._recency_floor,
+        )
 
     def score(
         self,
         query: np.ndarray,
         candidate: np.ndarray,
         *,
-        recency_steps: int | None = None,
+        age_seconds: float | None = None,
         cosine: float | None = None,
     ) -> float:
-        """Execute score.
+        """Score a candidate. Max achievable score is 1.0.
 
         Args:
             query: The query.
             candidate: The candidate.
+            age_seconds: Admission age in seconds, or None when unknown.
+            cosine: Optional precomputed cosine in [-1, 1].
         """
 
         q = np.asarray(query, dtype=float).reshape(-1)
         c = np.asarray(candidate, dtype=float).reshape(-1)
         cos = float(cosine) if cosine is not None else self._cosine(q, c)
         fd = self._fd_component(q, c)
-        rec = self._recency_component(recency_steps)
+        rec = self._recency_component(age_seconds)
 
         if M:
             M.SCORER_COMPONENT.labels(component="cosine").observe(cos)
             M.SCORER_COMPONENT.labels(component="fd").observe(fd)
             M.SCORER_COMPONENT.labels(component="recency").observe(rec)
 
-        total = (
-            self._weights.w_cosine * cos
-            + self._weights.w_fd * fd
-            + self._weights.w_recency * rec
-        )
-        total_score = max(0.0, min(1.0, float(total)))
+        # Renormalise over active components so the ceiling is always 1.0.
+        terms: list[tuple[float, float]] = [(self._weights.w_cosine, cos)]
+        if self._fd is not None:
+            terms.append((self._weights.w_fd, fd))
+        if age_seconds is not None:
+            terms.append((self._weights.w_recency, rec))
+        active_weight = sum(w for w, _ in terms)
+        if active_weight <= _EPS:
+            total_score = 0.0
+        else:
+            total = sum(w * v for w, v in terms) / active_weight
+            total_score = max(0.0, min(1.0, float(total)))
 
         if M:
             M.SCORER_FINAL.observe(total_score)
@@ -175,7 +173,9 @@ class UnifiedScorer:
             "w_cosine": self._weights.w_cosine,
             "w_fd": self._weights.w_fd,
             "w_recency": self._weights.w_recency,
-            "recency_tau": self._recency_tau,
+            "recency_scale": self._recency_scale,
+            "recency_sharpness": self._recency_sharpness,
+            "recency_floor": self._recency_floor,
             "weight_min": float(self._weight_bounds[0]),
             "weight_max": float(self._weight_bounds[1]),
         }

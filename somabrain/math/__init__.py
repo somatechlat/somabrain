@@ -26,6 +26,11 @@ from .normalize import (
     normalize_vector,
     safe_normalize,
 )
+from .recency import (
+    recency_features,
+    recency_steps,
+    stretched_exponential_recency,
+)
 from .similarity import (
     batch_cosine_similarity,
     cosine_distance,
@@ -57,4 +62,8 @@ __all__ = [
     # Spectral methods
     "chebyshev_heat_apply",
     "estimate_spectral_interval",
+    # Recency kernel (single family)
+    "stretched_exponential_recency",
+    "recency_steps",
+    "recency_features",
 ]

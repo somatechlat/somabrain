@@ -11,6 +11,7 @@ implement the **same** formulas as `rust_core/src/bhdc.rs` /
 
 from __future__ import annotations
 
+import os
 from typing import Union
 
 import numpy as np
@@ -18,6 +19,14 @@ import numpy as np
 from somabrain.core.rust_bridge import get_rust_module, is_rust_available
 
 _SeedLike = Union[int, str, None]
+
+# Production BHDC sparsity p (active-element probability): an engineering
+# choice, not a theorem-derived optimum. Matches the default of
+# `SOMABRAIN_BHDC_SPARSITY` in `somabrain.settings.cognitive` /
+# `somabrain.settings.django_core` and `PRODUCTION_SPARSITY_P` in
+# `rust_core/src/mathcore.rs`. Callers that know their configured p must
+# pass it (see `PermutationBinder(p=...)`).
+PRODUCTION_SPARSITY_P = 0.1
 
 
 def _active_count(dim: int, sparsity: float) -> int:
@@ -46,12 +55,11 @@ def compute_wiener_lambda(p: float, bits: int = 8) -> float:
 def production_sparsity() -> float:
     """BHDC active probability p used in production.
 
-    Sourced from `SOMABRAIN_BHDC_SPARSITY` (default 0.1). This is an
-    engineering choice, not a theorem-derived optimum.
+    Reads `SOMABRAIN_BHDC_SPARSITY` — the same environment variable (and
+    default) as `somabrain.settings.cognitive.SOMABRAIN_BHDC_SPARSITY`.
+    This is an engineering choice, not a theorem-derived optimum.
     """
-    from somabrain.settings.cognitive import SOMABRAIN_BHDC_SPARSITY
-
-    return float(SOMABRAIN_BHDC_SPARSITY)
+    return float(os.environ.get("SOMABRAIN_BHDC_SPARSITY", PRODUCTION_SPARSITY_P))
 
 
 def production_wiener_lambda(bits: int = 8) -> float:

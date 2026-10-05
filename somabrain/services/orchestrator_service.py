@@ -16,7 +16,7 @@ Design:
 
 Environment:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (from centralized infrastructure)
-- SOMABRAIN_ORCH_NAMESPACE: memory namespace for snapshots (default: "cog")
+- ORCHESTRATOR_NAMESPACE: memory namespace for snapshots (declared in somabrain.settings.cognitive)
 Feature gating is centralized (modes.feature_enabled("orchestrator")); legacy env flags removed.
 
 """
@@ -71,9 +71,7 @@ class GlobalFrameCtx:
 def _bootstrap() -> str:
     """Execute bootstrap."""
 
-    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS") or getattr(
-        settings, "kafka_bootstrap", ""
-    )
+    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
     if not url:
         raise ValueError("kafka bootstrap not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
@@ -157,7 +155,7 @@ class OrchestratorService:
             except Exception as e:
                 logger.debug("Failed to load segment_boundary Avro schema: %s", e)
                 self._serde_sb = None
-        self._ns = getattr(settings, "ORCHESTRATOR_NAMESPACE", None) or "cog"
+        self._ns = getattr(settings, "ORCHESTRATOR_NAMESPACE")
         # Minimal leader->tools routing (JSON via env)
         try:
             routing_raw = getattr(settings, "ORCHESTRATOR_ROUTING") or ""
@@ -171,7 +169,7 @@ class OrchestratorService:
         try:
             from django.conf import settings as _settings
 
-            if _settings.HEALTH_PORT:
+            if _settings.SOMABRAIN_HEALTH_PORT:
                 self._start_health_server()
         except Exception as e:
             logger.debug("Health server initialization skipped: %s", e)
@@ -210,7 +208,7 @@ class OrchestratorService:
 
             from django.conf import settings as _settings
 
-            port = int(_settings.HEALTH_PORT)
+            port = int(_settings.SOMABRAIN_HEALTH_PORT)
             srv = HTTPServer(("", port), _Handler)
             threading.Thread(target=srv.serve_forever, daemon=True).start()
         except Exception as e:
