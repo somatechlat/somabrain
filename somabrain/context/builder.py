@@ -89,17 +89,17 @@ class ContextBuilder:
         # Tenant identifier for per‑tenant metrics (default value)
         self._tenant_id: str = getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
         # Align temporal decay and density penalties with runtime configuration when available
-        self._recency_half_life = settings.retrieval_recency_half_life
-        self._recency_sharpness = settings.retrieval_recency_sharpness
-        self._recency_floor = settings.retrieval_recency_floor
-        self._density_target = settings.retrieval_density_target
-        self._density_floor = settings.retrieval_density_floor
-        self._density_weight = settings.retrieval_density_weight
-        self._tau_min = settings.SOMABRAIN_RETRIEVAL_TAU_min
-        self._tau_max = settings.SOMABRAIN_RETRIEVAL_TAU_max
-        self._tau_increment_up = settings.SOMABRAIN_RETRIEVAL_TAU_increment_up
-        self._tau_increment_down = settings.SOMABRAIN_RETRIEVAL_TAU_increment_down
-        self._dup_ratio_threshold = settings.retrieval_dup_ratio_threshold
+        self._recency_half_life = settings.SOMABRAIN_RECENCY_HALF_LIFE
+        self._recency_sharpness = settings.SOMABRAIN_RECENCY_SHARPNESS
+        self._recency_floor = settings.SOMABRAIN_RECENCY_FLOOR
+        self._density_target = settings.SOMABRAIN_DENSITY_TARGET
+        self._density_floor = settings.SOMABRAIN_DENSITY_FLOOR
+        self._density_weight = settings.SOMABRAIN_DENSITY_WEIGHT
+        self._tau_min = settings.SOMABRAIN_TAU_MIN
+        self._tau_max = settings.SOMABRAIN_TAU_MAX
+        self._tau_increment_up = settings.SOMABRAIN_TAU_INC_UP
+        self._tau_increment_down = settings.SOMABRAIN_TAU_INC_DOWN
+        self._dup_ratio_threshold = settings.SOMABRAIN_DUP_RATIO_THRESHOLD
         # Per-tenant overrides cache (learning.tenants.yaml)
         # Uses somabrain.context.tenant_overrides for loading
         # Bounded TTLCache: max 1000 tenants, 5 minute TTL for config reload
@@ -107,38 +107,6 @@ class ContextBuilder:
             maxsize=1000, ttl=300
         )
 
-        def _env_float(name: str, current: float) -> float:
-            # Use Settings attribute if available; fall back to None.
-            # Environment variable names are uppercase; Settings uses snake_case.
-            """Execute env float.
-
-            Args:
-                name: The name.
-                current: The current.
-            """
-
-            attr_name = name.lower()
-            value = getattr(settings, attr_name, None)
-            if value is None:
-                return current
-            try:
-                return float(value)
-            except Exception:
-                return current
-
-        # Environment overrides for tau tuning
-        self._tau_min = _env_float("SOMABRAIN_RECALL_TAU_MIN", self._tau_min)
-        self._tau_max = _env_float("SOMABRAIN_RECALL_TAU_MAX", self._tau_max)
-        self._tau_increment_up = _env_float(
-            "SOMABRAIN_RECALL_TAU_INCREMENT_UP", self._tau_increment_up
-        )
-        self._tau_increment_down = _env_float(
-            "SOMABRAIN_RECALL_TAU_INCREMENT_DOWN", self._tau_increment_down
-        )
-        self._dup_ratio_threshold = _env_float(
-            "SOMABRAIN_RECALL_TAU_DUP_RATIO_THRESHOLD",
-            self._dup_ratio_threshold,
-        )
         # Clamp derived parameters into safe ranges to avoid pathological curves
         if not math.isfinite(self._recency_half_life) or self._recency_half_life <= 0:
             self._recency_half_life = 60.0

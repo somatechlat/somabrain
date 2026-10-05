@@ -29,7 +29,8 @@ from .http_helpers import (
     store_http_async,
     store_http_sync,
 )
-from .normalization import _extract_memory_coord, _parse_coord_string, _stable_coord
+from .client.serialization import _stable_coord
+from .normalization import _extract_memory_coord, _parse_coord_string
 from .payload import (
     enrich_payload,
     normalize_metadata,

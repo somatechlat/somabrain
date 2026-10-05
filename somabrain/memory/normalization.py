@@ -1,23 +1,16 @@
 """Coordinate normalization utilities for SomaBrain Memory.
 
-This module provides functions for deriving and parsing 3D coordinates
-used in the memory system for spatial organization of memories.
+This module parses coordinates returned by the memory service. The hash that
+derives a coordinate lives in exactly one place in this repo —
+``somabrain.memory.client.serialization._stable_coord`` (T-2). Do not
+redefine it here.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-
-def _stable_coord(key: str) -> tuple[float, float, float]:
-    """Re-export the single coordinate authority (T-2).
-
-    Implementation lives in ``somabrain.memory.client.serialization`` so the
-    in-repo definition count stays at one. Hash math must not change.
-    """
-    from somabrain.memory.client.serialization import _stable_coord as _impl
-
-    return _impl(key)
+from .client.serialization import _stable_coord
 
 
 def _parse_coord_string(s: str) -> tuple[float, float, float] | None:

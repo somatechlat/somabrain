@@ -18,7 +18,8 @@ import uuid
 from collections.abc import Callable, Iterable
 from typing import TYPE_CHECKING, Any
 
-from somabrain.memory.normalization import _extract_memory_coord, _stable_coord
+from somabrain.memory.client.serialization import _stable_coord
+from somabrain.memory.normalization import _extract_memory_coord
 from somabrain.memory.payload import enrich_payload
 
 if TYPE_CHECKING:

@@ -7,7 +7,14 @@ from .types import RecallHit
 
 
 def _stable_coord(key: str) -> tuple[float, float, float]:
-    """Derive a deterministic 3D coordinate in [-1,1]^3 from a string key."""
+    """Derive a deterministic 3D coordinate in [-1,1]^3 from a string key.
+
+    THE single coordinate hash in SomaBrain (T-2). Byte-identical to the
+    triad authority ``somaAgent01/services/common/memory_contract.py:164``
+    so both sides of the seam place a record at the same point. Hash math
+    must not change. A cross-repo shared module is still required for T-2
+    to be fully met (one definition across all three repos).
+    """
     h = hashlib.blake2b(key.encode("utf-8"), digest_size=12).digest()
     a = int.from_bytes(h[0:4], "big") / 2**32
     b = int.from_bytes(h[4:8], "big") / 2**32

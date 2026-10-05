@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from somabrain.memory.normalization import _stable_coord
+from somabrain.memory.client.serialization import _stable_coord
 from somabrain.memory.transport import _response_json
 
 if TYPE_CHECKING:
