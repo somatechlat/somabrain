@@ -419,13 +419,14 @@ def _rescore_and_rank_hits(
                 age_seconds = max(0.0, now_ts - ts_epoch)
                 recency_steps, recency_boost = _recency_features(cfg, ts_epoch, now_ts)
 
+            # Recency is applied once, inside scorer.score(age_seconds=...).
+            # Do not multiply by recency_boost again — that squares R(age).
             new_score = scorer.score(
                 query_vec,
                 candidate_vec,
                 age_seconds=age_seconds,
                 cosine=hit.score,  # Pass original score as cosine hint
             )
-            new_score *= recency_boost
             try:
                 payload.setdefault("_recency_steps", recency_steps)
                 payload.setdefault("_recency_boost", recency_boost)
@@ -440,7 +441,9 @@ def _rescore_and_rank_hits(
                 payload.setdefault("_density_factor", density_factor)
             except Exception:
                 pass
-        new_score = max(0.0, min(1.0, float(new_score)))
+        new_score = float(new_score)
+        # NaN score is broken input — fail closed to 0.0, never 1.0.
+        new_score = 0.0 if not math.isfinite(new_score) else max(0.0, min(1.0, new_score))
 
         hit.score = new_score
         scored_hits.append(hit)

@@ -145,13 +145,14 @@ class TestFdOffCeiling:
 
 
 class TestPersonalityGet:
-    """DEBT-026: PersonalityStore.get must not raise NameError."""
+    """H4: PersonalityStore.get returns a copy, not the live store object."""
 
-    def test_get_returns_stable_state(self) -> None:
+    def test_get_returns_independent_copies(self) -> None:
         store = PersonalityStore()
         first = store.get("acme")
         second = store.get("acme")
-        assert first is second
+        assert first is not second
+        assert first == second
 
     def test_get_requires_tenant(self) -> None:
         store = PersonalityStore()

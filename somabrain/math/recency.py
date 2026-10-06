@@ -27,6 +27,7 @@ def stretched_exponential_recency(
 
     Args:
         age_seconds: Non-negative age in seconds. Values <= 0 yield 1.0.
+            NaN yields ``floor`` (unknown age is maximally stale).
         scale: Recency time scale in seconds (must be > 0).
         sharpness: Stretch exponent (must be > 0).
         floor: Lower clamp for the result, in [0, 1).
@@ -34,7 +35,15 @@ def stretched_exponential_recency(
     Returns:
         Recency factor in ``[floor, 1]``.
     """
-    if age_seconds <= 0.0:
+    age = float(age_seconds)
+    fl = float(floor)
+    if not math.isfinite(fl) or fl < 0.0:
+        fl = 0.0
+    fl = min(fl, 0.99)
+    # NaN age is unknown, treat as maximally stale → floor (never 1.0).
+    if math.isnan(age):
+        return fl
+    if age <= 0.0:
         return 1.0
     s = float(scale)
     if not math.isfinite(s) or s <= 0.0:
@@ -45,13 +54,9 @@ def stretched_exponential_recency(
     else:
         p = max(p, _MIN_SHARPNESS)
     try:
-        damp = math.exp(-((float(age_seconds) / s) ** p))
+        damp = math.exp(-((age / s) ** p))
     except Exception:
         damp = 0.0
-    fl = float(floor)
-    if not math.isfinite(fl) or fl < 0.0:
-        fl = 0.0
-    fl = min(fl, 0.99)
     return max(fl, min(1.0, damp))
 
 
@@ -63,7 +68,14 @@ def recency_steps(
     cap: float,
 ) -> float:
     """Return the monotone step feature ``min(log1p(age/scale)*sharpness, cap)``."""
-    if age_seconds <= 0.0:
+    age = float(age_seconds)
+    c = float(cap)
+    if not math.isfinite(c) or c <= 0.0:
+        c = 1000.0
+    # NaN age is unknown, treat as maximally stale → cap.
+    if math.isnan(age):
+        return float(c)
+    if age <= 0.0:
         return 0.0
     s = float(scale)
     if not math.isfinite(s) or s <= 0.0:
@@ -71,11 +83,8 @@ def recency_steps(
     p = float(sharpness)
     if not math.isfinite(p) or p <= 0.0:
         p = _MIN_SHARPNESS
-    normalised = float(age_seconds) / s
+    normalised = age / s
     steps = math.log1p(normalised) * p
-    c = float(cap)
-    if not math.isfinite(c) or c <= 0.0:
-        c = 1000.0
     return float(min(steps, c))
 
 

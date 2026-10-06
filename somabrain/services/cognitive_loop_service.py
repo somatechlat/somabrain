@@ -3,8 +3,11 @@
 This module provides the core cognitive evaluation step that combines:
 - Sleep state management
 - Prediction error computation
-- Neuromodulation adjustment
-- Salience scoring and gating
+- Neuromodulation adjustment (including personality trait bias, T83)
+- VAD emotion update and couplings into salience / gate temperature (T82)
+- Salience scoring and amygdala gating
+- Prefrontal precision-weighted WM admission (T81)
+- Basal-ganglia Boltzmann action selection (T80)
 
 Architecture:
     Uses DI container for state management. The CognitiveLoopState class
@@ -162,6 +165,8 @@ def eval_step(
             "modulation": 0.0,
             "sleep_state": sleep_state.value,
             "eta": 0.0,
+            "wm_admit": False,
+            "policy": None,
         }
 
     t0 = _t.perf_counter()
@@ -208,7 +213,19 @@ def eval_step(
             trait_fetch_exc,
         )
         traits = None
-    nm = personality_store.modulate_neuromods(base_nm, traits) if traits else base_nm
+    # Personality trait → neuromod blend (T83). Unmapped traits are identity
+    # metadata and have no behavioural effect.
+    nm = base_nm
+    if traits is not None and hasattr(personality_store, "modulate_neuromods"):
+        try:
+            nm = personality_store.modulate_neuromods(base_nm, traits)
+        except Exception as trait_mod_exc:
+            logger.debug(
+                "Personality neuromod modulation failed for tenant=%s: %s",
+                tenant_id,
+                trait_mod_exc,
+            )
+            nm = base_nm
     F = None
     mag = None
     if supervisor is not None:
@@ -222,16 +239,78 @@ def eval_step(
         except Exception as exc:
             logger.exception("Supervisor adjustment failed: %s", exc)
 
-    s = amygdala.score(float(novelty), float(pred.error), nm, wm_vec)
+    # VAD emotion (T82): update from this step's signals, then derive the
+    # salience / temperature / threshold couplings.
+    affect_boost = 0.0
+    temperature_scale = 1.0
+    threshold_offset = 0.0
+    emotion_state = None
     try:
-        if traits:
-            s = 1.0
-    except Exception as trait_exc:
-        logger.debug("Failed to apply trait-driven salience uplift: %s", trait_exc)
-    store_gate, act_gate = amygdala.gates(s, nm)
+        from somabrain.admin.cognitive.emotion import (
+            affect_salience_boost,
+            affect_temperature_scale,
+            affect_threshold_offset,
+            stimulus_from_signals,
+        )
+        from somabrain.bootstrap.singletons import get_emotion_model
+
+        emotion = get_emotion_model()
+        emotion.update(stimulus_from_signals(float(novelty), float(pred.error)))
+        if float(getattr(emotion, "decay_rate", 0.0) or 0.0) > 0.0:
+            emotion.decay()
+        emotion_state = emotion.as_dict()
+        affect_boost = affect_salience_boost(emotion.state)
+        temperature_scale = affect_temperature_scale(emotion.state)
+        threshold_offset = affect_threshold_offset(emotion.state)
+    except Exception as emo_exc:
+        logger.debug("Emotion coupling unavailable: %s", emo_exc)
+
+    s = amygdala.score(
+        float(novelty), float(pred.error), nm, wm_vec, affect_boost=affect_boost
+    )
+    store_gate, act_gate = amygdala.gates(
+        s,
+        nm,
+        temperature_scale=temperature_scale,
+        threshold_offset=threshold_offset,
+    )
 
     if eta <= 0.0:
         store_gate = False
+
+    # Prefrontal precision-weighted WM admission (T81).
+    wm_admit = True
+    try:
+        from somabrain.bootstrap.singletons import get_prefrontal
+
+        prefrontal = get_prefrontal()
+        wm_admit = bool(prefrontal.gate_wm(float(s), float(pred.error)))
+    except Exception as pf_exc:
+        logger.debug("Prefrontal WM gate unavailable: %s", pf_exc)
+
+    # Basal-ganglia Boltzmann action selection (T80). Values come from
+    # salience and the amygdala gates; the selection is the final store/act
+    # decision and populates the step ``policy`` payload.
+    policy_payload: dict[str, Any] | None = None
+    try:
+        from somabrain.bootstrap.singletons import get_basal_ganglia
+
+        bg = get_basal_ganglia()
+        gate_closed = 0.0
+        action_values = {
+            "skip": max(0.0, 1.0 - float(s)),
+            "store": float(s) if store_gate else gate_closed,
+            "act": float(s) if act_gate else gate_closed,
+            "both": float(s) if (store_gate and act_gate) else gate_closed,
+        }
+        decision, selection = bg.decide(action_values)
+        store_gate = bool(decision.store)
+        act_gate = bool(decision.act)
+        if eta <= 0.0:
+            store_gate = False
+        policy_payload = selection.as_dict()
+    except Exception as bg_exc:
+        logger.debug("Basal ganglia selection unavailable: %s", bg_exc)
 
     bu_publisher = loop_state.bu_publisher
     if bu_publisher is not None:
@@ -268,6 +347,10 @@ def eval_step(
         "modulation": mag,
         "sleep_state": sleep_state.value,
         "eta": eta,
+        "wm_admit": bool(wm_admit),
+        "policy": policy_payload,
     }
+    if emotion_state is not None:
+        result["emotion"] = emotion_state
     result.update(result_extras)
     return result

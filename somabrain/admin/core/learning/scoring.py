@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -163,8 +164,12 @@ class UnifiedScorer:
         if active_weight <= _EPS:
             total_score = 0.0
         else:
-            total = sum(w * v for w, v in terms) / active_weight
-            total_score = max(0.0, min(1.0, float(total)))
+            total = float(sum(w * v for w, v in terms) / active_weight)
+            # NaN total is a broken component — fail closed to 0.0, never 1.0.
+            if not math.isfinite(total):
+                total_score = 0.0
+            else:
+                total_score = max(0.0, min(1.0, total))
 
         if M:
             M.SCORER_FINAL.observe(total_score)
