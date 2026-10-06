@@ -48,7 +48,7 @@ async def _persist_ltm_in_background(
     key: str,
     stored_payload: dict,
     request_id: str,
-    dedupe_key: str,
+    event_id: int,
     tenant_id: str,
 ) -> None:
     """Best-effort async LTM persistence after the HTTP response has been sent.
@@ -56,6 +56,9 @@ async def _persist_ltm_in_background(
     Used when ``SOMABRAIN_MEMORY_FAST_ACK`` is enabled. The outbox event is
     created before the response is returned, so a failure here leaves a
     pending event that can be replayed by a memory outbox worker.
+
+    ``event_id`` is the real OutboxEvent primary key created by
+    ``enqueue_memory_event`` — the id ``mark_event_sent`` requires.
     """
     try:
         await memsvc.aremember(key, stored_payload)
@@ -67,12 +70,20 @@ async def _persist_ltm_in_background(
             exc,
         )
     else:
-        try:
-            from somabrain.db.outbox import mark_event_sent
+        from somabrain.db.outbox import mark_event_sent
 
-            await sync_to_async(mark_event_sent)(dedupe_key, tenant_id)
+        try:
+            await sync_to_async(mark_event_sent)(event_id)
         except Exception:
-            pass
+            # Not swallowed: a sent-mark failure would leave the row pending
+            # forever and trip outbox backpressure. Surface it.
+            logger.exception(
+                "Failed to mark outbox event id=%s sent for tenant=%s key=%s",
+                event_id,
+                tenant_id,
+                key,
+            )
+            raise
 
 
 router = Router(tags=["memory"])
@@ -180,7 +191,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
             from somabrain.db.outbox import enqueue_memory_event
 
             coord = memsvc.client().coord_for_key(payload.key, payload.universe)
-            dedupe_key = await sync_to_async(enqueue_memory_event)(
+            event_id = await sync_to_async(enqueue_memory_event)(
                 topic="memory.store",
                 payload={
                     "key": payload.key,
@@ -198,7 +209,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
                     payload.key,
                     stored_payload,
                     request_id,
-                    dedupe_key,
+                    event_id,
                     payload.tenant,
                 )
             )

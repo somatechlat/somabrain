@@ -149,8 +149,8 @@ class TestOutboxReplay:
         coord = (1.0, 2.0, 3.0)
         payload = {"content": "test", "timestamp": time.time()}
 
-        # Enqueue event
-        dedupe_key = enqueue_memory_event(
+        # Enqueue event — returns OutboxEvent primary key (int)
+        event_id = enqueue_memory_event(
             topic="memory.store",
             payload=payload,
             tenant_id=tenant_id,
@@ -158,15 +158,16 @@ class TestOutboxReplay:
             check_backpressure_flag=False,  # Skip backpressure for test
         )
 
-        # Verify dedupe_key was returned
-        assert dedupe_key is not None, "Should return dedupe_key"
-        assert len(dedupe_key) == 32, "Dedupe key should be 32 chars (SHA256 truncated)"
+        # Verify PK was returned
+        assert isinstance(event_id, int), "Should return OutboxEvent PK (int)"
 
-        # Verify event can be retrieved by dedupe_key
-        event = get_event_by_dedupe_key(dedupe_key, tenant_id)
-        assert event is not None, "Event should be retrievable by dedupe_key"
+        from somabrain.admin.core.models import OutboxEvent
+
+        event = OutboxEvent.objects.get(id=event_id)
         assert event.topic == "memory.store"
         assert event.tenant_id == tenant_id
+        assert len(event.dedupe_key) == 32, "Dedupe key should be 32 chars (SHA256 truncated)"
+        assert get_event_by_dedupe_key(event.dedupe_key, tenant_id) is not None
 
     def test_mark_event_sent_on_success(self) -> None:
         """E2.2: Events are marked 'sent' on success.
@@ -183,25 +184,24 @@ class TestOutboxReplay:
         tenant_id = f"test_sent_{uuid.uuid4().hex[:8]}"
         payload = {"content": "test"}
 
-        # Enqueue event
-        dedupe_key = enqueue_memory_event(
+        # Enqueue event — returns PK
+        event_id = enqueue_memory_event(
             topic="memory.store",
             payload=payload,
             tenant_id=tenant_id,
             check_backpressure_flag=False,
         )
 
-        # Get event to find its ID
-        event = get_event_by_dedupe_key(dedupe_key, tenant_id)
-        assert event is not None
+        from somabrain.admin.core.models import OutboxEvent
+
+        event = OutboxEvent.objects.get(id=event_id)
         assert event.status == "pending", "Initial status should be pending"
 
-        # Mark as sent
-        result = mark_event_sent(event.id)
+        # Mark as sent using the real PK
+        result = mark_event_sent(event_id)
         assert result is True, "mark_event_sent should return True"
 
-        # Verify status changed
-        event = get_event_by_dedupe_key(dedupe_key, tenant_id)
+        event = OutboxEvent.objects.get(id=event_id)
         assert event.status == "sent", "Status should be 'sent' after marking"
 
     def test_mark_event_failed_on_error(self) -> None:
@@ -219,25 +219,25 @@ class TestOutboxReplay:
         tenant_id = f"test_fail_{uuid.uuid4().hex[:8]}"
         payload = {"content": "test"}
 
-        # Enqueue event
-        dedupe_key = enqueue_memory_event(
+        # Enqueue event — returns PK
+        event_id = enqueue_memory_event(
             topic="memory.store",
             payload=payload,
             tenant_id=tenant_id,
             check_backpressure_flag=False,
         )
 
-        # Get event
-        event = get_event_by_dedupe_key(dedupe_key, tenant_id)
+        from somabrain.admin.core.models import OutboxEvent
+
+        event = OutboxEvent.objects.get(id=event_id)
         assert event is not None
 
         # Mark as failed
         error_msg = "Connection refused"
-        result = mark_event_failed(event.id, error_msg)
+        result = mark_event_failed(event_id, error_msg)
         assert result is True, "mark_event_failed should return True"
 
-        # Verify status and error recorded
-        event = get_event_by_dedupe_key(dedupe_key, tenant_id)
+        event = OutboxEvent.objects.get(id=event_id)
         assert event.status == "failed", "Status should be 'failed'"
         assert event.last_error == error_msg, "Error message should be recorded"
         assert event.retries == 1, "Retry count should be incremented"
@@ -303,7 +303,7 @@ class TestOutboxReplay:
         payload = {"content": "replay_test", "timestamp": time.time()}
 
         # Step 1: Simulate SFM failure - event goes to outbox
-        dedupe_key = enqueue_memory_event(
+        event_id = enqueue_memory_event(
             topic="memory.store",
             payload=payload,
             tenant_id=tenant_id,
@@ -311,16 +311,16 @@ class TestOutboxReplay:
             check_backpressure_flag=False,
         )
 
-        # Verify event is pending
-        event = get_event_by_dedupe_key(dedupe_key, tenant_id)
-        assert event is not None, "Event should exist"
+        from somabrain.admin.core.models import OutboxEvent
+
+        event = OutboxEvent.objects.get(id=event_id)
         assert event.status == "pending", "Event should be pending"
+        dedupe_key = event.dedupe_key
 
         # Step 2: Simulate SFM recovery - mark event as sent
-        mark_event_sent(event.id)
+        mark_event_sent(event_id)
 
-        # Verify event is now sent
-        event = get_event_by_dedupe_key(dedupe_key, tenant_id)
+        event = OutboxEvent.objects.get(id=event_id)
         assert event.status == "sent", "Event should be sent"
 
         # Step 3: Verify duplicate detection prevents re-enqueue

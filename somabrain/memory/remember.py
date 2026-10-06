@@ -53,7 +53,7 @@ def _record_to_outbox(
             enqueue_memory_event,
         )
 
-        dedupe_key = enqueue_memory_event(
+        event_id = enqueue_memory_event(
             topic="memory.store",
             payload={
                 "coord": list(coord),
@@ -65,12 +65,7 @@ def _record_to_outbox(
             extra_key=request_id,
             check_backpressure_flag=True,
         )
-
-        # Get the event ID for later marking
-        from somabrain.db.outbox import get_event_by_dedupe_key
-
-        event = get_event_by_dedupe_key(dedupe_key, tenant)
-        return event.id if event else None
+        return event_id
 
     except OutboxBackpressureError as exc:
         logger.warning(
@@ -270,7 +265,12 @@ def prepare_bulk_items(
     prepared: list[dict[str, Any]] = []
     universes: list[str] = []
     coords: list[tuple[float, float, float]] = []
-    tenant, namespace = _get_tenant_namespace(cfg, payload)
+    # ``payload`` is bound inside the loop below, so the batch tenant/namespace
+    # must come from cfg or the first record — never from an unbound name.
+    first_payload = records[0][1]
+    tenant, namespace = _get_tenant_namespace(
+        cfg, first_payload if isinstance(first_payload, dict) else None
+    )
     cfg_namespace = getattr(cfg, "namespace", None)
 
     for coord_key, payload in records:

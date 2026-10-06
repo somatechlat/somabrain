@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from typing import Any
+from typing import Any, Sequence
 
 from django.db import transaction
 from django.db.models import Count
@@ -103,10 +103,14 @@ def enqueue_memory_event(
     coord: tuple[float, float, float] | None = None,
     extra_key: str | None = None,
     check_backpressure_flag: bool = True,
-) -> str:
-    """Enqueue a memory operation event with idempotency key.
+) -> int:
+    """Enqueue a memory operation event and return the OutboxEvent primary key.
 
     Per Requirements E2.1-E2.5.
+
+    Returns the integer PK required by :func:`mark_event_sent`. The
+    idempotency ``dedupe_key`` is stored on the row and can be read via
+    :func:`get_event_by_dedupe_key` if needed.
     """
     if topic not in MEMORY_TOPICS:
         logger.warning(f"Unknown memory topic: {topic}, proceeding anyway")
@@ -125,7 +129,7 @@ def enqueue_memory_event(
     )
 
     # Enqueue the event
-    enqueue_event(
+    event = enqueue_event(
         topic=topic,
         payload=payload,
         dedupe_key=dedupe_key,
@@ -133,10 +137,11 @@ def enqueue_memory_event(
     )
 
     logger.debug(
-        f"Enqueued memory event: topic={topic}, tenant={tenant_id}, dedupe_key={dedupe_key}"
+        f"Enqueued memory event: topic={topic}, tenant={tenant_id}, "
+        f"dedupe_key={dedupe_key}, event_id={event.id}"
     )
 
-    return dedupe_key
+    return int(event.id)
 
 
 @transaction.atomic
@@ -147,6 +152,27 @@ def mark_event_sent(event_id: int) -> bool:
     """
     updated = OutboxEvent.objects.filter(id=event_id).update(status="sent")
     return updated > 0
+
+
+@transaction.atomic
+def mark_events_for_replay(event_ids: Sequence[int]) -> int:
+    """Mark specific outbox events (by primary key) back to pending for replay.
+
+    Args:
+        event_ids: OutboxEvent primary keys to requeue.
+
+    Returns:
+        Number of rows updated.
+    """
+    ids = [int(i) for i in event_ids]
+    if not ids:
+        return 0
+    updated = OutboxEvent.objects.filter(id__in=ids, status="failed").update(
+        status="pending",
+        retries=0,
+        last_error=None,
+    )
+    return int(updated)
 
 
 @transaction.atomic

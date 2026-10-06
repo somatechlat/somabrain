@@ -399,7 +399,28 @@ class ConstitutionEngine:
                         LOGGER.debug("audit publish failed for opa bundle result")
                     return result
             except Exception as e:
-                LOGGER.debug("local opa eval failed: %s", e)
+                LOGGER.warning("local opa eval failed: %s", e)
+                result = {
+                    "allowed": False,
+                    "explain": f"opa evaluation failed: {e}",
+                }
+                try:
+                    if _PUBLISH_EVENT:
+                        evt = {
+                            "type": "constitution.validation",
+                            "timestamp": time.time(),
+                            "decision": False,
+                            "explain": result["explain"],
+                        }
+                        evt["constitution_sha"] = self._checksum
+                        if self._signature:
+                            evt["constitution_sig"] = self._signature
+                        if self._signatures:
+                            evt["constitution_sig_set"] = self._signatures
+                        _PUBLISH_EVENT(evt)
+                except Exception:
+                    LOGGER.debug("audit publish failed for opa error deny")
+                return result
 
         # Alternative local validation
         if not self._constitution:
