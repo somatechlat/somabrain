@@ -83,7 +83,10 @@ def validate(request: HttpRequest, req: ValidateRequest):
                 "constitution_sha": engine.get_checksum(),
                 "constitution_sig": engine.get_signature(),
             }
-            audit.publish_event(event)
+            from somabrain.tenant import get_tenant_sync
+
+            ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
+            audit.publish_event(event, tenant_id=ctx.tenant_id)
         except Exception:
             LOGGER.exception("Failed to emit constitution audit event")
         return result

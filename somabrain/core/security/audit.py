@@ -35,15 +35,24 @@ def _schema_path() -> Path | None:
     return None
 
 
-def publish_event(event: dict[str, Any], topic: str | None = None) -> bool:
+def publish_event(
+    event: dict[str, Any], topic: str | None = None, tenant_id: str | None = None
+) -> bool:
     """Enqueue an audit event to the DB outbox for Kafka publishing.
 
-    Returns True if enqueued; False on any error. No local alternative path.
+    ``tenant_id`` is required: the outbox fail-closes on a missing tenant
+    (T-5), so an unattributed event would be silently dropped by the
+    ``except Exception`` below. An audit trail that loses entries is worse
+    than one that refuses loudly. Returns True if enqueued; False on any
+    error. No local alternative path.
     """
+    from somabrain.settings.resolve import require_tenant
+
+    tenant_id = require_tenant(tenant_id)
     # Use centralized Settings for the audit topic name.
-    topic_str = (
-        topic or getattr(settings, "SOMABRAIN_AUDIT_TOPIC") or "soma.audit"
-    )
+    from somabrain.settings.resolve import require_setting
+
+    topic_str = topic or require_setting("SOMABRAIN_AUDIT_TOPIC")
     ev = dict(event)
     # sanitize
     sanitized = _sanitize_event(ev)
@@ -72,7 +81,12 @@ def publish_event(event: dict[str, Any], topic: str | None = None) -> bool:
         pass
 
     try:
-        enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
+        enqueue_event(
+            topic=topic_str,
+            payload=ev,
+            dedupe_key=ev["event_id"],
+            tenant_id=tenant_id,
+        )
         return True
     except Exception:
         LOGGER.exception(
@@ -97,9 +111,10 @@ def log_admin_action(
             ev["details"] = details
 
         # Use the outbox-backed publish_event. No direct disk write.
-        publish_event(
-            ev, topic=getattr(settings, "SOMABRAIN_AUDIT_TOPIC")
-        )
+        from somabrain.tenant import get_tenant_sync
+
+        ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
+        publish_event(ev, tenant_id=ctx.tenant_id)
     except Exception:
         LOGGER.debug("log_admin_action failed", exc_info=True)
 
