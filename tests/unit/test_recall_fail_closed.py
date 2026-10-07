@@ -34,8 +34,6 @@ BOUNDARY_FILES = (
     BRAIN_ROOT / "somabrain" / "db" / "outbox.py",
     BRAIN_ROOT / "somabrain" / "services" / "retrieval_pipeline.py",
     # T-5 sweep: every remaining silent default tenant/namespace in the brain.
-    BRAIN_ROOT / "somabrain" / "db" / "outbox_replay.py",
-    BRAIN_ROOT / "somabrain" / "db" / "outbox_clean.py",
     BRAIN_ROOT / "somabrain" / "metrics" / "memory_metrics.py",
     BRAIN_ROOT / "somabrain" / "context" / "tenant_overrides.py",
     BRAIN_ROOT / "somabrain" / "workers" / "quota_manager.py",

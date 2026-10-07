@@ -39,7 +39,7 @@ from collections.abc import Callable
 
 from .. import metrics as M
 from ..math import cosine_similarity
-from ..sdr import LSHIndex
+# SDR/LSH prefilter removed: no production payload fetch by LSH coordinates.
 
 
 def recall_ltm(
@@ -54,105 +54,80 @@ def recall_ltm(
     graph_hops: int,
     graph_limit: int,
 ) -> tuple[list[dict], list[tuple[float, dict]]]:
-    """LTM recall with optional SDR prefilter.
+    """LTM recall.
 
     Returns (payloads, mem_hits) where mem_hits are provider-specific hits if available.
+
+    SDR/LSH prefilter is not used: there is no production payload fetch by
+    LSH coordinates, so a metrics-only prefilter would be fake work. Candidate
+    selection is the memory backend ``recall`` path.
     """
     mem_hits: list[tuple[float, dict]] = []
     mem_payloads: list[dict] = []
-    did_sdr = False
-    if use_sdr and sdr_enc is not None and hasattr(mem_client, "all_memories"):
-        try:
-            idx = sdr_idx_map.setdefault(
-                getattr(mem_client.cfg, "namespace", "default"),
-                LSHIndex(
-                    bands=sdr_enc.cfg.bands if hasattr(sdr_enc, "cfg") else 8,
-                    rows=sdr_enc.cfg.rows if hasattr(sdr_enc, "cfg") else 16,
-                    dim=sdr_enc.dim if hasattr(sdr_enc, "dim") else 16384,
-                ),
-            )
-            qbits = sdr_enc.encode(text)
-            t2 = _t.perf_counter()
-            cand_coords = idx.query(qbits, limit=graph_limit)
-            M.SDR_PREFILTER_LAT.labels(cohort=cohort).observe(
-                max(0.0, _t.perf_counter() - t2)
-            )
-            for _ in cand_coords:
-                M.SDR_CANDIDATES.labels(cohort=cohort).inc()
-            # SDR prefilter found candidates but payloads_for_coords is not available
-            did_sdr = False
-        except Exception as exc:
-            import logging
+    hits = mem_client.recall(text, top_k=top_k)
+    # hits may be RecallHit wrappers
+    try:
+        mem_payloads = [h.payload for h in hits]
+        mem_hits = hits
+    except Exception as exc:
+        import logging
 
-            logging.getLogger(__name__).debug(
-                "SDR prefilter failed for cohort=%s: %s", cohort, exc
-            )
-            did_sdr = False
-    if not did_sdr:
-        hits = mem_client.recall(text, top_k=top_k)
-        # hits may be RecallHit wrappers
-        try:
-            mem_payloads = [h.payload for h in hits]
-            mem_hits = hits
-        except Exception as exc:
-            import logging
+        logging.getLogger(__name__).warning(
+            "Failed to extract payloads from recall hits: %s", exc
+        )
+        mem_payloads = []
+    # If recall returned items but none lexically match the query, inject
+    # a deterministic read-your-writes result derived from the query key.
+    raw_query = str(text or "").strip()
+    ql = raw_query.lower()
 
-            logging.getLogger(__name__).warning(
-                "Failed to extract payloads from recall hits: %s", exc
-            )
-            mem_payloads = []
-        # If recall returned items but none lexically match the query, inject
-        # a deterministic read-your-writes result derived from the query key.
-        raw_query = str(text or "").strip()
-        ql = raw_query.lower()
+    def _lex_match(p: dict) -> bool:
+        """Execute lex match.
 
-        def _lex_match(p: dict) -> bool:
-            """Execute lex match.
+        Args:
+            p: The p.
+        """
 
-            Args:
-                p: The p.
-            """
+        for k in ("task", "text", "content", "what", "fact"):
+            v = p.get(k)
+            if isinstance(v, str) and v and (ql in v.lower() or v.lower() in ql):
+                return True
+        return False
 
-            for k in ("task", "text", "content", "what", "fact"):
-                v = p.get(k)
-                if isinstance(v, str) and v and (ql in v.lower() or v.lower() in ql):
-                    return True
-            return False
+    try:
+        if (
+            raw_query
+            and not any(_lex_match(p) for p in mem_payloads if isinstance(p, dict))
+            and hasattr(mem_client, "coord_for_key")
+            and hasattr(mem_client, "fetch_by_coord")
+        ):
+            fallback_payloads: list[dict] = []
+            try:
+                coord = mem_client.coord_for_key(raw_query, universe)
+                fetched = mem_client.fetch_by_coord(coord, universe)
+                fallback_payloads = [p for p in fetched if isinstance(p, dict)]
+            except Exception as exc:
+                import logging
 
-        try:
-            if (
-                raw_query
-                and not any(_lex_match(p) for p in mem_payloads if isinstance(p, dict))
-                and hasattr(mem_client, "coord_for_key")
-                and hasattr(mem_client, "fetch_by_coord")
-            ):
-                fallback_payloads: list[dict] = []
-                try:
-                    coord = mem_client.coord_for_key(raw_query, universe)
-                    fetched = mem_client.fetch_by_coord(coord, universe)
-                    fallback_payloads = [p for p in fetched if isinstance(p, dict)]
-                except Exception as exc:
-                    import logging
+                logging.getLogger(__name__).debug(
+                    "Fallback coord lookup failed for query=%r: %s",
+                    raw_query[:50],
+                    exc,
+                )
+                fallback_payloads = []
+            if fallback_payloads:
+                deduped: list[dict] = []
+                for payload in fallback_payloads:
+                    if payload not in mem_payloads:
+                        deduped.append(payload)
+                if deduped:
+                    mem_payloads = deduped + mem_payloads
+    except Exception as exc:
+        import logging
 
-                    logging.getLogger(__name__).debug(
-                        "Fallback coord lookup failed for query=%r: %s",
-                        raw_query[:50],
-                        exc,
-                    )
-                    fallback_payloads = []
-                if fallback_payloads:
-                    deduped: list[dict] = []
-                    for payload in fallback_payloads:
-                        if payload not in mem_payloads:
-                            deduped.append(payload)
-                    if deduped:
-                        mem_payloads = deduped + mem_payloads
-        except Exception as exc:
-            import logging
-
-            logging.getLogger(__name__).debug(
-                "Read-your-writes fallback failed: %s", exc
-            )
+        logging.getLogger(__name__).debug(
+            "Read-your-writes fallback failed: %s", exc
+        )
     # Lexical/token-aware boost: if the query looks like a short unique token or
     # if any payload contains the exact query string, promote those payloads to
     # the top so users don't need manual tuning to find label-like memories.

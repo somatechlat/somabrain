@@ -27,3 +27,4 @@ Format: `| timestamp | agent | action | detail |`
 | 2026-10-07T00:32:56Z | MiMoCode | FIX | C3 tenant: credential-bound partition, header is assertion only. 66 unit tests green (tenant, outbox PK, ADV-1 scoring, anneal, cognition). W3/W6/W1 commits a4bda67 ae27f77 298663e local. |
 | 2026-10-07T00:40:11Z | MiMoCode | FIX | H2 admin auth separated (ADMIN_TOKEN or JWT admin claim); H3 homeostatic live on eval_step + set_state. hmac.compare_digest. 31 tests green. |
 | 2026-10-07T11:20:25Z | MiMoCode | STATUS | Resume after stop. Continuing remaining work: live gate, remaining HIGH, re-skeptic. |
+| 2026-10-07T11:23:13Z | MiMoCode | FIX | HIGH sweep: H1 milvus tenant regex, universe fail-closed, top_k/max_steps clamps, H5 wm_admit fail-closed. 62 tests green. |

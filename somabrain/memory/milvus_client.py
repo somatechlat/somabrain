@@ -477,6 +477,9 @@ class MilvusClient:
         )
         hits: list[tuple[str, float]] = []
         for hit in results[0]:
+            # Rank key only: 1/(1+hamming_distance) is a monotone transform of
+            # integer bit-distance, NOT a cosine similarity. It is compared to
+            # OAK_SIMILARITY_THRESHOLD as a relative rank cut, not a metric.
             score = 1.0 / (1.0 + hit.distance)
             if score >= similarity_threshold:
                 hits.append((hit.entity.get("option_id"), score))
