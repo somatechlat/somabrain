@@ -119,9 +119,10 @@ class OpaMiddleware:
             if resp.status_code == 200:
                 result = resp.json().get("result", {})
                 if isinstance(result, dict):
-                    allowed = bool(result.get("allow", True))
+                    # Fail-closed: only an explicit boolean True permits.
+                    allowed = result.get("allow", False) is True
                 else:
-                    allowed = bool(result)
+                    allowed = result is True
 
                 if not allowed:
                     app_metrics.OPA_DENY_TOTAL.inc()

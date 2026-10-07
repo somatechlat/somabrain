@@ -93,9 +93,12 @@ class OPAClient:
             # Expected shape: {"result": {"allow": true}}
             result = data.get("result", {})
             if isinstance(result, dict):
-                return bool(result.get("allow", True))
-            # If OPA returns a primitive (e.g., true/false), interpret directly
-            return bool(result)
+                allow = result.get("allow", False)
+                # Fail-closed: only an explicit boolean True permits the request.
+                # A missing, non-bool, or falsy ``allow`` denies.
+                return allow is True
+            # If OPA returns a primitive, only an explicit boolean True permits.
+            return result is True
         except Exception as e:
             # VIBE rule: on evaluation failure, deny the request (fail‑closed).
             LOGGER.error("OPA evaluation failed (deny): %s", e)

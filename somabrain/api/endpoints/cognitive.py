@@ -202,10 +202,6 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     if focus_state is not None:
         previous_focus_vec = focus_state.previous_focus_vec
 
-    if focus_state is not None and wm_vec is not None:
-        recall_hits: list[tuple] = []
-        focus_state.update(wm_vec, recall_hits)
-
     initial_novelty = float(
         getattr(body, "novelty", None)
         or getattr(settings, "SOMABRAIN_DEFAULT_NOVELTY")
@@ -224,6 +220,13 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
         tenant_id=ctx.tenant_id,
         previous_focus_vec=previous_focus_vec,
     )
+
+    # Prefrontal precision-weighted WM admission (T81): only admit into the
+    # session focus when the gate is open. Low-precision content is dropped.
+    wm_admit = bool(step_result.get("wm_admit", True))
+    if focus_state is not None and wm_vec is not None and wm_admit:
+        recall_hits: list[tuple] = []
+        focus_state.update(wm_vec, recall_hits)
 
     act_step = {
         "step": body.task,
@@ -249,7 +252,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
             )
 
     plan_result: list[str] = []
-    if getattr(settings, "USE_PLANNER"):
+    if getattr(settings, "SOMABRAIN_USE_PLANNER"):
         try:
             mem_client = mt_memory.for_namespace(ctx.namespace) if mt_memory else None
             if mem_client:
