@@ -603,9 +603,9 @@ User types: "Search for latest AI news and summarize"
 | Module Card | `<soma-module-card>` | Module toggle card |
 | Provider Card | `<soma-provider-card>` | LLM provider card |
 | **Model Card** | `<soma-model-card>` | Selectable model card (name, roles, ctx, status). Variants: default, hoverable, **selected** |
-| **Model Editor** | `<soma-model-editor>` | Full `ModelIn` editor + Advanced collapse + Assign slots (see SOMA-UI-MODEL-ADMIN-001) |
+| **Model Editor** | `<soma-model-editor>` | Full `ModelIn` editor + Advanced collapse + Used for (see SOMA-UI-MODEL-ADMIN-001) |
 | **Model Field** | `<soma-model-field>` | Label + control row for one model setting |
-| **Slot Map** | `<soma-slot-map>` | Chat / Utility / Embedding binding summary |
+| **Used-for** | `<soma-used-for>` | Chat / Help / Memory binding summary (never "slot") |
 | Secret Field | `<soma-secret-field>` | Masked input for secrets |
 
 ---

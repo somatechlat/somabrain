@@ -19,7 +19,8 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Document control normalised: prior status `Baseline` normalised to `Draft` (no approver named). |
-| 1.0.1 | 2026-10-07 | SomaTech Engineering | Screen 8 rewritten: card grid + full model editor + slot map (SOMA-UI-MODEL-ADMIN-001). |
+| 1.0.1 | 2026-10-07 | SomaTech Engineering | Screen 8 rewritten: card grid + full model editor. |
+| 2.0.0 | 2026-10-07 | SomaTech Engineering | Full Settings suite (Agent, Models, Voice, Interface, Tools, Integrations, Advanced). **No "slot" wording.** Every field tables. Human test language. |
 
 
 ## COLOR KEY
@@ -312,163 +313,273 @@
 
 ---
 
-## SCREEN 7: SETTINGS — MODULE MANAGER
+## SETTINGS SUITE (Screens 7–7G)
+
+**One workspace** (Agent Zero style). Header **Settings** opens this.  
+**Language law:** never say “slot”. Say **Used for** (Chat / Help / Memory).  
+Canonical spec: `SOMA-UI-MODEL-ADMIN-001.md` (v3).
+
+### Settings nav (human)
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ ☰  S SOMA        Settings > Modules                               👤        │
-├──────┬───────────────────────────────────────────────────────┬──────────────┤
-│      │                                                       │              │
-│ S    │  Module Manager         Profile: [Custom ▼]           │              │
-│ O    │                                                       │              │
-│ M    │  Presets: [Standalone] [Enterprise] [Full] [Custom]   │              │
-│ A    │                                                       │              │
-│      │  CORE (always on)                                      │              │
-│ 🔍   │  ┌───────────────────────────────────────────────┐   │              │
-│      │  │ 💬 Chat Engine           ● Enabled (locked)   │   │              │
-│ ───  │  │ 🧠 Memory                ● Enabled (locked)   │   │              │
-│      │  │ 🔐 Basic Auth            ● Enabled (locked)   │   │              │
-│ +    │  │ 🔧 Tool Executor         ● Enabled (locked)   │   │              │
-│ New  │  │ 🖥️ Web UI                ● Enabled (locked)   │   │              │
-│ Chat │  └───────────────────────────────────────────────┘   │              │
-│      │                                                       │              │
-│ ───  │  AUTHENTICATION                                        │              │
-│      │  ┌───────────────────────────────────────────────┐   │              │
-│      │  │ 🔑 Keycloak SSO        ○ Disabled  [Enable ▶] │   │              │
-│ Conv │  │    Requires: Keycloak server                   │   │              │
-│  1   │  ├───────────────────────────────────────────────┤   │              │
-│ Conv │  │ 🏢 LDAP / Active Dir    ○ Disabled  [Enable ▶] │   │              │
-│  2   │  │    Requires: LDAP server                       │   │              │
-│ Conv │  └───────────────────────────────────────────────┘   │              │
-│  3   │                                                       │              │
-│      │  AUTHORIZATION                                         │              │
-│      │  ┌───────────────────────────────────────────────┐   │              │
-│      │  │ 🛡️ OPA Policy Engine   ○ Disabled  [Enable ▶] │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 🔒 SpiceDB             ○ Disabled  [Enable ▶] │   │              │
-│      │  └───────────────────────────────────────────────┘   │              │
-│      │                                                       │              │
-│      │  ENTERPRISE                                            │              │
-│      │  ┌───────────────────────────────────────────────┐   │              │
-│      │  │ 💳 Billing (Lago)      ○ Disabled  [Enable ▶] │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 🔑 Vault Secrets       ○ Disabled  [Enable ▶] │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 📋 Audit Logging       ○ Disabled  [Enable ▶] │   │              │
-│      │  └───────────────────────────────────────────────┘   │              │
-│      │                                                       │              │
-│      │  TOOLS                                                 │              │
-│      │  ┌───────────────────────────────────────────────┐   │              │
-│      │  │ 🌐 Browser Automation  ○ Disabled  [Enable ▶] │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 🔌 Plugin System       ○ Disabled  [Enable ▶] │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 📚 Skills System       ○ Disabled  [Enable ▶] │   │              │
-│      │  └───────────────────────────────────────────────┘   │              │
-│      │                                                       │              │
-│ [⚙️] │                                                       │              │
-└──────┴───────────────────────────────────────────────────────┴──────────────┘
+Agent · Models · Voice · Interface · Tools · Integrations · Advanced
 ```
+
+Global footer: **Save** · **Cancel**. Search box filters sections. Loading / error / Retry.
 
 ---
 
-## SCREEN 8: SETTINGS — MODEL ADMINISTRATION (card UI)
-
-**Canonical spec:** `SOMA-UI-MODEL-ADMIN-001.md`. Selecting a **full card** opens the **complete** model editor (every `ModelIn` field). Slots are assigned from the card, not three bare dropdowns.
+## SCREEN 7: SETTINGS SHELL + AGENT
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ☰  S SOMA        Settings > Models                                 👤        │
-├──────┬───────────────────────────────────────────────────────┬──────────────┤
-│      │  MODEL ADMINISTRATION                                  │              │
-│ S    │  ┌───────────────────────────────────────────────┐   │              │
-│ O    │  │ Active  Provider: Groq · openai/gpt-oss-120b   │   │              │
-│ M    │  │ Roles: [Chat] [Utility]   Key: gsk_••••  ●OK  │   │              │
-│ A    │  │ [Edit Selected] [Test Connection ✓]            │   │              │
-│      │  └───────────────────────────────────────────────┘   │              │
-│ 🔍   │                                                       │              │
-│ ───  │  MODELS                                               │              │
-│      │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │              │
-│ +    │  │ ● SELECTED  │ │   OpenAI    │ │   Local     │   │              │
-│ New  │  │   GROQ      │ │   ○ Setup   │ │   ○ Setup   │   │              │
-│ Chat │  │ gpt-oss-120b│ │ gpt-4o-mini │ │ llama3.1    │   │              │
-│      │  │ 131K ⚡ v   │ │ 128K        │ │ 32K         │   │              │
-│ ───  │  │ [Chat][Uty] │ │ [—]         │ │ [—]         │   │              │
-│      │  └─────────────┘ └─────────────┘ └─────────────┘   │              │
-│ Conv │  ┌─────────────┐ ┌─────────────┐                    │              │
-│  1   │  │  OpenRouter │ │  + ADD      │                    │              │
-│ Conv │  │   ○ Setup   │ │             │                    │              │
-│  2   │  │ …           │ │             │                    │              │
-│ Conv │  └─────────────┘ └─────────────┘                    │              │
-│  3   │                                                       │              │
-│      │  FULL MODEL EDIT — openai/gpt-oss-120b                │              │
-│      │  ┌───────────────────────────────────────────────┐   │              │
-│      │  │ Provider  [Groq v]     Model [openai/gpt-oss…]│   │              │
-│      │  │ API key   [••••••] [Show] [Test]              │   │              │
-│      │  │ Vision    [● on]     Type [chat v]            │   │              │
-│      │  │ Assign    ☑ Chat  ☑ Utility  ☐ Embedding     │   │              │
-│      │  │ ▸ Advanced Settings                           │   │              │
-│      │  │   Base URL | ctx_length | max tokens | timeout│   │              │
-│      │  │   cost_tier | domains | priority | capabilities│  │              │
-│      │  │   rate limits | kwargs (JSON)                 │   │              │
-│      │  │ [Save Model] [Delete…]                        │   │              │
-│      │  └───────────────────────────────────────────────┘   │              │
-│      │                                                       │              │
-│      │  SLOT MAP          Chat → gpt-oss-120b                │              │
-│      │  Utility → gpt-oss-120b   Embedding → —               │              │
-│ [⚙️] │  [Open Presets]                                        │              │
-└──────┴───────────────────────────────────────────────────────┴──────────────┘
+│ ☰ SOMA   Settings    [Search settings…]                          [Save][Cancel]│
+├──────────┬───────────────────────────────────────────────────────────────────┤
+│ Agent    │  AGENT                                                             │
+│ Models   │  How new chats behave.                                             │
+│ Voice    │  ┌─────────────────────────────────────────────────────────────┐   │
+│ Interface│  │ Default personality     [Friendly assistant        ▼]        │   │
+│ Tools    │  │   What new chats use for tone and style.                     │   │
+│ Integr.  │  │                                                             │   │
+│ Advanced │  │ System instructions                                         │   │
+│          │  │ ┌─────────────────────────────────────────────────────────┐ │   │
+│          │  │ │ You are helpful, precise, and honest.                   │ │   │
+│          │  │ └─────────────────────────────────────────────────────────┘ │   │
+│          │  │   Standing rules the agent always follows.                  │   │
+│          │  │                                                             │   │
+│          │  │ Knowledge folder      [general-kb                   ▼]      │   │
+│          │  │   Extra docs the agent may use.                             │   │
+│          │  │                                                             │   │
+│          │  │ Inherit current project  [● on]                            │   │
+│          │  │   New chats keep this project’s context.                    │   │
+│          │  │                                                             │   │
+│          │  │ Max failed replies in a row  [ 5 ]                         │   │
+│          │  │   Stop after this many broken answers.                      │   │
+│          │  └─────────────────────────────────────────────────────────────┘   │
+└──────────┴───────────────────────────────────────────────────────────────────┘
 ```
 
-Card states: default · hoverable · **selected** (Soma Blue border). Advanced collapsed (P-03).
+**Fields (test table)**
+
+| Label | Control | Default | Help |
+|---|---|---|---|
+| Default personality | select | Friendly assistant | New chat behavior |
+| System instructions | textarea | (template) | Standing rules |
+| Knowledge folder | select | general-kb | Extra docs |
+| Inherit current project | toggle | on | Project context in new chats |
+| Max failed replies in a row | number ≥1 | 5 | Stop broken loops |
+
+**States:** read-only banner if no `settings:edit`; Save disabled.
 
 ---
 
-## SCREEN 9: SETTINGS — TOOLS
+## SCREEN 7B: SETTINGS — MODELS (library of full cards)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ☰  S SOMA        Settings > Tools                                  👤        │
-├──────┬───────────────────────────────────────────────────────┬──────────────┤
-│      │                                                       │              │
-│ S    │  Tool Configuration                                   │              │
-│ O    │                                                       │              │
-│ M    │  ┌───────────────────────────────────────────────┐   │              │
-│ A    │  │ 🔍 Web Search              ● Enabled          │   │              │
-│      │  │    Search the internet for information         │   │              │
-│ 🔍   │  │    Provider: DuckDuckGo                        │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│ ───  │  │ 💻 Code Execution          ● Enabled          │   │              │
-│      │  │    Run Python and shell code in sandbox        │   │              │
-│ +    │  │    Timeout: 30s  Max memory: 512MB             │   │              │
-│ New  │  ├───────────────────────────────────────────────┤   │              │
-│ Chat │  │ 📁 File Operations         ● Enabled          │   │              │
-│      │  │    Read, write, and manage files               │   │              │
-│ ───  │  │    Max file size: 10MB                        │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│ Conv │  │ 🌐 Browser                 ○ Disabled         │   │              │
-│  1   │  │    Browse websites and interact with pages     │   │              │
-│ Conv │  │    Requires: Chromium                          │   │              │
-│  2   │  ├───────────────────────────────────────────────┤   │              │
-│ Conv │  │ 📊 Document Editor         ○ Disabled         │   │              │
-│  3   │  │    Create and edit documents, spreadsheets     │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 🎤 Voice (TTS/STT)        ○ Disabled         │   │              │
-│      │  │    Text-to-speech and speech-to-text           │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 🔗 Git Operations          ● Enabled          │   │              │
-│      │  │    Clone, commit, push, diff                   │   │              │
-│      │  ├───────────────────────────────────────────────┤   │              │
-│      │  │ 📧 Email                   ○ Disabled         │   │              │
-│      │  │    Send emails via SMTP                        │   │              │
-│      │  └───────────────────────────────────────────────┘   │              │
-│      │                                                       │              │
-│ [⚙️] │                                                       │              │
-└──────┴───────────────────────────────────────────────────────┴──────────────┘
+│ ☰ SOMA   Settings · Models                              [Save] [Cancel]      │
+├──────────┬───────────────────────────────────────────────────────────────────┤
+│ …        │  MODELS          Manage keys →    [+ Add model]                   │
+│          │  [Search models…]   Type [All ▼]   Status [All ▼]                 │
+│          │  ┌────────────────────────────┐  ┌────────────────────────────┐  │
+│          │  │ ● Active    Chat            │  │ ○ Active    Embeddings     │  │
+│          │  │ openai/gpt-oss-120b         │  │ text-embed-3-small         │  │
+│          │  │ GPT-OSS 120B · Groq         │  │ OpenAI                     │  │
+│          │  │ api.groq.com/openai/v1      │  │                            │  │
+│          │  │ ctx 131072 · sees images ✓  │  │ ctx 1536 · price low       │  │
+│          │  │ priority 10 · price standard│  │ Used for: Memory           │  │
+│          │  │ Used for: Chat, Help        │  │ key ● set   [Open] [Test]  │  │
+│          │  │ key ● set   [Open] [Test]   │  └────────────────────────────┘  │
+│          │  └────────────────────────────┘  ┌────────────────────────────┐  │
+│          │  ┌────────────────────────────┐  │ ✗ Test failed   Ollama     │  │
+│          │  │ ○ Active    Chat            │  │ llama3.1                  │  │
+│          │  │ gpt-4o-mini                 │  │ Could not reach server    │  │
+│          │  │ …                           │  │ [Retry test] [Open]       │  │
+│          │  └────────────────────────────┘  └────────────────────────────┘  │
+│          │                                                                   │
+│          │  ┌─ Open card = whole model (every setting) ───────────────────┐  │
+│          │  │ ● Active · openai/gpt-oss-120b · Groq                       │  │
+│          │  │ IDENTITY                                                      │  │
+│          │  │   Model ID        [openai/gpt-oss-120b     ] [Search models]│  │
+│          │  │   Display name    [GPT-OSS 120B            ]                │  │
+│          │  │   Type            [Chat                    ▼]               │  │
+│          │  │   Provider        [Groq                     ▼]               │  │
+│          │  │   API address     [https://api.groq.com/openai/v1]          │  │
+│          │  │ KEYS                                                          │  │
+│          │  │   Provider key    [● set]  [Manage keys →]                  │  │
+│          │  │ SIZE & LIMITS                                                 │  │
+│          │  │   Context size (tokens)     [131072]                        │  │
+│          │  │   Requests per minute       [0]  (0 = no limit)             │  │
+│          │  │   Input tokens per minute   [0]                             │  │
+│          │  │   Output tokens per minute  [0]                             │  │
+│          │  │ FEATURES                                                      │  │
+│          │  │   Sees images     [● on]     Use this model  [● on]         │  │
+│          │  │   Good at         [chat, tools, reasoning]                  │  │
+│          │  │   Used in         [general, product]                        │  │
+│          │  │ RANKING                                                       │  │
+│          │  │   Priority        [10]      Price level [standard ▼]        │  │
+│          │  │ ADVANCED                                                      │  │
+│          │  │   Extra options (JSON)  [{}                            ]     │  │
+│          │  │ USED FOR                                                      │  │
+│          │  │   [✓] Chat   [✓] Help   [ ] Memory                         │  │
+│          │  │ [Save model]  [Test connection]  [Copy]  [Delete…]           │  │
+│          │  └──────────────────────────────────────────────────────────────┘  │
+└──────────┴───────────────────────────────────────────────────────────────────┘
 ```
+
+**Every model field (API truth + human label)**
+
+| Human label | Control | API |
+|---|---|---|
+| Model ID | text + search | `name` |
+| Display name | text | `display_name` |
+| Type | Chat / Embedding | `model_type` |
+| Provider | select | `provider` |
+| API address | text | `api_base` |
+| Context size (tokens) | number | `ctx_length` |
+| Requests per minute | number | `limit_requests` |
+| Input tokens per minute | number | `limit_input` |
+| Output tokens per minute | number | `limit_output` |
+| Sees images | toggle | `vision` |
+| Use this model | toggle | `is_active` |
+| Good at | tags | `capabilities` |
+| Used in | tags | `domains` |
+| Priority | number | `priority` |
+| Price level | free/low/standard/premium | `cost_tier` |
+| Extra options | JSON | `kwargs` |
+| Used for Chat/Help/Memory | checkboxes | binding (not on model) |
+| Provider key | status + link | **not on model** |
+
+**Card face =** identity + type + address + ctx + vision + price + priority + Used for + key status.  
+**Open =** all fields above. **Never** temperature/max_tokens unless later in Extra options / schema.
+
+**States:** empty (“Add a model + provider key”) · Needs key · Test failed · Embedding type · Off.
 
 ---
 
+## SCREEN 7C: SETTINGS — VOICE
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ☰ SOMA   Settings · Voice                                    [Save][Cancel] │
+├──────────┬───────────────────────────────────────────────────────────────────┤
+│ …        │  VOICE — how the agent speaks and listens                          │
+│          │  ┌─────────────────────────────────────────────────────────────┐   │
+│          │  │ Persona name          [Support voice               ]        │   │
+│          │  │ Description           [Calm helper for calls       ]        │   │
+│          │  │                                                             │   │
+│          │  │ SPEAKING                                                      │   │
+│          │  │   Voice ID            [en-US-AriaNeural     ▼]              │   │
+│          │  │   Speaking speed      [1.0 ═════●═══════]                   │   │
+│          │  │   Volume              [0.8 ═══════●════]                    │   │
+│          │  │   Text-to-speech      [Azure                     ▼]        │   │
+│          │  │                                                             │   │
+│          │  │ LISTENING                                                     │   │
+│          │  │   Speech-to-text      [Whisper                  ▼]         │   │
+│          │  │   Listen language     [English (US)            ▼]          │   │
+│          │  │   Detect when to stop [● on]                               │   │
+│          │  │   Stop sensitivity    [0.5 ═════●═══════]                  │   │
+│          │  │   Silence before stop [400] ms                            │   │
+│          │  │                                                             │   │
+│          │  │ REPLIES                                                       │   │
+│          │  │   Model for voice     [openai/gpt-oss-120b   ▼]  (Models)  │   │
+│          │  │   Persona instructions                                    │   │
+│          │  │   ┌───────────────────────────────────────────────────┐   │   │
+│          │  │   │ Speak simply. Confirm before actions.             │   │   │
+│          │  │   └───────────────────────────────────────────────────┘   │   │
+│          │  │   Creativity (temperature)  [0.7 ═════●════]              │   │
+│          │  │   Max reply length          [2000]                        │   │
+│          │  │                                                             │   │
+│          │  │   [● on] Use this voice    [○] Make default                │   │
+│          │  └─────────────────────────────────────────────────────────────┘   │
+│          │  [Save voice]  [Test speak]  [Test listen]                        │
+└──────────┴───────────────────────────────────────────────────────────────────┘
+```
+
+| Human label | Control | API |
+|---|---|---|
+| Persona name | text | `name` |
+| Description | text | `description` |
+| Voice ID | select/text | `voice_id` |
+| Speaking speed | slider | `voice_speed` |
+| Volume | slider | TTS volume |
+| Text-to-speech | select | TTS provider |
+| Speech-to-text | select | `stt_model` |
+| Listen language | select | `stt_language` |
+| Detect when to stop | toggle | `turn_detection_enabled` |
+| Stop sensitivity | slider | `turn_detection_threshold` |
+| Silence before stop (ms) | number | `silence_duration_ms` |
+| Model for voice | select | `llm_config_id` |
+| Persona instructions | textarea | `system_prompt` |
+| Creativity (temperature) | slider | `temperature` |
+| Max reply length | number | `max_tokens` |
+| Use this voice | toggle | `is_active` |
+| Make default | toggle | `is_default` |
+
+**Test buttons:** Test speak · Test listen.
+
+---
+
+## SCREEN 7D: SETTINGS — INTERFACE
+
+| Human label | Control | Notes |
+|---|---|---|
+| Theme | Dark / Light | P-06 |
+| Language | select | UI language |
+| Density | Comfortable / Compact | |
+| Time format | 12h / 24h | |
+| Timezone | select | Effective timezone shown |
+| Show project bar | Mobile ○ Desktop ● | per-device |
+| Show clock | Mobile ● Desktop ● | |
+| Show connection status | Mobile ● Desktop ● | |
+| Right panel | Mobile ○ Desktop ● | canvas rail |
+
+---
+
+## SCREEN 7E: SETTINGS — TOOLS
+
+Keep Screen 9 tool cards (web, code, files, browser, documents, voice, git, email):  
+**Enable** toggle · one-line description · 1–3 settings (timeout, max size).
+
+---
+
+## SCREEN 7F: SETTINGS — INTEGRATIONS (keys live here)
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ☰ SOMA   Settings · Integrations                            [Save][Cancel]  │
+├──────────┬───────────────────────────────────────────────────────────────────┤
+│ …        │  PROVIDERS & KEYS     (write-only — never shown after save)       │
+│          │  ┌─────────────────────────────────────────────────────────────┐   │
+│          │  │ Groq          [● on]   key [● set]  address [api.groq…]     │   │
+│          │  │   [Manage key] [Test connection]                            │   │
+│          │  │ OpenAI        [● on]   key [○ missing]  address [api.openai]│   │
+│          │  │   [Add key]   [Test connection]                             │   │
+│          │  │ Ollama        [○ off]  key [—]  address [localhost:11434]   │   │
+│          │  └─────────────────────────────────────────────────────────────┘   │
+│          │  Secret storage: Vault · Events · OAuth  (Advanced links)         │
+└──────────┴───────────────────────────────────────────────────────────────────┘
+```
+
+| Human label | Control |
+|---|---|
+| Provider on/off | toggle |
+| Key | masked + Manage key / Add key |
+| API address | text |
+| Test connection | button → ok / ms / error |
+
+---
+
+## SCREEN 7G: SETTINGS — ADVANCED
+
+| Human label | Control |
+|---|---|
+| Modules | card list (Screen 7 old module manager body) |
+| Quotas | numbers |
+| Experimental features | toggles |
+| Backup / Restore | buttons |
+
+---
 ## SCREEN 10: CANVAS — BROWSER
 
 ```

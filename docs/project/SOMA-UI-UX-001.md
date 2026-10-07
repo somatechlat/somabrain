@@ -388,7 +388,7 @@ SOMA AGENT SCREENS
 
 ### 3.5 SETTINGS HUB (/settings)
 
-Model configuration is **card-based full-model admin** (see `SOMA-UI-MODEL-ADMIN-001.md` and MOCKUPS Screen 8): model card grid → select card → edit **all** model settings + assign Chat/Utility/Embedding slots. Provider cards remain for connection-level config (base URL, key).
+Model configuration is **card-based full-model admin** (see `SOMA-UI-MODEL-ADMIN-001.md` and MOCKUPS Settings suite): model card grid → open card → edit **all** model settings + **Used for** Chat / Help / Memory. Provider keys live under Integrations.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -405,7 +405,7 @@ Model configuration is **card-based full-model admin** (see `SOMA-UI-MODEL-ADMIN
 │  │ MODULES       │  │  └─────────────────────────────────┘    │ │
 │  │ 📦 Modules    │  │  Cards:  [GROQ ●] [OpenAI ○] [Ollama ○]│ │
 │  │ 🔐 Auth       │  │          [+ Add model]                  │ │
-│  │ …             │  │  Selected card → FULL editor + slot map  │ │
+│  │ …             │  │  Open card → full editor + Used for     │ │
 │  └──────────────┘  └─────────────────────────────────────────┘ │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
