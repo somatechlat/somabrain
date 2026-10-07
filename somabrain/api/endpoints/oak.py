@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import logging
 import time
+import uuid
 
 from django.conf import settings
 from django.http import HttpRequest
@@ -66,7 +67,7 @@ def oak_option_create(request: HttpRequest, body: OakOptionCreateRequest):
     except Exception:
         raise HttpError(400, "Invalid base64 payload")
 
-    option_id = body.option_id or str(int(time.time() * 1000))
+    option_id = body.option_id or str(uuid.uuid4())
 
     try:
         opt = option_manager.create_option(ctx.tenant_id, option_id, payload_bytes)

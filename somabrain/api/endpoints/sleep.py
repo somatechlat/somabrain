@@ -154,10 +154,12 @@ def _process_sleep_transition(
             f"Invalid transition from {current_state_enum.value} to {target_state.value}",
         )
 
-    # Validation TTL
+    # Validation TTL: non-negative and within the configured maximum.
     max_sec = getattr(settings, "SLEEP_MAX_SECONDS")
-    if ttl_seconds is not None and ttl_seconds > max_sec:
-        raise HttpError(400, f"ttl_seconds exceeds maximum of {max_sec}")
+    if ttl_seconds is not None and (ttl_seconds < 0 or ttl_seconds > max_sec):
+        raise HttpError(
+            400, f"ttl_seconds must be between 0 and {max_sec} (got {ttl_seconds})"
+        )
 
     # Update
     ss.current_state = target_state.value

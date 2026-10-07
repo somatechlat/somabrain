@@ -100,7 +100,21 @@ async def put_persona(
     except Exception as e:
         raise HttpError(500, str(e))
 
-    # Sync PersonalityStore - Ignoring for now as it's best effort in original code
+    # Write-through to PersonalityStore so /persona and cognitive personality
+    # share one store (no divergent copies). Key is the authenticated tenant.
+    try:
+        from somabrain.bootstrap.singletons import get_personality_store
+
+        store = get_personality_store()
+        if store is not None:
+            traits = {
+                k: v
+                for k, v in dict(persona.properties or {}).items()
+                if isinstance(v, (int, float))
+            }
+            store.update_traits(traits, ctx.tenant_id)
+    except Exception as persona_exc:
+        raise HttpError(500, f"personality store write failed: {persona_exc}")
 
     new_etag = _compute_etag(payload)
     # Ninja doesn't have a direct 'Response' object injection in args the same way for headers
