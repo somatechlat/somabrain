@@ -337,20 +337,25 @@ class WMLTMPromoter:
             # aremember returns the coordinate tuple directly
             self._ltm_references[item_id] = ltm_coord
 
-            # Create "promoted_from" link in graph store (A2.6)
-            # Note: MemoryClient.create_link is synchronous
+            # Create "promoted_from" link in graph store (A2.6).
+            # create_link is sync/Django-ORM — must leave the async context.
             if self._graph_client and wm_coordinate:
                 try:
-                    self._graph_client.create_link(
-                        from_coord=ltm_coord,
-                        to_coord=wm_coordinate,
-                        link_type="promoted_from",
-                        strength=1.0,
-                        metadata={
-                            "original_wm_id": item_id,
-                            "promotion_timestamp": time.time(),
-                        },
-                    )
+                    from asgiref.sync import sync_to_async
+
+                    def _create_link() -> None:
+                        self._graph_client.create_link(
+                            from_coord=ltm_coord,
+                            to_coord=wm_coordinate,
+                            link_type="promoted_from",
+                            strength=1.0,
+                            metadata={
+                                "original_wm_id": item_id,
+                                "promotion_timestamp": time.time(),
+                            },
+                        )
+
+                    await sync_to_async(_create_link, thread_sensitive=True)()
                 except Exception as link_exc:
                     logger.warning(
                         "Failed to create promotion link",
@@ -387,8 +392,19 @@ class WMLTMPromoter:
             WM_PROMOTION_TOTAL.labels(tenant=self._tenant_id, status="error").inc()
             WM_PROMOTION_LATENCY.labels(tenant=self._tenant_id).observe(latency)
 
-            # Queue to outbox for retry (A2.4)
-            self._queue_to_outbox(item_id, vector, payload)
+            # Queue to outbox for retry (A2.4). ORM is sync — leave async context.
+            try:
+                from asgiref.sync import sync_to_async
+
+                await sync_to_async(self._queue_to_outbox, thread_sensitive=True)(
+                    item_id, vector, payload
+                )
+            except Exception as outbox_exc:
+                logger.warning(
+                    "Failed to queue promotion to outbox",
+                    item_id=item_id,
+                    error=str(outbox_exc),
+                )
 
             logger.error(
                 "WM promotion failed, queued to outbox",
