@@ -592,12 +592,14 @@ Every `REQUIRED FIX` above is either **DELETE** (remove the dead/false code or c
 | ADD-14 | Replay twins dual impl | **DELETED** |
 | ADD-15 | Live triad e2e gate | **FIXED (ClaudeCode GATE)** — LTM durable across restart; persisted_to_ltm=true |
 
-**Totals addendum:** FIXED 15 / 15 (live GATE passed 2026-10-07).
+**Totals addendum (ADD-01…ADD-15 only):** 15 of 15 addendum items closed (FIXED or DELETED). This is **not** a full close-out: R-14 and R-15 below remain **OPEN**, so the late-revision work as a whole is **not** "15/15 fixed".
 
-### 6.1 Post-GATE remaining (conversation quality — R-14)
+### 6.1 Post-GATE remaining (conversation quality — R-14 / R-15)
 
 | ID | Item | Owner | Status |
 |---|---|---|---|
-| R-14 | Recall logs `no precomputed query vector`; query hash-embeds in another space so search misses durable LTM rows | ClaudeCode WAVE A | OPEN — the last defect before chat works well |
-| R-15 | Fast-ack honesty | ClaudeCode WAVE A2 | OPEN |
+| R-14 | Recall logs `no precomputed query vector`; query hash-embeds in another space so search misses durable LTM rows | ClaudeCode WAVE A | **OPEN** — the last defect before chat works well. Brain side accepts a precomputed query vector (`embedding=` on recall/search, INVARIANTS §2.1); the remaining defect is the agent adapter still hash-embedding on the send side. |
+| R-15 | Fast-ack honesty | ClaudeCode WAVE A2 | **OPEN** |
+
+**Honest status:** ADD table closed; R-14 and R-15 open. Do not cite "FIXED 15/15" for the revision — that claim was withdrawn 2026-10-07.
 

@@ -40,3 +40,4 @@ Before large edits, claim. Release when done.
 | somabrain/memory/client/search.py somabrain/services/recall_service.py somabrain/api/memory/recall.py | MiMoCode | R-14 standby assist -- only if ClaudeCode delegates | 2026-10-07T12:20:59Z | ACTIVE |
 | somabrain/memory/client/ranking.py somabrain/memory/client/search.py tests/unit/test_embed_dim_seam_768.py | MiMoCode | ADV-41 C1/C3: stop re-embed on live re-rank + behavioral proof | 2026-10-07T12:35:50Z | ACTIVE |
 | somabrain/memory/client/read.py somabrain/memory/client/core.py somabrain/services/memory_service.py somabrain/api/memory/recall.py | MiMoCode | ADV-41 C1: thread embedding= through public recall/search API | 2026-10-07T13:05:00Z | ACTIVE |
+| docs/iso/SOMA-BR-DEBT-001.md somabrain/api/memory/helpers.py somabrain/api/memory/models.py somabrain/api/endpoints/memory.py tests/unit/test_memory_layer_vocab.py | MiMoCode | ADV-3 C2/H3: layer vocab single helper + DEBT honesty | 2026-10-07T13:30:00Z | DONE |
