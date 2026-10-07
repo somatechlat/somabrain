@@ -202,24 +202,14 @@ async def _arecall_ltm(
 ):
     """Long-term recall via the existing SFM client search path.
 
-    When ``embedding`` is present it is forwarded as the query vector so the
-    store never re-embeds (INVARIANTS §2.1). ``MemoryService.arecall`` and
-    ``ReadMixin.arecall`` do not yet take ``embedding``; ``SearchMixin`` does,
-    and it is the same ``POST /memories/search`` hop those facades call.
+    When ``embedding`` is present it is the PRECOMPUTED query vector and is
+    forwarded to the store and to live re-ranking so neither re-embeds
+    (INVARIANTS §2.1). ``MemoryService.arecall`` / ``ReadMixin.arecall`` take
+    ``embedding`` as a first-class parameter on the public path.
     """
-    client = memsvc.client()
-    if embedding is not None:
-        search = getattr(client, "_http_recall_aggregate_async", None)
-        if search is None:
-            raise HttpError(
-                500,
-                "memory client cannot accept a precomputed query vector "
-                "(search path missing)",
-            )
-        return await search(
-            query, top_k, universe, str(uuid.uuid4()), embedding=embedding
-        )
-    return await memsvc.arecall(query, top_k=top_k, universe=universe)
+    return await memsvc.arecall(
+        query, top_k=top_k, universe=universe, embedding=embedding
+    )
 
 
 async def perform_recall(

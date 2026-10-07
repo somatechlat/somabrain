@@ -34,3 +34,9 @@ Before large edits, claim. Release when done.
 | somabrain/api/endpoints/memory_remember.py | ClaudeCode | WM->LTM promoter sync-ORM-from-async bug + fast-ack honesty | 2026-10-07T00:27:30Z | ACTIVE |
 | clients/python somabrain/docs FIXED re-audit | MiMoCode | final sweep | 2026-10-07T11:34:26Z | ACTIVE |
 | somabrain/memory/client/transport.py somabrain/settings/infra.py | ClaudeCode | brain->SFM bearer: transport reads cfg.soma_api_token and sends the wrong credential (401) | 2026-10-07T11:37:41Z | ACTIVE |
+| somaAgent01/services/common/adapters/somabrain_adapter.py | ClaudeCode | Wave A: send precomputed query embedding on recall | 2026-10-07T12:12:40Z | ACTIVE |
+| somaAgent01/tests/e2e/ somaAgent01/playwright.config.js | ClaudeCode | Wave B: Playwright memory-algorithms workbench | 2026-10-07T12:12:40Z | ACTIVE |
+| somaAgent01/webui/ | ClaudeCode | Wave C: UI/UX honesty purge | 2026-10-07T12:12:40Z | ACTIVE |
+| somabrain/memory/client/search.py somabrain/services/recall_service.py somabrain/api/memory/recall.py | MiMoCode | R-14 standby assist -- only if ClaudeCode delegates | 2026-10-07T12:20:59Z | ACTIVE |
+| somabrain/memory/client/ranking.py somabrain/memory/client/search.py tests/unit/test_embed_dim_seam_768.py | MiMoCode | ADV-41 C1/C3: stop re-embed on live re-rank + behavioral proof | 2026-10-07T12:35:50Z | ACTIVE |
+| somabrain/memory/client/read.py somabrain/memory/client/core.py somabrain/services/memory_service.py somabrain/api/memory/recall.py | MiMoCode | ADV-41 C1: thread embedding= through public recall/search API | 2026-10-07T13:05:00Z | ACTIVE |

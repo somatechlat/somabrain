@@ -2,11 +2,19 @@
 
 MEM_EMBED_DIM (agent) == SOMABRAIN_EMBED_DIM (brain) == SOMA_VECTOR_DIM (SFM) == 768.
 No component may invent a fallback dimension or fail open on mismatch.
+
+Also carries the INVARIANTS §2.1 behavioural proof: a present precomputed
+query vector forbids ``embed()`` on the live recall / re-rank path.
 """
 from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
+
+import pytest
+
+pytestmark = pytest.mark.no_django
 
 BRAIN_PKG = Path(__file__).resolve().parents[2] / "somabrain"
 REPO = Path(__file__).resolve().parents[2]
@@ -264,22 +272,6 @@ class TestRecallAcceptsPrecomputedQueryVector:
         mem_src = _read("api/endpoints/memory.py")
         assert "_require_valid_query_vector" in mem_src
 
-    def test_recall_handlers_never_reembed_when_vector_present(self):
-        """Source proof: embedder.embed sits only on the degradation branch."""
-        recall_src = _read("api/memory/recall.py")
-        mem_src = _read("api/endpoints/memory.py")
-
-        # The precomputed vector is what is forwarded to the store.
-        assert "embedding=query_vec_list" in recall_src
-        assert "embedding=query_vec" in mem_src
-        assert "_arecall_ltm" in recall_src and "_arecall_ltm" in mem_src
-
-        # embedder.embed is reached only when the caller omitted the vector.
-        assert "if query_vec_list is not None:" in recall_src
-        assert "if wm_vec is None:" in mem_src
-        assert "recall.reembed" in recall_src
-        assert "recall.reembed" in mem_src
-
     def test_write_path_prefers_top_level_embedding(self):
         """INVARIANTS §5.5: top-level embedding wins; nested is fallback only."""
         src = _read("api/memory/models.py")
@@ -287,3 +279,221 @@ class TestRecallAcceptsPrecomputedQueryVector:
         # Nested value.embedding is lifted, not silently dropped.
         assert 'value.get("embedding")' in src
         assert 'd["embedding"] = list(emb)' in src
+
+
+class _SpyEmbedder:
+    """Records every ``embed`` call. Any call is a seam violation when a
+    precomputed vector was supplied (INVARIANTS §2.1)."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def embed(self, text: str):  # pragma: no cover - only reached on violation
+        self.calls.append(str(text))
+        return [0.0] * 8
+
+
+class _RecordingScorer:
+    """Captures the vectors handed to ``score`` so the test can prove the
+    stored hit vector (not a text re-embed) is what gets scored."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[Any, Any, Any, Any]] = []
+
+    def score(self, query, candidate, *, age_seconds=None, cosine=None) -> float:
+        self.calls.append((query, candidate, age_seconds, cosine))
+        return 0.5
+
+
+class _NoEmbedCfg:
+    SOMABRAIN_WM_RECENCY_TIME_SCALE = 60.0
+    SOMABRAIN_WM_RECENCY_MAX_STEPS = 1000.0
+    SOMABRAIN_RECENCY_SHARPNESS = 1.2
+    SOMABRAIN_RECENCY_FLOOR = 0.05
+    recall_density_margin_target = 0.2
+    recall_density_margin_floor = 0.6
+    recall_density_margin_weight = 0.35
+
+
+class TestNoReembedWhenVectorPresent:
+    """INVARIANTS §2.1 behavioural proof — no ``embed()`` when a vector is present.
+
+    The previous guard was a source-grep that only proved the string
+    ``embedder.embed`` sat on a branch; it never executed the path. These tests
+    spy the embedder and call the real ranking / recall code.
+    """
+
+    def test_rescore_with_query_vec_never_calls_embed(self):
+        from somabrain.memory.client.ranking import _rescore_and_rank_hits
+        from somabrain.memory.client.types import RecallHit
+
+        spy = _SpyEmbedder()
+        scorer = _RecordingScorer()
+        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        hit = RecallHit(
+            payload={"text": "hello", "embedding": list(qvec)},
+            score=0.9,
+        )
+        ranked = _rescore_and_rank_hits(
+            _NoEmbedCfg(), scorer, spy, [hit], "hello", query_vec=qvec
+        )
+        assert spy.calls == [], "embed must NOT be called when query_vec is present"
+        assert ranked, "hit must still be scored"
+
+    def test_rescore_never_reembeds_stored_hit_text(self):
+        from somabrain.memory.client.ranking import _rescore_and_rank_hits
+        from somabrain.memory.client.types import RecallHit
+
+        spy = _SpyEmbedder()
+        scorer = _RecordingScorer()
+        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        stored = [0.6, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        hit = RecallHit(
+            payload={"text": "this text must never be embedded"},
+            score=None,
+            raw={"vector": list(stored)},
+        )
+        ranked = _rescore_and_rank_hits(
+            _NoEmbedCfg(), scorer, spy, [hit], "query text", query_vec=qvec
+        )
+        assert spy.calls == [], "stored hit text must not be re-embedded"
+        assert scorer.calls, "scorer must receive the stored vector"
+        _q, candidate, _age, _cos = scorer.calls[0]
+        assert list(candidate) == pytest.approx(stored)
+
+    def test_scoring_uses_query_vec_and_stored_vector_cosine(self):
+        from somabrain.admin.core.learning.scoring import UnifiedScorer
+        from somabrain.memory.client.ranking import _rescore_and_rank_hits
+        from somabrain.memory.client.types import RecallHit
+
+        spy = _SpyEmbedder()
+        scorer = UnifiedScorer(
+            w_cosine=1.0,
+            w_fd=0.0,
+            w_recency=0.0,
+            weight_min=0.0,
+            weight_max=1.0,
+            recency_scale=60.0,
+            recency_sharpness=1.2,
+            recency_floor=0.05,
+            fd_backend=None,
+        )
+        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        aligned = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        orthogonal = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        hit_a = RecallHit(payload={"embedding": list(aligned)}, score=None)
+        hit_b = RecallHit(payload={"embedding": list(orthogonal)}, score=None)
+        ranked = _rescore_and_rank_hits(
+            _NoEmbedCfg(), scorer, spy, [hit_a, hit_b], "q", query_vec=qvec
+        )
+        assert spy.calls == []
+        assert ranked[0].score == pytest.approx(1.0, abs=1e-6)
+        assert ranked[1].score == pytest.approx(0.0, abs=1e-6)
+
+    def test_hit_without_vector_or_score_fails_closed_to_zero(self):
+        from somabrain.memory.client.ranking import _rescore_and_rank_hits
+        from somabrain.memory.client.types import RecallHit
+
+        spy = _SpyEmbedder()
+        scorer = _RecordingScorer()
+        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        hit = RecallHit(payload={"text": "no vector no score"}, score=None)
+        ranked = _rescore_and_rank_hits(
+            _NoEmbedCfg(), scorer, spy, [hit], "q", query_vec=qvec
+        )
+        assert spy.calls == [], "fail closed must not hash-embed text"
+        assert ranked[0].score == 0.0
+
+    def test_public_recall_with_embedding_skips_embed(self, monkeypatch):
+        """Public path: ``recall(..., embedding=)`` must not reach ``embed``.
+
+        This replaces the old source-grep that grepped for branch placement.
+        """
+        from somabrain.memory.client.read import ReadMixin
+        from somabrain.memory.client.search import SearchMixin
+
+        # Neutralise the seam dim gate so the stub can run without Django
+        # settings; the vector length is irrelevant to the no-reembed proof.
+        monkeypatch.setattr(
+            "somabrain.memory.client.transport.ensure_embedding_dim",
+            lambda embedding, **kwargs: embedding,
+        )
+
+        spy = _SpyEmbedder()
+        scorer = _RecordingScorer()
+        qvec = [0.1] * 8
+
+        class _StubClient(ReadMixin, SearchMixin):
+            def __init__(self) -> None:
+                self.cfg = _NoEmbedCfg()
+                self._scorer = scorer
+                self._embedder = spy
+                self._http = object()
+                self._http_async = None
+                self.last_body: dict = {}
+
+            def _http_post_with_retries_sync(self, endpoint, body, headers):
+                self.last_body = body
+                return True, 200, {
+                    "hits": [
+                        {
+                            "payload": {
+                                "text": "stored text",
+                                "universe": "real",
+                                "embedding": list(qvec),
+                            },
+                            "score": 0.8,
+                            "vector": list(qvec),
+                        }
+                    ]
+                }
+
+        client = _StubClient()
+        hits = client.recall("query", top_k=1, universe="real", embedding=qvec)
+        assert spy.calls == [], "public recall with embedding= must not call embed"
+        assert hits, "recall must return scored hits"
+        assert client.last_body.get("embedding") == pytest.approx(qvec)
+
+    def test_public_arecall_with_embedding_skips_embed(self, monkeypatch):
+        import asyncio
+
+        from somabrain.memory.client.read import ReadMixin
+        from somabrain.memory.client.search import SearchMixin
+
+        monkeypatch.setattr(
+            "somabrain.memory.client.transport.ensure_embedding_dim",
+            lambda embedding, **kwargs: embedding,
+        )
+
+        spy = _SpyEmbedder()
+        scorer = _RecordingScorer()
+        qvec = [0.2] * 8
+
+        class _StubAsyncClient(ReadMixin, SearchMixin):
+            def __init__(self) -> None:
+                self.cfg = _NoEmbedCfg()
+                self._scorer = scorer
+                self._embedder = spy
+                self._http = object()
+                self._http_async = object()
+
+            async def _http_post_with_retries_async(self, endpoint, body, headers):
+                return True, 200, {
+                    "hits": [
+                        {
+                            "payload": {
+                                "text": "stored text",
+                                "universe": "real",
+                                "embedding": list(qvec),
+                            },
+                            "score": 0.7,
+                        }
+                    ]
+                }
+
+        client = _StubAsyncClient()
+        hits = asyncio.run(
+            client.arecall("query", top_k=1, universe="real", embedding=qvec)
+        )
+        assert spy.calls == [], "public arecall with embedding= must not call embed"
+        assert hits

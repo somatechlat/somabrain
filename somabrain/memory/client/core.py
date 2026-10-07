@@ -163,16 +163,24 @@ class MemoryClient(TransportMixin, WriteMixin, ReadMixin, SearchMixin, GraphOpsM
         return await loop.run_in_executor(None, self.store_from_payload, enriched)
 
     async def search(
-        self, query: str, top_k: int = 5, tenant: str | None = None
+        self,
+        query: str,
+        top_k: int = 5,
+        tenant: str | None = None,
+        embedding: list[float] | None = None,
     ) -> list[dict[str, Any]]:
         """Search memories and return raw result dicts (async wrapper).
 
         Search is scoped to the caller's tenant by reusing the tenant as the
         memory universe. Without this, the SFM backend returns memories from
         every tenant and the test/user sees cross-tenant leakage.
+
+        ``embedding`` is the optional PRECOMPUTED query vector (INVARIANTS §2.1).
         """
         if not tenant:
             raise ValueError("search: tenant is required (T-5 fail-closed)")
         loop = asyncio.get_event_loop()
-        hits = await loop.run_in_executor(None, self.recall, query, top_k, tenant)
+        hits = await loop.run_in_executor(
+            None, lambda: self.recall(query, top_k, tenant, embedding=embedding)
+        )
         return [hit.raw if hit.raw is not None else hit.payload for hit in hits]

@@ -163,20 +163,29 @@ class MemoryService:
             self._mark_failure()
             _reraise_backend_error(e, "remember")
 
-    def recall(self, query: str, top_k: int = 3, universe: str | None = None):
+    def recall(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        embedding: list[float] | None = None,
+    ):
         """Execute recall.
 
         Args:
             query: The query.
             top_k: The top_k.
             universe: The universe.
+            embedding: Optional PRECOMPUTED query vector (INVARIANTS §2.1).
         """
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
             raise CircuitBreakerOpen("Memory service unavailable (circuit open)")
         try:
-            hits = self.client().recall(query, top_k=top_k, universe=universe)
+            hits = self.client().recall(
+                query, top_k=top_k, universe=universe, embedding=embedding
+            )
             self._mark_success()
             return hits
         except (httpx.HTTPError, MemoryServiceError, RuntimeError):
@@ -238,20 +247,29 @@ class MemoryService:
             self._mark_failure()
             _reraise_backend_error(e, "aremember")
 
-    async def arecall(self, query: str, top_k: int = 3, universe: str | None = None):
+    async def arecall(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        embedding: list[float] | None = None,
+    ):
         """Execute arecall.
 
         Args:
             query: The query.
             top_k: The top_k.
             universe: The universe.
+            embedding: Optional PRECOMPUTED query vector (INVARIANTS §2.1).
         """
 
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
             raise CircuitBreakerOpen("Memory service unavailable (circuit open)")
         try:
-            hits = await self.client().arecall(query, top_k=top_k, universe=universe)
+            hits = await self.client().arecall(
+                query, top_k=top_k, universe=universe, embedding=embedding
+            )
             self._mark_success()
             return hits
         except (httpx.HTTPError, MemoryServiceError, RuntimeError):

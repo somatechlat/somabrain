@@ -17,15 +17,23 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
-        """Retrieve memories relevant to the query using the HTTP memory service."""
+        """Retrieve memories relevant to the query using the HTTP memory service.
+
+        ``embedding`` is the optional PRECOMPUTED query vector (INVARIANTS §2.1).
+        When present it is forwarded to the store and to live re-ranking; the
+        brain never re-embeds the query on that path.
+        """
         # Strict mode: memory service is ALWAYS required
         if self._http is None:
             raise RuntimeError(
                 "MEMORY SERVICE REQUIRED: HTTP memory backend not available."
             )
         rid = request_id or str(uuid.uuid4())
-        return self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
+        return self._http_recall_aggregate_sync(
+            query, top_k, universe or "real", rid, embedding=embedding
+        )
 
     def recall_with_scores(
         self,
@@ -33,17 +41,18 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
         """Recall memories including similarity scores."""
 
         if self._http is not None:
             rid = request_id or str(uuid.uuid4())
             hits = self._http_recall_aggregate_sync(
-                query, top_k, universe or "real", rid
+                query, top_k, universe or "real", rid, embedding=embedding
             )
             if hits:
                 return hits
-        return self.recall(query, top_k, universe, request_id)
+        return self.recall(query, top_k, universe, request_id, embedding=embedding)
 
     async def arecall(
         self,
@@ -51,16 +60,20 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
-        """Async recall for HTTP mode; falls back to sync execution when needed."""
+        """Async recall for HTTP mode; falls back to sync execution when needed.
+
+        ``embedding`` is the optional PRECOMPUTED query vector (INVARIANTS §2.1).
+        """
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
             return await self._http_recall_aggregate_async(
-                query, top_k, universe or "real", rid
+                query, top_k, universe or "real", rid, embedding=embedding
             )
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, self.recall, query, top_k, universe, request_id
+            None, self.recall, query, top_k, universe, request_id, embedding
         )
 
     async def arecall_with_scores(
@@ -69,17 +82,20 @@ class ReadMixin:
         top_k: int = 3,
         universe: str | None = None,
         request_id: str | None = None,
+        embedding: list[float] | None = None,
     ) -> list[RecallHit]:
         """Async companion to :meth:`recall_with_scores`."""
 
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
             hits = await self._http_recall_aggregate_async(
-                query, top_k, universe or "real", rid
+                query, top_k, universe or "real", rid, embedding=embedding
             )
             if hits:
                 return hits
-        return await self.arecall(query, top_k, universe, request_id)
+        return await self.arecall(
+            query, top_k, universe, request_id, embedding=embedding
+        )
 
     def payloads_for_coords(
         self, coords: list[tuple[float, float, float]], universe: str | None = None

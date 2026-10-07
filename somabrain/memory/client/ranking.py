@@ -7,6 +7,8 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
+import numpy as np
+
 from somabrain.math.recency import recency_features as _shared_recency_features
 
 from .serialization import _extract_memory_coord
@@ -356,12 +358,16 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
     return value
 
 
-def _resolve_semantic_scorer(cfg: Any, scorer: Any, embedder: Any) -> tuple[Any, Any]:
+def _resolve_semantic_scorer(
+    cfg: Any, scorer: Any, embedder: Any, *, require_embedder: bool = True
+) -> tuple[Any, Any]:
     """Return (scorer, embedder) from runtime when not injected.
 
     Semantic ranking is mandatory — never fall back to lexical/keyword ranking.
+    When ``require_embedder`` is False the caller already holds a precomputed
+    query vector (INVARIANTS §2.1) so the embedder is optional.
     """
-    if scorer is not None and embedder is not None:
+    if scorer is not None and (embedder is not None or not require_embedder):
         return scorer, embedder
     try:
         from somabrain.runtime.manager import get_embedder
@@ -376,62 +382,125 @@ def _resolve_semantic_scorer(cfg: Any, scorer: Any, embedder: Any) -> tuple[Any,
             scorer = make_unified_scorer(cfg)
         except Exception:
             scorer = None
-    if scorer is None or embedder is None:
+    if scorer is None or (require_embedder and embedder is None):
         raise RuntimeError(
             "SomaBrain semantic scorer/embedder required for recall ranking"
         )
     return scorer, embedder
 
 
+def _extract_stored_vector(hit: RecallHit) -> np.ndarray | None:
+    """Return the vector stored with *hit*, or ``None``.
+
+    Searches the normalized payload and the raw store row. Never synthesises a
+    vector: a miss stays a miss so callers can fail closed instead of silently
+    hash-embedding text into a foreign space (INVARIANTS §2.1).
+    """
+    sources: list[Any] = [hit.payload]
+    raw = hit.raw
+    if isinstance(raw, dict):
+        sources.append(raw)
+        mem = raw.get("memory")
+        if isinstance(mem, dict):
+            sources.append(mem)
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        for key in ("embedding", "vector", "_embedding", "dense_vector"):
+            value = source.get(key)
+            if value is None:
+                continue
+            try:
+                arr = np.asarray(value, dtype=np.float32).reshape(-1)
+            except Exception:
+                continue
+            if arr.size > 0 and bool(np.all(np.isfinite(arr))):
+                return arr
+    return None
+
+
 def _rescore_and_rank_hits(
-    cfg: Any, scorer: Any, embedder: Any, hits: list[RecallHit], query: str
+    cfg: Any,
+    scorer: Any,
+    embedder: Any,
+    hits: list[RecallHit],
+    query: str,
+    query_vec: list[float] | np.ndarray | None = None,
 ) -> list[RecallHit]:
-    scorer, embedder = _resolve_semantic_scorer(cfg, scorer, embedder)
+    """Rescore hits with the semantic scorer. Never re-embeds hit text.
 
-    query_vec = embedder.embed(query)
+    When ``query_vec`` is present it is the authoritative query vector
+    (INVARIANTS §2.1) and ``embed`` is not called at all. Stored hit vectors
+    are used for scoring when present; otherwise the store's own similarity
+    (``hit.score``) is the only honest signal. A hit with neither a stored
+    vector nor a score fails closed to 0.0 — text is never hash-embedded into
+    a different vector space.
+    """
+    query_arr: np.ndarray
+    if query_vec is not None:
+        query_arr = np.asarray(query_vec, dtype=np.float32).reshape(-1)
+        if query_arr.size == 0 or not bool(np.all(np.isfinite(query_arr))):
+            raise ValueError("query_vec must be a non-empty finite vector")
+        if scorer is None:
+            scorer, _ = _resolve_semantic_scorer(
+                cfg, scorer, embedder, require_embedder=False
+            )
+    else:
+        scorer, embedder = _resolve_semantic_scorer(cfg, scorer, embedder)
+        query_arr = np.asarray(embedder.embed(query), dtype=np.float32).reshape(-1)
+
     now_ts = datetime.now(UTC).timestamp()
-
-    def _text_of(p: dict) -> str:
-        for key in ("text", "content", "task", "fact", "headline", "what"):
-            v = p.get(key)
-            if isinstance(v, str) and v.strip():
-                return v.strip()
-        return ""
 
     scored_hits = []
     for hit in hits:
-        payload = hit.payload or {}
-        text = _text_of(payload)
-        if not text:
-            new_score = 0.0
-        else:
-            candidate_vec = embedder.embed(text)
-            recency_steps: float | None = None
-            recency_boost = 1.0
-            age_seconds: float | None = None
-            ts_epoch = None
-            for key in ("timestamp", "ts", "created_at"):
-                if key in payload:
-                    ts_epoch = _parse_payload_timestamp(payload.get(key))
-                    if ts_epoch is not None:
-                        break
-            if ts_epoch is not None:
-                age_seconds = max(0.0, now_ts - ts_epoch)
-                recency_steps, recency_boost = _recency_features(cfg, ts_epoch, now_ts)
+        payload = hit.payload if isinstance(hit.payload, dict) else {}
+        stored_vec = _extract_stored_vector(hit)
+        cosine_hint = _hit_score(hit)
 
-            # Recency is applied once, inside scorer.score(age_seconds=...).
-            # Do not multiply by recency_boost again — that squares R(age).
+        recency_steps: float | None = None
+        recency_boost = 1.0
+        age_seconds: float | None = None
+        ts_epoch = None
+        for key in ("timestamp", "ts", "created_at"):
+            if key in payload:
+                ts_epoch = _parse_payload_timestamp(payload.get(key))
+                if ts_epoch is not None:
+                    break
+        if ts_epoch is not None:
+            age_seconds = max(0.0, now_ts - ts_epoch)
+            recency_steps, recency_boost = _recency_features(cfg, ts_epoch, now_ts)
+
+        # Recency is applied once, inside scorer.score(age_seconds=...).
+        # Do not multiply by recency_boost again — that squares R(age).
+        if stored_vec is not None:
+            # Stored vector is authoritative — never re-embed hit text.
             new_score = scorer.score(
-                query_vec,
-                candidate_vec,
+                query_arr,
+                stored_vec,
                 age_seconds=age_seconds,
-                cosine=hit.score,  # Pass original score as cosine hint
+                cosine=cosine_hint,
             )
-            try:
-                payload.setdefault("_recency_steps", recency_steps)
-                payload.setdefault("_recency_boost", recency_boost)
-            except Exception:
-                pass
+        elif cosine_hint is not None:
+            # No stored vector: the store's similarity is the only signal in
+            # the caller's space. The query vector doubles as the candidate so
+            # the scorer's signature holds; the cosine term comes from the
+            # hint, so no foreign-space embedding is ever computed.
+            new_score = scorer.score(
+                query_arr,
+                query_arr,
+                age_seconds=age_seconds,
+                cosine=cosine_hint,
+            )
+        else:
+            # Fail closed: no stored vector and no store score. Hash-embedding
+            # the text here would rank a different vector space (INVARIANTS §2.1).
+            new_score = 0.0
+
+        try:
+            payload.setdefault("_recency_steps", recency_steps)
+            payload.setdefault("_recency_boost", recency_boost)
+        except Exception:
+            pass
 
         margin = _extract_cleanup_margin(hit)
         density_factor = _density_factor(cfg, margin)

@@ -78,7 +78,12 @@ class SearchMixin:
                 return []
 
             ranked = _rescore_and_rank_hits(
-                self.cfg, self._scorer, self._embedder, deduped, query_text
+                self.cfg,
+                self._scorer,
+                self._embedder,
+                deduped,
+                query_text,
+                query_vec=embedding,
             )
             limit = max(1, int(top_k))
             return ranked[:limit]
@@ -158,7 +163,12 @@ class SearchMixin:
                 return []
 
             ranked = _rescore_and_rank_hits(
-                self.cfg, self._scorer, self._embedder, deduped, query_text
+                self.cfg,
+                self._scorer,
+                self._embedder,
+                deduped,
+                query_text,
+                query_vec=embedding,
             )
             limit = max(1, int(top_k))
             return ranked[:limit]
