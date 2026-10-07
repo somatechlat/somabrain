@@ -1,195 +1,152 @@
-# SOMA AGENT — MODEL ADMINISTRATION UI SPECIFICATION
+# SOMA AGENT — MODEL MANAGER UI SPECIFICATION
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | Model Administration — Card UI Specification |
+| Document Title | Model Manager — Card UI Specification |
 | Document Identifier | SOMA-UI-MODEL-ADMIN-001 |
-| Version | 1.0.0 |
+| Version | **2.1.0** |
 | Date | 2026-10-07 |
 | Status | Draft |
-| Author | SomaTech Engineering |
-| Approver | — |
 | Classification | Internal |
-| ISO Reference | ISO 9241-210:2019 — Human-centred design |
-| Next Review | 2026-12-28 |
+| Field truth | `somaAgent01/admin/llm/api.py` `ModelIn` / `ModelOut` / `SlotsUpdate` / `PresetIn` (117–209) |
+| Supersedes | 2.0.0 (invented utility type, fake timeout/max_tokens, in-editor keys) |
 
 ## Revision History
 
-| Version | Date | Author | Description |
+| Version | Date | Description |
+|---|---|---|
+| 2.0.0 | 2026-10-07 | Card redesign draft |
+| 2.1.0 | 2026-10-07 | **ADV-2 corrections:** schema-true fields only; keys never in model editor; slots ≠ roles; utility has no type; display_name + is_active restored; preset = slot bundle only |
+
+---
+
+## 1. Field truth (non-negotiable)
+
+### 1.1 Model object (`ModelIn` / `ModelOut`)
+
+| Field | Type | Card face | Editor |
 |---|---|---|---|
-| 1.0.0 | 2026-10-07 | SomaTech Engineering | Initial card-based model admin specification (replaces tab+dropdown slots UX). |
+| `name` | str | ✓ | input + model search |
+| `display_name` | str | ✓ | input |
+| `model_type` | `chat` \| `embedding` **only** | ✓ badge | select |
+| `provider` | str | ✓ | select (may reset api_base/kwargs) |
+| `api_base` | str | short | input |
+| `capabilities` | list[str] | compact | tags |
+| `priority` | int (default 50) | ✓ | number |
+| `cost_tier` | free\|low\|standard\|premium | ✓ | select |
+| `domains` | list[str] | compact | tags |
+| `ctx_length` | int | ✓ | number |
+| `limit_requests` | int | compact | number |
+| `limit_input` | int | compact | number |
+| `limit_output` | int | compact | number |
+| `vision` | bool | ✓ | toggle |
+| `kwargs` | dict | — | JSON / key=value |
+| `is_active` | bool | ✓ | toggle |
+
+**Not on ModelIn (never invent):** temperature, top_p, top_k, max_tokens, timeout, seed, stop, utility type, role checkboxes.
+
+If product later needs temperature etc., they go in **`kwargs`** (escape hatch) or a **schema change** (separate decision).
+
+### 1.2 Keys (never on ModelIn)
+
+`ModelPatch` docstring: *"API keys are never accepted here"* (`api.py:139`).  
+Keys: **provider / Vault only** (`PUT /secrets/providers/{id}`). Editor shows **status + link** to Providers & keys — no key field on the model card.
+
+### 1.3 Slots (not roles on the model)
+
+`SlotsUpdate`: `chat_model_id`, `utility_model_id`, `embedding_model_id` (+ optional `capsule_id`).  
+UI: **Used as** = derived badges from slots; **Assign** = slot PUT from the card (not multi-role storage).
+
+### 1.4 Utility type does not exist
+
+`model_type` is only `chat` | `embedding`. Utility slot accepts **any existing model id** (`api.py` existence check).  
+UI: list **all** models for Utility (not chat-only). Label: “Any model may be bound as Utility (API rule).”
+
+### 1.5 Presets
+
+`PresetIn`: `name`, three model ids, `notes` — **slot bundle only**. No per-preset model params (unlike agent-zero).
 
 ---
 
-## 1. Purpose and non-negotiables
+## 2. Screen — Model Manager (library)
 
-Model administration **must** allow the operator to:
-
-1. See every model as a **full card** (provider, name, role badges, context, status).
-2. **Select a card** and edit **all** settings for that model in one panel.
-3. Assign the model to **Chat / Utility / Embedding** slots from the card.
-4. Keep API keys **write-only** (Vault) with Show / Test Connection.
-5. Reveal **advanced** fields only on demand (SOMA-UI-UX-001 P-03).
-
-**Source of truth for fields:** `admin/llm/api.py` `ModelIn` / `ModelOut` (provider, name, type, api_base, capabilities, priority, cost_tier, domains, ctx_length, limit_*, vision, kwargs).
-
-**Reference UX patterns (agent-zero `_model_config`):** `model-field` block, Main/Utility/Embedding section cards, Advanced expander, summary + edit, keys separate from model defs.
-
-**Forbidden:** three bare slot dropdowns as the only editor; flat catalog that hides ModelIn fields; silent llama default without showing the binding.
-
----
-
-## 2. Screen anatomy
-
-Single surface: **`/settings/models`** (also `/agent/models`).
+**Route:** `/settings/models` (fix UX-001 map later to this single name).
 
 ```
-[1] Active summary card
-[2] Model card grid (select / add)
-[3] Full model editor (selected card)
-[4] Slot map (Chat / Utility / Embedding) + presets
+┌────────────────────────────────────────────────────────────────────────────┐
+│ SOMA  Settings / Models                                    [Library|Wiring]│
+├──────────┬─────────────────────────────────────────────────────────────────┤
+│ Library  │  Filter [model_type ▾] [active ▾]  Search [____________]  [+New]│
+│ Wiring   │  ┌─ CARD (whole ModelIn object) ─┐ ┌─ CARD ─────────────────┐   │
+│ Presets  │  │ ● Active  chat  ⚡ cost:low    │ │ ○ Active  embedding   │   │
+│ Providers│  │ gpt-oss-120b                   │ │ text-embed-3-small    │   │
+│ & keys   │  │ display: GPT-OSS 120B          │ │ OpenAI                │   │
+│          │  │ Groq · api.groq.com/openai/v1  │ │ ctx 1536 · $low       │   │
+│          │  │ ctx 131072 · vision ✓ · p=10   │ │ Used as: Embedding    │   │
+│          │  │ Used as: Chat, Utility          │ │ [Expand] [Test]       │   │
+│          │  │ Key: ●ok (provider)            │ └───────────────────────┘   │
+│          │  │ [Expand] [Test]                │                             │
+│          │  └────────────────────────────────┘                             │
+│          │  ┌─ CARD expanded (all ModelIn fields) ─────────────────────┐   │
+│          │  │ Identity  name / display_name / model_type / provider    │   │
+│          │  │ Endpoint  api_base                    Key → Providers ⌁ │   │
+│          │  │ Capacity  ctx_length  limit_requests  limit_input        │   │
+│          │  │           limit_output  vision  is_active                │   │
+│          │  │ Routing   priority  cost_tier  domains[]  capabilities[] │   │
+│          │  │ Advanced  kwargs (JSON)                                 │   │
+│          │  │ Wiring    Assign: [Chat] [Utility] [Embedding] (slots)  │   │
+│          │  │ [Save] [Duplicate] [Delete…]                            │   │
+│          │  └─────────────────────────────────────────────────────────┘   │
+└──────────┴─────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.1 Active summary
+**Card face = complete identity of the stored model** (name, display_name, type, provider, endpoint, ctx, limits, vision, active, cost, priority, key status, used-as).
 
-- Provider, model name, role badges (Chat / Utility / Embedding / Vision)
-- Key state: masked + “Configured” / “Missing”
-- Actions: **Edit selected** · **Test Connection**
+**Expanded = every `ModelIn` field** + slot assign + test. **No key input.**
 
-### 2.2 Model card grid
+---
 
-Each card (SOMA-UI-SPEC-001 card variants: default / hoverable / **selected**):
+## 3. Navigation / context
 
-| Element | Content |
+| Rule | Spec |
 |---|---|
-| Header | Provider label + status (Active / Setup / Error) |
-| Title | Model name |
-| Meta | ctx_length · cost_tier · vision · speed (if known) |
-| Roles | Chip list derived from slot assignment + type |
-| Footer | **Select** / **Selected ✓** · quick **Assign** menu |
-
-Grid is keyboard-reachable (P-07). Click card → selected state → editor loads.
-
-### 2.3 Full model editor (THE requirement)
-
-Two-column field rows (`field-label` | `field-control`) + Advanced collapse.
-
-**Primary (always visible)**
-
-| Field | Control | API |
-|---|---|---|
-| Provider | select (resets api_base/kwargs if changed) | `provider` |
-| Model name | text + model-search | `name` |
-| Type | chat / embedding / utility (if supported) | `type` |
-| API key | masked + Show + Test | Vault via provider (not stored on model) |
-| Supports vision | toggle | `vision` |
-| Assign slots | checkboxes Chat / Utility / Embedding | `PUT /llm/slots` |
-
-**Advanced (collapsed by default)**
-
-| Field | Control | API |
-|---|---|---|
-| API base URL | text | `api_base` |
-| Context window | number | `ctx_length` |
-| Max tokens / limits | number | `limit_*` |
-| Timeout | number | (config) |
-| Rate limits | numbers | `limit_*` / config |
-| Cost tier | select | `cost_tier` |
-| Domains | tags | `domains` |
-| Capabilities | multi | `capabilities` |
-| Priority | number | `priority` |
-| Additional parameters | JSON editor | `kwargs` |
-
-Actions: **Save Model** · **Test Connection** · **Delete** (confirm) · **Assign to Slots**.
-
-### 2.4 Slot map
-
-| Role | Shows | Edit path |
-|---|---|---|
-| Chat | selected model card summary | from card Assign or preset |
-| Utility | model (must support utility — **not** chat-only list) | same |
-| Embedding | embedding model | same |
-
-- **Inactive models stay visible** in the map (badge “inactive”) — never silently “unset”.
-- Persistence must be **one contract** (documented in backend section): do not hide Capsule.chat_model vs AgentSetting split in the UI; show “Saved for capsule / tenant” and use one write path.
+| One workspace | Library · Wiring · Presets · Providers & keys |
+| Expand | in place + deep link `/settings/models/:id` |
+| Assign | slot PUT from card or Wiring lane |
+| Used as | live from slots; badge on card |
+| Test | per model; error on that card |
+| Keyboard | Tab / Enter / Esc / `/` |
+| Permission | `system:view` read; `system:configure` model edit; `system:manage_integrations` providers/test |
 
 ---
 
-## 3. Empty / loading / error states
+## 4. What we take from agent-zero vs not
 
-| State | UI |
+| Keep | Reject / adapt |
 |---|---|
-| No models | Hero empty state + **Add model** + setup-gate |
-| Loading | Skeleton cards |
-| Test connection fail | Inline error on card + toast |
-| No key | Card status “Setup”; editor prompts key |
-| Permission denied | Read-only banner (`settings:edit` required) |
+| model-field layout (label + description) | temperature as real field (use kwargs until schema grows) |
+| Advanced collapse | keys inside model form (use Providers page) |
+| Model search + confirm delete | Main/Utility/Embedding as model *forms* (use slots + badges) |
+| | preset = full model configs (Soma preset = ids only) |
 
 ---
 
-## 4. Permissions
+## 5. Acceptance
 
-- **View models:** authenticated.
-- **Edit model / keys / slots:** `settings:edit` → `system:configure` (existing).
-- Without edit: show cards and slot map; disable Save/Assign/Delete.
-
----
-
-## 5. API contract (UI must match)
-
-| Endpoint | Use |
-|---|---|
-| `GET/PUT /llm/providers` | provider list, base_url, default_model, enable |
-| `GET/POST/PATCH/DELETE /llm/models` | full `ModelIn`/`ModelOut` fields |
-| `GET/PUT /llm/slots` | chat_model_id, utility_model_id, embedding_model_id |
-| `GET/POST/... /llm/presets` | named slot+model bundles |
-| `POST /llm/test-connection` | per model/provider |
-| `PUT /secrets/providers/{id}` | write-only keys |
-
-UI **must** send and display: `capabilities, priority, cost_tier, domains, ctx_length, limit_*, vision, kwargs` (today they are hidden — this is a defect).
+1. Editor fields **exactly** `ModelIn`/`ModelPatch` — no invented inputs.  
+2. `display_name` and `is_active` editable and shown.  
+3. No API-key input on model card (link to Providers).  
+4. Utility lists all models (or documents API rule), not chat-only.  
+5. Slot assign writes `SlotsUpdate`; badges reflect it.  
+6. Card face shows the whole stored object without expand.  
+7. Presets only bind three ids + notes.  
 
 ---
 
-## 6. Design system alignment
+## 6. Out of scope
 
-- Dark-first palette (SOMA-UI-MOCKUPS-001 COLOR KEY)
-- Cards: 8px radius, selected border Soma Blue `#3B82F6`
-- `<soma-secret-field>` for keys; `<soma-model-card>` / `<soma-model-editor>` / `<soma-slot-map>` (to be specified in SOMA-UI-SPEC-001)
-- Progressive settings (P-03); modules-style visual cards (P-04)
-
----
-
-## 7. Acceptance criteria
-
-1. Selecting a card opens an editor that exposes **every** `ModelIn` field.
-2. Save round-trips all fields through `PATCH /llm/models`.
-3. Assign Chat/Utility/Embedding from the card updates the slot map.
-4. Utility slot lists models that can serve utility (not chat-only).
-5. Inactive models remain in the slot map.
-6. Advanced block collapsed by default.
-7. API key never rendered in clear text.
-8. Without `settings:edit`, edit controls are disabled (not hidden without explanation).
-9. No silent provider/model switch: active binding always visible in summary card.
-
----
-
-## 8. Out of scope
-
-- Chat message UX (SOMA-UI-UX-001 §chat)
-- Billing / tenant admin screens
-- Embedding math / recall quality (R-14)
-
----
-
-## 9. Mapping — agent-zero → Soma
-
-| agent-zero | Soma |
-|---|---|
-| `model-field.html` | `soma-model-field` rows in editor |
-| `main.html` Main/Utility/Embedding cards | slot sections + card roles |
-| `preset-overview.html` | Active summary + slot map |
-| `api-keys.html` | Vault-backed `soma-secret-field` + test |
-| Advanced expander | Advanced collapse |
-| `model-setup-gate.html` | Empty/setup state on grid |
+- Implementation (until operator orders code)  
+- Changing `model_type` vocabulary or adding temperature columns (schema decisions)  
+- Chat transcript / billing  
