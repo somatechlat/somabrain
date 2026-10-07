@@ -32,6 +32,7 @@ from somabrain.api.memory.helpers import (
 from somabrain.api.memory.models import (
     MemoryBatchWriteRequest,
     MemoryBatchWriteResponse,
+    MemoryDurability,
     MemorySignalFeedback,
     MemoryWriteRequest,
     MemoryWriteResponse,
@@ -42,6 +43,127 @@ from somabrain.services.memory_service import MemoryService
 
 logger = logging.getLogger("somabrain.api.endpoints.memory_remember")
 
+# Per-tenant background LTM persist failures (fast NEXT-call signal; durable truth is the outbox row).
+_background_ltm_failures: dict[str, int] = {}
+
+# Strong refs to in-flight background tasks — asyncio only keeps weak refs.
+_background_tasks: set[asyncio.Task] = set()
+
+
+async def _durable_accept(
+    *,
+    tenant: str,
+    key: str,
+    stored_payload: dict,
+    request_id: str,
+    coord: tuple | None,
+) -> int:
+    """T-6 durable accept: outbox row written and verified before any hop.
+
+    Idempotency is coord-only (INVARIANTS §3.3) — never a request id, never a
+    UUID. Same (tenant, coord) collapses to one row. Refuses if row is missing.
+    """
+    from django.db import IntegrityError
+
+    from somabrain.admin.core.models import OutboxEvent
+    from somabrain.db.outbox import (
+        _idempotency_key,
+        enqueue_memory_event,
+        get_event_by_dedupe_key,
+    )
+
+    try:
+        event_id = await sync_to_async(enqueue_memory_event)(
+            topic="memory.store",
+            payload={"key": key, "payload": stored_payload, "request_id": request_id},
+            tenant_id=tenant,
+            coord=coord,
+            extra_key=None,
+            check_backpressure_flag=True,
+        )
+    except IntegrityError:
+        # Same (tenant, coord) already accepted — replay, not a new memory.
+        existing = await sync_to_async(get_event_by_dedupe_key)(
+            _idempotency_key("memory.store", coord, tenant, None), tenant_id=tenant
+        )
+        if existing is None:
+            raise
+        return int(existing.id)
+    row = await sync_to_async(
+        lambda: OutboxEvent.objects.filter(id=event_id)
+        .values("id", "status", "tenant_id", "topic")
+        .first()
+    )()
+    if row is None:
+        raise HttpError(
+            503,
+            f"durable accept failed: outbox row id={event_id} missing after enqueue",
+        )
+    return event_id
+
+
+async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int:
+    """Drain still-pending memory.store rows to the STORE, then mark sent.
+
+    T-6: only a store ack closes an event. Kafka publish is not a store ack.
+    Idempotent — coord-only dedupe collapses retries of a landed coord.
+    """
+    from somabrain.admin.core.models import OutboxEvent
+    from somabrain.db.outbox import mark_event_sent
+
+    def _fetch_pending():
+        return list(
+            OutboxEvent.objects.filter(
+                topic="memory.store", tenant_id=tenant_id, status="pending"
+            )
+            .order_by("created_at")
+            .values("id", "payload")
+        )
+
+    rows = await sync_to_async(_fetch_pending)()
+    closed = 0
+    for row in rows:
+        payload = dict(row.get("payload") or {})
+        key = payload.get("key")
+        if key is None:
+            continue
+        try:
+            await memsvc.aremember(key, payload.get("payload") or payload)
+        except Exception as exc:
+            _note_background_ltm_failure(tenant_id, str(key), row["id"], exc)
+            continue
+        await sync_to_async(mark_event_sent)(row["id"])
+        closed += 1
+    return closed
+
+
+def _note_background_ltm_failure(tenant_id: str, key: str, event_id: int, exc: Exception) -> None:
+    """Record a background LTM persist failure for the NEXT response.
+
+    Leaves the outbox row pending (T-6). Error log + metric — never a lone warning.
+    """
+    _background_ltm_failures[tenant_id] = _background_ltm_failures.get(tenant_id, 0) + 1
+    logger.error(
+        "Background LTM persist failed; outbox row stays pending for replay. "
+        "tenant=%s key=%s event_id=%s: %s",
+        tenant_id,
+        key,
+        event_id,
+        exc,
+        exc_info=exc,
+    )
+    try:
+        from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL, report_outbox_pending
+        from somabrain.db.outbox import get_pending_count
+
+        MEMORY_OUTBOX_SYNC_TOTAL.labels(status="failure").inc()
+        report_outbox_pending(tenant_id, get_pending_count(tenant_id))
+    except Exception:
+        logger.exception(
+            "Failed to report background LTM persist failure metric for tenant=%s",
+            tenant_id,
+        )
+
 
 async def _persist_ltm_in_background(
     memsvc: MemoryService,
@@ -51,39 +173,35 @@ async def _persist_ltm_in_background(
     event_id: int,
     tenant_id: str,
 ) -> None:
-    """Best-effort async LTM persistence after the HTTP response has been sent.
-
-    Used when ``SOMABRAIN_MEMORY_FAST_ACK`` is enabled. The outbox event is
-    created before the response is returned, so a failure here leaves a
-    pending event that can be replayed by a memory outbox worker.
-
-    ``event_id`` is the real OutboxEvent primary key created by
-    ``enqueue_memory_event`` — the id ``mark_event_sent`` requires.
+    """LTM persist after the 200 (fast-ack). Store ack marks sent; failure
+    leaves the row pending and surfaces (T-6). ``event_id`` is the OutboxEvent PK.
     """
     try:
         await memsvc.aremember(key, stored_payload)
     except Exception as exc:
-        logger.warning(
-            "Background LTM persist failed for tenant=%s key=%s: %s",
+        _note_background_ltm_failure(tenant_id, key, event_id, exc)
+        return
+    from somabrain.db.outbox import mark_event_sent
+
+    try:
+        await sync_to_async(mark_event_sent)(event_id)
+    except Exception:
+        logger.exception(
+            "Failed to mark outbox event id=%s sent for tenant=%s key=%s",
+            event_id,
             tenant_id,
             key,
-            exc,
         )
-    else:
-        from somabrain.db.outbox import mark_event_sent
+        raise
+    try:
+        from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL
 
-        try:
-            await sync_to_async(mark_event_sent)(event_id)
-        except Exception:
-            # Not swallowed: a sent-mark failure would leave the row pending
-            # forever and trip outbox backpressure. Surface it.
-            logger.exception(
-                "Failed to mark outbox event id=%s sent for tenant=%s key=%s",
-                event_id,
-                tenant_id,
-                key,
-            )
-            raise
+        MEMORY_OUTBOX_SYNC_TOTAL.labels(status="success").inc()
+    except Exception:
+        logger.exception(
+            "Failed to report background LTM persist success metric for tenant=%s",
+            tenant_id,
+        )
 
 
 router = Router(tags=["memory"])
@@ -102,6 +220,12 @@ def _map_memory_error(exc: Exception) -> HttpError:
     if isinstance(exc, MemoryServiceError):
         return HttpError(502, str(exc))
     if isinstance(exc, RuntimeError):
+        return HttpError(503, str(exc))
+    from somabrain.db.outbox import OutboxBackpressureError
+
+    if isinstance(exc, OutboxBackpressureError):
+        # The outbox is the durable accept. Refuse the write rather than
+        # pretend — Rule 2 (no fallback) and T-6 together.
         return HttpError(503, str(exc))
     return HttpError(500, f"unexpected memory error: {exc}")
 
@@ -174,72 +298,99 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     persisted_to_ltm = False
     coord = None
     degraded_warnings: list[str] = []
+    # T-6 durability state. Defaults to the weakest claim; each path below
+    # promotes it only when it has evidence for that promotion.
+    durability: MemoryDurability = MemoryDurability.DEGRADED_JOURNAL
+    outbox_event_id: int | None = None
+    queued_for_ltm = False
 
     fast_ack = request.headers.get("X-Soma-Fast-Ack", "").lower() == "true" or bool(
         getattr(settings, "SOMABRAIN_MEMORY_FAST_ACK")
     )
 
-    if memsvc._is_circuit_open():
-        memsvc._queue_degraded(
-            "remember", {"key": payload.key, "payload": stored_payload}
-        )
-        degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
-    elif fast_ack:
-        # Fast-ack production path: ack after WM admit and durable outbox record,
-        # persist to LTM asynchronously so latency is bounded by WM operations.
-        try:
-            from somabrain.db.outbox import enqueue_memory_event
+    # T-6: durable accept BEFORE the store hop on every path. No 200 without
+    # the store ack or a verified outbox row.
+    try:
+        coord = memsvc.client().coord_for_key(payload.key, payload.universe)
+    except Exception as exc:
+        raise _map_memory_error(exc) from exc
 
-            coord = memsvc.client().coord_for_key(payload.key, payload.universe)
-            event_id = await sync_to_async(enqueue_memory_event)(
-                topic="memory.store",
-                payload={
-                    "key": payload.key,
-                    "payload": stored_payload,
-                    "request_id": request_id,
-                },
-                tenant_id=payload.tenant,
-                coord=coord,
-                extra_key=request_id,
-                check_backpressure_flag=True,
+    try:
+        outbox_event_id = await _durable_accept(
+            tenant=payload.tenant,
+            key=payload.key,
+            stored_payload=stored_payload,
+            request_id=request_id,
+            coord=coord,
+        )
+    except HttpError:
+        raise
+    except Exception as exc:
+        # NO FALLBACK — refuse if the durable accept cannot be written.
+        logger.error("Durable accept failed: %s", exc, exc_info=exc)
+        raise _map_memory_error(exc) from exc
+
+    queued_for_ltm = True
+    durability = MemoryDurability.DURABLE_OUTBOX
+
+    if memsvc._is_circuit_open():
+        # Store is down. The outbox row IS the durable accept; leave it
+        # pending for replay. Never fall through to a journal-only 200.
+        degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
+        degraded_warnings.append("ltm-persist:queued-async")
+    elif fast_ack:
+        # Fast-ack: bounded latency. LTM persist runs in the background; the
+        # outbox row is already verified. Hold a strong ref — asyncio only
+        # keeps weak refs to tasks (C1-7).
+        task = asyncio.create_task(
+            _persist_ltm_in_background(
+                memsvc,
+                payload.key,
+                stored_payload,
+                request_id,
+                outbox_event_id,
+                payload.tenant,
             )
-            asyncio.create_task(
-                _persist_ltm_in_background(
-                    memsvc,
-                    payload.key,
-                    stored_payload,
-                    request_id,
-                    event_id,
-                    payload.tenant,
-                )
-            )
-        except Exception as exc:
-            logger.warning(
-                "Fast-ack enqueue failed, falling back to sync persist: %s", exc
-            )
-            try:
-                coord = await memsvc.aremember(payload.key, stored_payload)
-                persisted_to_ltm = True
-            except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc2:
-                raise _map_memory_error(exc2) from exc2
-        else:
-            degraded_warnings.append("ltm-persist:queued-async")
+        )
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
+        degraded_warnings.append("ltm-persist:queued-async")
     else:
+        # Sync path: outbox row already written (above). Now the store hop.
         try:
             coord = await memsvc.aremember(payload.key, stored_payload)
             persisted_to_ltm = True
+            durability = MemoryDurability.PERSISTED_LTM
+            queued_for_ltm = False
+            from somabrain.db.outbox import mark_event_sent
+
+            await sync_to_async(mark_event_sent)(outbox_event_id)
         except CircuitBreakerOpen as exc:
-            memsvc._queue_degraded(
-                "remember", {"key": payload.key, "payload": stored_payload}
-            )
+            # Outbox row stays pending — durable and replayable.
             degraded_warnings.append(
                 f"memory-backend-unavailable:queued-for-replay:{exc}"
             )
+            degraded_warnings.append("ltm-persist:queued-async")
         except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
+            # Outbox row stays pending (T-6: replayed until the store acks).
+            _note_background_ltm_failure(
+                payload.tenant, payload.key, outbox_event_id, exc
+            )
             raise _map_memory_error(exc) from exc
         except Exception as exc:
             logger.exception("Unexpected store failure: %s", exc)
+            _note_background_ltm_failure(
+                payload.tenant, payload.key, outbox_event_id, exc
+            )
             raise HttpError(500, f"store failed: {exc}")
+
+    # Replay anything still pending for this tenant (C1-8: pending is not a
+    # dead end). Same store write, same mark-on-ack. Best effort — this call
+    # already has its own durable accept.
+    try:
+        await _replay_pending_to_store(memsvc, payload.tenant)
+    except Exception as exc:
+        logger.warning("Outbox replay pass failed for tenant=%s: %s", payload.tenant, exc)
 
     coordinate_list = _serialize_coord(coord)
     if coordinate_list is not None:
@@ -277,8 +428,21 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         persisted_to_ltm=persisted_to_ltm,
     )
 
+    # Surface prior background LTM persist failures on THIS call so a silent
+    # loss cannot hide behind a later clean write.
+    prior_failures = _background_ltm_failures.get(payload.tenant, 0)
+    if prior_failures:
+        warnings.append(
+            f"ltm-persist:background-failures:{prior_failures}"
+            ":outbox-rows-still-replayable"
+        )
+
+    # ok == durable accept (T-6): in LTM, or a verified durable outbox row.
+    # degraded_journal is NOT either of those.
+    durable_accept = persisted_to_ltm or durability == MemoryDurability.DURABLE_OUTBOX
+
     return {
-        "ok": True,
+        "ok": durable_accept,
         "tenant": payload.tenant,
         "namespace": payload.namespace,
         "key": payload.key,
@@ -293,10 +457,14 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         # when the caller omitted it and the stored value came from
         # ``value.kind`` or the seam default.
         "kind": stored_payload.get("kind"),
-        "error": None,
+        "error": None
+        if durable_accept
+        else "write journaled for replay but not accepted into LTM or the durable outbox",
+        "durability": durability,
+        "outbox_event_id": outbox_event_id,
         "promoted_to_wm": promoted_to_wm,
         "persisted_to_ltm": persisted_to_ltm,
-        "queued_for_ltm": not persisted_to_ltm and fast_ack,
+        "queued_for_ltm": queued_for_ltm,
         "deduplicated": False,
         "importance": signal_feedback.importance,
         "novelty": signal_feedback.novelty,
@@ -373,16 +541,57 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
             "results": [],
         }
 
+    # T-6: durable accept for EVERY item BEFORE the store hop. No item is
+    # allowed to reach the store without a verified outbox row.
+    outbox_ids: list[int] = []
+    try:
+        for ctx in item_contexts:
+            item_coord = None
+            try:
+                item_coord = memsvc.client().coord_for_key(ctx["key"], None)
+            except Exception:
+                item_coord = None
+            outbox_ids.append(
+                await _durable_accept(
+                    tenant=payload.tenant,
+                    key=ctx["key"],
+                    stored_payload=ctx["payload"],
+                    request_id=f"{request_id}:{len(outbox_ids)}",
+                    coord=item_coord,
+                )
+            )
+    except HttpError:
+        raise
+    except Exception as exc:
+        logger.error("Batch durable accept failed: %s", exc, exc_info=exc)
+        raise _map_memory_error(exc) from exc
+
     try:
         coords = await memsvc.aremember_bulk(
             [(ctx["key"], ctx["payload"]) for ctx in item_contexts], universe=None
         )
         persisted_to_ltm = True
     except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
+        # Outbox rows stay pending — T-6: replayed until the store acks.
+        for ctx, event_id in zip(item_contexts, outbox_ids):
+            _note_background_ltm_failure(payload.tenant, ctx["key"], event_id, exc)
         raise _map_memory_error(exc) from exc
     except Exception as exc:
         logger.exception("Unexpected batch store failure: %s", exc)
+        for ctx, event_id in zip(item_contexts, outbox_ids):
+            _note_background_ltm_failure(payload.tenant, ctx["key"], event_id, exc)
         raise HttpError(500, f"store failed: {exc}")
+
+    # Store acked the batch: close the outbox rows.
+    from somabrain.db.outbox import mark_event_sent
+
+    for event_id in outbox_ids:
+        try:
+            await sync_to_async(mark_event_sent)(event_id)
+        except Exception:
+            logger.exception(
+                "Failed to mark batch outbox event id=%s sent", event_id
+            )
 
     results = []
 

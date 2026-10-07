@@ -127,8 +127,16 @@ class RuntimeManager:
                 return get_wm_ltm_promoter(client, tenant_id=tenant_id)
 
             try:
-                with ThreadPoolExecutor(max_workers=1, thread_name_prefix="wm-promoter") as ex:
-                    return ex.submit(build).result(timeout=30)
+                from django.conf import settings as _dj
+
+                # Wait bound is the EXISTING consolidation timeout -- WM->LTM
+                # promotion IS consolidation. AP-01 forbids inventing a name
+                # when the knob already exists.
+                # max_workers is deliberately omitted: the interpreter default
+                # applies, and the hop size is not a tunable.
+                wait_s = float(_dj.SOMABRAIN_CONSOLIDATION_TIMEOUT_S)
+                with ThreadPoolExecutor(thread_name_prefix="wm-promoter") as ex:
+                    return ex.submit(build).result(timeout=wait_s)
             except Exception as exc:
                 logger.warning(
                     "WM promoter unavailable for tenant %s: %s", tenant_id, exc

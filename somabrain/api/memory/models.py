@@ -45,7 +45,6 @@ from pydantic import BaseModel, Field, model_validator
 
 class MemoryDurability(StrEnum):
     """Where a write is durably accepted (T-6). Named vocabulary (AP-06)."""
-
     PERSISTED_LTM = "persisted_ltm"
     DURABLE_OUTBOX = "durable_outbox"
     DEGRADED_JOURNAL = "degraded_journal"
@@ -354,10 +353,7 @@ class MemoryWriteResponse(BaseModel):
     store: str = Field("somafractalmemory", description="Store that acked the write")
     kind: str | None = None
     error: str | None = None
-    durability: MemoryDurability = Field(
-        ...,
-        description="persisted_ltm=LTM acked; durable_outbox=outbox replayed until LTM acks; degraded_journal=journal only",
-    )
+    durability: MemoryDurability = Field(..., description="persisted_ltm=LTM acked; durable_outbox=outbox until LTM acks; degraded_journal=journal only")
     outbox_event_id: int | None = Field(None, description="OutboxEvent PK when durable_outbox")
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
