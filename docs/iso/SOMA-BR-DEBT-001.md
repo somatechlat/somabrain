@@ -73,7 +73,7 @@ behaviour is observable at the cited `file:line`.
 | DEBT-006 | P2 | Neuromod | W2 | Serotonin stored/exported but never consumed for control — **FIXED (W2)** |
 | DEBT-007 | P1 | Neuromod | W2 | Rust neuromod ODE (`update`) is dead outside a migration script — **FIXED (W2)** |
 | DEBT-008 | P0 | Learning | W3 | Python vs Rust adaptation gains differ in sign and magnitude |
-| DEBT-009 | P1 | Learning | W3 | Three τ mechanisms + four floors (0.4 / 0.1 / 0.05 / 0.01) |
+| DEBT-009 | P1 | Learning | W3 | Three τ mechanisms + four floors (0.4 / 0.1 / 0.05 / 0.01) — **FIXED (W3)** — one `TAU_FLOOR=0.1` in `math/contracts.py`; `SOMABRAIN_TAU_MIN` defaults to it; `apply_tau_annealing` uses `anneal_tau(…, TAU_FLOOR)` |
 | DEBT-010 | P1 | Learning | W3 | Entropy cap rewrites τ (and all retrieval weights) in place |
 | DEBT-011 | P0 | Mathcore | W3 | Wiener λ* formula vs hardcoded constant — **FIXED (W4)** |
 | DEBT-012 | P1 | Mathcore | W3 | Theorem 1 `p*` formula ≥ 0.5 vs comment/docs "p ≈ 0.1" — **FIXED (W4)** |
