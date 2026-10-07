@@ -405,13 +405,19 @@ class TestSingleSource:
     def test_annealing_floor_matches_contract(self) -> None:
         import inspect
 
-        from somabrain.math.contracts import TAU_FLOOR
+        from somabrain.math.contracts import TAU_FLOOR, anneal_tau
 
         try:
             from somabrain.learning import annealing
         except Exception:
             pytest.skip("annealing requires Django settings")
 
-        src = inspect.getsource(annealing.apply_tau_decay)
-        assert "TAU_FLOOR" in src, "apply_tau_decay must floor at TAU_FLOOR"
-        assert "0.05" not in src, "hardcoded 0.05 floor must be removed"
+        # ONE schedule: apply_tau_annealing delegates to contracts.anneal_tau.
+        assert annealing.anneal_tau is anneal_tau
+        src = inspect.getsource(annealing.apply_tau_annealing)
+        assert "anneal_tau" in src
+        # Conflicting schedules are deleted.
+        for gone in ("apply_tau_decay", "linear_decay", "exponential_decay"):
+            assert not hasattr(annealing, gone)
+        # Floor is the single contract constant.
+        assert anneal_tau(0.0) == TAU_FLOOR
