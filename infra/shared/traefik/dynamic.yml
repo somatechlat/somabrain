@@ -30,7 +30,7 @@ http:
       service: somabrain-api
       tls: {}
 
-    # Eye of God Frontend Router
+    # Soma Agent Web UI
     frontend:
       rule: "Host(`app.localhost`) || Host(`localhost`)"
       entryPoints:

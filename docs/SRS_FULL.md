@@ -928,7 +928,7 @@ This SRS defines the functional and non-functional requirements for transforming
 | Lago | Open-source billing/metering platform |
 | ReBAC | Relationship-Based Access Control |
 | Tenant | A billable customer organization |
-| God Mode | Platform administrator (Tier 0) |
+| Platform Admin | Platform administrator (Tier 0) |
 | VIBE | Verification, Implementation, Behavior, Execution (coding standard) |
 
 ### 1.4 7 Personas Perspective
@@ -1044,7 +1044,7 @@ This SRS defines the functional and non-functional requirements for transforming
 
 ---
 
-### 2.7 Platform Admin (God Mode)
+### 2.7 Platform Admin (Platform Admin)
 
 | REQ-ID | Requirement | Priority | Status |
 |--------|-------------|----------|--------|
@@ -1068,7 +1068,7 @@ This SRS defines the functional and non-functional requirements for transforming
 | REQ-AUTH-005 | User-to-tenant assignment via JWT claims | CRITICAL | ⚠️ PARTIAL |
 | REQ-AUTH-006 | Role-based access (super-admin, tenant-admin, tenant-user) | HIGH | ⚠️ PARTIAL |
 | REQ-AUTH-007 | JWT validation for API requests | CRITICAL | ✅ EXISTS |
-| REQ-AUTH-008 | Eye of God admin client (PKCE SPA) | CRITICAL | ❌ MISSING |
+| REQ-AUTH-008 | Platform Admin admin client (PKCE SPA) | CRITICAL | ❌ MISSING |
 | REQ-AUTH-009 | SomaBrain API bearer-only client | CRITICAL | ⚠️ PARTIAL |
 | REQ-AUTH-010 | Custom `somabrain-roles` client scope | HIGH | ❌ MISSING |
 | REQ-AUTH-011 | `tenant_id` claim in JWT tokens | CRITICAL | ⚠️ PARTIAL |
@@ -1093,14 +1093,14 @@ This SRS defines the functional and non-functional requirements for transforming
 | Component | Configuration |
 |-----------|---------------|
 | Realm | `somabrain` |
-| Eye of God Client | `eye-of-god-admin` (public, PKCE) |
+| Platform Admin Client | `platform-admin` (public, PKCE) |
 | API Client | `somabrain-api` (bearer-only) |
 | Google IDP | `google` (secrets from vault) |
 | Facebook IDP | `facebook` (secrets from vault) |
 | GitHub IDP | `github` (secrets from vault) |
 
 **Design Documents:**
-- [eye-of-god-auth-flows.md](./flows/eye-of-god-auth-flows.md) - User journeys & screen designs
+- [platform-admin-auth-flows.md](./flows/platform-admin-auth-flows.md) - User journeys & screen designs
 - [admin-permissions-design.md](./flows/admin-permissions-design.md) - Permissions & admin screens
 
 ---
@@ -2147,11 +2147,11 @@ sequenceDiagram
 
 ---
 
-## 5. Tenant Onboarding Flow (God Mode)
+## 5. Tenant Onboarding Flow (Platform Admin)
 
 ```mermaid
 flowchart TD
-    A[God Mode Admin] --> B[Login via Keycloak]
+    A[Platform Admin Admin] --> B[Login via Keycloak]
     B --> C[Navigate to /platform/tenants]
     C --> D[Click 'Create Tenant']
     D --> E[Enter Tenant Details Form]
@@ -2533,11 +2533,11 @@ flowchart TD
 
 ---
 
-## 3. How to Create a Tenant (God Mode Admin)
+## 3. How to Create a Tenant (Platform Admin Admin)
 
 ```mermaid
 flowchart TD
-    A[God Mode Admin] --> B[Login via Keycloak SSO]
+    A[Platform Admin Admin] --> B[Login via Keycloak SSO]
     B --> C[Navigate to /platform/tenants]
     C --> D[View All Tenants Dashboard]
     D --> E[Click '+ Create Tenant']
@@ -2622,7 +2622,7 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant Admin as God Mode Admin
+    participant Admin as Platform Admin Admin
     participant API as SomaBrain API
     participant TM as TenantManager
     participant Lago
@@ -3187,7 +3187,7 @@ The response should show `circuit_open: false` and `memory_service: "healthy"`.
 ---
 
 *All changes are on the `strip` branch. Merge to `main` after verification.*
-# SRS-04: Administration - Eye of God (God Mode)
+# SRS-04: Administration - Platform Admin (Platform Admin)
 
 **Document Version:** 1.0.0  
 **Date:** 2025-12-24  
@@ -3198,7 +3198,7 @@ The response should show `circuit_open: false` and `memory_service: "healthy"`.
 
 ## 1. Overview
 
-The God Mode Administration module provides platform-level oversight, multi-tenant management, revenue dashboards, and audit capabilities for SomaBrain AAAS administrators.
+The Platform Admin Administration module provides platform-level oversight, multi-tenant management, revenue dashboards, and audit capabilities for SomaBrain AAAS administrators.
 
 ### 1.1 Scope
 
@@ -3211,7 +3211,7 @@ The God Mode Administration module provides platform-level oversight, multi-tena
 
 ---
 
-## 2. God Mode Dashboard Layout
+## 2. Platform Admin Dashboard Layout
 
 ```mermaid
 flowchart TB
@@ -3252,11 +3252,11 @@ flowchart TB
 
 ---
 
-## 3. God Mode Operations Flowchart
+## 3. Platform Admin Operations Flowchart
 
 ```mermaid
 flowchart TD
-    A[God Mode Admin Login] --> B{Action Type}
+    A[Platform Admin Admin Login] --> B{Action Type}
     
     B -->|View Tenants| C[GET /api/admin/tenants]
     C --> D[Display Tenant List]
@@ -3297,7 +3297,7 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant Admin as God Mode Admin
+    participant Admin as Platform Admin Admin
     participant API as Admin API
     participant Audit as audit.py
     participant Outbox as DB Outbox
@@ -3335,7 +3335,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    subgraph GodMode["God Mode Interface"]
+    subgraph GodMode["Platform Admin Interface"]
         Dashboard[Platform Dashboard]
         TenantMgmt[Tenant Management]
         AuditLog[Audit Log Viewer]
@@ -3468,7 +3468,7 @@ classDiagram
 
 | NFR-ID | Requirement | Implementation |
 |--------|-------------|----------------|
-| NFR-ADM-001 | God Mode requires admin JWT role | `require_admin_auth()` |
+| NFR-ADM-001 | Platform Admin requires admin JWT role | `require_admin_auth()` |
 | NFR-ADM-002 | Sensitive data never logged | `_sanitize_event()` masks tokens |
 | NFR-ADM-003 | All admin actions audited | `log_admin_action()` |
 | NFR-ADM-004 | Impersonation logged with reason | Audit event type |
@@ -4926,11 +4926,11 @@ docs/srs/
 │
 ├── flows/                     # User journey flows (19 docs)
 │   ├── README.md
-│   ├── eye-of-god-tenant-creation-flow.md
-│   ├── eye-of-god-system-monitoring-flow.md
-│   ├── eye-of-god-memory-administration-flow.md
-│   ├── eye-of-god-billing-management-flow.md
-│   ├── eye-of-god-user-administration-flow.md
+│   ├── platform-admin-tenant-creation-flow.md
+│   ├── platform-admin-system-monitoring-flow.md
+│   ├── platform-admin-memory-administration-flow.md
+│   ├── platform-admin-billing-management-flow.md
+│   ├── platform-admin-user-administration-flow.md
 │   ├── integrated-memory-operations-flow.md
 │   ├── developer-api-integration-flow.md
 │   ├── platform-onboarding-flow.md
@@ -4969,7 +4969,7 @@ docs/srs/
 | [Multi-Tenancy](./somabrain/multi-tenancy.md) | Tenant isolation |
 | [Billing](./somabrain/subscription-billing.md) | Lago integration |
 | [Authentication](./somabrain/authentication-sso.md) | Keycloak/SSO |
-| [God Mode Admin](./somabrain/god-mode-admin.md) | Platform admin |
+| [Platform Admin Admin](./somabrain/god-mode-admin.md) | Platform admin |
 | [Settings Reference](./somabrain/settings-reference.md) | All 300+ settings |
 
 ### SomaFractalMemory Service
@@ -4986,15 +4986,15 @@ docs/srs/
 | [Unified Architecture](./unified/unified-memory-platform.md) | Integration spec |
 | [Docker Deployment](./unified/docker-deployment.md) | Container architecture |
 
-### Eye of God Flows
+### Platform Admin Flows
 
 | Document | Screens |
 |----------|---------|
-| [Tenant Creation](./flows/eye-of-god-tenant-creation-flow.md) | 9 screens |
-| [System Monitoring](./flows/eye-of-god-system-monitoring-flow.md) | 4 screens |
-| [Memory Admin](./flows/eye-of-god-memory-administration-flow.md) | 4 screens |
-| [Billing Management](./flows/eye-of-god-billing-management-flow.md) | 4 screens |
-| [User Admin](./flows/eye-of-god-user-administration-flow.md) | 4 screens |
+| [Tenant Creation](./flows/platform-admin-tenant-creation-flow.md) | 9 screens |
+| [System Monitoring](./flows/platform-admin-system-monitoring-flow.md) | 4 screens |
+| [Memory Admin](./flows/platform-admin-memory-administration-flow.md) | 4 screens |
+| [Billing Management](./flows/platform-admin-billing-management-flow.md) | 4 screens |
+| [User Admin](./flows/platform-admin-user-administration-flow.md) | 4 screens |
 
 ---
 
@@ -5017,7 +5017,7 @@ docs/srs/
 ```mermaid
 flowchart TB
     subgraph UI["SomaBrain AAAS UI"]
-        Admin[Eye of God Admin]
+        Admin[Platform Admin Admin]
         Tenant[Tenant Portal]
     end
     
@@ -5082,7 +5082,7 @@ flowchart TB
 | 6 | `api-gateway.md` | 180 | ✅ Rate limiting, routing |
 | 7 | `memory-cognitive.md` | 170 | ✅ Cognitive architecture |
 | 8 | `memory_management.md` | 220 | ✅ Working memory, promotion |
-| 9 | `god-mode-admin.md` | 200 | ✅ Eye of God interface |
+| 9 | `god-mode-admin.md` | 200 | ✅ Platform Admin interface |
 | 10 | `observability.md` | 130 | ✅ Metrics, logging |
 | 11 | `security-classification.md` | 80 | ✅ RBAC |
 | 12 | `settings-reference.md` | 360 | ✅ 300+ settings |
@@ -5119,11 +5119,11 @@ flowchart TB
 
 | # | Flow Document | Screens | Status |
 |---|---------------|---------|--------|
-| 1 | `eye-of-god-tenant-creation-flow.md` | 9 | ✅ |
-| 2 | `eye-of-god-system-monitoring-flow.md` | 4 | ✅ |
-| 3 | `eye-of-god-memory-administration-flow.md` | 4 | ✅ |
-| 4 | `eye-of-god-billing-management-flow.md` | 4 | ✅ |
-| 5 | `eye-of-god-user-administration-flow.md` | 4 | ✅ |
+| 1 | `platform-admin-tenant-creation-flow.md` | 9 | ✅ |
+| 2 | `platform-admin-system-monitoring-flow.md` | 4 | ✅ |
+| 3 | `platform-admin-memory-administration-flow.md` | 4 | ✅ |
+| 4 | `platform-admin-billing-management-flow.md` | 4 | ✅ |
+| 5 | `platform-admin-user-administration-flow.md` | 4 | ✅ |
 | 6 | `integrated-memory-operations-flow.md` | 3 | ✅ |
 | 7 | `developer-api-integration-flow.md` | 5 | ✅ |
 | 8 | `platform-onboarding-flow.md` | 6 | ✅ |
@@ -5149,50 +5149,50 @@ flowchart TB
 |---------|----------|--------|
 | Platform First-Time Setup | `platform-onboarding-flow.md` | ✅ |
 | Server Settings Configuration | `settings-configuration-flow.md` | ✅ |
-| Platform Health Monitoring | `eye-of-god-system-monitoring-flow.md` | ✅ |
-| View Platform Metrics | `eye-of-god-system-monitoring-flow.md` | ✅ |
-| Configure Alerts | `eye-of-god-system-monitoring-flow.md` | ✅ |
-| Add Platform Admin | `eye-of-god-user-administration-flow.md` | ✅ |
-| Remove Platform Admin | `eye-of-god-user-administration-flow.md` | ✅ |
-| View Admin Activity Log | `eye-of-god-user-administration-flow.md` | ✅ |
+| Platform Health Monitoring | `platform-admin-system-monitoring-flow.md` | ✅ |
+| View Platform Metrics | `platform-admin-system-monitoring-flow.md` | ✅ |
+| Configure Alerts | `platform-admin-system-monitoring-flow.md` | ✅ |
+| Add Platform Admin | `platform-admin-user-administration-flow.md` | ✅ |
+| Remove Platform Admin | `platform-admin-user-administration-flow.md` | ✅ |
+| View Admin Activity Log | `platform-admin-user-administration-flow.md` | ✅ |
 
 ### 2.2 Tenant Management (Platform Admin)
 
 | Journey | Document | Status |
 |---------|----------|--------|
-| Create New Tenant | `eye-of-god-tenant-creation-flow.md` | ✅ |
-| View All Tenants | `eye-of-god-tenant-creation-flow.md` | ✅ |
+| Create New Tenant | `platform-admin-tenant-creation-flow.md` | ✅ |
+| View All Tenants | `platform-admin-tenant-creation-flow.md` | ✅ |
 | Edit Tenant Details | `tenant-creation-flow.md` | ✅ |
 | Suspend Tenant | `tenant-suspension-flow.md` | ✅ |
 | Reactivate Tenant | `tenant-suspension-flow.md` | ✅ |
 | Delete Tenant | `tenant-suspension-flow.md` | ✅ |
 | Impersonate Tenant | `impersonation-flow.md` | ✅ |
 | Exit Impersonation | `impersonation-flow.md` | ✅ |
-| Override Tenant Quotas | `eye-of-god-tenant-creation-flow.md` | ✅ |
+| Override Tenant Quotas | `platform-admin-tenant-creation-flow.md` | ✅ |
 
 ### 2.3 Billing & Revenue (Platform Admin)
 
 | Journey | Document | Status |
 |---------|----------|--------|
-| View Revenue Dashboard | `eye-of-god-billing-management-flow.md` | ✅ |
-| View All Subscriptions | `eye-of-god-billing-management-flow.md` | ✅ |
+| View Revenue Dashboard | `platform-admin-billing-management-flow.md` | ✅ |
+| View All Subscriptions | `platform-admin-billing-management-flow.md` | ✅ |
 | Change Tenant Subscription | `subscription-management-flow.md` | ✅ |
-| Apply Credit to Tenant | `eye-of-god-billing-management-flow.md` | ✅ |
+| Apply Credit to Tenant | `platform-admin-billing-management-flow.md` | ✅ |
 | View All Invoices | `billing-invoices-flow.md` | ✅ |
 | Export Invoice | `billing-invoices-flow.md` | ✅ |
-| Configure Subscription Plans | `eye-of-god-billing-management-flow.md` | ✅ |
+| Configure Subscription Plans | `platform-admin-billing-management-flow.md` | ✅ |
 
 ### 2.4 Memory Administration (Platform Admin)
 
 | Journey | Document | Status |
 |---------|----------|--------|
-| Browse All Memories | `eye-of-god-memory-administration-flow.md` | ✅ |
-| View Memory Details | `eye-of-god-memory-administration-flow.md` | ✅ |
-| Delete Memory | `eye-of-god-memory-administration-flow.md` | ✅ |
-| Platform Graph Explorer | `eye-of-god-memory-administration-flow.md` | ✅ |
-| Purge Tenant Data | `eye-of-god-memory-administration-flow.md` | ✅ |
-| Cleanup Stale Memories | `eye-of-god-memory-administration-flow.md` | ✅ |
-| Cleanup Orphaned Links | `eye-of-god-memory-administration-flow.md` | ✅ |
+| Browse All Memories | `platform-admin-memory-administration-flow.md` | ✅ |
+| View Memory Details | `platform-admin-memory-administration-flow.md` | ✅ |
+| Delete Memory | `platform-admin-memory-administration-flow.md` | ✅ |
+| Platform Graph Explorer | `platform-admin-memory-administration-flow.md` | ✅ |
+| Purge Tenant Data | `platform-admin-memory-administration-flow.md` | ✅ |
+| Cleanup Stale Memories | `platform-admin-memory-administration-flow.md` | ✅ |
+| Cleanup Orphaned Links | `platform-admin-memory-administration-flow.md` | ✅ |
 
 ### 2.5 Tenant User Journeys (Tenant Admin)
 
@@ -5284,7 +5284,7 @@ flowchart TB
 │ • Billing / Subscription        │──┼─┼──►• Vector Search (Milvus)     │
 │ • API Key Authentication        │  │ │  │ • Coordinate-based Recall    │
 │ • Rate Limiting / Quotas        │  │ │  │ • Namespace Isolation        │
-│ • Eye of God Admin UI           │  │ │  │                              │
+│ • Platform Admin Admin UI           │  │ │  │                              │
 │ • Keycloak SSO                  │  │ │  │ Multi-tenancy: tenant field  │
 │ • Lago Billing                  │  │ │  │                              │
 └─────────────────────────────────┘  │ │  └──────────────────────────────┘
@@ -5363,7 +5363,7 @@ flowchart TB
 
 ## Use Case Categories
 
-### 1. Platform Administration (God Mode)
+### 1. Platform Administration (Platform Admin)
 - [Admin Dashboard](#uc-01-admin-dashboard)
 - [Tenant Management](#uc-02-tenant-management)
 - [System Health Monitoring](#uc-03-system-health)
@@ -5399,14 +5399,14 @@ flowchart TB
 
 ## UC-01: Admin Dashboard
 
-**Actor:** Platform Admin (God Mode)  
+**Actor:** Platform Admin (Platform Admin)  
 **Goal:** Overview of entire platform health and metrics
 
 ### Screen: `/platform/dashboard`
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│ 🔱 Eye of God - Platform Dashboard                    [Admin ▼]   │
+│ 🔱 Platform Admin - Platform Dashboard                    [Admin ▼]   │
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────┐ │
@@ -5750,7 +5750,7 @@ flowchart TB
 
 | Use Case Category | Screen Count |
 |-------------------|--------------|
-| Platform Admin (God Mode) | 8 |
+| Platform Admin (Platform Admin) | 8 |
 | Tenant Operations | 10 |
 | Memory Operations | 6 |
 | Long-Term Storage | 5 |
@@ -5777,7 +5777,7 @@ flowchart TB
         Login["/login"]
     end
     
-    subgraph Platform["Eye of God - Platform Admin"]
+    subgraph Platform["Platform Admin - Platform Admin"]
         Dashboard["/platform<br/>📊 Dashboard"]
         
         subgraph Tenants["Tenant Management"]
@@ -6315,12 +6315,12 @@ sequenceDiagram
 ---
 
 *API Key Authentication Layer - SomaBrain AAAS Platform*
-# Eye of God: Complete Tenant Creation Journey
+# Platform Admin: Complete Tenant Creation Journey
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
 **Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
-**Purpose:** Complete step-by-step tenant creation flow in Eye of God interface
+**Purpose:** Complete step-by-step tenant creation flow in Platform Admin interface
 
 ---
 
@@ -6328,7 +6328,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    A[Login as Sys Admin] --> B[Access Eye of God Dashboard]
+    A[Login as Sys Admin] --> B[Access Platform Admin Dashboard]
     B --> C[Navigate to Tenants]
     C --> D[Click Create Tenant]
     D --> E[Fill Basic Info]
@@ -6343,14 +6343,14 @@ flowchart TB
 
 ---
 
-## 2. Screen 1: Eye of God Dashboard
+## 2. Screen 1: Platform Admin Dashboard
 
 **Route:** `/platform`  
 **Role Required:** Platform Admin+
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔱 Eye of God - SomaBrain AAAS Administration                [Admin ▼] [?] │
+│ 🔱 Platform Admin - SomaBrain AAAS Administration                [Admin ▼] [?] │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────┐│
@@ -6853,7 +6853,7 @@ Every tenant creation generates audit events:
 
 ---
 
-*Eye of God: Complete Tenant Creation Journey - SomaBrain AAAS*
+*Platform Admin: Complete Tenant Creation Journey - SomaBrain AAAS*
 # Memory Integration Flows
 
 **Version:** 1.0.0  
@@ -7124,7 +7124,7 @@ flowchart LR
 ---
 
 *Memory Integration Flows - SomaBrain AAAS*
-# Eye of God - Admin Permissions & User Management Design
+# Platform Admin - Admin Permissions & User Management Design
 
 **Document Version:** 1.1.0  
 **Date:** 2025-12-24  
@@ -7139,7 +7139,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    subgraph "Platform Level (Eye of God / SysAdmin)"
+    subgraph "Platform Level (Platform Admin / SysAdmin)"
         PD[Platform Defaults]
         PP[Platform OAuth Providers]
         PR[Platform Roles]
@@ -7177,7 +7177,7 @@ flowchart TD
 journey
     title SysAdmin Sets Platform Auth Defaults
     section Access
-      Login to Eye of God as super-admin: 5: SysAdmin
+      Login to Platform Admin as super-admin: 5: SysAdmin
       Navigate to Platform Settings: 5: SysAdmin
     section Configure Providers
       Enable Google OAuth: 5: SysAdmin
@@ -7317,7 +7317,7 @@ journey
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 👁️ Eye of God  │  Settings > Authentication Providers          │
+│ 👁️ Platform Admin  │  Settings > Authentication Providers          │
 ├─────────────────┴───────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
@@ -7345,7 +7345,7 @@ journey
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 👁️ Eye of God  │  Configure Identity Provider: Google OAuth    │
+│ 👁️ Platform Admin  │  Configure Identity Provider: Google OAuth    │
 ├─────────────────┴───────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
@@ -7407,13 +7407,13 @@ journey
 │  Redirect URIs *                                                │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │ http://localhost:5173/auth/callback                     │    │
-│  │ https://eyeofgod.somabrain.com/auth/callback    [+ Add] │    │
+│  │ https://app.somabrain.com/auth/callback    [+ Add] │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 │  JavaScript Origins                                             │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │ http://localhost:5173                                   │    │
-│  │ https://eyeofgod.somabrain.com                  [+ Add] │    │
+│  │ https://app.somabrain.com                  [+ Add] │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 │  ═══════════════════════════════════════════════════════════    │
@@ -7472,7 +7472,7 @@ journey
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 👁️ Eye of God  │  Users & Permissions                          │
+│ 👁️ Platform Admin  │  Users & Permissions                          │
 ├─────────────────┴───────────────────────────────────────────────┤
 │                                                                 │
 │  ┌───────────────────────────────┐  ┌────────────────────────┐  │
@@ -7500,7 +7500,7 @@ journey
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 👁️ Eye of God  │  Edit Role: tenant-admin                      │
+│ 👁️ Platform Admin  │  Edit Role: tenant-admin                      │
 ├─────────────────┴───────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────┐    │
@@ -7642,12 +7642,12 @@ flowchart TD
 ---
 
 *VIBE Coding Rules: ALL 10 PERSONAS applied*
-# Eye of God: Memory Administration Journey
+# Platform Admin: Memory Administration Journey
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
 **Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
-**Purpose:** Administer memories across all tenants from Eye of God
+**Purpose:** Administer memories across all tenants from Platform Admin
 
 ---
 
@@ -7655,7 +7655,7 @@ flowchart TD
 
 ```mermaid
 flowchart TB
-    A[Login as Sys Admin] --> B[Access Eye of God]
+    A[Login as Sys Admin] --> B[Access Platform Admin]
     B --> C[Click Memory Admin]
     C --> D[View Memory Overview]
     D --> E{Action?}
@@ -7914,7 +7914,7 @@ flowchart TB
 
 ---
 
-*Eye of God: Memory Administration Journey - SomaBrain AAAS*
+*Platform Admin: Memory Administration Journey - SomaBrain AAAS*
 # Audit Log Flow
 
 **Document Version:** 1.0.0  
@@ -8055,7 +8055,7 @@ flowchart LR
 
 ### The UI is a GENERIC Billing Manager
 
-The Eye of God UI presents a **provider-agnostic billing interface**. The user never interacts with "Lago" directly - they interact with:
+The Platform Admin UI presents a **provider-agnostic billing interface**. The user never interacts with "Lago" directly - they interact with:
 - Plans
 - Subscriptions  
 - Invoices
@@ -8068,7 +8068,7 @@ The backend maintains a **catalog of billing providers**. Each provider implemen
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                         EYE OF GOD UI                                           │
+│                         PLATFORM ADMIN UI                                           │
 │                    (Generic Billing Manager)                                    │
 │                                                                                 │
 │      Plans • Subscriptions • Invoices • Credits • Usage • Coupons             │
@@ -8140,7 +8140,7 @@ flowchart TB
     end
     
     subgraph Connection["First-Time Connection"]
-        B1[Login to Eye of God] --> B2[Navigate to Settings]
+        B1[Login to Platform Admin] --> B2[Navigate to Settings]
         B2 --> B3[Open Billing Configuration]
         B3 --> B4[Enter Lago URL]
         B4 --> B5[Enter API Key]
@@ -8193,7 +8193,7 @@ API Key: Obtained from Lago Cloud dashboard
 
 ---
 
-## 3. Screen 1: Eye of God Login
+## 3. Screen 1: Platform Admin Login
 
 **Route:** `/login`  
 **Role Required:** None (public)
@@ -8235,7 +8235,7 @@ API Key: Obtained from Lago Cloud dashboard
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│ 🔱 Eye of God - Platform Dashboard                              [Admin ▼] [?]  │
+│ 🔱 Platform Admin - Platform Dashboard                              [Admin ▼] [?]  │
 ├─────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                 │
 │ ⚠️ SETUP REQUIRED                                                               │
@@ -8693,7 +8693,7 @@ class BillingConfiguration(models.Model):
 ## 1. Overview
 
 This document describes the **complete flow** for creating tenants in the SomaBrain AAAS platform, covering:
-- God Mode Admin creating tenants
+- Platform Admin Admin creating tenants
 - Self-signup tenant registration
 - Backend processing and integrations
 
@@ -8704,7 +8704,7 @@ This document describes the **complete flow** for creating tenants in the SomaBr
 ```mermaid
 flowchart TB
     subgraph Methods["Two Paths to Create Tenant"]
-        A[God Mode Admin] -->|Manual| B[Admin Dashboard]
+        A[Platform Admin Admin] -->|Manual| B[Admin Dashboard]
         C[End User] -->|Self-Service| D[Public Signup]
     end
     
@@ -8714,7 +8714,7 @@ flowchart TB
 
 ---
 
-## 3. God Mode Admin: Create Tenant Flow
+## 3. Platform Admin Admin: Create Tenant Flow
 
 ### 3.1 Complete UI Flow
 
@@ -8764,7 +8764,7 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant Admin as God Mode Admin
+    participant Admin as Platform Admin Admin
     participant UI as AAAS UI (5173)
     participant API as SomaBrain API (9696)
     participant TM as TenantManager
@@ -8779,7 +8779,7 @@ sequenceDiagram
     UI->>API: POST /api/v1/admin/tenants
     
     Note over API: Authenticate Admin Token
-    API->>API: Verify God Mode Role
+    API->>API: Verify Platform Admin Role
     
     API->>TM: create_tenant(display_name, tier, ...)
     TM->>TM: Validate tier permissions
@@ -9032,12 +9032,12 @@ flowchart LR
 - [SRS-01: Multi-Tenancy](./01-multi-tenancy.md) - Tenant architecture details
 - [SRS-02: Subscription & Billing](./02-subscription-billing.md) - Lago integration
 - [SRS-03: Authentication & SSO](./03-authentication-sso.md) - Keycloak/OAuth setup
-- [SRS-04: God Mode Admin](./04-god-mode-admin.md) - Admin dashboard
+- [SRS-04: Platform Admin Admin](./04-god-mode-admin.md) - Admin dashboard
 
 ---
 
 *Document prepared by ALL 7 PERSONAS per VIBE Coding Rules v5.1*
-# Eye of God - Authentication User Journeys & Screen Designs
+# Platform Admin - Authentication User Journeys & Screen Designs
 
 **Document Version:** 1.0.0  
 **Date:** 2025-12-24  
@@ -9053,7 +9053,7 @@ flowchart LR
 | Priority | **P0 - CRITICAL** |
 |----------|-------------------|
 | Actor | Platform Super Admin |
-| Goal | Access Eye of God dashboard for first time |
+| Goal | Access Platform Admin dashboard for first time |
 
 **Journey Steps:**
 
@@ -9061,7 +9061,7 @@ flowchart LR
 journey
     title First-Time Platform Admin Login
     section Discovery
-      Navigate to Eye of God URL: 5: Admin
+      Navigate to Platform Admin URL: 5: Admin
       See login screen: 5: Admin
     section Authentication
       Click "Login with Google": 5: Admin
@@ -9069,7 +9069,7 @@ journey
       Enter Google credentials: 5: Admin
       Consent to permissions: 4: Admin
     section Onboarding
-      Redirect back to Eye of God: 3: System
+      Redirect back to Platform Admin: 3: System
       System creates admin user: 3: System
       See welcome dashboard: 5: Admin
 ```
@@ -9096,11 +9096,11 @@ journey
 journey
     title Returning Admin Login
     section Quick Access
-      Navigate to Eye of God: 5: Admin
+      Navigate to Platform Admin: 5: Admin
       Token valid: 3: System
       Auto-redirect to dashboard: 5: Admin
     section Token Expired
-      Navigate to Eye of God: 5: Admin
+      Navigate to Platform Admin: 5: Admin
       Token expired: 3: System
       Redirect to login: 3: Admin
       One-click Google login: 5: Admin
@@ -9166,7 +9166,7 @@ journey
 
 ```mermaid
 flowchart TD
-    A[User visits Eye of God] --> B{Has valid token?}
+    A[User visits Platform Admin] --> B{Has valid token?}
     B -->|Yes| C[Show Dashboard]
     B -->|No| D[Show Login Screen]
     D --> E[User clicks 'Login with Google']
@@ -9176,7 +9176,7 @@ flowchart TD
     H --> I[User authenticates with Google]
     I --> J[Google returns to Keycloak]
     J --> K[Keycloak returns auth_code]
-    K --> L[Eye of God exchanges code for tokens]
+    K --> L[Platform Admin exchanges code for tokens]
     L --> M[Store tokens in httpOnly cookie]
     M --> C
 ```
@@ -9206,7 +9206,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Access token expires] --> B[Eye of God detects 401]
+    A[Access token expires] --> B[Platform Admin detects 401]
     B --> C{Has refresh token?}
     C -->|No| D[Redirect to login]
     C -->|Yes| E[Call Keycloak /token with refresh_token]
@@ -9272,7 +9272,7 @@ classDiagram
 ```mermaid
 sequenceDiagram
     participant U as User Browser
-    participant E as Eye of God UI
+    participant E as Platform Admin UI
     participant K as Keycloak
     participant G as Google
     participant A as SomaBrain API
@@ -9308,7 +9308,7 @@ sequenceDiagram
 ┌─────────────────────────────────────────────────────────────┐
 │                                                             │
 │                    ╔═══════════════════╗                    │
-│                    ║   👁️ EYE OF GOD   ║                    │
+│                    ║   👁️ PLATFORM ADMIN   ║                    │
 │                    ║   AAAS Admin      ║                    │
 │                    ╚═══════════════════╝                    │
 │                                                             │
@@ -9406,7 +9406,7 @@ sequenceDiagram
 |------|----------|--------|--------------|
 | Create Keycloak realm | P0 | Low | None |
 | Google IDP setup | P0 | Medium | Realm |
-| Eye of God client | P0 | Low | Realm |
+| Platform Admin client | P0 | Low | Realm |
 | Login screen UI | P0 | Medium | Client |
 | JWT middleware | P0 | Medium | Realm |
 | Dashboard UI | P0 | High | Login |
@@ -9586,12 +9586,12 @@ stateDiagram-v2
 ---
 
 *Document prepared by ALL 7 PERSONAS per VIBE Coding Rules v5.1*
-# Eye of God: Billing & Subscription Management Journey
+# Platform Admin: Billing & Subscription Management Journey
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
 **Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
-**Purpose:** Manage billing, subscriptions, and revenue from Eye of God
+**Purpose:** Manage billing, subscriptions, and revenue from Platform Admin
 
 ---
 
@@ -9599,7 +9599,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TB
-    A[Login as Sys Admin] --> B[Access Eye of God]
+    A[Login as Sys Admin] --> B[Access Platform Admin]
     B --> C[View Billing Dashboard]
     C --> D{Action?}
     D --> E[View MRR/ARR]
@@ -9613,7 +9613,7 @@ flowchart TB
 
 ## 2. Integration: Lago Billing
 
-Eye of God integrates with Lago (open-source billing) at `http://lago:3000`.
+Platform Admin integrates with Lago (open-source billing) at `http://lago:3000`.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -9857,7 +9857,7 @@ Eye of God integrates with Lago (open-source billing) at `http://lago:3000`.
 
 ---
 
-*Eye of God: Billing Management Journey - SomaBrain AAAS*
+*Platform Admin: Billing Management Journey - SomaBrain AAAS*
 # User Journey: Integrated Memory Operations
 
 **Version:** 1.0.0  
@@ -10145,7 +10145,7 @@ User journey documentation for **SomaBrain management interfaces**. SomaBrain pr
 
 | # | Flow | Description |
 |---|------|-------------|
-| 01 | [Tenant Creation](./tenant-creation-flow.md) | Create tenant (God Mode + Self-Service) |
+| 01 | [Tenant Creation](./tenant-creation-flow.md) | Create tenant (Platform Admin + Self-Service) |
 | 02 | [User Authentication](./user-authentication-flow.md) | Login, logout, SSO, password reset |
 | 03 | [Subscription Management](./subscription-management-flow.md) | Upgrade, downgrade, cancel |
 | 04 | [Memory Operations](./memory-operations-flow.md) | Store, recall, search, delete |
@@ -10154,7 +10154,7 @@ User journey documentation for **SomaBrain management interfaces**. SomaBrain pr
 | 07 | [Settings & Configuration](./settings-configuration-flow.md) | API keys, integrations |
 | 08 | [Audit Log](./audit-log-flow.md) | View, filter, export |
 | 09 | [Tenant Suspension](./tenant-suspension-flow.md) | Suspend, reactivate, delete |
-| 10 | [Impersonation](./impersonation-flow.md) | God Mode impersonate |
+| 10 | [Impersonation](./impersonation-flow.md) | Platform Admin impersonate |
 
 ---
 
@@ -10298,7 +10298,7 @@ stateDiagram-v2
 ---
 
 *Document prepared by ALL 7 PERSONAS per VIBE Coding Rules v5.1*
-# Eye of God: System Monitoring & Health Journey
+# Platform Admin: System Monitoring & Health Journey
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
@@ -10335,7 +10335,7 @@ Based on SomaFractalMemory docs:
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │                 Eye of God (Admin UI)                               │   │
+│  │                 Platform Admin (Admin UI)                               │   │
 │  │                     Port: 5173                                       │   │
 │  └───────────────────────────┬─────────────────────────────────────────┘   │
 │                              │                                              │
@@ -10579,7 +10579,7 @@ Based on SomaFractalMemory docs:
 
 ## 7. API Endpoints Used
 
-The Eye of God monitoring screens consume these SomaFractalMemory endpoints:
+The Platform Admin monitoring screens consume these SomaFractalMemory endpoints:
 
 | Endpoint | Purpose |
 |----------|---------|
@@ -10603,7 +10603,7 @@ The Eye of God monitoring screens consume these SomaFractalMemory endpoints:
 
 ---
 
-*Eye of God: System Monitoring Journey - SomaBrain AAAS*
+*Platform Admin: System Monitoring Journey - SomaBrain AAAS*
 # User Management Flow
 
 **Document Version:** 1.0.0  
@@ -10757,11 +10757,11 @@ Complete tenant suspension flows: manual suspend, auto-suspend, reactivation, de
 
 ---
 
-## 2. Manual Suspension Flow (God Mode)
+## 2. Manual Suspension Flow (Platform Admin)
 
 ```mermaid
 flowchart TD
-    A[God Mode: Select Tenant] --> B[Click 'Suspend']
+    A[Platform Admin: Select Tenant] --> B[Click 'Suspend']
     B --> C[Enter Suspension Reason]
     C --> D[Confirm Dialog]
     D --> E{Confirm?}
@@ -10819,7 +10819,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    A[God Mode: View Suspended Tenant] --> B[Click 'Reactivate']
+    A[Platform Admin: View Suspended Tenant] --> B[Click 'Reactivate']
     B --> C{Suspension Reason?}
     C -->|Payment| D[Verify Payment Updated]
     C -->|Policy| E[Review Resolved]
@@ -10845,7 +10845,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[God Mode: Select Tenant] --> B[Click 'Delete']
+    A[Platform Admin: Select Tenant] --> B[Click 'Delete']
     B --> C{Is System Tenant?}
     C -->|Yes| D[Error: Cannot Delete]
     C -->|No| E[Enter Confirmation Text]
@@ -10896,7 +10896,7 @@ stateDiagram-v2
 ---
 
 *Document prepared by ALL 7 PERSONAS per VIBE Coding Rules v5.1*
-# Eye of God: User & Access Management Journey
+# Platform Admin: User & Access Management Journey
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
@@ -10909,7 +10909,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TB
-    A[Login as Super Admin] --> B[Access Eye of God]
+    A[Login as Super Admin] --> B[Access Platform Admin]
     B --> C[Click Platform Users]
     C --> D{Action?}
     D --> E[Add Platform Admin]
@@ -10923,14 +10923,14 @@ flowchart TB
 
 ## 2. Integration: Keycloak SSO
 
-Eye of God integrates with Keycloak at `http://keycloak:8080` for authentication and user management.
+Platform Admin integrates with Keycloak at `http://keycloak:8080` for authentication and user management.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     User Management Architecture                             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│   Eye of God                              Keycloak                          │
+│   Platform Admin                              Keycloak                          │
 │   (Admin UI)                              (:8080)                           │
 │   ┌─────────────┐                        ┌─────────────┐                    │
 │   │ Login Flow  │────OIDC auth──────────►│ Realm:      │                    │
@@ -11154,7 +11154,7 @@ Eye of God integrates with Keycloak at `http://keycloak:8080` for authentication
 │                                                                             │
 │ This session has been logged for audit purposes.                           │
 │                                                                             │
-│                                     [Return to Eye of God Dashboard]       │
+│                                     [Return to Platform Admin Dashboard]       │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -11200,7 +11200,7 @@ All user management actions generate audit events:
 
 ---
 
-*Eye of God: User & Access Management Journey - SomaBrain AAAS*
+*Platform Admin: User & Access Management Journey - SomaBrain AAAS*
 # Billing & Invoices Flow
 
 **Document Version:** 1.0.0  
@@ -12050,7 +12050,7 @@ stateDiagram-v2
 
 ## 1. Overview
 
-God Mode impersonation flows: start, view as tenant, exit, audit logging.
+Platform Admin impersonation flows: start, view as tenant, exit, audit logging.
 
 ---
 
@@ -12058,7 +12058,7 @@ God Mode impersonation flows: start, view as tenant, exit, audit logging.
 
 ```mermaid
 flowchart TD
-    A[God Mode: View Tenant] --> B[Click 'Impersonate']
+    A[Platform Admin: View Tenant] --> B[Click 'Impersonate']
     B --> C[Enter Reason for Impersonation]
     C --> D[Confirm Dialog]
     D --> E{Confirm?}
@@ -12078,7 +12078,7 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant Admin as God Mode Admin
+    participant Admin as Platform Admin Admin
     participant UI
     participant API
     participant Auth
@@ -12086,7 +12086,7 @@ sequenceDiagram
     
     Admin->>UI: Click 'Impersonate Tenant X'
     UI->>API: POST /api/admin/impersonate/{tenant_id}
-    API->>Auth: Verify God Mode Role
+    API->>Auth: Verify Platform Admin Role
     Auth-->>API: Authorized
     
     API->>API: Store Original Session
