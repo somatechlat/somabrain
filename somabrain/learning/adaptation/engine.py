@@ -497,9 +497,10 @@ class AdaptationEngine:
                 r.get("alpha", self._retrieval.alpha),
                 r.get("beta", self._retrieval.beta),
             )
-            self._retrieval.gamma, self._retrieval.tau = (
-                r.get("gamma", self._retrieval.gamma),
-                r.get("tau", self._retrieval.tau),
+            self._retrieval.gamma = r.get("gamma", self._retrieval.gamma)
+            # Restore never drops τ below the one schedule floor.
+            self._retrieval.tau = max(
+                TAU_FLOOR, float(r.get("tau", self._retrieval.tau))
             )
         if "utility" in state:
             u = state["utility"]
@@ -594,6 +595,9 @@ class AdaptationEngine:
         except Exception:
             pass
         try:
-            self._retrieval.tau = float(prior_params.get("tau", self._retrieval.tau))
+            # Restore never drops τ below the one schedule floor.
+            self._retrieval.tau = max(
+                TAU_FLOOR, float(prior_params.get("tau", self._retrieval.tau))
+            )
         except Exception:
             pass

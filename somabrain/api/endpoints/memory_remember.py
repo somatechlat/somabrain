@@ -50,6 +50,28 @@ _background_ltm_failures: dict[str, int] = {}
 _background_tasks: set[asyncio.Task] = set()
 
 
+def _memory_content_equal(existing_payload: dict, stored_payload: dict) -> bool:
+    """Compare the memory content of an outbox envelope with a new payload.
+
+    The envelope is ``{"key", "payload", "request_id", ...}``; ``request_id``
+    legitimately differs across retries of the same write, so only the
+    nested ``payload`` is identity. JSON-normalise both sides so a JSONField
+    round-trip (tuples -> lists) does not invent a difference.
+    """
+    import json
+
+    def _content(envelope: dict) -> Any:
+        inner = envelope.get("payload")
+        return inner if isinstance(inner, dict) else envelope
+
+    try:
+        return json.dumps(_content(existing_payload), sort_keys=True, default=str) == (
+            json.dumps(_content({"payload": stored_payload}), sort_keys=True, default=str)
+        )
+    except Exception:
+        return _content(existing_payload) == stored_payload
+
+
 async def _durable_accept(
     *,
     tenant: str,
@@ -57,11 +79,12 @@ async def _durable_accept(
     stored_payload: dict,
     request_id: str,
     coord: tuple | None,
-) -> int:
+) -> tuple[int, bool, bool]:
     """T-6 durable accept: outbox row written and verified before any hop.
 
     Idempotency is coord-only (INVARIANTS §3.3) — never a request id, never a
     UUID. Same (tenant, coord) collapses to one row. Refuses if row is missing.
+    Returns ``(event_id, deduplicated, already_sent)``.
     """
     from django.db import IntegrityError
 
@@ -82,13 +105,24 @@ async def _durable_accept(
             check_backpressure_flag=True,
         )
     except IntegrityError:
-        # Same (tenant, coord) already accepted — replay, not a new memory.
+        # Same (tenant, coord) already accepted. Refuse to claim a durable
+        # accept for a payload that is not what that row holds (F1).
         existing = await sync_to_async(get_event_by_dedupe_key)(
             _idempotency_key("memory.store", coord, tenant, None), tenant_id=tenant
         )
         if existing is None:
             raise
-        return int(existing.id)
+        existing_payload = existing.payload or {}
+        if not _memory_content_equal(existing_payload, stored_payload):
+            # Different payload for the same coord is NOT a replay (ADV A3).
+            # The new write would be silently dropped behind the old row.
+            raise HttpError(
+                409,
+                "idempotency collision: a different payload already exists for "
+                f"this coord (event={existing.id} status={existing.status}); "
+                "refusing to drop the new write",
+            )
+        return int(existing.id), True, existing.status == "sent"
     row = await sync_to_async(
         lambda: OutboxEvent.objects.filter(id=event_id)
         .values("id", "status", "tenant_id", "topic")
@@ -99,7 +133,7 @@ async def _durable_accept(
             503,
             f"durable accept failed: outbox row id={event_id} missing after enqueue",
         )
-    return event_id
+    return event_id, False, False
 
 
 async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int:
@@ -114,7 +148,9 @@ async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int
     def _fetch_pending():
         return list(
             OutboxEvent.objects.filter(
-                topic="memory.store", tenant_id=tenant_id, status="pending"
+                topic="memory.store",
+                tenant_id=tenant_id,
+                status__in=("pending", "failed"),
             )
             .order_by("created_at")
             .values("id", "payload")
@@ -259,16 +295,20 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     if not pool:
         raise HttpError(503, "Memory services not available")
 
-    # Tenant scoping: body tenant_id (seam) or tenant (rich), falling back to
-    # the X-Tenant-ID header. Never silently default — a write without a tenant
-    # cannot be isolated and is rejected.
-    tenant = (payload.tenant or payload.tenant_id or "").strip()
-    if not tenant:
-        tenant = (request.headers.get("X-Tenant-ID") or "").strip()
-    if not tenant:
-        raise HttpError(
-            400, "tenant_id is required (body tenant_id or X-Tenant-ID header)"
-        )
+    # Tenant scoping: credential-bound partition is the sole authority
+    # (tenant.py). Body tenant / header are assertions and must match (ADV A1).
+    from somabrain.tenant import get_tenant_sync
+
+    ctx_tenant = get_tenant_sync(request, payload.namespace)
+    body_tenant = (payload.tenant or payload.tenant_id or "").strip()
+    header_tenant = (request.headers.get("X-Tenant-ID") or "").strip()
+    for name, claimed in (("body", body_tenant), ("header", header_tenant)):
+        if claimed and claimed != ctx_tenant.tenant_id:
+            raise HttpError(
+                403,
+                f"tenant mismatch: {name} tenant does not match the authenticated credential",
+            )
+    tenant = ctx_tenant.tenant_id
     payload.tenant = tenant
     payload.tenant_id = tenant
 
@@ -325,7 +365,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         raise _map_memory_error(exc) from exc
 
     try:
-        outbox_event_id = await _durable_accept(
+        outbox_event_id, write_deduplicated, already_sent = await _durable_accept(
             tenant=payload.tenant,
             key=payload.key,
             stored_payload=stored_payload,
@@ -342,7 +382,13 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     queued_for_ltm = True
     durability = MemoryDurability.DURABLE_OUTBOX
 
-    if memsvc._is_circuit_open():
+    if already_sent:
+        # Pure idempotent replay of a write the STORE already acked. The row
+        # is ``sent`` — do not re-queue and do not claim a new hop (F5).
+        persisted_to_ltm = True
+        durability = MemoryDurability.PERSISTED_LTM
+        queued_for_ltm = False
+    elif memsvc._is_circuit_open():
         # Store is down. The outbox row IS the durable accept; leave it
         # pending for replay. Never fall through to a journal-only 200.
         degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
@@ -474,7 +520,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         "promoted_to_wm": promoted_to_wm,
         "persisted_to_ltm": persisted_to_ltm,
         "queued_for_ltm": queued_for_ltm,
-        "deduplicated": False,
+        "deduplicated": write_deduplicated,
         "importance": signal_feedback.importance,
         "novelty": signal_feedback.novelty,
         "ttl_applied": signal_feedback.ttl_seconds,
@@ -558,19 +604,23 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
     try:
         for ctx in item_contexts:
             item_coord = None
+            # ADV A2: item universe wins over the batch default. Identity
+            # (coord / dedupe key) must follow the item, not the envelope.
+            item_universe = ctx["payload"].get("universe") or payload.universe
             try:
-                item_coord = memsvc.client().coord_for_key(ctx["key"], None)
+                item_coord = memsvc.client().coord_for_key(ctx["key"], item_universe)
             except Exception:
                 item_coord = None
-            outbox_ids.append(
-                await _durable_accept(
-                    tenant=payload.tenant,
-                    key=ctx["key"],
-                    stored_payload=ctx["payload"],
-                    request_id=f"{request_id}:{len(outbox_ids)}",
-                    coord=item_coord,
-                )
+            accepted_id, item_dedup, item_already_sent = await _durable_accept(
+                tenant=payload.tenant,
+                key=ctx["key"],
+                stored_payload=ctx["payload"],
+                request_id=f"{request_id}:{len(outbox_ids)}",
+                coord=item_coord,
             )
+            outbox_ids.append(accepted_id)
+            ctx["deduplicated"] = item_dedup
+            ctx["already_sent"] = item_already_sent
     except HttpError:
         raise
     except Exception as exc:
@@ -579,7 +629,8 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
 
     try:
         coords = await memsvc.aremember_bulk(
-            [(ctx["key"], ctx["payload"]) for ctx in item_contexts], universe=None
+            [(ctx["key"], ctx["payload"]) for ctx in item_contexts],
+            universe=payload.universe,
         )
         persisted_to_ltm = True
     except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
@@ -593,16 +644,23 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
             _note_background_ltm_failure(payload.tenant, ctx["key"], event_id, exc)
         raise HttpError(500, f"store failed: {exc}")
 
-    # Store acked the batch: close the outbox rows.
+    # Store acked the batch: close the outbox rows. A row whose mark-sent
+    # fails is still queued for LTM (F5) — report that, do not hardcode.
     from somabrain.db.outbox import mark_event_sent
 
-    for event_id in outbox_ids:
+    for idx, event_id in enumerate(outbox_ids):
+        if item_contexts[idx].get("already_sent"):
+            # Already closed before this request; nothing left to queue.
+            item_contexts[idx]["queued_for_ltm"] = False
+            continue
         try:
             await sync_to_async(mark_event_sent)(event_id)
+            item_contexts[idx]["queued_for_ltm"] = False
         except Exception:
             logger.exception(
                 "Failed to mark batch outbox event id=%s sent", event_id
             )
+            item_contexts[idx]["queued_for_ltm"] = True
 
     results = []
 
@@ -635,13 +693,13 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
                 "coordinate": coordinate,
                 "promoted_to_wm": promoted_to_wm,
                 "persisted_to_ltm": persisted_to_ltm,
-                "queued_for_ltm": False,
+                "queued_for_ltm": bool(ctx.get("queued_for_ltm", not persisted_to_ltm)),
                 "durability": (
                     MemoryDurability.PERSISTED_LTM
                     if persisted_to_ltm
                     else MemoryDurability.DURABLE_OUTBOX
                 ),
-                "deduplicated": False,
+                "deduplicated": bool(ctx.get("deduplicated", False)),
                 "importance": signal_feedback.importance,
                 "novelty": signal_feedback.novelty,
                 "ttl_applied": signal_feedback.ttl_seconds,

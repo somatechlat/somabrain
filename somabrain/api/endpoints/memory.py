@@ -131,9 +131,13 @@ def _hit_text(payload: Any) -> str:
 
 
 def _hit_record(
-    payload: Any, score: float, layer: str, coord_list: list[float] | None
+    payload: Any, score: float | None, layer: str, coord_list: list[float] | None
 ) -> dict:
-    """Build one MemoryHit-shaped result plus its legacy aliases."""
+    """Build one MemoryHit-shaped result plus its legacy aliases.
+
+    ``score`` is passed through as stored. A missing score stays ``None`` —
+    never invented as 0.0 (score contract).
+    """
     payload_dict = payload if isinstance(payload, dict) else {"content": payload}
     coord_str = (
         f"{coord_list[0]},{coord_list[1]},{coord_list[2]}" if coord_list else None
@@ -142,7 +146,7 @@ def _hit_record(
         # seam MemoryHit fields
         "text": _hit_text(payload_dict),
         "coord": coord_str,
-        "score": float(score),
+        "score": float(score) if score is not None else None,
         "store": "somabrain" if layer == LAYER_WM else "somafractalmemory",
         "created_at": _iso_created_at(payload_dict),
         # legacy aliases
@@ -247,11 +251,15 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
         raise HttpError(503, "Memory pool not available")
 
     namespace = payload.namespace or ctx.namespace
-    # Tenant scoping: the request body's tenant wins so a remembered item is
-    # recallable with the same tenant_id even when the X-Tenant-ID header is
-    # absent (the seam carries tenant on every call, not only in headers).
-    tenant = (payload.tenant or payload.tenant_id or ctx.tenant_id or "").strip()
-    tenant = tenant or ctx.tenant_id
+    # Credential-bound tenant is the sole authority (ADV A1). Body/header
+    # tenant is an assertion and must match — never override the credential.
+    claimed = (payload.tenant or payload.tenant_id or "").strip()
+    if claimed and claimed != ctx.tenant_id:
+        raise HttpError(
+            403,
+            "tenant mismatch: body tenant does not match the authenticated credential",
+        )
+    tenant = ctx.tenant_id
     # Same fully-qualified namespace as the remember path so recall reads the
     # representation that was written (one write path, one read path).
     memsvc = MemoryService(pool, _resolve_namespace(tenant, namespace))
@@ -287,10 +295,14 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
         has no namespace field) still sees what it wrote under the default.
         """
         if not isinstance(hit_payload, dict):
-            return True
+            return False
         hit_tenant = hit_payload.get("tenant") or hit_payload.get("tenant_id")
         hit_namespace = hit_payload.get("namespace")
-        if hit_tenant and hit_tenant != tenant:
+        # Fail-closed (ADV C2): an untagged hit is NOT returned across a
+        # tenant boundary. Missing tenant → drop, do not assume same tenant.
+        if not hit_tenant:
+            return False
+        if hit_tenant != tenant:
             return False
         if hit_namespace and payload.namespace and hit_namespace != payload.namespace:
             return False
@@ -340,7 +352,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
                 results.append(
                     _hit_record(
                         payload_data,
-                        float(score) if isinstance(score, (int, float)) else 0.0,
+                        float(score) if isinstance(score, (int, float)) else None,
                         "ltm",
                         coord_list,
                     )
@@ -400,7 +412,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
                         results.append(
                             _hit_record(
                                 item,
-                                0.0,
+                                None,
                                 "wm",
                                 _as_float_list(item_payload.get("coordinate")),
                             )
@@ -497,8 +509,13 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
     )
     require_auth(request, settings)
 
-    tenant = (payload.tenant or payload.tenant_id or ctx.tenant_id or "").strip()
-    tenant = tenant or ctx.tenant_id
+    claimed = (payload.tenant or payload.tenant_id or "").strip()
+    if claimed and claimed != ctx.tenant_id:
+        raise HttpError(
+            403,
+            "tenant mismatch: body tenant does not match the authenticated credential",
+        )
+    tenant = ctx.tenant_id
     namespace = ctx.namespace
 
     coord_list = _as_float_list(payload.coord)

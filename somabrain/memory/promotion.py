@@ -89,9 +89,9 @@ class PromotionTracker:
         ...
                     tenant_id: Tenant ID for metrics labeling.
         """
-        from somabrain.brain_settings.models import BrainSetting
-
         if threshold is None:
+            from somabrain.brain_settings.models import BrainSetting
+
             threshold = BrainSetting.get("promotion_threshold", tenant_id)
         if min_ticks is None:
             # Reusing min_ticks logic or adding new setting if needed.
@@ -359,8 +359,7 @@ class WMLTMPromoter:
                 except Exception as link_exc:
                     logger.warning(
                         "Failed to create promotion link",
-                        item_id=item_id,
-                        error=str(link_exc),
+                        extra={"item_id": item_id, "error": str(link_exc)},
                     )
 
             # Mark as promoted
@@ -373,9 +372,11 @@ class WMLTMPromoter:
 
             logger.info(
                 "WM item promoted to LTM",
-                item_id=item_id,
-                ltm_coord=ltm_coord,
-                latency_ms=latency * 1000,
+                extra={
+                    "item_id": item_id,
+                    "ltm_coord": ltm_coord,
+                    "latency_ms": latency * 1000,
+                },
             )
 
             return PromotionResult(
@@ -402,14 +403,12 @@ class WMLTMPromoter:
             except Exception as outbox_exc:
                 logger.warning(
                     "Failed to queue promotion to outbox",
-                    item_id=item_id,
-                    error=str(outbox_exc),
+                    extra={"item_id": item_id, "error": str(outbox_exc)},
                 )
 
             logger.error(
                 "WM promotion failed, queued to outbox",
-                item_id=item_id,
-                error=str(exc),
+                extra={"item_id": item_id, "error": str(exc)},
             )
 
             return PromotionResult(
@@ -450,8 +449,7 @@ class WMLTMPromoter:
             # Log but don't raise - promotion failure is already recorded
             logger.error(
                 "Failed to queue promotion to outbox",
-                item_id=item_id,
-                error=str(exc),
+                extra={"item_id": item_id, "error": str(exc)},
             )
 
     async def refresh_recency(self, item_id: str) -> bool:
@@ -468,7 +466,7 @@ class WMLTMPromoter:
         # This would be called by the recall path when a promoted item is found
         # The actual recency refresh happens in WM, this just tracks the event
         if item_id in self._ltm_references:
-            logger.debug("Refreshing recency for promoted item", item_id=item_id)
+            logger.debug("Refreshing recency for promoted item", extra={"item_id": item_id})
             return True
         return False
 

@@ -277,11 +277,12 @@ def enqueue_event(
 def get_pending_events(
     limit: int = 100, tenant_id: str | None = None
 ) -> list[OutboxEvent]:
-    """Fetch a batch of pending events from the outbox.
+    """Fetch a batch of drainable events (pending + failed) from the outbox.
 
     Uses the optimized index ix_outbox_status_tenant_created for efficient queries.
+    Failed rows are retried on the next drain (T-6 replay covers both).
     """
-    qs = OutboxEvent.objects.filter(status="pending")
+    qs = OutboxEvent.objects.filter(status__in=("pending", "failed"))
     if tenant_id:
         qs = qs.filter(tenant_id=tenant_id)
     # Order by created_at to ensure FIFO processing
@@ -328,9 +329,11 @@ def get_pending_events_by_tenant_batch(
     so the poison row is visible instead of being published into a shared
     partition (AP-04).
     """
-    # Get distinct tenant IDs with pending events
+    # Get distinct tenant IDs with drainable events (pending + failed).
+    # A ``failed`` row is not a dead end: the next drain cycle retries it
+    # (T-6 replay covers pending and failed).
     tenant_ids = list(
-        OutboxEvent.objects.filter(status="pending")
+        OutboxEvent.objects.filter(status__in=("pending", "failed"))
         .values_list("tenant_id", flat=True)
         .distinct()
     )
@@ -349,7 +352,9 @@ def get_pending_events_by_tenant_batch(
     results = {}
     for tenant_id in tenant_ids:
         label = require_tenant(tenant_id)
-        qs = OutboxEvent.objects.filter(status="pending", tenant_id=tenant_id)
+        qs = OutboxEvent.objects.filter(
+            status__in=("pending", "failed"), tenant_id=tenant_id
+        )
         events = list(qs.order_by("created_at")[:limit_per_tenant])
         if events:
             results[label] = events
