@@ -146,7 +146,7 @@ SomaBrain supports multiple JWT providers:
 | Provider | Use Case | Integration |
 |---|---|---|
 | **Keycloak** | Enterprise identity | OIDC discovery, JWKS rotation |
-| **Auth0** | SaaS identity | OIDC discovery, JWKS rotation |
+| **Auth0** | Hosted identity | OIDC discovery, JWKS rotation |
 | **Custom** | Self-hosted | Static public key or JWKS URL |
 
 ### 3.4 Assessment
