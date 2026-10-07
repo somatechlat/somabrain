@@ -235,12 +235,21 @@ class AdaptationEngine:
                     float(rw.tau),
                 )
             except Exception:
-                (
-                    self._retrieval.alpha,
-                    self._retrieval.beta,
-                    self._retrieval.gamma,
-                    self._retrieval.tau,
-                ) = (1.0, 0.2, 0.1, 0.7)
+                # Restore path fallback: same settings chain as __init__
+                # (SOMABRAIN_RETRIEVAL_*). Never a code literal.
+                if settings is not None:
+                    self._retrieval.alpha = float(
+                        getattr(settings, "SOMABRAIN_RETRIEVAL_ALPHA", self._retrieval.alpha)
+                    )
+                    self._retrieval.beta = float(
+                        getattr(settings, "SOMABRAIN_RETRIEVAL_BETA", self._retrieval.beta)
+                    )
+                    self._retrieval.gamma = float(
+                        getattr(settings, "SOMABRAIN_RETRIEVAL_GAMMA", self._retrieval.gamma)
+                    )
+                    self._retrieval.tau = float(
+                        getattr(settings, "SOMABRAIN_RETRIEVAL_TAU", self._retrieval.tau)
+                    )
         if utility_defaults is not None:
             self._utility.lambda_, self._utility.mu, self._utility.nu = (
                 float(utility_defaults.lambda_),
@@ -248,7 +257,8 @@ class AdaptationEngine:
                 float(utility_defaults.nu),
             )
         else:
-            self._utility.lambda_, self._utility.mu, self._utility.nu = 1.0, 0.1, 0.05
+            # SOMABRAIN_UTILITY_* settings (defaults already on UtilityWeights).
+            self._utility = UtilityWeights()
         if base_lr is not None:
             self.set_base_learning_rate(float(base_lr))
         else:
@@ -564,10 +574,15 @@ class AdaptationEngine:
             pass
         try:
             self.apply_feedback(utility=reward, reward=reward)
+            tau_dec = 0.05
+            tau_max = 10.0
+            if settings is not None:
+                tau_dec = float(getattr(settings, "SOMABRAIN_TAU_INC_DOWN", tau_dec))
+                tau_max = float(getattr(settings, "SOMABRAIN_TAU_MAX", tau_max))
             self._retrieval.tau = _clamp(
-                self._retrieval.tau * (1.0 - 0.05 * error),
+                self._retrieval.tau * (1.0 - tau_dec * error),
                 TAU_FLOOR,
-                10.0,
+                tau_max,
             )
         except Exception:
             pass

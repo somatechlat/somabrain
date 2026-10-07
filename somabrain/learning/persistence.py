@@ -95,18 +95,27 @@ def persist_state(
     if not redis_client:
         return
     state_key = f"adaptation:state:{tenant_id}"
+
+    def _sf(name: str, default: float) -> float:
+        try:
+            from django.conf import settings as dj_settings
+
+            return float(getattr(dj_settings, name, default))
+        except Exception:
+            return default
+
     state_data = json.dumps(
         {
             "retrieval": {
-                "alpha": float(retrieval.get("alpha", 1.0)),
-                "beta": float(retrieval.get("beta", 0.2)),
-                "gamma": float(retrieval.get("gamma", 0.1)),
-                "tau": float(retrieval.get("tau", 0.7)),
+                "alpha": float(retrieval.get("alpha", _sf("SOMABRAIN_RETRIEVAL_ALPHA", 1.0))),
+                "beta": float(retrieval.get("beta", _sf("SOMABRAIN_RETRIEVAL_BETA", 0.2))),
+                "gamma": float(retrieval.get("gamma", _sf("SOMABRAIN_RETRIEVAL_GAMMA", 0.1))),
+                "tau": float(retrieval.get("tau", _sf("SOMABRAIN_RETRIEVAL_TAU", 0.7))),
             },
             "utility": {
-                "lambda_": float(utility.get("lambda_", 1.0)),
-                "mu": float(utility.get("mu", 0.1)),
-                "nu": float(utility.get("nu", 0.05)),
+                "lambda_": float(utility.get("lambda_", _sf("SOMABRAIN_UTILITY_LAMBDA", 1.0))),
+                "mu": float(utility.get("mu", _sf("SOMABRAIN_UTILITY_MU", 0.1))),
+                "nu": float(utility.get("nu", _sf("SOMABRAIN_UTILITY_NU", 0.05))),
             },
             "feedback_count": int(feedback_count),
             "learning_rate": float(learning_rate),

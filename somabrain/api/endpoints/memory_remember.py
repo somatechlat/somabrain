@@ -177,7 +177,16 @@ async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int
         except Exception as exc:
             _note_background_ltm_failure(tenant_id, str(key), row["id"], exc)
             continue
-        await sync_to_async(mark_event_sent)(row["id"])
+        try:
+            marked = await sync_to_async(mark_event_sent)(row["id"])
+        except Exception:
+            marked = False
+        if not marked:
+            # Store accepted; bookkeeping did not. Row stays replayable.
+            logger.warning(
+                "outbox mark_event_sent failed id=%s tenant=%s", row["id"], tenant_id
+            )
+            continue
         closed += 1
     return closed
 
@@ -229,7 +238,14 @@ async def _persist_ltm_in_background(
     from somabrain.db.outbox import mark_event_sent
 
     try:
-        await sync_to_async(mark_event_sent)(event_id)
+        marked = await sync_to_async(mark_event_sent)(event_id)
+        if not marked:
+            logger.warning(
+                "outbox mark_event_sent returned False id=%s tenant=%s",
+                event_id,
+                tenant_id,
+            )
+            raise RuntimeError(f"mark_event_sent failed for event {event_id}")
     except Exception:
         logger.exception(
             "Failed to mark outbox event id=%s sent for tenant=%s key=%s",
@@ -420,7 +436,9 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
             from somabrain.db.outbox import mark_event_sent
 
             try:
-                await sync_to_async(mark_event_sent)(outbox_event_id)
+                marked = await sync_to_async(mark_event_sent)(outbox_event_id)
+                if not marked:
+                    degraded_warnings.append("outbox-mark-sent-returned-false")
             except Exception as mark_exc:
                 # Store already accepted. A failed mark-sent leaves the row
                 # replayable — it does NOT undo the store write or flip ok
@@ -660,8 +678,14 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
             item_contexts[idx]["queued_for_ltm"] = False
             continue
         try:
-            await sync_to_async(mark_event_sent)(event_id)
-            item_contexts[idx]["queued_for_ltm"] = False
+            marked = await sync_to_async(mark_event_sent)(event_id)
+            if not marked:
+                logger.warning(
+                    "outbox mark_event_sent returned False id=%s", event_id
+                )
+                item_contexts[idx]["queued_for_ltm"] = True
+            else:
+                item_contexts[idx]["queued_for_ltm"] = False
         except Exception:
             logger.exception(
                 "Failed to mark batch outbox event id=%s sent", event_id

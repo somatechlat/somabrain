@@ -474,11 +474,13 @@ def _rescore_and_rank_hits(
         new_score: float | None
         if query_arr is not None and stored_vec is not None:
             if stored_vec.size != query_arr.size:
-                raise RuntimeError(
-                    "stored vector dim "
-                    f"{stored_vec.size} != query vector dim {query_arr.size} — "
-                    "refusing to score across embedding spaces (INVARIANTS §2.1)"
-                )
+                # Skip, do not abort the batch (ADV H3). Cross-space rows
+                # must not kill every other hit.
+                try:
+                    payload["_unscorable"] = "vector-dim-mismatch"
+                except Exception:
+                    pass
+                continue
             # Same space, both vectors present: let the scorer compute cosine.
             # The store hint is not passed — it would override the real cosine.
             # Recency is applied once, here inside scorer.score(age_seconds=...).
