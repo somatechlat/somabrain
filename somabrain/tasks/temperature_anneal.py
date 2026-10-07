@@ -1,13 +1,12 @@
 """Temperature annealing background task.
 
-The task periodically decays the ``tau`` (softmax temperature) used by the
-integrator hub.  The schedule constants (``TAU_DECAY_FACTOR``, ``TAU_FLOOR``,
-``TAU_INTERVAL``) come from ``somabrain.math.contracts`` — the single
-math-contract source (DEF-05/DEF-06 fixed: one set, no settings twins).
+THE single tau schedule (DEBT-009 FIXED, W3): every ``TAU_INTERVAL``
+seconds apply the geometric law from ``somabrain.math.contracts``::
 
-The implementation is a simple ``asyncio`` coroutine that sleeps for the
-configured interval (seconds) and then multiplies the current ``tau`` by
-the decay factor while respecting the floor.
+    τ ← max(TAU_FLOOR, τ · TAU_DECAY_FACTOR)
+
+There is no linear/exponential/step variant.  The same closed form is
+``contracts.anneal_tau`` / ``somabrain_rs.anneal_tau``.
 
 Usage example::
 
@@ -15,7 +14,7 @@ Usage example::
     asyncio.create_task(run_anneal_task())
 
 The function returns when cancelled; any configuration error raises a
-``RuntimeError`` immediately (fail‑fast).
+``RuntimeError`` immediately (fail-fast).
 """
 
 from __future__ import annotations
@@ -24,7 +23,12 @@ import asyncio
 import logging
 from typing import Any
 
-from somabrain.math.contracts import TAU_DECAY_FACTOR, TAU_FLOOR, TAU_INTERVAL
+from somabrain.math.contracts import (
+    TAU_DECAY_FACTOR,
+    TAU_FLOOR,
+    TAU_INTERVAL,
+    anneal_tau,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +76,7 @@ async def run_anneal_task(
         while True:
             await asyncio.sleep(cfg["interval"])
             current = get_current_tau()
-            new_tau = max(cfg["floor"], current * cfg["factor"])
+            new_tau = anneal_tau(current, cfg["factor"], cfg["floor"])
             if new_tau != current:
                 set_tau(new_tau)
                 logger.debug("Annealed tau from %s to %s", current, new_tau)

@@ -30,13 +30,11 @@ __all__ = [
     # Tenant cache
     "TenantOverridesCache",
     "get_tenant_override",
-    # Annealing
+    # Annealing (ONE geometric schedule + entropy over mixture weights)
+    "anneal_tau",
     "apply_tau_annealing",
-    "apply_tau_decay",
     "check_entropy_cap",
     "get_entropy_cap",
-    "linear_decay",
-    "exponential_decay",
     # Numeric helpers
     "clamp",
     "weight_delta",
@@ -59,12 +57,10 @@ _LAZY: dict[str, tuple[str, str]] = {
     "AdaptationConstraints": (".config", "AdaptationConstraints"),
     "TenantOverridesCache": (".tenant_cache", "TenantOverridesCache"),
     "get_tenant_override": (".tenant_cache", "get_tenant_override"),
+    "anneal_tau": (".annealing", "anneal_tau"),
     "apply_tau_annealing": (".annealing", "apply_tau_annealing"),
-    "apply_tau_decay": (".annealing", "apply_tau_decay"),
     "check_entropy_cap": (".annealing", "check_entropy_cap"),
     "get_entropy_cap": (".annealing", "get_entropy_cap"),
-    "linear_decay": (".annealing", "linear_decay"),
-    "exponential_decay": (".annealing", "exponential_decay"),
     "clamp": (".adaptation.utils", "clamp"),
     "weight_delta": (".adaptation.utils", "weight_delta"),
     "get_redis": (".persistence", "get_redis"),

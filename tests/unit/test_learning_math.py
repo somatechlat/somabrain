@@ -181,33 +181,39 @@ class TestEntropyCapEnforcement:
     """
 
     def test_sharpening_reduces_entropy(self):
-        """Sharpening should reduce entropy to below cap."""
+        """Sharpening should reduce mixture-weight entropy to below cap."""
         pytest.importorskip("django")
         import django
 
         django.setup()
 
+        from somabrain.learning import annealing as annealing_mod
         from somabrain.learning.annealing import check_entropy_cap
 
-        # High entropy configuration (uniform-ish weights)
-        alpha, beta, gamma, tau, was_sharpened = check_entropy_cap(
-            alpha=0.3,
-            beta=0.3,
-            gamma=0.2,
-            tau=0.2,
-            tenant_id="test_sharpen",
-        )
+        original = annealing_mod.get_entropy_cap
+        annealing_mod.get_entropy_cap = lambda _tid: 0.5
+        try:
+            alpha, beta, gamma, tau, was_sharpened = check_entropy_cap(
+                alpha=0.3,
+                beta=0.3,
+                gamma=0.2,
+                tau=0.2,
+                tenant_id="test_sharpen",
+            )
+        finally:
+            annealing_mod.get_entropy_cap = original
 
-        # If cap triggered, verify entropy is now below cap
         if was_sharpened:
-            vec = [alpha, beta, gamma, tau]
+            # Entropy is over mixture weights (α, β, γ) only.
+            vec = [alpha, beta, gamma]
             s = sum(vec)
             probs = [v / s for v in vec]
             entropy = -sum(p * math.log(p) for p in probs if p > 0)
-            # Should be reduced
             assert (
                 entropy < 1.4
             ), f"Entropy {entropy} should be reduced after sharpening"
+        # τ is never reshaped (DEBT-010).
+        assert tau == 0.2
 
     def test_no_crash_on_high_entropy(self):
         """check_entropy_cap should NEVER raise RuntimeError (INTEGRAL behavior)."""
@@ -254,70 +260,82 @@ class TestEntropyCapEnforcement:
         if not was_sharpened:
             # Values should be unchanged
             assert abs(alpha - 0.9) < 0.01 or abs(alpha - 0.9) / 0.9 < 0.5
+        assert tau == 0.02
+
+    def test_tau_unchanged_when_sharpening(self):
+        """DEBT-010: entropy cap must not rescale τ."""
+        pytest.importorskip("django")
+        import django
+
+        django.setup()
+
+        from somabrain.learning import annealing as annealing_mod
+        from somabrain.learning.annealing import check_entropy_cap
+
+        original = annealing_mod.get_entropy_cap
+        annealing_mod.get_entropy_cap = lambda _tid: 0.5
+        try:
+            _, _, _, tau_out, _ = check_entropy_cap(
+                alpha=0.3,
+                beta=0.3,
+                gamma=0.2,
+                tau=0.7,
+                tenant_id="test_tau_stable",
+            )
+        finally:
+            annealing_mod.get_entropy_cap = original
+        assert tau_out == 0.7
 
 
 @pytest.mark.django_db
 class TestTauAnnealing:
-    """Tau annealing schedule tests.
+    """ONE tau anneal law (geometric) — W3 / DEBT-009.
 
-    Mathematical formulas:
-        Linear:      τ(t) = max(τ_min, τ_0 - α × t)
-        Exponential: τ(t) = τ_0 × exp(-γ × t)
+    τ(t+1) = max(TAU_FLOOR, τ(t) · TAU_DECAY_FACTOR)
     """
 
-    def test_linear_decay_formula(self):
-        """Test linear decay: τ(t) = max(τ_min, τ_0 - α × t)"""
+    def test_geometric_formula(self):
+        """Test the single geometric schedule."""
         pytest.importorskip("django")
         import django
 
         django.setup()
 
-        from somabrain.learning.annealing import linear_decay
+        from somabrain.learning.annealing import apply_tau_annealing
+        from somabrain.math.contracts import TAU_DECAY_FACTOR, TAU_FLOOR
 
-        result = linear_decay(tau_0=1.0, tau_min=0.1, alpha=0.1, t=5)
-        # Rust implementation uses t, not t+1
-        expected = max(0.1, 1.0 - 0.1 * 5)  # 0.5
-        assert abs(result - expected) < 1e-6, f"Expected {expected}, got {result}"
+        result = apply_tau_annealing(1.0)
+        expected = max(TAU_FLOOR, 1.0 * TAU_DECAY_FACTOR)
+        assert abs(result - expected) < 1e-12, f"Expected {expected}, got {result}"
 
-    def test_exponential_decay_formula(self):
-        """Test exponential decay: τ(t) = τ_0 × exp(-γ × t)"""
+    def test_tau_floor_respected(self):
+        """Tau should never go below TAU_FLOOR."""
         pytest.importorskip("django")
         import django
 
         django.setup()
 
-        from somabrain.learning.annealing import exponential_decay
+        from somabrain.learning.annealing import apply_tau_annealing
+        from somabrain.math.contracts import TAU_FLOOR
 
-        result = exponential_decay(tau_0=1.0, gamma=0.9, t=5)
-        # Rust implementation uses true exponential decay: tau * exp(-gamma * t)
-        # NOT geometric decay (gamma^t)
-        expected = 1.0 * math.exp(-0.9 * 5)  # ~0.0111
-        assert abs(result - expected) < 1e-6, f"Expected {expected}, got {result}"
+        result = apply_tau_annealing(0.01)
+        assert result >= TAU_FLOOR, f"Tau {result} should respect floor {TAU_FLOOR}"
 
-    def test_tau_min_floor_respected(self):
-        """Tau should never go below tau_min."""
-
+    def test_geometric_monotonic(self):
+        """Geometric decay should be monotonically non-increasing."""
         pytest.importorskip("django")
         import django
 
         django.setup()
 
-        from somabrain.learning.annealing import linear_decay
+        from somabrain.learning.annealing import apply_tau_annealing
 
-        result = linear_decay(tau_0=1.0, tau_min=0.5, alpha=0.5, t=100)
-        assert result >= 0.5, f"Tau {result} should respect minimum floor 0.5"
-
-    def test_exponential_decay_monotonic(self):
-        """Exponential decay should be monotonically decreasing."""
-        pytest.importorskip("django")
-        import django
-
-        django.setup()
-
-        from somabrain.learning.annealing import exponential_decay
-
-        values = [exponential_decay(tau_0=1.0, gamma=0.9, t=t) for t in range(10)]
+        tau = 1.0
+        values = []
+        for _ in range(10):
+            tau = apply_tau_annealing(tau)
+            values.append(tau)
         for i in range(1, len(values)):
             assert (
-                values[i] < values[i - 1]
-            ), f"Exponential decay should be monotonic: {values}"
+                values[i] <= values[i - 1]
+            ), f"Geometric decay should be monotonic: {values}"

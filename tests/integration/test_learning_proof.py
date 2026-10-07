@@ -119,27 +119,14 @@ def test_learning_proof_entropy_reduction():
 
 @pytest.mark.integration
 @pytest.mark.django_db
-@pytest.mark.xfail(
-    reason="Test configuration injection for annealing settings is flaky in CI environment"
-)
 def test_learning_proof_tau_annealing():
-    """Prove that tau (temperature) decays over time to stabilize learning."""
-    # Enable annealing by patching settings (annealing module reads settings, not DB)
-    from django.conf import settings
+    """ONE geometric tau schedule: τ ← max(TAU_FLOOR, τ · TAU_DECAY_FACTOR)."""
+    from somabrain.learning.annealing import apply_tau_annealing
+    from somabrain.math.contracts import TAU_DECAY_FACTOR, TAU_FLOOR
 
-    # We must patch the attributes looked up by annealing.py
-    # annealing.py looks for 'tau_anneal_rate' and 'tau_anneal_mode' on settings
-    settings.tau_anneal_rate = 0.05
-    settings.tau_anneal_mode = "linear"
-
-    engine = AdaptationEngine(tenant_id="test_tenant")
-    initial_tau = engine.retrieval_weights.tau
-
-    # Simulate time passing with feedback
+    tau = 1.0
     for _ in range(100):
-        engine.apply_feedback(utility=0.5, reward=0.1)
-        # Tau decay is automatic in adaptation_engine via _apply_tau_and_entropy
-
-    final_tau = engine.retrieval_weights.tau
-    print(f"Tau annealing: {initial_tau:.4f} -> {final_tau:.4f}")
-    assert final_tau < initial_tau
+        tau = apply_tau_annealing(tau)
+    expected = max(TAU_FLOOR, 1.0 * (TAU_DECAY_FACTOR**100))
+    assert tau == pytest.approx(expected, abs=1e-12)
+    assert tau >= TAU_FLOOR

@@ -25,12 +25,9 @@ except Exception:  # pragma: no cover - optional dependency
     settings = None
 
 from somabrain.learning.annealing import (
-    apply_tau_annealing,
-    apply_tau_decay,
     check_entropy_cap,
-    exponential_decay,
-    linear_decay,
 )
+from somabrain.math.contracts import TAU_FLOOR
 from somabrain.learning.config import (
     AdaptationConstraints,
     AdaptationGains,
@@ -398,29 +395,18 @@ class AdaptationEngine:
         )
 
     def _apply_tau_and_entropy(self) -> None:
-        """Execute apply tau and entropy."""
+        """Entropy-cap mixture weights only; τ is never reshaped here.
 
+        The ONE tau schedule is the geometric law
+        ``τ ← max(TAU_FLOOR, τ · TAU_DECAY_FACTOR)`` applied every
+        ``TAU_INTERVAL`` by ``somabrain.tasks.temperature_anneal``.
+        """
         if (
             not hasattr(self, "_tenant_override")
             or getattr(self, "_tenant_override_id", None) != self._tenant_id
         ):
             self._tenant_override = _get_tenant_override(self._tenant_id)
             self._tenant_override_id = self._tenant_id
-        new_tau, was_annealed = apply_tau_annealing(
-            self._retrieval.tau,
-            self._tenant_id,
-            getattr(self, "_feedback_count", 0),
-            self._tenant_override,
-        )
-        self._retrieval.tau = new_tau
-        self._retrieval.tau = apply_tau_decay(
-            self._retrieval.tau,
-            self._tenant_id,
-            self._tenant_override,
-            skip_if_annealed=True,
-            was_annealed=was_annealed,
-        )
-        # INTEGRAL: check_entropy_cap now returns sharpened weights, never crashes
         (
             self._retrieval.alpha,
             self._retrieval.beta,
@@ -578,7 +564,9 @@ class AdaptationEngine:
         try:
             self.apply_feedback(utility=reward, reward=reward)
             self._retrieval.tau = _clamp(
-                self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0
+                self._retrieval.tau * (1.0 - 0.05 * error),
+                TAU_FLOOR,
+                10.0,
             )
         except Exception:
             pass
@@ -609,11 +597,3 @@ class AdaptationEngine:
             self._retrieval.tau = float(prior_params.get("tau", self._retrieval.tau))
         except Exception:
             pass
-
-    def linear_decay(self, tau_0: float, tau_min: float, alpha: float, t: int) -> float:
-        """Execute linear decay."""
-        return linear_decay(tau_0, tau_min, alpha, t)
-
-    def exponential_decay(self, tau_0: float, gamma: float, t: int) -> float:
-        """Execute exponential decay."""
-        return exponential_decay(tau_0, gamma, t)

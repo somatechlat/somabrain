@@ -19,6 +19,11 @@ from cachetools import TTLCache
 from django.conf import settings
 
 from somabrain.math import cosine_similarity
+from somabrain.math.contracts import (
+    TAU_FLOOR,
+    TAU_RECIPROCAL_FLOOR,
+    sharpen_mixture_weights,
+)
 from somabrain.math.recency import stretched_exponential_recency
 from somabrain.memory.client import RecallHit
 from somabrain.memory.pool import MultiTenantMemory
@@ -96,7 +101,8 @@ class ContextBuilder:
         self._density_target = settings.SOMABRAIN_DENSITY_TARGET
         self._density_floor = settings.SOMABRAIN_DENSITY_FLOOR
         self._density_weight = settings.SOMABRAIN_DENSITY_WEIGHT
-        self._tau_min = settings.SOMABRAIN_TAU_MIN
+        # Temperature floor: contracts.TAU_FLOOR is the only source (W3).
+        self._tau_floor = TAU_FLOOR
         self._tau_max = settings.SOMABRAIN_TAU_MAX
         self._tau_increment_up = settings.SOMABRAIN_TAU_INC_UP
         self._tau_increment_down = settings.SOMABRAIN_TAU_INC_DOWN
@@ -123,12 +129,12 @@ class ContextBuilder:
         self._density_floor = min(self._density_floor, 1.0)
         if not math.isfinite(self._density_weight) or self._density_weight < 0:
             self._density_weight = 0.35
-        if not math.isfinite(self._tau_min):
-            self._tau_min = 0.4
+        if not math.isfinite(self._tau_floor) or self._tau_floor <= 0:
+            self._tau_floor = TAU_FLOOR
         if not math.isfinite(self._tau_max) or self._tau_max <= 0:
             self._tau_max = 1.2
-        if self._tau_max < self._tau_min:
-            self._tau_max = max(self._tau_min, 1.2)
+        if self._tau_max < self._tau_floor:
+            self._tau_max = max(self._tau_floor, 1.2)
         if not math.isfinite(self._tau_increment_up):
             self._tau_increment_up = 0.1
         if not math.isfinite(self._tau_increment_down):
@@ -323,7 +329,8 @@ class ContextBuilder:
             return []
         scores = np.array(raw_scores, dtype="float32")
         scores = scores - scores.max()
-        weights = np.exp(scores / max(tau, 1e-6))
+        # Softmax temperature source: contracts.TAU_RECIPROCAL_FLOOR (W3).
+        weights = np.exp(scores / max(tau, TAU_RECIPROCAL_FLOOR))
         weights_sum = weights.sum()
         if weights_sum == 0:
             return [1.0 / len(weights)] * len(weights)
@@ -338,7 +345,7 @@ class ContextBuilder:
             dup_ratio = 1.0 - (unique / max(len(ids), 1))
         except Exception:
             dup_ratio = 0.0
-        # Adjust tau within the configured range.
+        # Adjust tau within the configured range (floor is contracts.TAU_FLOOR).
         if dup_ratio > self._dup_ratio_threshold:
             excess = dup_ratio - self._dup_ratio_threshold
             step = max(self._tau_increment_up, 0.0) * excess
@@ -346,10 +353,11 @@ class ContextBuilder:
         else:
             deficit = self._dup_ratio_threshold - dup_ratio
             step = max(self._tau_increment_down, 0.0) * deficit
-            new_tau = max(self._weights.tau - step, self._tau_min)
+            new_tau = max(self._weights.tau - step, self._tau_floor)
         self._weights.tau = new_tau
 
-        # ==== Apply per-tenant entropy cap on retrieval parameter vector (alpha,beta,gamma,tau) ====
+        # ==== Entropy cap on mixture weights (alpha, beta, gamma) only ====
+        # τ is a temperature, not a mass — never reshaped (DEBT-010, W3).
         try:
             cap = self._get_entropy_cap_for_tenant(self._tenant_id)
         except Exception:
@@ -357,53 +365,24 @@ class ContextBuilder:
         entropy_exceeded = False
         if isinstance(cap, (int, float)) and cap > 0.0:
             try:
-                import math as _m
-
-                vec = [
-                    max(1e-9, float(self._weights.alpha)),
-                    max(1e-9, float(self._weights.beta)),
-                    max(1e-9, float(self._weights.gamma)),
-                    max(1e-9, float(self._weights.tau)),
-                ]
-                s = sum(vec)
-                probs = [v / s for v in vec]
-                H = -sum(p * _m.log(p) for p in probs)
-                if H > float(cap):
+                sharpened, was_sharpened = sharpen_mixture_weights(
+                    [
+                        float(self._weights.alpha),
+                        float(self._weights.beta),
+                        float(self._weights.gamma),
+                    ],
+                    float(cap),
+                )
+                if was_sharpened:
                     entropy_exceeded = True
-                    # Iteratively sharpen non-max components while preserving max component
-                    largest_idx = max(range(len(vec)), key=lambda i: vec[i])
-                    attempts = 0
-                    entropy = H
-                    while entropy > float(cap) and attempts < 10:
-                        overflow = entropy - float(cap)
-                        scale = min(0.99, max(0.2, overflow / (float(cap) + 1e-9)))
-                        for i in range(len(vec)):
-                            if i != largest_idx:
-                                vec[i] *= 1.0 - scale
-                        s2 = sum(vec)
-                        if s2 > 0:
-                            vec = [v / s2 for v in vec]
-                        probs = [v / sum(vec) for v in vec]
-                        entropy = -sum(p * _m.log(p) for p in probs)
-                        attempts += 1
-                    if entropy > float(cap):
-                        # Final strong sharpen if still resistant
-                        for i in range(len(vec)):
-                            if i != largest_idx:
-                                vec[i] *= 0.05
-                        s2 = sum(vec)
-                        if s2 > 0:
-                            vec = [v / s2 for v in vec]
                     (
                         self._weights.alpha,
                         self._weights.beta,
                         self._weights.gamma,
-                        self._weights.tau,
                     ) = (
-                        float(vec[0]),
-                        float(vec[1]),
-                        float(vec[2]),
-                        float(vec[3]),
+                        float(sharpened[0]),
+                        float(sharpened[1]),
+                        float(sharpened[2]),
                     )
             except Exception:
                 pass

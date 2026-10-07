@@ -207,48 +207,32 @@ class TestConstraintClamping:
         assert result == value, f"Value {value} changed to {result}"
 
 
-class TestTauLinearAnnealing:
-    """Property 13: Tau annealing via the production schedule API.
+class TestTauGeometricAnnealing:
+    """Property 13: ONE tau anneal law (geometric).
 
-    ``apply_tau_annealing`` in mode ``"linear"`` SHALL return
-    ``max(floor, tau × (1 − rate))`` and never raise.
+    ``apply_tau_annealing`` SHALL return ``max(TAU_FLOOR, tau × TAU_DECAY_FACTOR)``
+    and never raise.  There is no linear/exponential/step mode (W3 / DEBT-009).
 
     **Feature: production-hardening, Property 13: Tau Annealing**
     **Validates: Requirements 4.3**
     """
 
     @staticmethod
-    def _anneal(tau: float, rate: float, floor: float) -> float:
-        new_tau, _ = apply_tau_annealing(
-            tau,
-            "prop-tenant",
-            0,
-            {
-                "tau_anneal_mode": "linear",
-                "tau_anneal_rate": rate,
-                "tau_min": floor,
-            },
-        )
-        return new_tau
+    def _anneal(tau: float) -> float:
+        return apply_tau_annealing(tau)
 
     @given(
         initial_tau=st.floats(
-            min_value=0.1, max_value=1.0, allow_nan=False, allow_infinity=False
-        ),
-        anneal_rate=st.floats(
-            min_value=0.01, max_value=0.5, allow_nan=False, allow_infinity=False
-        ),
-        floor=st.floats(
-            min_value=0.01, max_value=0.1, allow_nan=False, allow_infinity=False
+            min_value=0.1, max_value=2.0, allow_nan=False, allow_infinity=False
         ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_linear_anneal_formula(
-        self, initial_tau: float, anneal_rate: float, floor: float
-    ) -> None:
-        """Verify tau_{t+1} = max(floor, tau_t × (1 - rate))."""
-        result = self._anneal(initial_tau, anneal_rate, floor)
-        expected = max(floor, initial_tau * (1.0 - anneal_rate))
+    def test_geometric_anneal_formula(self, initial_tau: float) -> None:
+        """Verify tau_{t+1} = max(TAU_FLOOR, tau_t × TAU_DECAY_FACTOR)."""
+        from somabrain.math.contracts import TAU_DECAY_FACTOR, TAU_FLOOR
+
+        result = self._anneal(initial_tau)
+        expected = max(TAU_FLOOR, initial_tau * TAU_DECAY_FACTOR)
 
         assert (
             abs(result - expected) < 1e-12
@@ -258,58 +242,27 @@ class TestTauLinearAnnealing:
         initial_tau=st.floats(
             min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False
         ),
-        anneal_rate=st.floats(
-            min_value=0.01, max_value=0.3, allow_nan=False, allow_infinity=False
-        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_linear_anneal_decreases(
-        self, initial_tau: float, anneal_rate: float
-    ) -> None:
+    def test_geometric_anneal_decreases(self, initial_tau: float) -> None:
         """Verify annealing never increases tau."""
-        floor = 0.01
-        result = self._anneal(initial_tau, anneal_rate, floor)
+        result = self._anneal(initial_tau)
 
         assert result <= initial_tau, f"Annealed tau {result} > initial {initial_tau}"
 
     @given(
         initial_tau=st.floats(
-            min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False
-        ),
-        anneal_rate=st.floats(
-            min_value=0.01, max_value=0.3, allow_nan=False, allow_infinity=False
-        ),
-        floor=st.floats(
-            min_value=0.1, max_value=0.4, allow_nan=False, allow_infinity=False
+            min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
         ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_linear_anneal_respects_floor(
-        self, initial_tau: float, anneal_rate: float, floor: float
-    ) -> None:
-        """Verify annealed tau never goes below floor."""
-        result = self._anneal(initial_tau, anneal_rate, floor)
+    def test_geometric_anneal_respects_floor(self, initial_tau: float) -> None:
+        """Verify annealed tau never goes below TAU_FLOOR."""
+        from somabrain.math.contracts import TAU_FLOOR
 
-        assert result >= floor, f"Annealed tau {result} < floor {floor}"
+        result = self._anneal(initial_tau)
 
-    @given(
-        initial_tau=st.floats(
-            min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False
-        ),
-        floor=st.floats(
-            min_value=0.01, max_value=0.1, allow_nan=False, allow_infinity=False
-        ),
-    )
-    @hyp_settings(max_examples=100, deadline=5000)
-    def test_zero_rate_leaves_tau_unchanged(
-        self, initial_tau: float, floor: float
-    ) -> None:
-        """Verify zero anneal rate leaves tau unchanged (mode disabled)."""
-        result = self._anneal(initial_tau, 0.0, floor)
-
-        assert (
-            result == initial_tau
-        ), f"Tau changed from {initial_tau} to {result} with zero rate"
+        assert result >= TAU_FLOOR, f"Annealed tau {result} < floor {TAU_FLOOR}"
 
 
 class TestAdaptationReset:

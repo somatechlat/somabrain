@@ -95,42 +95,10 @@ class TestSoftmaxLatency:
 
 
 class TestTauAnnealingLatency:
-    """Benchmark tau annealing latency."""
-
-    def test_linear_decay(self, benchmark):
-        """Linear decay should be extremely fast."""
-        pytest.importorskip("django")
-        import django
-
-        django.setup()
-
-        from somabrain.learning.annealing import linear_decay
-
-        benchmark(lambda: linear_decay(tau_0=1.0, tau_min=0.1, alpha=0.01, t=50))
-        mean = _benchmark_mean(benchmark)
-
-        # SLO: < 50μs
-        assert mean < 0.00005, f"Linear decay took {mean * 1e6:.2f}μs, should be < 50μs"
-
-    def test_exponential_decay(self, benchmark):
-        """Exponential decay should be extremely fast."""
-        pytest.importorskip("django")
-        import django
-
-        django.setup()
-
-        from somabrain.learning.annealing import exponential_decay
-
-        benchmark(lambda: exponential_decay(tau_0=1.0, gamma=0.95, t=50))
-        mean = _benchmark_mean(benchmark)
-
-        # SLO: < 50μs
-        assert (
-            mean < 0.00005
-        ), f"Exponential decay took {mean * 1e6:.2f}μs, should be < 50μs"
+    """Benchmark the ONE geometric tau anneal latency."""
 
     def test_apply_tau_annealing(self, benchmark):
-        """Full tau annealing with config lookup."""
+        """Geometric anneal step."""
         pytest.importorskip("django")
         import django
 
@@ -138,22 +106,11 @@ class TestTauAnnealingLatency:
 
         from somabrain.learning.annealing import apply_tau_annealing
 
-        tenant_override = {"tau_anneal_mode": "linear", "tau_anneal_rate": 0.01}
-
-        benchmark(
-            lambda: apply_tau_annealing(
-                current_tau=0.7,
-                tenant_id="benchmark",
-                feedback_count=100,
-                tenant_override=tenant_override,
-            )
-        )
+        benchmark(lambda: apply_tau_annealing(0.7))
         mean = _benchmark_mean(benchmark)
 
-        # SLO: < 200μs for full annealing with config
-        assert (
-            mean < 0.0002
-        ), f"Full annealing took {mean * 1e6:.2f}μs, should be < 200μs"
+        # SLO: < 50μs
+        assert mean < 0.00005, f"Anneal took {mean * 1e6:.2f}μs, should be < 50μs"
 
 
 class TestEntropyCapLatency:

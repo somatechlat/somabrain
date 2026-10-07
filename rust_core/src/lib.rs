@@ -23,7 +23,7 @@ pub use mathcore::{FNOM, BatchNorm, Dropout, MatrixOps, BayesianMemory,
                   fwht, fwht_inplace, PRODUCTION_SPARSITY_P, production_wiener_lambda,
                   compute_wiener_lambda, quantize_8bit, quantize_vector, wiener_unbind};
 pub use adaptation::{RetrievalWeights, UtilityWeights, AdaptationEngine,
-                    apply_tau_annealing, linear_tau_decay, exponential_tau_decay,
+                    anneal_tau,
                     compute_td_return, compute_td_error, compute_n_step_return, decay_eligibility};
 
 // ==================== Module Registration ====================
@@ -80,10 +80,8 @@ fn somabrain_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(mathcore::quantize_vector, m)?)?;
     m.add_function(wrap_pyfunction!(mathcore::wiener_unbind, m)?)?;
 
-    // Karpathy tau annealing
-    m.add_function(wrap_pyfunction!(adaptation::apply_tau_annealing, m)?)?;
-    m.add_function(wrap_pyfunction!(adaptation::linear_tau_decay, m)?)?;
-    m.add_function(wrap_pyfunction!(adaptation::exponential_tau_decay, m)?)?;
+    // ONE tau anneal law (geometric) — matches somabrain.math.contracts.anneal_tau
+    m.add_function(wrap_pyfunction!(adaptation::anneal_tau, m)?)?;
 
     // Sutton TD learning
     m.add_function(wrap_pyfunction!(adaptation::compute_td_return, m)?)?;
@@ -99,6 +97,7 @@ fn somabrain_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 #[cfg(test)]
 mod tests {
     use super::mathcore::*;
+    use super::adaptation::{anneal_tau, AdaptationEngine, TAU_DECAY_FACTOR, TAU_FLOOR};
     use super::bhdc::PermutationBinder;
     use super::prediction::{MahalanobisPredictor, SlowPredictor};
 
@@ -279,5 +278,48 @@ mod tests {
         let d_axis0 = m.distance(vec![mean[0] + 1.0, mean[1]]).unwrap();
         let d_axis1 = m.distance(vec![mean[0], mean[1] + 1.0]).unwrap();
         assert!(d_axis1 > 10.0 * d_axis0);
+    }
+
+    #[test]
+    fn test_anneal_tau_geometric_formula() {
+        // ONE law: τ ← max(floor, τ · factor). Matches contracts.anneal_tau.
+        assert!((anneal_tau(0.7, 0.95, 0.1) - 0.7 * 0.95).abs() < 1e-15);
+        // 0.12 * 0.95 = 0.114 > floor → keeps the product.
+        assert!((anneal_tau(0.12, 0.95, 0.1) - 0.12 * 0.95).abs() < 1e-15);
+        // 0.105 * 0.95 = 0.09975 < floor → floors.
+        assert!((anneal_tau(0.105, 0.95, 0.1) - 0.1).abs() < 1e-15);
+        assert!((anneal_tau(0.1, 0.95, 0.1) - 0.1).abs() < 1e-15);
+        // Monotone non-increasing above the floor.
+        let mut tau = 1.0;
+        for _ in 0..200 {
+            let next = anneal_tau(tau, TAU_DECAY_FACTOR, TAU_FLOOR);
+            assert!(next <= tau + 1e-15);
+            assert!(next >= TAU_FLOOR - 1e-15);
+            tau = next;
+        }
+        assert!((tau - TAU_FLOOR).abs() < 1e-15);
+    }
+
+    #[test]
+    fn test_gains_match_contracts_adapt_gains() {
+        // DEBT-008: Rust defaults == somabrain.math.contracts.ADAPT_GAINS.
+        let engine = AdaptationEngine::new(0.05);
+        let (ga, gg, gl, gm, gn) = engine.get_gains();
+        assert!((ga - 1.0).abs() < 1e-15);
+        assert!((gg - (-0.5)).abs() < 1e-15);
+        assert!((gl - 1.0).abs() < 1e-15);
+        assert!((gm - (-0.25)).abs() < 1e-15);
+        assert!((gn - (-0.25)).abs() < 1e-15);
+    }
+
+    #[test]
+    fn test_sign_gain_gamma_decreases_on_positive_reward() {
+        // gain_gamma < 0 and signal > 0 ⇒ γ decreases (DEBT-008 sign law).
+        let mut engine = AdaptationEngine::new(0.05);
+        engine.set_retrieval(1.0, 0.2, 0.1, 0.7);
+        engine.set_utility(1.0, 0.1, 0.05);
+        engine.apply_feedback(1.0, 1.0);
+        let (_, _, gamma, _) = engine.get_retrieval();
+        assert!(gamma < 0.1, "gamma must decrease on positive reward, got {gamma}");
     }
 }

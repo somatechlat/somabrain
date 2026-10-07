@@ -1,8 +1,17 @@
 //! AdaptationEngine module - CPU-bound hot path optimization.
 //!
 //! Part of GMD MathCore implementation.
+//!
+//! Gains defaults MUST equal ``somabrain.math.contracts.ADAPT_GAINS``
+//! (DEBT-008 / W3).  The ONE tau schedule is the geometric law
+//! ``τ ← max(TAU_FLOOR, τ · TAU_DECAY_FACTOR)`` (``anneal_tau``).
 
 use pyo3::prelude::*;
+
+/// Contract floor — MUST equal `somabrain.math.contracts.TAU_FLOOR`.
+pub const TAU_FLOOR: f64 = 0.1;
+/// Contract decay factor — MUST equal `somabrain.math.contracts.TAU_DECAY_FACTOR`.
+pub const TAU_DECAY_FACTOR: f64 = 0.95;
 
 // ==================== AdaptationEngine Module ====================
 
@@ -91,7 +100,7 @@ pub struct AdaptationEngine {
     lambda_bounds: (f64, f64),
     mu_bounds: (f64, f64),
     nu_bounds: (f64, f64),
-    // Gains
+    // Gains — defaults are somabrain.math.contracts.ADAPT_GAINS (DEBT-008).
     gain_alpha: f64,
     gain_gamma: f64,
     gain_lambda: f64,
@@ -110,16 +119,17 @@ impl AdaptationEngine {
             learning_rate,
             base_lr: learning_rate,
             feedback_count: 0,
-            alpha_bounds: (0.1, 2.0),
+            alpha_bounds: (0.1, 5.0),
             gamma_bounds: (0.0, 1.0),
-            lambda_bounds: (0.1, 2.0),
-            mu_bounds: (0.0, 0.5),
-            nu_bounds: (0.0, 0.2),
-            gain_alpha: 0.1,
-            gain_gamma: 0.05,
-            gain_lambda: 0.1,
-            gain_mu: 0.05,
-            gain_nu: 0.02,
+            lambda_bounds: (0.1, 5.0),
+            mu_bounds: (0.01, 5.0),
+            nu_bounds: (0.01, 5.0),
+            // contracts.ADAPT_GAINS — signs and magnitudes are one law (DEBT-008).
+            gain_alpha: 1.0,
+            gain_gamma: -0.5,
+            gain_lambda: 1.0,
+            gain_mu: -0.25,
+            gain_nu: -0.25,
         }
     }
 
@@ -161,6 +171,17 @@ impl AdaptationEngine {
         self.gain_nu = nu;
     }
 
+    /// Returns `(gain_alpha, gain_gamma, gain_lambda, gain_mu, gain_nu)`.
+    pub fn get_gains(&self) -> (f64, f64, f64, f64, f64) {
+        (
+            self.gain_alpha,
+            self.gain_gamma,
+            self.gain_lambda,
+            self.gain_mu,
+            self.gain_nu,
+        )
+    }
+
     /// Apply feedback and update weights - CPU-bound hot path
     pub fn apply_feedback(&mut self, utility_signal: f64, reward: f64) -> bool {
         let semantic_signal = reward;
@@ -182,24 +203,18 @@ impl AdaptationEngine {
         true
     }
 
-    pub fn linear_decay(&self, tau_0: f64, tau_min: f64, alpha: f64, t: u64) -> f64 {
-        (tau_0 - alpha * (t as f64)).max(tau_min)
-    }
-
-    pub fn exponential_decay(&self, tau_0: f64, gamma: f64, t: u64) -> f64 {
-        tau_0 * (-gamma * (t as f64)).exp()
-    }
-
-    pub fn apply_tau_decay(&mut self, decay_rate: f64, min_tau: f64) {
-        self.retrieval.tau = (self.retrieval.tau * (1.0 - decay_rate)).max(min_tau);
-    }
-
     pub fn get_tau(&self) -> f64 {
         self.retrieval.tau
     }
 
     pub fn set_tau(&mut self, tau: f64) {
-        self.retrieval.tau = tau.clamp(0.01, 10.0);
+        self.retrieval.tau = tau.max(TAU_FLOOR);
+    }
+
+    /// ONE tau anneal law: `τ ← max(TAU_FLOOR, τ · TAU_DECAY_FACTOR)`.
+    pub fn anneal_tau(&mut self) -> f64 {
+        self.retrieval.tau = anneal_tau(self.retrieval.tau, TAU_DECAY_FACTOR, TAU_FLOOR);
+        self.retrieval.tau
     }
 
     pub fn get_feedback_count(&self) -> u64 {
@@ -233,44 +248,16 @@ impl AdaptationEngine {
     }
 }
 
-// ==================== Karpathy Tau Annealing ====================
+// ==================== ONE tau anneal law (geometric) ====================
 
-/// Karpathy curriculum-style temperature annealing
-/// Supports linear, exponential, and step-based schedules
+/// The ONE tau anneal law: `τ ← max(floor, τ · factor)`.
+///
+/// Matches `somabrain.math.contracts.anneal_tau` exactly. There is no
+/// linear/exponential/step variant (DEBT-009 / W3).
 #[pyfunction]
-pub fn apply_tau_annealing(
-    tau: f64,
-    mode: &str,
-    rate: f64,
-    step: u64,
-    interval: u64,
-    tau_min: f64,
-) -> f64 {
-    let result = match mode {
-        "linear" => tau - rate,
-        "exponential" => tau * (-rate).exp(),
-        "step" => {
-            if interval > 0 && step % interval == 0 && step > 0 {
-                tau * (1.0 - rate)
-            } else {
-                tau
-            }
-        }
-        _ => tau,  // "none" or unknown
-    };
-    result.max(tau_min)
-}
-
-/// Linear tau decay: τ(t) = max(τ₀ - α·t, τ_min)
-#[pyfunction]
-pub fn linear_tau_decay(tau_0: f64, tau_min: f64, alpha: f64, t: u64) -> f64 {
-    (tau_0 - alpha * (t as f64)).max(tau_min)
-}
-
-/// Exponential tau decay: τ(t) = τ₀ · exp(-γ·t)
-#[pyfunction]
-pub fn exponential_tau_decay(tau_0: f64, gamma: f64, t: u64) -> f64 {
-    tau_0 * (-gamma * (t as f64)).exp()
+#[pyo3(signature = (tau, factor=TAU_DECAY_FACTOR, floor=TAU_FLOOR))]
+pub fn anneal_tau(tau: f64, factor: f64, floor: f64) -> f64 {
+    (tau * factor).max(floor)
 }
 
 // ==================== Sutton TD Learning ====================

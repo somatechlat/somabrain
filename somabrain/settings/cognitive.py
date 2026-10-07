@@ -359,13 +359,8 @@ SOMABRAIN_RATE_BURST = env.int("SOMABRAIN_RATE_BURST", default=2000)
 SOMABRAIN_WRITE_DAILY_LIMIT = env.int("SOMABRAIN_WRITE_DAILY_LIMIT", default=100000)
 
 # Learning & Adaptation Settings
-SOMABRAIN_TAU_DECAY_ENABLED = env.bool("SOMABRAIN_TAU_DECAY_ENABLED", default=False)
-SOMABRAIN_TAU_DECAY_RATE = env.float("SOMABRAIN_TAU_DECAY_RATE", default=0.0)
-SOMABRAIN_TAU_ANNEAL_MODE = env.str("SOMABRAIN_TAU_ANNEAL_MODE", default=None)
-SOMABRAIN_TAU_ANNEAL_RATE = env.float("SOMABRAIN_TAU_ANNEAL_RATE", default=0.0)
-SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL = env.int(
-    "SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL", default=0
-)
+# ONE tau schedule lives in somabrain.math.contracts (TAU_FLOOR /
+# TAU_DECAY_FACTOR / TAU_INTERVAL). Mode/rate twins are deleted (W3).
 SOMABRAIN_ENTROPY_CAP_ENABLED = env.bool("SOMABRAIN_ENTROPY_CAP_ENABLED", default=False)
 SOMABRAIN_ENTROPY_CAP = env.float("SOMABRAIN_ENTROPY_CAP", default=0.0)
 SOMABRAIN_LEARNING_RATE_DYNAMIC = env.bool(
@@ -417,7 +412,11 @@ SOMABRAIN_PREDICTOR_PROVIDER = env.str("SOMABRAIN_PREDICTOR_PROVIDER", default="
 SOMABRAIN_MEMORY_FAST_ACK = env.bool("SOMABRAIN_MEMORY_FAST_ACK", default=False)
 SOMABRAIN_PREDICTOR_DIM = env.int("SOMABRAIN_PREDICTOR_DIM", default=16)
 SOMABRAIN_PREDICTOR_ALPHA = env.float("SOMABRAIN_PREDICTOR_ALPHA", default=2.0)
-SOMABRAIN_PREDICTOR_GAMMA = env.float("SOMABRAIN_PREDICTOR_GAMMA", default=-0.5)
+# DEF-09 FIXED (W3): predictor gamma default is the signed adaptation gain
+# contracts.ADAPT_GAINS["gamma"] (−0.5). brain_settings bounds include it.
+SOMABRAIN_PREDICTOR_GAMMA = env.float(
+    "SOMABRAIN_PREDICTOR_GAMMA", default=ADAPT_GAINS["gamma"]
+)
 
 # Learner dead-letter queue
 SOMABRAIN_LEARNER_DLQ_PATH = env.str(

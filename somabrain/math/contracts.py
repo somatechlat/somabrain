@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import math
 import os
+from collections.abc import Sequence
 from typing import Final
 
 # ---------------------------------------------------------------------------
@@ -126,6 +127,91 @@ TAU_DECAY_FACTOR: Final[float] = 0.95
 #: Anneal interval in seconds for the background temperature-anneal task.
 TAU_INTERVAL: Final[float] = 60.0
 
+
+def anneal_tau(
+    tau: float,
+    factor: float = TAU_DECAY_FACTOR,
+    floor: float = TAU_FLOOR,
+) -> float:
+    """The ONE tau anneal law (geometric).
+
+    ``τ ← max(floor, τ · factor)``
+
+    Live schedule (``tasks/temperature_anneal.py``): applied once per
+    ``TAU_INTERVAL`` seconds. Rust mirror: ``somabrain_rs.anneal_tau`` —
+    same formula, same meaning. There is no linear/exponential/step variant.
+    """
+    return max(float(floor), float(tau) * float(factor))
+
+
+def entropy_of(weights: Sequence[float]) -> float:
+    """Shannon entropy of a linear-normalised weight vector (natural log).
+
+    ``p_i = w_i / Σ w``; ``H = −Σ p_i · ln p_i`` for ``p_i > 0``.
+    """
+    vals = [max(0.0, float(w)) for w in weights]
+    total = sum(vals)
+    if total <= 0.0:
+        return 0.0
+    return -sum((v / total) * math.log(v / total) for v in vals if v > 0.0)
+
+
+def sharpen_mixture_weights(
+    weights: Sequence[float],
+    cap: float,
+    sharpen_rate: float = 0.8,
+    final_sharpen: float = 0.05,
+    max_iters: int = 10,
+) -> tuple[list[float], bool]:
+    """ONE mass rule for entropy-cap sharpening of mixture weights.
+
+    Operates on a mixture-weight vector (α, β, γ) — **never** on τ.  τ is a
+    temperature, not a mass; callers must not pass it in (DEBT-010).
+
+    If ``H(w) ≤ cap`` the vector is returned unchanged.  Otherwise
+    non-dominant components are scaled by ``sharpen_rate`` (up to
+    ``max_iters`` times) and finally by ``final_sharpen``.  The mass of the
+    dominant component is preserved in absolute terms; the remaining mass is
+    redistributed to keep the vector's total mass unchanged.
+
+    Returns ``(new_weights, was_sharpened)``.
+    """
+    vec = [max(1e-9, float(w)) for w in weights]
+    if not vec:
+        return [], False
+    cap = float(cap)
+    if cap <= 0.0:
+        return list(vec), False
+
+    original_sum = sum(vec)
+    if original_sum <= 0.0:
+        return list(vec), False
+
+    h = entropy_of(vec)
+    if h <= cap:
+        return list(vec), False
+
+    largest_idx = max(range(len(vec)), key=lambda i: vec[i])
+    for _ in range(max(0, int(max_iters))):
+        for i in range(len(vec)):
+            if i != largest_idx:
+                vec[i] *= float(sharpen_rate)
+        h = entropy_of(vec)
+        if h <= cap:
+            break
+    if h > cap:
+        for i in range(len(vec)):
+            if i != largest_idx:
+                vec[i] *= float(final_sharpen)
+        h = entropy_of(vec)
+
+    # Restore original total mass (dominant keeps its share of the mass rule).
+    new_sum = sum(vec)
+    if new_sum > 0.0:
+        scale = original_sum / new_sum
+        vec = [v * scale for v in vec]
+    return vec, True
+
 # ---------------------------------------------------------------------------
 # Recency kernel parameters (stretched exponential)
 # ---------------------------------------------------------------------------
@@ -213,6 +299,10 @@ __all__ = [
     "TAU_FLOOR",
     "TAU_DECAY_FACTOR",
     "TAU_INTERVAL",
+    "anneal_tau",
+    # Entropy / mass rule
+    "entropy_of",
+    "sharpen_mixture_weights",
     # Recency
     "RECENCY_SCALE",
     "RECENCY_SHARPNESS",

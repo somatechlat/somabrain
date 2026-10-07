@@ -669,23 +669,9 @@ BRAIN_DEFAULTS = {
     # SEGMENT
     "segment_grad_thresh": {"v": 0.2, "cat": "segment"},
     "segment_hmm_thresh": {"v": 0.6, "cat": "segment"},
-    # TAU
-    "tau_anneal_mode": {"v": "", "cat": "tau", "type": "text"},
-    "tau_anneal_rate": {
-        "v": 0.0,
-        "cat": "tau",
-        "learnable": True,
-        "min": 0.0,
-        "max": 1.0,
-    },
-    "tau_decay_enabled": {"v": False, "cat": "tau"},
-    "tau_decay_rate": {
-        "v": 0.0,
-        "cat": "tau",
-        "learnable": True,
-        "min": 0.0,
-        "max": 1.0,
-    },
+    # TAU — ONE schedule is contracts.TAU_FLOOR / TAU_DECAY_FACTOR /
+    # TAU_INTERVAL (W3). Mode/rate twins deleted with the linear/exponential
+    # anneal branches (DEBT-009).
     "tau_inc_down": {
         "v": 0.05,
         "cat": "tau",
@@ -695,7 +681,8 @@ BRAIN_DEFAULTS = {
     },
     "tau_inc_up": {"v": 0.1, "cat": "tau", "learnable": True, "min": 0.0, "max": 0.5},
     "tau_max": {"v": 1.2, "cat": "tau"},
-    "tau_min": {"v": 0.4, "cat": "tau"},
+    # Must match contracts.TAU_FLOOR (single floor, W3 / DEF-05).
+    "tau_min": {"v": 0.1, "cat": "tau"},
     # BRAIN
     "use_drift_monitor": {"v": False, "cat": "brain"},
     "use_exec_controller": {"v": False, "cat": "brain"},

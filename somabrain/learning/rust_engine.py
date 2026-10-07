@@ -86,10 +86,6 @@ class AdaptationEngineBridge:
         """Set tau value."""
         self._rust_engine.set_tau(tau)
 
-    def apply_tau_decay(self, decay_rate: float, min_tau: float) -> None:
-        """Apply tau decay."""
-        self._rust_engine.apply_tau_decay(decay_rate, min_tau)
-
     @property
     def learning_rate(self) -> float:
         """Get learning rate."""
