@@ -590,6 +590,14 @@ Every `REQUIRED FIX` above is either **DELETE** (remove the dead/false code or c
 | ADD-12 | WM→LTM promotion async ORM | **FIXED** — `sync_to_async` |
 | ADD-13 | Brain→SFM bearer 401 | **FIXED** — `memory/sfm_auth.resolve_sfm_api_token` fail-closed |
 | ADD-14 | Replay twins dual impl | **DELETED** |
-| ADD-15 | Live triad e2e gate | **OPEN** — re-run after ADD-13 |
+| ADD-15 | Live triad e2e gate | **FIXED (ClaudeCode GATE)** — LTM durable across restart; persisted_to_ltm=true |
 
-**Totals addendum:** FIXED 14, OPEN 1 (live gate).
+**Totals addendum:** FIXED 15 / 15 (live GATE passed 2026-10-07).
+
+### 6.1 Post-GATE remaining (conversation quality — R-14)
+
+| ID | Item | Owner | Status |
+|---|---|---|---|
+| R-14 | Recall logs `no precomputed query vector`; query hash-embeds in another space so search misses durable LTM rows | ClaudeCode WAVE A | OPEN — the last defect before chat works well |
+| R-15 | Fast-ack honesty | ClaudeCode WAVE A2 | OPEN |
+
