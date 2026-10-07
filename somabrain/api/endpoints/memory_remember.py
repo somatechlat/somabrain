@@ -419,7 +419,13 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
             queued_for_ltm = False
             from somabrain.db.outbox import mark_event_sent
 
-            await sync_to_async(mark_event_sent)(outbox_event_id)
+            try:
+                await sync_to_async(mark_event_sent)(outbox_event_id)
+            except Exception as mark_exc:
+                # Store already accepted. A failed mark-sent leaves the row
+                # replayable — it does NOT undo the store write or flip ok
+                # (ADV A7). Surface the bookkeeping gap as a warning.
+                degraded_warnings.append(f"outbox-mark-sent-failed:{mark_exc}")
         except CircuitBreakerOpen as exc:
             # Outbox row stays pending — durable and replayable.
             degraded_warnings.append(

@@ -504,15 +504,15 @@ def _rescore_and_rank_hits(
                 cosine=cosine_hint,
             )
         else:
-            # Neither stored vector nor store score. Never fake 0.0 — a correct
-            # Milvus hit reported as score 0 is a lie the ranker sorts on.
-            # With a precomputed query vector this is a failure (we were asked
-            # to score and cannot). Text-only callers leave the hit unscored.
+            # Neither stored vector nor store score. Never fake 0.0.
+            # Skip this hit (ADV H3) — one unscorable hit must not abort
+            # the whole recall batch.
             if query_arr is not None:
-                raise RuntimeError(
-                    "recall hit has no stored vector and no store score — cannot "
-                    "score with the precomputed query vector. Refusing to invent 0.0."
-                )
+                try:
+                    payload["_unscorable"] = "no-vector-no-score"
+                except Exception:
+                    pass
+                continue
             new_score = None
 
         try:
