@@ -94,7 +94,7 @@ Agent Zero is a **personal AI agent framework** with 2,972 files, 42 plugins, 75
 | U-13 | Linux desktop in canvas | ✓ (_desktop plugin, XFCE) | ✗ | **MISSING** | MEDIUM |
 | U-14 | Document editor in canvas | ✓ (markdown, spreadsheet, presentation) | ✗ | **MISSING** | HIGH |
 | U-15 | Code editor in canvas | ✓ (_editor plugin) | ✗ | **MISSING** | HIGH |
-| U-16 | Settings panel | ✓ (13 settings sections) | ✓ (saas-settings.ts) | Agent Zero is RICHER | HIGH |
+| U-16 | Settings panel | ✓ (13 settings sections) | ✓ (soma-settings.ts) | Agent Zero is RICHER | HIGH |
 | U-17 | Model provider setup | ✓ (model_config plugin, gate) | ✗ (no UI) | **MISSING** | CRITICAL |
 | U-18 | Plugin marketplace / hub | ✓ (_plugin_installer, discovery) | ✗ | **MISSING** | MEDIUM |
 | U-19 | Skills management | ✓ (_skills plugin, skills_cli.py) | ✗ | **MISSING** | MEDIUM |
@@ -106,7 +106,7 @@ Agent Zero is a **personal AI agent framework** with 2,972 files, 42 plugins, 75
 | U-25 | Notification system | ✓ (notifications/ component) | ✓ (admin/notifications) | NONE | — |
 | U-26 | Dark / light theme | ✓ (CSS themes) | ✓ (theme-store.ts) | NONE | — |
 | U-27 | Responsive design | ✗ (desktop-first) | ✗ | BOTH MISSING | LOW |
-| U-28 | Login page | ✓ (login.html) | ✓ (saas-login.ts) | NONE | — |
+| U-28 | Login page | ✓ (login.html) | ✓ (soma-login.ts) | NONE | — |
 | U-29 | Welcome / onboarding | ✓ (_onboarding plugin, welcome/) | ✗ | **MISSING** | MEDIUM |
 | U-30 | What's new / changelog | ✓ (_whats_new plugin) | ✗ | **MISSING** | LOW |
 
