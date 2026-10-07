@@ -1,10 +1,12 @@
-"""Module __init__."""
+"""Thin SomaBrain REST client.
+
+The caller-supplied ``base_url`` is authoritative. There is no local
+``ports.json`` rewrite and no silent endpoint hijack.
+"""
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import requests
 
@@ -34,31 +36,6 @@ class SomaBrainClient:
         self.session = requests.Session()
         if api_token:
             self.session.headers["Authorization"] = f"Bearer {api_token}"
-        self._load_ports()
-
-    def _load_ports(self) -> None:
-        """Override ``base_url`` if a ``ports.json`` file is present.
-
-        Some local development setups expose a ``ports.json`` artifact that maps
-        service names to dynamically assigned host ports.  When the file exists
-        and contains a ``SOMABRAIN_HOST_PORT`` entry, the client rewrites its
-        ``base_url`` to point at ``http://localhost:<port>/context``.
-        Errors while reading or parsing the file are logged rather than silently
-        ignored, which aids debugging in CI environments.
-        """
-        ports_path = Path("ports.json")
-        if not ports_path.exists():
-            return
-        try:
-            ports = json.loads(ports_path.read_text())
-            context_port = ports.get("SOMABRAIN_HOST_PORT")
-            if context_port:
-                self.base_url = f"http://localhost:{context_port}/context"
-        except Exception as exc:  # pragma: no cover
-            # Import the logger lazily to avoid circular imports at module load.
-            from common.logging import logger
-
-            logger.exception("Failed to load ports from ports.json: %s", exc)
 
     def evaluate(self, session_id: str, query: str, top_k: int = 5) -> dict[str, Any]:
         """Send an evaluation request to the SomaBrain service.

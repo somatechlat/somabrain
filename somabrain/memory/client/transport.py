@@ -98,13 +98,17 @@ class TransportMixin:
         # Brain→SFM bearer is SOMA_API_TOKEN (SFM's own credential). The
         # agent↔brain somabrain_memory_http_token is a different trust
         # boundary and must not be presented to SFM.
-        token_value = getattr(self.cfg, "soma_api_token", None) or getattr(
-            self.cfg, "SOMA_API_TOKEN", None
-        )
-        if token_value:
-            headers["Authorization"] = f"Bearer {token_value}"
-            headers.setdefault("X-API-Key", token_value)
-            headers.setdefault("X-Auth-Token", token_value)
+        from somabrain.memory.sfm_auth import resolve_sfm_api_token
+
+        token_value = resolve_sfm_api_token(self.cfg)
+        if not token_value:
+            raise RuntimeError(
+                "memory transport: SOMA_API_TOKEN is not provisioned "
+                "(Brain→SFM credential missing — fail closed)"
+            )
+        headers["Authorization"] = f"Bearer {token_value}"
+        headers.setdefault("X-API-Key", token_value)
+        headers.setdefault("X-Auth-Token", token_value)
 
         # Propagate tenancy via standardized headers (best-effort)
         ns = str(getattr(self.cfg, "namespace", ""))

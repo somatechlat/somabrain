@@ -313,12 +313,16 @@ def create_memory_transport(
     # Brain→SFM bearer is SOMA_API_TOKEN (SFM's own credential). The
     # agent↔brain somabrain_memory_http_token is a different trust boundary
     # and must not be presented to SFM.
-    token_value = getattr(cfg, "soma_api_token", None) or getattr(
-        cfg, "SOMA_API_TOKEN", None
-    )
-    if token_value:
-        headers["Authorization"] = f"Bearer {token_value}"
-        headers["X-API-Key"] = token_value
+    from somabrain.memory.sfm_auth import resolve_sfm_api_token
+
+    token_value = resolve_sfm_api_token(cfg)
+    if not token_value:
+        raise RuntimeError(
+            "memory transport: SOMA_API_TOKEN is not provisioned "
+            "(Brain→SFM credential missing — fail closed, never anonymous)"
+        )
+    headers["Authorization"] = f"Bearer {token_value}"
+    headers["X-API-Key"] = token_value
 
     # TENANT ISOLATION (D1.3): Always set tenant headers for isolation
     tenant, namespace = get_tenant_namespace(cfg)
