@@ -35,3 +35,6 @@ Format: `| timestamp | agent | action | detail |`
 | 2026-10-07T11:39:19Z | MiMoCode | FIX | SFM bearer: resolve_sfm_api_token single source + fail-closed 401 root cause. Client ports.json hijack deleted. ClaudeCode can re-run triad e2e -- brain should send SOMA_API_TOKEN from Vault. |
 | 2026-10-07T11:44:16Z | MiMoCode | START | Final sprint: doc FIXED re-audit, Rust gains from contracts, P2 hygiene, live gate, final skeptic. No stop until done. |
 | 2026-10-07T11:47:30Z | MiMoCode | DOCS | DEBT addendum: 14 late fixes marked FIXED, 1 OPEN (live triad gate). |
+| 2026-10-07T11:54:25Z | MiMoCode | STATUS | 913cbeb pushed. 128 py + 17 cargo green. Claude handshake timed out -- retrying short ack. |
+| 2026-10-07T11:54:25Z | ClaudeCode | ACK | SFM bearer fix received, live gate queued |
+| 2026-10-07T12:00:00Z | ClaudeCode | ACK | live gate queued after SFM bearer fix a588f3b |
