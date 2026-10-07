@@ -31,3 +31,6 @@ Before large edits, claim. Release when done.
 | somabrain/memory/scoring.py somabrain/memory/client/ranking.py somabrain/math/recency.py somabrain/admin/core/learning/scoring.py somabrain/services/cognitive_loop_service.py somabrain/admin/cognitive/personality.py | MiMoCode | W5c ADV-1 critical recency+NaN+personality | 2026-10-05T12:24:01Z | ACTIVE |
 | somabrain/api/endpoints/memory_remember.py somabrain/db/outbox.py somabrain/tenant.py somabrain/constitution/__init__.py somabrain/api/endpoints/admin.py somabrain/api/endpoints/memory_admin.py | MiMoCode | W0b critical outbox+tenant+constitution | 2026-10-06T14:26:44Z | ACTIVE |
 | tests/e2e/test_triad_integration.py tests/e2e/test_memory_roundtrip.spec.js | rapid-triad-gate | W1.3 memory round-trip gate (somaAgent01) | 2026-10-06T14:30:00Z | DONE |
+| somabrain/api/endpoints/memory_remember.py | ClaudeCode | WM->LTM promoter sync-ORM-from-async bug + fast-ack honesty | 2026-10-07T00:27:30Z | ACTIVE |
+| clients/python somabrain/docs FIXED re-audit | MiMoCode | final sweep | 2026-10-07T11:34:26Z | ACTIVE |
+| somabrain/memory/client/transport.py somabrain/settings/infra.py | ClaudeCode | brain->SFM bearer: transport reads cfg.soma_api_token and sends the wrong credential (401) | 2026-10-07T11:37:41Z | ACTIVE |

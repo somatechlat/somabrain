@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class CollaborationManager:
         msg = Message(
             sender=sender,
             recipient=recipient,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             payload=payload,
         )
         self._agents[recipient].append(msg)
@@ -105,7 +105,7 @@ class CollaborationManager:
 
     def broadcast(self, sender: str, payload: str) -> None:
         """Send ``payload`` from ``sender`` to **all** registered agents."""
-        timestamp = datetime.utcnow()
+        timestamp = datetime.now(UTC)
         for agent_id in self._agents:
             if agent_id == sender:
                 continue  # optional: skip sender's own inbox

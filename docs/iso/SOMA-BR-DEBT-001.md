@@ -569,3 +569,27 @@ Every `REQUIRED FIX` above is either **DELETE** (remove the dead/false code or c
 ---
 
 *End of document — SOMA-BR-DEBT-001 v1.0.0*
+
+---
+
+## 6. Addendum — late revision close-out (2026-10-07)
+
+| ID | Item | Status |
+|---|---|---|
+| ADD-01 | `X-Tenant-ID` partition authority | **FIXED** — credential-bound (`tenant.py`); header is assertion only |
+| ADD-02 | `require_admin_auth` ≡ `require_auth` | **FIXED** — `SOMABRAIN_ADMIN_TOKEN` or JWT admin claim |
+| ADD-03 | Homeostatic law test-only | **FIXED** — `eval_step` calls `adapt_from_performance` + `set_state` |
+| ADD-04 | Outbox `dedupe_key` as event_id | **FIXED** — `enqueue_memory_event` returns PK |
+| ADD-05 | `mark_events_for_replay` missing/wrong signature | **FIXED** — `db/outbox.py(event_ids)`; twins **DELETED** |
+| ADD-06 | Constitution OPA fail-open | **FIXED** — deny on eval error |
+| ADD-07 | Double recency / NaN→1.0 / s=1.0 | **FIXED** (W5c) |
+| ADD-08 | Milvus `expr` injection | **FIXED** — tenant regex |
+| ADD-09 | Universe filter fail-open | **FIXED** — missing tag ≠ match |
+| ADD-10 | Fake SDR prefilter | **DELETED** |
+| ADD-11 | `ports.json` client hijack | **DELETED** |
+| ADD-12 | WM→LTM promotion async ORM | **FIXED** — `sync_to_async` |
+| ADD-13 | Brain→SFM bearer 401 | **FIXED** — `memory/sfm_auth.resolve_sfm_api_token` fail-closed |
+| ADD-14 | Replay twins dual impl | **DELETED** |
+| ADD-15 | Live triad e2e gate | **OPEN** — re-run after ADD-13 |
+
+**Totals addendum:** FIXED 14, OPEN 1 (live gate).
