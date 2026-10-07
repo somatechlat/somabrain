@@ -102,7 +102,22 @@ class RuntimeManager:
             return
 
         def promoter_factory(tenant_id: str):
-            try:
+            """Build the per-tenant WM→LTM promoter.
+
+            This factory is called from ``MultiTenantWM.get_or_create``, which
+            runs on the async request path. Building the promoter reads
+            ``BrainSetting`` (Django ORM), so doing it inline raises
+            ``SynchronousOnlyOperation`` -- which the old ``except`` swallowed
+            as "WM promoter unavailable" and the promoter was never attached.
+            Nothing could ever reach long-term memory.
+
+            The ORM work is handed to a worker thread so it is legal whatever
+            context the caller is in. ``get_wm_ltm_promoter`` caches per tenant,
+            so the thread hop is paid once per tenant, not per write.
+            """
+            from concurrent.futures import ThreadPoolExecutor
+
+            def build():
                 from somabrain.memory.promotion import get_wm_ltm_promoter
                 from somabrain.services.memory_service import MemoryService
 
@@ -110,6 +125,10 @@ class RuntimeManager:
                 memsvc = MemoryService(self._mt_memory, ns)
                 client = memsvc.client()
                 return get_wm_ltm_promoter(client, tenant_id=tenant_id)
+
+            try:
+                with ThreadPoolExecutor(max_workers=1, thread_name_prefix="wm-promoter") as ex:
+                    return ex.submit(build).result(timeout=30)
             except Exception as exc:
                 logger.warning(
                     "WM promoter unavailable for tenant %s: %s", tenant_id, exc

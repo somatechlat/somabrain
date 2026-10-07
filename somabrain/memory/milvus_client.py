@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import math
+import re
 import threading
 import time
 from collections import defaultdict, deque
@@ -461,6 +462,9 @@ class MilvusClient:
         )
 
         start = time.perf_counter()
+        # Reject tenant ids that could break out of the Milvus boolean expression.
+        if not tenant_id or not re.fullmatch(r"[A-Za-z0-9._-]+", str(tenant_id)):
+            raise ValueError("tenant_id contains characters unsafe for a Milvus filter")
         vector = _vector_from_payload(payload, dim=self.dim)
         search_params = {"metric_type": "HAMMING", "params": {"nprobe": 10}}
         results = self.collection.search(

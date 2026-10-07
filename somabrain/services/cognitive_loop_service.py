@@ -278,8 +278,9 @@ def eval_step(
     if eta <= 0.0:
         store_gate = False
 
-    # Prefrontal precision-weighted WM admission (T81).
-    wm_admit = True
+    # Prefrontal precision-weighted WM admission (T81). Fail-closed: if the
+    # gate cannot run, content is not admitted.
+    wm_admit = False
     try:
         from somabrain.bootstrap.singletons import get_prefrontal
 
@@ -287,6 +288,7 @@ def eval_step(
         wm_admit = bool(prefrontal.gate_wm(float(s), float(pred.error)))
     except Exception as pf_exc:
         logger.debug("Prefrontal WM gate unavailable: %s", pf_exc)
+        wm_admit = False
 
     # Basal-ganglia Boltzmann action selection (T80). Values come from
     # salience and the amygdala gates; the selection is the final store/act

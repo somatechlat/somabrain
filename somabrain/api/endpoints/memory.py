@@ -166,7 +166,7 @@ class RecallRequest(BaseModel):
             "non-finite vectors are rejected (INVARIANTS §2)."
         ),
     )
-    top_k: int = Field(10, description="Max results")
+    top_k: int = Field(10, ge=1, le=50, description="Max results")
     layer: str = Field("both", description="wm, ltm, or both")
     tenant: str | None = None
     tenant_id: str | None = Field(None, description="Seam alias for tenant")

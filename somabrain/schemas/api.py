@@ -138,7 +138,7 @@ class PlanSuggestRequest(BaseModel):
     """Plan suggestion request."""
 
     task_key: str
-    max_steps: int | None = None
+    max_steps: int | None = Field(None, ge=1, le=50)
     rel_types: list[str] | None = None
     universe: str | None = None
 

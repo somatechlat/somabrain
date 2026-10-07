@@ -62,11 +62,12 @@ class SearchMixin:
                 return []
 
             if universe_value:
+                # Fail-closed: a hit without a universe tag is NOT assumed to
+                # belong to the requested universe.
                 filtered_hits = [
                     hit
                     for hit in hits
-                    if str((hit.payload or {}).get("universe") or universe_value)
-                    == universe_value
+                    if str((hit.payload or {}).get("universe")) == universe_value
                 ]
                 hits = filtered_hits
                 if not hits:
@@ -141,11 +142,12 @@ class SearchMixin:
                 return []
 
             if universe_value:
+                # Fail-closed: a hit without a universe tag is NOT assumed to
+                # belong to the requested universe.
                 filtered_hits = [
                     hit
                     for hit in hits
-                    if str((hit.payload or {}).get("universe") or universe_value)
-                    == universe_value
+                    if str((hit.payload or {}).get("universe")) == universe_value
                 ]
                 hits = filtered_hits
                 if not hits:
