@@ -43,6 +43,45 @@
 
 ---
 
+
+## 0B. FULL API COVERAGE (somaAgent01 `/api/v2`) — screen mandate
+
+Every prefix must be reachable from UI. Missing today → **must mock**.
+
+| Prefix | Ops | Screen (Settings nav unless noted) |
+|---|---|---|
+| /auth | login, register, OAuth, SSO, MFA, impersonate | 1 Login · 1A Profile · 1B MFA |
+| /aaas | users, roles, api-keys, audit, health | 12 Admin · 12A Users · 12B Audit |
+| /core | settings_v2, degradation, kafka, migrate, agentiq | **7H System** |
+| /agents | agent CRUD, personality, tools, clone, lifecycle | 4 + 5 Wizard · 4A Agent detail |
+| /chat | conversations, messages, export | 3 + 3A |
+| /files /filesv2 /assets | upload, list, delete, provenance | **5C Files & assets** |
+| /tools | list, catalog | 7E Tools |
+| /ui | skins CRUD approve | **7D+ Skins** |
+| /multimodal | jobs, capabilities, provenance | **7I Multimodal** |
+| /memory /somabrain | recall, save, forget, pending, stats | **3B Memory** |
+| /gateway | A2A, keys, constitution | **7J Gateway** |
+| /voice | TTS/STT, personas, sessions | 7C Voice |
+| /observability | health, metrics, SLA, usage | 12 Metrics · 7H |
+| /quality | evaluate, retry, thresholds | **7K Quality** |
+| /notifications | list, read, clear | **7L Notifications** |
+| /config | system/tenant/flags/secrets list | **7M Flags & config** |
+| /ratelimit | rules, IPs, usage, policies | **7N Rate limits** |
+| /plugins | install, enable, config, marketplace | **7O Plugins** |
+| /modules | capsules modules (skills, backup, mcp) | **7P Modules** (Skills, Backup, MCP) |
+| /bridges | channels, telegram, QR | **7Q Channels** (exists) |
+| /sessions | list, terminate, config | **7R Sessions** |
+| /embeddings | batch, similarity, stats | **7S Embeddings** |
+| /llm | models, providers, presets, test | **7B Models** (done) |
+| /secrets | provider keys Vault | **7F Keys** + key-in-model form |
+| /logging | query, export, retention | **7T Logs** |
+
+**Missing-screen list to mock (next):** 7H System · 7I Multimodal · 7J Gateway · 7K Quality · 7L Notifications · 7M Flags · 7N Rate limits · 7O Plugins · 7P Modules (Skills/Backup/MCP) · 7R Sessions · 7S Embeddings · 7T Logs · 5C Files · 3B Memory · 3A Chat list.
+
+**Model defaults (product):** Groq · **DeepSeek 2.8** = **● LIVE**. Card **Activate**. Editor = Normal · Advanced · Used for. **API key typed in form → Vault only.**
+
+---
+
 ## 0. PRODUCT MAP — every somaAgent01 feature must have a screen
 
 **Rule:** UI = 100% of live API/CRUD (chat, memory, models, voice, files, agents, sessions, plugins, secrets, multimodal, quality, observability, gateway, skills, tools). Agent Zero settings power **without** Agent Zero UX debt.
