@@ -439,102 +439,92 @@ Global footer: **Save** · **Cancel**. Search box filters sections. Loading / er
 
 ---
 
-## SCREEN 7B: SETTINGS — MODELS (cards + Activate + modal editor)
+## SCREEN 7B: SETTINGS — MODELS (cards + custom URL + live model list)
 
-**Interaction (product law)**
+**How picking a model works (Agent Zero parity)**
 
-| Action | Result |
-|---|---|
-| **Activate** on card | That model becomes the active chat model (one-click). Card gets ● LIVE |
-| **Use for** chips on card | Quick set Chat / Help / Memory without opening editor |
-| **Click card** (or **Edit**) | Opens **Model editor modal** — Normal tab + **Advanced** tab |
-| **Add model** | Same modal, empty form |
-| **Test** | On card + in modal |
-| **Manage keys** | Opens Integrations (never on model) |
+1. Choose **Provider** (or **Custom / OpenAI-compatible**).
+2. Enter **API key** (Vault) and **Custom URL** if the endpoint is not the vendor default (e.g. MiMo v2.6 gateway, vLLM, LM Studio).
+3. Click **Load models** → UI calls that **key + Custom URL** (or standard URL) and fills a **list**.
+4. **Click a model in the list** — no typing required.
+5. **Or type manually** and save (e.g. private name) — still uses that Custom URL at runtime.
 
-**Default out of the box:** Groq · **DeepSeek 2.8** is **● LIVE** (active).
+**Default LIVE:** Groq · **DeepSeek 2.8**. Card button **[ Activate ]**.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ☰ SOMA   Settings · Models                              [Add model] [Keys→]  │
-├──────────┬───────────────────────────────────────────────────────────────────┤
-│ …        │  [Search models…]     Type [All ▼]     Status [All ▼]             │
-│          │                                                                   │
-│          │  ┌─────────────────────────────┐  ┌─────────────────────────────┐ │
-│          │  │ ● LIVE        Chat           │  │ ○        Chat               │ │
-│          │  │ deepseek-2.8                │  │ gpt-oss-120b                │ │
-│          │  │ DeepSeek 2.8 · Groq         │  │ GPT-OSS · Groq              │ │
-│          │  │ fast · price low            │  │ •••                         │ │
-│          │  │ Used for: Chat, Help        │  │ Used for: —                 │ │
-│          │  │ key ● set                   │  │ key ● set                   │ │
-│          │  │ [✓ Active]  [Edit]  [Test]  │  │ [ Activate ]  [Edit] [Test] │ │
-│          │  └─────────────────────────────┘  └─────────────────────────────┘ │
-│          │  ┌─────────────────────────────┐  ┌─────────────────────────────┐ │
-│          │  │ ○        Embeddings         │  │ ○        Chat               │ │
-│          │  │ text-embed-3-small          │  │ llama3.1 · Ollama           │ │
-│          │  │ OpenAI                      │  │ local                       │ │
-│          │  │ Used for: Memory            │  │ [ Activate ] [Edit] [Test]  │ │
-│          │  │ [ Activate ] [Edit] [Test]  │  └─────────────────────────────┘ │
-│          │  └─────────────────────────────┘                                  │
-└──────────┴───────────────────────────────────────────────────────────────────┘
+│ Models · cards                                    [Add model] [Keys →]      │
+│ [Search…]  Type [All]  Status [All]                                         │
+│  ● LIVE  deepseek-2.8 · Groq          ○  mimo-v2.6 · Custom (MiMo URL)      │
+│  [✓ Active] [Edit] [Test]              [ Activate ] [Edit] [Test]           │
+└──────────────────────────────────────────────────────────────────────────────┘
 
-Click [Edit] or card body → MODAL (same card design language):
+MODAL — click card / Add model
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  ✕   Edit model — deepseek-2.8 · Groq                    ● LIVE             │
-│  ─────────────────────────────────────────────────────────────────────────  │
-│  [ Normal ]   [ Advanced ]   [ Used for ]                                  │
-│  ─────────────────────────────────────────────────────────────────────────  │
-│  NORMAL  (common settings — what you touch most)                            │
-│    Model ID         [deepseek-2.8            ]  [Search models]            │
-│    Display name     [DeepSeek 2.8            ]                              │
-│    Type             [Chat                     ▼]                            │
-│    Provider         [Groq                     ▼]                            │
-│    API address      [https://api.groq.com/openai/v1]                        │
-│    Price level      [low                       ▼]                           │
-│    Sees images      [● on]      Use this model [● on]                       │
-│    Provider key     [____________]  [Save to Vault]  ● saved / ○ none      │
-│       Type key here while creating the model. Stored in Vault only.        │
-│       Never written to files. Never shown again after save.                │
-│       [ Test connection ]   [ Manage keys → ]                               │
+│ ✕  Model setup · deepseek-2.8 · Groq                         ● LIVE         │
+│ [ Normal ]   [ Advanced ]   [ Used for ]                                    │
 │                                                                             │
-│  ADVANCED  (max tokens, context, limits — when you need them)              │
-│    Context window   [131072] tokens                                        │
-│    Max output tokens[8192]                                                 │
-│    Requests / min   [0]   Input tokens / min [0]   Output tokens / min [0] │
-│    Priority         [10]   Good at [chat, reasoning]  Used in [general]    │
-│    Extra options    [ temperature: 0.7, top_p: 1, ... ]  JSON              │
-│    ── power of the brain ──                                                 │
-│    Memory / context [● on]   Vision model [auto ▼]                         │
+│ NORMAL                                                                      │
+│  Provider        [Groq                    ▼]                                │
+│                   (also: OpenAI, Anthropic, Custom / OpenAI-compatible,     │
+│                    Ollama, vLLM, LM Studio, …)                              │
+│  Custom URL      [https://api.groq.com/openai/v1     ]  (optional)         │
+│                   Leave empty to use the provider’s standard address.       │
+│                   MiMo / gateway / local → paste your URL here.             │
+│  Provider key    [____________] [Save to Vault]   ● saved                   │
+│                   Vault only · never files · never shown again.             │
+│  ┌─ Model list ──────────────────────────────────────────────┐              │
+│  │ [ Load models ]  ← uses Key + Custom URL (or standard)    │              │
+│  │ Source: live endpoint · 12 models · [Refresh]             │              │
+│  │  ● deepseek-2.8          (click to select)                │              │
+│  │  ○ deepseek-2.8-lite                                        │              │
+│  │  ○ deepseek-r1                                             │              │
+│  │  ○ …                                                       │              │
+│  └──────────────────────────────────────────────────────────┘              │
+│  Model ID        [deepseek-2.8         ]  (from list, or type manually)    │
+│  Display name    [DeepSeek 2.8         ]                                   │
+│  Type            [Chat                  ▼]                                 │
+│  Price level     [low                    ▼]                                │
+│  Sees images     [●]    Use this model  [●]                                │
+│  [ Test connection ]                                                        │
 │                                                                             │
-│  USED FOR                                                                   │
-│    [✓] Chat   [✓] Help   [ ] Memory                                        │
+│ ADVANCED  (context, tokens, limits, brain power)                            │
+│  Context window [131072]  Max output tokens [8192]                          │
+│  Req/min [0]  In-tok/min [0]  Out-tok/min [0]  Priority [10]                │
+│  Good at [chat, reasoning]   Used in [general]                              │
+│  Extra options [ temperature: 0.7, … ]                                      │
+│  Memory/context [●]   Vision model [auto ▼]                                 │
 │                                                                             │
-│  [ Save model ]   [ Test connection ]   [ Make live ]   [ Delete… ]         │
+│ USED FOR   [✓] Chat  [✓] Help  [ ] Memory                                   │
+│ [ Save model ]  [ Make live ]  [ Delete… ]                                  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Field groups (normal vs advanced)
+### Load models — backend contract
 
-| Tab | Human labels | API |
-|---|---|---|
-| **Normal** | Model ID, Display name, Type, Provider, API address, Price level, Sees images, Use this model, Provider key status | `name, display_name, model_type, provider, api_base, cost_tier, vision, is_active` |
-| **Advanced** | Context window, Max output tokens*, Requests/Input/Output per minute, Priority, Good at, Used in, Extra options (JSON), Memory/context, Vision model | `ctx_length, limit_*, priority, capabilities, domains, kwargs` + product extras |
-| **Used for** | Chat / Help / Memory | binding API |
-
-\*Max output tokens may live in Extra options until schema adds a column — **UI still shows it** and maps to `kwargs.max_tokens` (honest label under field: “stored in extra options”).
-
-### Card states
-
-| State | Look |
+| Input | Meaning |
 |---|---|
-| **● LIVE** | Blue border, “✓ Active” (the one chat uses) |
-| Available | “Activate” button |
-| Needs key | Warning chip + “Add key” |
-| Test failed | Red chip + Retry |
+| provider | groq / openai / custom / … |
+| api_key (Vault) | auth to that endpoint |
+| api_base (Custom URL) | empty = vendor standard; else your URL |
+| model_type | chat / embedding filter |
 
-### Add model
-Same modal, empty Normal tab. **Add another model** after save.
+**Output:** list of model IDs + source (`live` \| `registry` \| `error`).  
+Matches Agent Zero `model_search` (fetch from key+base, registry fallback).
+
+### Seeded catalog (first-run defaults — set in Capsule / agent defaults)
+
+| Provider | Models (seeded) | Notes |
+|---|---|---|
+| **Groq** | **deepseek-2.8** (LIVE), deepseek-2.8-lite, llama-3.3-70b, llama-3.1-8b, mixtral | default chat |
+| OpenAI | gpt-4o, gpt-4o-mini, o4-mini, text-embed-3-small | embeddings seed |
+| Anthropic | claude-sonnet, claude-haiku | |
+| Custom URL | (empty until Load models) | MiMo v2.6, gateways |
+| Ollama | llama3.1, qwen, nomic-embed-text | local |
+| vLLM / LM Studio | (from Load models) | |
+
+Seeds live in **Capsule / agent config data** (DB/Vault), not files.
 
 ---
 
