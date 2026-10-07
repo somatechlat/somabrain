@@ -299,7 +299,7 @@ class _SpyEmbedder:
 
     def embed(self, text: str):  # pragma: no cover - only reached on violation
         self.calls.append(str(text))
-        return [0.0] * 8
+        return [0.0] * SPY_FIXTURE_DIM
 
 
 class _RecordingScorer:
@@ -324,6 +324,18 @@ class _NoEmbedCfg:
     SOMABRAIN_DENSITY_WEIGHT = 0.35
 
 
+# Spy-fixture width only. Production vectors are 768-dim from
+# SOMABRAIN_EMBED_DIM / TinyDeterministicEmbedder — never these values.
+SPY_FIXTURE_DIM = 8
+
+
+def _unit_axis(axis: int = 0, dim: int = SPY_FIXTURE_DIM) -> list[float]:
+    """One-hot test vector for cosine proofs (identical=1, orthogonal=0)."""
+    vec = [0.0] * dim
+    vec[axis] = 1.0
+    return vec
+
+
 class TestNoReembedWhenVectorPresent:
     """INVARIANTS §2.1 behavioural proof — no ``embed()`` when a vector is present.
 
@@ -338,7 +350,7 @@ class TestNoReembedWhenVectorPresent:
 
         spy = _SpyEmbedder()
         scorer = _RecordingScorer()
-        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        qvec = _unit_axis(0)
         hit = RecallHit(
             payload={"text": "hello", "embedding": list(qvec)},
             score=0.9,
@@ -355,7 +367,7 @@ class TestNoReembedWhenVectorPresent:
 
         spy = _SpyEmbedder()
         scorer = _RecordingScorer()
-        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        qvec = _unit_axis(0)
         stored = [0.6, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         hit = RecallHit(
             payload={"text": "this text must never be embedded"},
@@ -387,9 +399,9 @@ class TestNoReembedWhenVectorPresent:
             recency_floor=0.05,
             fd_backend=None,
         )
-        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        aligned = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        orthogonal = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        qvec = _unit_axis(0)
+        aligned = _unit_axis(0)
+        orthogonal = _unit_axis(1)
         hit_a = RecallHit(payload={"embedding": list(aligned)}, score=None)
         hit_b = RecallHit(payload={"embedding": list(orthogonal)}, score=None)
         ranked = _rescore_and_rank_hits(
@@ -410,7 +422,7 @@ class TestNoReembedWhenVectorPresent:
 
         spy = _SpyEmbedder()
         scorer = _RecordingScorer()
-        qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        qvec = _unit_axis(0)
         bad = RecallHit(payload={"text": "no vector no score"}, score=None)
         good = RecallHit(
             payload={"text": "scored", "embedding": qvec}, score=None
@@ -441,7 +453,7 @@ class TestNoReembedWhenVectorPresent:
 
         spy = _SpyEmbedder()
         scorer = _RecordingScorer()
-        qvec = [0.1] * 8
+        qvec = [0.1] * SPY_FIXTURE_DIM
 
         class _StubClient(ReadMixin, SearchMixin):
             def __init__(self) -> None:
@@ -487,7 +499,7 @@ class TestNoReembedWhenVectorPresent:
 
         spy = _SpyEmbedder()
         scorer = _RecordingScorer()
-        qvec = [0.2] * 8
+        qvec = [0.2] * SPY_FIXTURE_DIM
 
         class _StubAsyncClient(ReadMixin, SearchMixin):
             def __init__(self) -> None:
