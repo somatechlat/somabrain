@@ -235,8 +235,7 @@ class AdaptationEngine:
                     float(rw.tau),
                 )
             except Exception:
-                # Restore path fallback: same settings chain as __init__
-                # (SOMABRAIN_RETRIEVAL_*). Never a code literal.
+                # Managed defaults: settings only (SOMABRAIN_RETRIEVAL_*).
                 if settings is not None:
                     self._retrieval.alpha = float(
                         getattr(settings, "SOMABRAIN_RETRIEVAL_ALPHA", self._retrieval.alpha)
@@ -257,7 +256,6 @@ class AdaptationEngine:
                 float(utility_defaults.nu),
             )
         else:
-            # SOMABRAIN_UTILITY_* settings (defaults already on UtilityWeights).
             self._utility = UtilityWeights()
         if base_lr is not None:
             self.set_base_learning_rate(float(base_lr))

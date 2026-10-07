@@ -128,6 +128,8 @@ def _bootstrap_minimal_django() -> bool:
             SOMABRAIN_MEMORY_FAST_ACK=False,
             SOMABRAIN_EMBED_DIM=8,
             SOMABRAIN_EMBEDDER_PROVIDER="tiny",
+            OUTBOX_BATCH_SIZE=100,
+            OUTBOX_TENANT_BATCH_LIMIT=50,
         )
     import django
 
