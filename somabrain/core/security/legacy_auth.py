@@ -11,6 +11,7 @@ VIBE Compliance:
 
 from __future__ import annotations
 
+import hmac
 import logging
 import time
 from dataclasses import dataclass
@@ -133,8 +134,8 @@ def _extract_bearer(request: HttpRequest) -> str:
     return token
 
 
-def _validate_jwt(token: str) -> None:
-    """Validate a JWT token against the configured key."""
+def _validate_jwt(token: str) -> dict[str, Any]:
+    """Validate a JWT token against the configured key. Returns the claims."""
     jwt_key = _get_jwt_key()
     if not jwt_key:
         raise HttpError(503, "authentication is not configured on this instance")
@@ -150,7 +151,7 @@ def _validate_jwt(token: str) -> None:
         kwargs["issuer"] = issuer
 
     try:
-        jwt.decode(
+        claims = jwt.decode(
             token,
             jwt_key,
             algorithms=_jwt_algorithms(),
@@ -159,6 +160,7 @@ def _validate_jwt(token: str) -> None:
         )
     except PyJWTError as exc:
         raise HttpError(403, "invalid token") from exc
+    return dict(claims) if isinstance(claims, dict) else {}
 
 
 def _validate_api_or_memory_token(token: str) -> bool:
@@ -178,7 +180,7 @@ def _validate_api_or_memory_token(token: str) -> bool:
         if not expected:
             continue
         configured = True
-        if token == expected:
+        if hmac.compare_digest(token, expected):
             return True
     if configured:
         raise HttpError(403, "invalid token")
@@ -209,18 +211,35 @@ def require_auth(request: HttpRequest, cfg: Any = None) -> None:
 def require_admin_auth(request: HttpRequest, cfg: Any = None) -> None:
     """Validate admin authentication.
 
-    Args:
-        request: Incoming request
-        cfg: Legacy config (ignored)
+    Admin privilege is **not** the same as ordinary agent authentication.
+    A dedicated ``SOMABRAIN_ADMIN_TOKEN`` (or a JWT with an admin claim)
+    is required. The shared memory/API agent token is refused here.
     """
     token = _extract_bearer(request)
 
     jwt_key = _get_jwt_key()
     if jwt_key:
-        _validate_jwt(token)
-        return
+        claims = _validate_jwt(token)
+        # JWT path: require an admin claim. Missing claim is a refusal.
+        if isinstance(claims, dict):
+            scopes = claims.get("scopes") or claims.get("scope") or []
+            if isinstance(scopes, str):
+                scopes = [scopes]
+            roles = claims.get("roles") or claims.get("role") or []
+            if isinstance(roles, str):
+                roles = [roles]
+            is_admin = (
+                claims.get("is_admin") is True
+                or "admin" in roles
+                or "admin:write" in scopes
+                or "admin" in scopes
+            )
+            if is_admin:
+                return
+        raise HttpError(403, "admin claim required")
 
-    if _validate_api_or_memory_token(token):
+    admin_token = getattr(settings, "SOMABRAIN_ADMIN_TOKEN", None)
+    if admin_token and hmac.compare_digest(token, admin_token):
         return
 
     raise HttpError(403, "admin authentication required")

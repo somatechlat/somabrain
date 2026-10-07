@@ -336,6 +336,36 @@ def eval_step(
         except Exception as exc:
             logger.exception("Telemetry publishing failed: %s", exc)
 
+    # Homeostatic neuromodulator update on the LIVE path (DEBT H3).
+    # Performance is derived from this step's prediction error and gates.
+    try:
+        from somabrain.adaptive.core import PerformanceMetrics
+        from somabrain.runtime.neuromodulators import (
+            NeuromodState,
+            get_adaptive_per_tenant_neuromods,
+        )
+
+        err = float(pred.error)
+        perf = PerformanceMetrics(
+            success_rate=max(0.0, min(1.0, 1.0 - err)),
+            error_rate=err,
+            latency=max(1e-6, float(pred_latency)),
+            accuracy=float(s),
+        ).clamp()
+        adaptive = get_adaptive_per_tenant_neuromods()
+        adapted = adaptive.adapt_from_performance(
+            tenant_id or "public",
+            perf,
+            task_type="general",
+            novelty=float(novelty),
+            pred_error=err,
+        )
+        if isinstance(adapted, NeuromodState):
+            neuromods.set_state(tenant_id, adapted)
+            nm = adapted
+    except Exception as homeo_exc:
+        logger.debug("Homeostatic neuromod update unavailable: %s", homeo_exc)
+
     result = {
         "pred_error": float(pred.error),
         "pred_latency": float(pred_latency),
