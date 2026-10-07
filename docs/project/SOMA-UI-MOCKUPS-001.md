@@ -454,7 +454,10 @@ Click [Edit] or card body → MODAL (same card design language):
 │    API address      [https://api.groq.com/openai/v1]                        │
 │    Price level      [low                       ▼]                           │
 │    Sees images      [● on]      Use this model [● on]                       │
-│    Provider key     [● set]     [Manage keys →]                             │
+│    Provider key     [____________]  [Save to Vault]  ● saved / ○ none      │
+│       Type key here while creating the model. Stored in Vault only.        │
+│       Never written to files. Never shown again after save.                │
+│       [ Test connection ]   [ Manage keys → ]                               │
 │                                                                             │
 │  ADVANCED  (max tokens, context, limits — when you need them)              │
 │    Context window   [131072] tokens                                        │
