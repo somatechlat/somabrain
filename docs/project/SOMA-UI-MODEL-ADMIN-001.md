@@ -1,152 +1,178 @@
-# SOMA AGENT — MODEL MANAGER UI SPECIFICATION
+# SOMA AGENT — SETTINGS & MODEL MANAGER
 
 ## Document Control
 
 | Field | Value |
 |---|---|
-| Document Title | Model Manager — Card UI Specification |
+| Document Title | Settings Workspace and Model Manager |
 | Document Identifier | SOMA-UI-MODEL-ADMIN-001 |
-| Version | **2.1.0** |
+| Version | **3.0.0** |
 | Date | 2026-10-07 |
 | Status | Draft |
 | Classification | Internal |
-| Field truth | `somaAgent01/admin/llm/api.py` `ModelIn` / `ModelOut` / `SlotsUpdate` / `PresetIn` (117–209) |
-| Supersedes | 2.0.0 (invented utility type, fake timeout/max_tokens, in-editor keys) |
+| Reference UX | `agent-zero-main/webui/components/settings/*` (section nav, Models + Voice in one place) |
+| Field truth | `somaAgent01/admin/llm/api.py` `ModelIn` 117–135 |
+| **Forbidden on screen** | The word **“slot”** and the tab zoo of four disconnected model pages |
 
 ## Revision History
 
 | Version | Date | Description |
 |---|---|---|
-| 2.0.0 | 2026-10-07 | Card redesign draft |
-| 2.1.0 | 2026-10-07 | **ADV-2 corrections:** schema-true fields only; keys never in model editor; slots ≠ roles; utility has no type; display_name + is_active restored; preset = slot bundle only |
+| 2.1.0 | 2026-10-07 | Schema-true ModelIn editor |
+| 3.0.0 | 2026-10-07 | **Settings workspace** (agent-zero style). **Slots removed from UX.** One Settings page: Agent · Models · Voice · Interface · Tools · Integrations. Model = full CSS card. |
 
 ---
 
-## 1. Field truth (non-negotiable)
+## 1. Product rule
 
-### 1.1 Model object (`ModelIn` / `ModelOut`)
-
-| Field | Type | Card face | Editor |
-|---|---|---|---|
-| `name` | str | ✓ | input + model search |
-| `display_name` | str | ✓ | input |
-| `model_type` | `chat` \| `embedding` **only** | ✓ badge | select |
-| `provider` | str | ✓ | select (may reset api_base/kwargs) |
-| `api_base` | str | short | input |
-| `capabilities` | list[str] | compact | tags |
-| `priority` | int (default 50) | ✓ | number |
-| `cost_tier` | free\|low\|standard\|premium | ✓ | select |
-| `domains` | list[str] | compact | tags |
-| `ctx_length` | int | ✓ | number |
-| `limit_requests` | int | compact | number |
-| `limit_input` | int | compact | number |
-| `limit_output` | int | compact | number |
-| `vision` | bool | ✓ | toggle |
-| `kwargs` | dict | — | JSON / key=value |
-| `is_active` | bool | ✓ | toggle |
-
-**Not on ModelIn (never invent):** temperature, top_p, top_k, max_tokens, timeout, seed, stop, utility type, role checkboxes.
-
-If product later needs temperature etc., they go in **`kwargs`** (escape hatch) or a **schema change** (separate decision).
-
-### 1.2 Keys (never on ModelIn)
-
-`ModelPatch` docstring: *"API keys are never accepted here"* (`api.py:139`).  
-Keys: **provider / Vault only** (`PUT /secrets/providers/{id}`). Editor shows **status + link** to Providers & keys — no key field on the model card.
-
-### 1.3 Slots (not roles on the model)
-
-`SlotsUpdate`: `chat_model_id`, `utility_model_id`, `embedding_model_id` (+ optional `capsule_id`).  
-UI: **Used as** = derived badges from slots; **Assign** = slot PUT from the card (not multi-role storage).
-
-### 1.4 Utility type does not exist
-
-`model_type` is only `chat` | `embedding`. Utility slot accepts **any existing model id** (`api.py` existence check).  
-UI: list **all** models for Utility (not chat-only). Label: “Any model may be bound as Utility (API rule).”
-
-### 1.5 Presets
-
-`PresetIn`: `name`, three model ids, `notes` — **slot bundle only**. No per-preset model params (unlike agent-zero).
-
----
-
-## 2. Screen — Model Manager (library)
-
-**Route:** `/settings/models` (fix UX-001 map later to this single name).
+**Click Settings → everything is there.**  
+No jumping between mystery tabs. Left section nav + right content (same pattern as agent-zero `settings/agent/agent-settings.html`: Agent, Models, Voice, Workdir, Locale, Interface).
 
 ```
-┌────────────────────────────────────────────────────────────────────────────┐
-│ SOMA  Settings / Models                                    [Library|Wiring]│
-├──────────┬─────────────────────────────────────────────────────────────────┤
-│ Library  │  Filter [model_type ▾] [active ▾]  Search [____________]  [+New]│
-│ Wiring   │  ┌─ CARD (whole ModelIn object) ─┐ ┌─ CARD ─────────────────┐   │
-│ Presets  │  │ ● Active  chat  ⚡ cost:low    │ │ ○ Active  embedding   │   │
-│ Providers│  │ gpt-oss-120b                   │ │ text-embed-3-small    │   │
-│ & keys   │  │ display: GPT-OSS 120B          │ │ OpenAI                │   │
-│          │  │ Groq · api.groq.com/openai/v1  │ │ ctx 1536 · $low       │   │
-│          │  │ ctx 131072 · vision ✓ · p=10   │ │ Used as: Embedding    │   │
-│          │  │ Used as: Chat, Utility          │ │ [Expand] [Test]       │   │
-│          │  │ Key: ●ok (provider)            │ └───────────────────────┘   │
-│          │  │ [Expand] [Test]                │                             │
-│          │  └────────────────────────────────┘                             │
-│          │  ┌─ CARD expanded (all ModelIn fields) ─────────────────────┐   │
-│          │  │ Identity  name / display_name / model_type / provider    │   │
-│          │  │ Endpoint  api_base                    Key → Providers ⌁ │   │
-│          │  │ Capacity  ctx_length  limit_requests  limit_input        │   │
-│          │  │           limit_output  vision  is_active                │   │
-│          │  │ Routing   priority  cost_tier  domains[]  capabilities[] │   │
-│          │  │ Advanced  kwargs (JSON)                                 │   │
-│          │  │ Wiring    Assign: [Chat] [Utility] [Embedding] (slots)  │   │
-│          │  │ [Save] [Duplicate] [Delete…]                            │   │
-│          │  └─────────────────────────────────────────────────────────┘   │
-└──────────┴─────────────────────────────────────────────────────────────────┘
+Settings
+├── Agent          personality, prompts, behavior
+├── Models         full model cards + connection
+├── Voice          TTS / STT
+├── Interface      theme, language, density
+├── Tools          web, code, files, …
+├── Integrations   providers, secrets, events
+└── Advanced       modules, limits, experimental
 ```
 
-**Card face = complete identity of the stored model** (name, display_name, type, provider, endpoint, ctx, limits, vision, active, cost, priority, key status, used-as).
-
-**Expanded = every `ModelIn` field** + slot assign + test. **No key input.**
+**“Slot” never appears in the UI.**  
+If we must describe binding, the words are **“Used for: Conversation · Helper · Embeddings”** on the card — a fact, not an admin noun.
 
 ---
 
-## 3. Navigation / context
+## 2. Settings shell
 
-| Rule | Spec |
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  SOMA        Settings                                            │
+├──────────┬───────────────────────────────────────────────────────┤
+│ Agent    │  (section content scrolls)                            │
+│ Models   │                                                       │
+│ Voice    │  [Agent]   [Models]   [Voice]   [Interface]   …       │
+│ Interface│  (in-page anchors like agent-zero — or one panel)     │
+│ Tools    │                                                       │
+│ Integr.  │                                                       │
+│ Advanced │                                                       │
+└──────────┴───────────────────────────────────────────────────────┘
+```
+
+- Dark-first Soma palette (existing mockups COLOR KEY).  
+- Section titles + short description (agent-zero `section-title` / `section-description`).  
+- **One** settings entry from the app header — not five portals.
+
+---
+
+## 3. MODEL section (the beautiful card library)
+
+### 3.1 What a model is (on screen)
+
+A **CSS card is the entire model record** (every `ModelIn` field lives on that object):
+
+`name` · `display_name` · `model_type` (chat \| embedding) · `provider` · `api_base` ·  
+`capabilities` · `priority` · `cost_tier` · `domains` · `ctx_length` ·  
+`limit_requests` · `limit_input` · `limit_output` · `vision` · `kwargs` · `is_active`
+
+**Connection** (provider key) is **not** on the card body — one “Manage keys” link (Vault).
+
+### 3.2 Collapsed card (complete at a glance)
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ● Active     chat                    cost: standard    │
+│  openai/gpt-oss-120b                                    │
+│  GPT-OSS 120B · Groq                                    │
+│  api.groq.com/openai/v1                                 │
+│  ─────────────────────────────────────────────────────  │
+│  ctx 131072 · in 0 · out 8192 · vision · priority 10    │
+│  Used for: Conversation · Helper                        │
+│  key ●ok                                   [ Expand ]  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 3.3 Expanded card (edit the whole model)
+
+In-place expand (not a separate “slots” page):
+
+| Group | Fields |
 |---|---|
-| One workspace | Library · Wiring · Presets · Providers & keys |
-| Expand | in place + deep link `/settings/models/:id` |
-| Assign | slot PUT from card or Wiring lane |
-| Used as | live from slots; badge on card |
-| Test | per model; error on that card |
-| Keyboard | Tab / Enter / Esc / `/` |
-| Permission | `system:view` read; `system:configure` model edit; `system:manage_integrations` providers/test |
+| Identity | name, display_name, model_type, provider |
+| Endpoint | api_base · **Manage keys →** |
+| Capacity | ctx_length, limit_requests, limit_input, limit_output |
+| Flags | vision, is_active |
+| Routing | priority, cost_tier, domains[], capabilities[] |
+| Advanced | kwargs (JSON) |
+| Used for | Conversation / Helper / Embeddings (bound in API as the three named bindings — **UI copy never says slot**) |
+| Actions | Save · Test connection · Duplicate · Delete |
+
+### 3.4 Used for (binding without “slots”)
+
+On the card: simple toggles or “Set as …” menu items:
+
+- **Conversation** (main chat model)  
+- **Helper** (fast utility work)  
+- **Embeddings** (memory/vectors)  
+
+Implementation still calls `SlotsUpdate` / `PresetIn` internally. **User never sees “slot”.**
+
+### 3.5 Library chrome
+
+- Search · filter by type / active / used-for · **Add model**  
+- Empty state: “Add a model + provider key”  
+- Test errors on the card  
 
 ---
 
-## 4. What we take from agent-zero vs not
+## 4. Other Settings sections (same shell)
 
-| Keep | Reject / adapt |
+### Agent
+Personality, system prompt, temperature **of the agent behavior** (not fake ModelIn fields), tools policy.
+
+### Voice
+TTS / STT provider, voice id, volume, language — **always visible in Settings** (agent-zero `voice.html` section-title pattern). Grid of provider blocks.
+
+### Interface
+Theme (dark/light), language, density, chat layout, canvas.
+
+### Tools
+Web search, code, files, browser — enable cards.
+
+### Integrations
+Provider keys (Vault), events, secrets, OAuth — **keys live here**, linked from Models.
+
+### Advanced
+Modules, quotas, experimental.
+
+---
+
+## 5. Navigation / usability audit (what we fixed)
+
+| Was | Now |
 |---|---|
-| model-field layout (label + description) | temperature as real field (use kwargs until schema grows) |
-| Advanced collapse | keys inside model form (use Providers page) |
-| Model search + confirm delete | Main/Utility/Embedding as model *forms* (use slots + badges) |
-| | preset = full model configs (Soma preset = ids only) |
+| Four tabs: providers / slots / presets / models | **One Settings → Models** library |
+| Word “slot” everywhere | **Used for** / section names only |
+| 3 naked dropdowns | **Model cards** with full data |
+| Model settings split from Voice | **One shell** like agent-zero |
+| Keys inside model editor | **Manage keys** → Integrations |
+| Invented fields | **ModelIn only** + kwargs |
 
 ---
 
-## 5. Acceptance
+## 6. Acceptance
 
-1. Editor fields **exactly** `ModelIn`/`ModelPatch` — no invented inputs.  
-2. `display_name` and `is_active` editable and shown.  
-3. No API-key input on model card (link to Providers).  
-4. Utility lists all models (or documents API rule), not chat-only.  
-5. Slot assign writes `SlotsUpdate`; badges reflect it.  
-6. Card face shows the whole stored object without expand.  
-7. Presets only bind three ids + notes.  
+1. Header **Settings** opens the workspace with **Models and Voice** in the left nav.  
+2. Zero UI strings contain `slot` / `slots`.  
+3. Each model card shows the full identity block without expand.  
+4. Expand edits every `ModelIn` field.  
+5. Used-for Conversation/Helper/Embeddings from the card.  
+6. Keys only under Integrations (write-only).  
+7. Voice is a first-class Settings section, not buried.  
 
 ---
 
-## 6. Out of scope
+## 7. Out of scope
 
-- Implementation (until operator orders code)  
-- Changing `model_type` vocabulary or adding temperature columns (schema decisions)  
-- Chat transcript / billing  
+Code until the operator says **code**. Schema changes to ModelIn (e.g. temperature column) are a separate product decision.

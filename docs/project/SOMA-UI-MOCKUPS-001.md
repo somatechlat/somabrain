@@ -43,6 +43,33 @@
 
 ---
 
+## 0. PRODUCT MAP — every somaAgent01 feature must have a screen
+
+**Rule:** UI = 100% of live API/CRUD (chat, memory, models, voice, files, agents, sessions, plugins, secrets, multimodal, quality, observability, gateway, skills, tools). Agent Zero settings power **without** Agent Zero UX debt.
+
+| Area | CRUD / ops (API) | Screen |
+|---|---|---|
+| **Models** | list/get/create/update/delete; Used for Chat/Help/Memory; presets save/apply/delete; test connection; setup gate | **7B Models** |
+| **Providers & keys** | provider update; write-only keys set/delete; test | **7F Integrations** |
+| **Chat** | conversations list/create/rename/delete/export; messages; sessions | **3 + 3A Chat list** |
+| **Memory** | list/recall/save/forget; metrics; browse | **3B Memory** |
+| **Voice** | personas CRUD; default; TTS/STT; sessions list/stats/terminate; voices | **7C Voice** |
+| **Agents** | list/create/update; users/roles; transfer | **4 + 5 Wizard** |
+| **Files** | list/upload/download/delete | **5C Files** |
+| **Tools** | list; catalog upsert | **7E Tools** |
+| **Plugins** | install/enable/disable/uninstall/config; marketplace | **7G Advanced** |
+| **Secrets** | provider key status/set/delete | **7F** |
+| **Multimodal** | image/diagram/screenshot/video settings + assets | **7D+ Multimodal** |
+| **Quality** | evaluate; retry policies; thresholds | **7G Quality** |
+| **Observability** | health, metrics, SLA, usage/cost | **12 Admin / 7G** |
+| **Sessions** | list/terminate/config | **7G Sessions** |
+| **Gateway / A2A** | keys, constitution, workflows | **7G** |
+| **UI skins** | list/create/approve/reject | **7D Skins** |
+| **SSO/Auth** | login/register/MFA/impersonate | **1 / 1A Profile** |
+| **Brain (somabrain)** | cognition, neuromod, sleep | **3C Brain** (agent power) |
+
+---
+
 ## SCREEN 1: LOGIN PAGE
 
 ```
@@ -373,87 +400,99 @@ Global footer: **Save** · **Cancel**. Search box filters sections. Loading / er
 
 ---
 
-## SCREEN 7B: SETTINGS — MODELS (library of full cards)
+## SCREEN 7B: SETTINGS — MODELS (cards + Activate + modal editor)
+
+**Interaction (product law)**
+
+| Action | Result |
+|---|---|
+| **Activate** on card | That model becomes the active chat model (one-click). Card gets ● LIVE |
+| **Use for** chips on card | Quick set Chat / Help / Memory without opening editor |
+| **Click card** (or **Edit**) | Opens **Model editor modal** — Normal tab + **Advanced** tab |
+| **Add model** | Same modal, empty form |
+| **Test** | On card + in modal |
+| **Manage keys** | Opens Integrations (never on model) |
+
+**Default out of the box:** Groq · **DeepSeek 2.8** is **● LIVE** (active).
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ☰ SOMA   Settings · Models                              [Save] [Cancel]      │
+│ ☰ SOMA   Settings · Models                              [Add model] [Keys→]  │
 ├──────────┬───────────────────────────────────────────────────────────────────┤
-│ …        │  MODELS          Manage keys →    [+ Add model]                   │
-│          │  [Search models…]   Type [All ▼]   Status [All ▼]                 │
-│          │  ┌────────────────────────────┐  ┌────────────────────────────┐  │
-│          │  │ ● Active    Chat            │  │ ○ Active    Embeddings     │  │
-│          │  │ openai/gpt-oss-120b         │  │ text-embed-3-small         │  │
-│          │  │ GPT-OSS 120B · Groq         │  │ OpenAI                     │  │
-│          │  │ api.groq.com/openai/v1      │  │                            │  │
-│          │  │ ctx 131072 · sees images ✓  │  │ ctx 1536 · price low       │  │
-│          │  │ priority 10 · price standard│  │ Used for: Memory           │  │
-│          │  │ Used for: Chat, Help        │  │ key ● set   [Open] [Test]  │  │
-│          │  │ key ● set   [Open] [Test]   │  └────────────────────────────┘  │
-│          │  └────────────────────────────┘  ┌────────────────────────────┐  │
-│          │  ┌────────────────────────────┐  │ ✗ Test failed   Ollama     │  │
-│          │  │ ○ Active    Chat            │  │ llama3.1                  │  │
-│          │  │ gpt-4o-mini                 │  │ Could not reach server    │  │
-│          │  │ …                           │  │ [Retry test] [Open]       │  │
-│          │  └────────────────────────────┘  └────────────────────────────┘  │
+│ …        │  [Search models…]     Type [All ▼]     Status [All ▼]             │
 │          │                                                                   │
-│          │  ┌─ Open card = whole model (every setting) ───────────────────┐  │
-│          │  │ ● Active · openai/gpt-oss-120b · Groq                       │  │
-│          │  │ IDENTITY                                                      │  │
-│          │  │   Model ID        [openai/gpt-oss-120b     ] [Search models]│  │
-│          │  │   Display name    [GPT-OSS 120B            ]                │  │
-│          │  │   Type            [Chat                    ▼]               │  │
-│          │  │   Provider        [Groq                     ▼]               │  │
-│          │  │   API address     [https://api.groq.com/openai/v1]          │  │
-│          │  │ KEYS                                                          │  │
-│          │  │   Provider key    [● set]  [Manage keys →]                  │  │
-│          │  │ SIZE & LIMITS                                                 │  │
-│          │  │   Context size (tokens)     [131072]                        │  │
-│          │  │   Requests per minute       [0]  (0 = no limit)             │  │
-│          │  │   Input tokens per minute   [0]                             │  │
-│          │  │   Output tokens per minute  [0]                             │  │
-│          │  │ FEATURES                                                      │  │
-│          │  │   Sees images     [● on]     Use this model  [● on]         │  │
-│          │  │   Good at         [chat, tools, reasoning]                  │  │
-│          │  │   Used in         [general, product]                        │  │
-│          │  │ RANKING                                                       │  │
-│          │  │   Priority        [10]      Price level [standard ▼]        │  │
-│          │  │ ADVANCED                                                      │  │
-│          │  │   Extra options (JSON)  [{}                            ]     │  │
-│          │  │ USED FOR                                                      │  │
-│          │  │   [✓] Chat   [✓] Help   [ ] Memory                         │  │
-│          │  │ [Save model]  [Test connection]  [Copy]  [Delete…]           │  │
-│          │  └──────────────────────────────────────────────────────────────┘  │
+│          │  ┌─────────────────────────────┐  ┌─────────────────────────────┐ │
+│          │  │ ● LIVE        Chat           │  │ ○        Chat               │ │
+│          │  │ deepseek-2.8                │  │ gpt-oss-120b                │ │
+│          │  │ DeepSeek 2.8 · Groq         │  │ GPT-OSS · Groq              │ │
+│          │  │ fast · price low            │  │ •••                         │ │
+│          │  │ Used for: Chat, Help        │  │ Used for: —                 │ │
+│          │  │ key ● set                   │  │ key ● set                   │ │
+│          │  │ [✓ Active]  [Edit]  [Test]  │  │ [ Activate ]  [Edit] [Test] │ │
+│          │  └─────────────────────────────┘  └─────────────────────────────┘ │
+│          │  ┌─────────────────────────────┐  ┌─────────────────────────────┐ │
+│          │  │ ○        Embeddings         │  │ ○        Chat               │ │
+│          │  │ text-embed-3-small          │  │ llama3.1 · Ollama           │ │
+│          │  │ OpenAI                      │  │ local                       │ │
+│          │  │ Used for: Memory            │  │ [ Activate ] [Edit] [Test]  │ │
+│          │  │ [ Activate ] [Edit] [Test]  │  └─────────────────────────────┘ │
+│          │  └─────────────────────────────┘                                  │
 └──────────┴───────────────────────────────────────────────────────────────────┘
+
+Click [Edit] or card body → MODAL (same card design language):
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ✕   Edit model — deepseek-2.8 · Groq                    ● LIVE             │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  [ Normal ]   [ Advanced ]   [ Used for ]                                  │
+│  ─────────────────────────────────────────────────────────────────────────  │
+│  NORMAL  (common settings — what you touch most)                            │
+│    Model ID         [deepseek-2.8            ]  [Search models]            │
+│    Display name     [DeepSeek 2.8            ]                              │
+│    Type             [Chat                     ▼]                            │
+│    Provider         [Groq                     ▼]                            │
+│    API address      [https://api.groq.com/openai/v1]                        │
+│    Price level      [low                       ▼]                           │
+│    Sees images      [● on]      Use this model [● on]                       │
+│    Provider key     [● set]     [Manage keys →]                             │
+│                                                                             │
+│  ADVANCED  (max tokens, context, limits — when you need them)              │
+│    Context window   [131072] tokens                                        │
+│    Max output tokens[8192]                                                 │
+│    Requests / min   [0]   Input tokens / min [0]   Output tokens / min [0] │
+│    Priority         [10]   Good at [chat, reasoning]  Used in [general]    │
+│    Extra options    [ temperature: 0.7, top_p: 1, ... ]  JSON              │
+│    ── power of the brain ──                                                 │
+│    Memory / context [● on]   Vision model [auto ▼]                         │
+│                                                                             │
+│  USED FOR                                                                   │
+│    [✓] Chat   [✓] Help   [ ] Memory                                        │
+│                                                                             │
+│  [ Save model ]   [ Test connection ]   [ Make live ]   [ Delete… ]         │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Every model field (API truth + human label)**
+### Field groups (normal vs advanced)
 
-| Human label | Control | API |
+| Tab | Human labels | API |
 |---|---|---|
-| Model ID | text + search | `name` |
-| Display name | text | `display_name` |
-| Type | Chat / Embedding | `model_type` |
-| Provider | select | `provider` |
-| API address | text | `api_base` |
-| Context size (tokens) | number | `ctx_length` |
-| Requests per minute | number | `limit_requests` |
-| Input tokens per minute | number | `limit_input` |
-| Output tokens per minute | number | `limit_output` |
-| Sees images | toggle | `vision` |
-| Use this model | toggle | `is_active` |
-| Good at | tags | `capabilities` |
-| Used in | tags | `domains` |
-| Priority | number | `priority` |
-| Price level | free/low/standard/premium | `cost_tier` |
-| Extra options | JSON | `kwargs` |
-| Used for Chat/Help/Memory | checkboxes | binding (not on model) |
-| Provider key | status + link | **not on model** |
+| **Normal** | Model ID, Display name, Type, Provider, API address, Price level, Sees images, Use this model, Provider key status | `name, display_name, model_type, provider, api_base, cost_tier, vision, is_active` |
+| **Advanced** | Context window, Max output tokens*, Requests/Input/Output per minute, Priority, Good at, Used in, Extra options (JSON), Memory/context, Vision model | `ctx_length, limit_*, priority, capabilities, domains, kwargs` + product extras |
+| **Used for** | Chat / Help / Memory | binding API |
 
-**Card face =** identity + type + address + ctx + vision + price + priority + Used for + key status.  
-**Open =** all fields above. **Never** temperature/max_tokens unless later in Extra options / schema.
+\*Max output tokens may live in Extra options until schema adds a column — **UI still shows it** and maps to `kwargs.max_tokens` (honest label under field: “stored in extra options”).
 
-**States:** empty (“Add a model + provider key”) · Needs key · Test failed · Embedding type · Off.
+### Card states
+
+| State | Look |
+|---|---|
+| **● LIVE** | Blue border, “✓ Active” (the one chat uses) |
+| Available | “Activate” button |
+| Needs key | Warning chip + “Add key” |
+| Test failed | Red chip + Retry |
+
+### Add model
+Same modal, empty Normal tab. **Add another model** after save.
 
 ---
 
