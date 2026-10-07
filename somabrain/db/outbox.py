@@ -13,9 +13,7 @@ Migrated from SQLAlchemy to Django ORM.
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import uuid
 from typing import Any, Sequence
 
 from django.db import transaction
@@ -63,28 +61,41 @@ class OutboxBackpressureError(Exception):
         )
 
 
+def _coord_to_str(coord: tuple[float, float, float] | list[float] | str) -> str:
+    """Canonical coordinate string — the seam's ``f"{x},{y},{z}"`` float repr.
+
+    Must match ``memory_contract.coord_from_key_material`` /
+    ``make_coord`` so both sides of the seam form the same identity.
+    """
+    if isinstance(coord, str):
+        return coord.strip()
+    return f"{coord[0]},{coord[1]},{coord[2]}"
+
+
 def _idempotency_key(
     operation: str,
-    coord: tuple[float, float, float] | None = None,
+    coord: tuple[float, float, float] | list[float] | str | None = None,
     tenant: str | None = None,
     extra: str | None = None,
 ) -> str:
-    """Generate idempotency key for deduplication.
+    """Return the one idempotency key: ``mem:{coord}`` (INVARIANTS §3.3).
 
-    Per Requirement E2.4: Duplicate detection via idempotency key.
+    "The idempotency key MUST be ``mem:{coord}`` — not a UUID (a random
+    suffix makes the outbox multiply memories)."
 
-    T-5: the tenant is part of the key's identity. A missing tenant raises
-    (``require_tenant``) — it is never folded into a shared "default" key,
-    which would let two partitions collide on one dedupe slot.
+    No operation prefix, no tenant mix-in, no extra suffix. The arguments are
+    kept for call-site compatibility but do NOT change the identity — a key
+    that varies with request id or tenant would let replays multiply rows.
+
+    Fails closed when ``coord`` is absent: a memory event with no coordinate
+    has no stable identity and must not fall back to a random key.
     """
-    tenant = require_tenant(tenant)
-    parts = [operation, tenant]
-    if coord is not None:
-        parts.append(f"{coord[0]:.6f},{coord[1]:.6f},{coord[2]:.6f}")
-    if extra:
-        parts.append(extra)
-    data = ":".join(parts)
-    return hashlib.sha256(data.encode()).hexdigest()[:32]
+    if coord is None:
+        raise ValueError(
+            "idempotency key requires a coordinate (INVARIANTS §3.3: "
+            "mem:{coord}); a missing coord must not fall back to a random key"
+        )
+    return f"mem:{_coord_to_str(coord)}"
 
 
 def check_backpressure(tenant_id: str | None = None) -> bool:
@@ -167,7 +178,9 @@ def mark_events_for_replay(event_ids: Sequence[int]) -> int:
     ids = [int(i) for i in event_ids]
     if not ids:
         return 0
-    updated = OutboxEvent.objects.filter(id__in=ids, status="failed").update(
+    updated = OutboxEvent.objects.filter(
+        id__in=ids, status__in=["failed", "pending"]
+    ).update(
         status="pending",
         retries=0,
         last_error=None,
@@ -232,8 +245,11 @@ def enqueue_event(
     that a later batch would have to remap (AP-04).
     """
     tenant_id = require_tenant(tenant_id)
-    if dedupe_key is None:
-        dedupe_key = str(uuid.uuid4())
+    if dedupe_key is None or not str(dedupe_key).strip():
+        raise ValueError(
+            "enqueue_event requires a non-empty dedupe_key; a UUID fallback "
+            "is a multiplier (INVARIANTS §3.3)"
+        )
 
     event = OutboxEvent.objects.create(
         topic=topic,

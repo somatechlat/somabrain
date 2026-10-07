@@ -126,6 +126,15 @@ async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int
         payload = dict(row.get("payload") or {})
         key = payload.get("key")
         if key is None:
+            # Agent-path rows carry ``coord`` rather than ``key``. Derive the
+            # store key from the same coordinate identity as the dedupe key.
+            coord = payload.get("coord")
+            if coord is not None:
+                if isinstance(coord, str):
+                    key = coord.strip()
+                else:
+                    key = f"{coord[0]},{coord[1]},{coord[2]}"
+        if key is None:
             continue
         try:
             await memsvc.aremember(key, payload.get("payload") or payload)
@@ -534,8 +543,10 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
         )
 
     if not item_contexts:
+        # Vacuous accept: nothing to write, so nothing failed. Still not a
+        # hardcoded success claim — there are simply no items to judge.
         return {
-            "ok": True,
+            "ok": not payload.items,
             "tenant": payload.tenant,
             "namespace": payload.namespace,
             "results": [],
@@ -624,6 +635,12 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
                 "coordinate": coordinate,
                 "promoted_to_wm": promoted_to_wm,
                 "persisted_to_ltm": persisted_to_ltm,
+                "queued_for_ltm": False,
+                "durability": (
+                    MemoryDurability.PERSISTED_LTM
+                    if persisted_to_ltm
+                    else MemoryDurability.DURABLE_OUTBOX
+                ),
                 "deduplicated": False,
                 "importance": signal_feedback.importance,
                 "novelty": signal_feedback.novelty,
@@ -642,8 +659,11 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
     except Exception:
         pass
 
+    # T-6 / R-15: ok is durable accept, never a hardcoded true. Every item got
+    # a verified outbox row before the hop and the store acked the batch.
+    durable_accept = persisted_to_ltm or bool(outbox_ids)
     return {
-        "ok": True,
+        "ok": durable_accept,
         "tenant": payload.tenant,
         "namespace": payload.namespace,
         "results": results,

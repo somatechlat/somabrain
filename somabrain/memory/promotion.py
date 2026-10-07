@@ -443,6 +443,7 @@ class WMLTMPromoter:
                     "tenant_id": self._tenant_id,
                     "queued_at": time.time(),
                 },
+                dedupe_key=f"wm.promote:{item_id}",
                 tenant_id=self._tenant_id,
             )
         except Exception as exc:

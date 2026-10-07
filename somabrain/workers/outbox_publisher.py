@@ -1,9 +1,16 @@
 """
 Transactional Outbox Publisher - Django ORM version
 
-Polls the outbox_events table and publishes events to Kafka topics.
-On successful publish, marks the event as 'sent'. On failure, increments retries
-and stores last_error; after max retries, marks as 'failed'.
+Polls the outbox_events table and drains events to their terminal destination.
+
+T-6: for ``memory.store`` events the terminal condition is a STORE ack
+(``memsvc.aremember``) — not a Kafka publish. Only after the store accepts
+the write is the row marked ``sent``. Kafka publication, when it succeeds, is
+secondary and best-effort. The same terminal condition is enforced in-process
+by ``api/endpoints/memory_remember._replay_pending_to_store``.
+
+On failure, increments retries and stores last_error; after max retries,
+marks as 'failed'.
 
 Robustness improvements:
 - Prefer confluent-kafka with idempotence + acks=all when available
@@ -195,6 +202,47 @@ def _update_outbox_pending_metrics() -> None:
     _known_pending_tenants.update(current_tenants)
 
 
+def _write_memory_to_store(tenant_label: str, ev) -> bool:
+    """Write one ``memory.store`` event to the STORE via ``memsvc.aremember``.
+
+    T-6: only a store ack closes an event. A Kafka publish is NOT a store
+    ack. Returns True when the store accepted the write. Raises on any
+    failure so the caller leaves the row pending for replay — the same
+    terminal condition as ``api/endpoints/memory_remember._replay_pending_to_store``.
+    """
+    from asgiref.sync import async_to_sync
+
+    from somabrain.api.memory.helpers import _get_memory_pool, _resolve_namespace
+    from somabrain.services.memory_service import MemoryService
+
+    payload = dict(ev.payload or {})
+    key = payload.get("key")
+    if key is None:
+        # Agent-path rows (memory/remember.py::_record_to_outbox) carry
+        # ``coord`` rather than ``key``. Derive the store key from the same
+        # coordinate identity used for the ``mem:{coord}`` dedupe key so the
+        # drain writes both agent and brain paths to the STORE.
+        coord = payload.get("coord")
+        if coord is not None:
+            if isinstance(coord, str):
+                key = coord.strip()
+            else:
+                key = f"{coord[0]},{coord[1]},{coord[2]}"
+    if key is None:
+        raise ValueError(
+            f"memory.store outbox event id={ev.id} has neither key nor coord "
+            "in its payload; cannot write to the store"
+        )
+    stored = payload.get("payload") or payload
+    ns = stored.get("namespace") or ""
+    pool = _get_memory_pool()
+    if pool is None:
+        raise RuntimeError("memory pool unavailable")
+    memsvc = MemoryService(pool, _resolve_namespace(tenant_label, ns))
+    async_to_sync(memsvc.aremember)(key, stored)
+    return True
+
+
 @transaction.atomic
 def _process_batch(producer, batch_size: int, max_retries: int) -> int:
     """Process a batch of outbox events using Django ORM."""
@@ -248,15 +296,38 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
                     "processing-attempt": str(ev.retries + 1),
                 }
 
-                _publish_record(
-                    producer,
-                    topic,
-                    ev.payload,
-                    key=key,
-                    headers=headers,
-                )
-                ev.status = "sent"
-                ev.save()
+                if ev.topic == "memory.store":
+                    # T-6: the STORE ack is the terminal condition. Write to
+                    # the store first; only then mark the row done. Kafka (if
+                    # any) is secondary and best-effort.
+                    _write_memory_to_store(tenant_label, ev)
+                    ev.status = "sent"
+                    ev.save()
+                    try:
+                        _publish_record(
+                            producer,
+                            topic,
+                            ev.payload,
+                            key=key,
+                            headers=headers,
+                        )
+                    except Exception as kafka_exc:
+                        logging.debug(
+                            "outbox_publisher: secondary Kafka publish failed "
+                            "for event id=%s (store already acked): %s",
+                            ev.id,
+                            kafka_exc,
+                        )
+                else:
+                    _publish_record(
+                        producer,
+                        topic,
+                        ev.payload,
+                        key=key,
+                        headers=headers,
+                    )
+                    ev.status = "sent"
+                    ev.save()
                 sent += 1
                 tenant_processed += 1
                 k = (str(tenant_label), str(topic))  # type: ignore

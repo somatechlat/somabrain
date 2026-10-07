@@ -62,7 +62,9 @@ def _record_to_outbox(
             },
             tenant_id=tenant,
             coord=coord,
-            extra_key=request_id,
+            # INVARIANTS §3.3: identity is mem:{coord} only. request_id is
+            # payload metadata, never part of the dedupe key.
+            extra_key=None,
             check_backpressure_flag=True,
         )
         return event_id
