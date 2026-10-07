@@ -16,6 +16,7 @@
 | Next Review | 2026-12-28 |
 
 ## Revision History
+| 1.0.3 | 2026-10-07 | SomaTech Engineering | Cross-link FIELD-PARITY-001 + MODEL-ADMIN-001; Settings suite; no slot language. |
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|

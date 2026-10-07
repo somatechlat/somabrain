@@ -15,6 +15,7 @@
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
 | Next Review | 2026-12-28 |
 ## Revision History
+| 2.1.0 | 2026-10-07 | SomaTech Engineering | Product map 0/0B (full /api/v2); custom URL + Load models; field parity ref SOMA-UI-FIELD-PARITY-001. |
 
 | Version | Date | Author | Description |
 |---|---|---|---|

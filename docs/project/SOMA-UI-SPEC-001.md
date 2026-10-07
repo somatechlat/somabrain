@@ -15,6 +15,7 @@
 | ISO Reference | ISO 9241-210:2019 — Human-centred design |
 | Next Review | 2026-12-28 |
 ## Revision History
+| 1.1.0 | 2026-10-07 | SomaTech Engineering | soma-model-card/editor/field; soma-used-for; parity with Agent Zero fields. |
 
 | Version | Date | Author | Description |
 |---|---|---|---|

@@ -6,13 +6,14 @@
 |---|---|
 | Document Title | Settings Workspace and Model Manager |
 | Document Identifier | SOMA-UI-MODEL-ADMIN-001 |
-| Version | **3.0.0** |
+| Version | **3.2.0** |
 | Date | 2026-10-07 |
 | Status | Draft |
 | Classification | Internal |
 | Reference UX | `agent-zero-main/webui/components/settings/*` (section nav, Models + Voice in one place) |
 | Field truth | `somaAgent01/admin/llm/api.py` `ModelIn` 117–135 |
 | **Forbidden on screen** | The word **“slot”** and the tab zoo of four disconnected model pages |
+| Related documents | SOMA-UI-FIELD-PARITY-001 · SOMA-UI-MOCKUPS-001 · SOMA-UI-UX-001 · SOMA-UI-SPEC-001 |
 
 ## Revision History
 
@@ -20,6 +21,8 @@
 |---|---|---|
 | 2.1.0 | 2026-10-07 | Schema-true ModelIn editor |
 | 3.0.0 | 2026-10-07 | **Settings workspace** (agent-zero style). **Slots removed from UX.** One Settings page: Agent · Models · Voice · Interface · Tools · Integrations. Model = full CSS card. |
+| 3.1.0 | 2026-10-07 | Activate + Normal/Advanced modal; key in form → Vault; Custom URL + Load models; seeded DeepSeek 2.8. |
+| 3.2.0 | 2026-10-07 | **Full Agent Zero field parity** (SOMA-UI-FIELD-PARITY-001): ctx_history, max_embeds, timeout, max_tokens, ctx_input, vision sidecar. ISO cross-refs. |
 
 ---
 
@@ -176,3 +179,16 @@ Modules, quotas, experimental.
 ## 7. Out of scope
 
 Code until the operator says **code**. Schema changes to ModelIn (e.g. temperature column) are a separate product decision.
+
+
+---
+
+## 12. Document set (ISO-linked)
+
+| ID | Role |
+|---|---|
+| SOMA-UI-FIELD-PARITY-001 | Every Agent Zero field ↔ Soma |
+| SOMA-UI-MOCKUPS-001 | Wireframes + field tables + product map |
+| SOMA-UI-UX-001 | Journeys + principles |
+| SOMA-UI-SPEC-001 | Components |
+| SOMA-UI-MODEL-ADMIN-001 | This spec (Settings + Models) |
