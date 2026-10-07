@@ -20,6 +20,7 @@
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial complete UI/UX specification — all screens, journeys, modules |
+| 1.0.2 | 2026-10-07 | SomaTech Engineering | Model settings hub: card-based full-model admin per SOMA-UI-MODEL-ADMIN-001. |
 | 1.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: prior status `Baseline` normalised to `Draft` (no approver named). |
 
 ---
@@ -387,6 +388,8 @@ SOMA AGENT SCREENS
 
 ### 3.5 SETTINGS HUB (/settings)
 
+Model configuration is **card-based full-model admin** (see `SOMA-UI-MODEL-ADMIN-001.md` and MOCKUPS Screen 8): model card grid → select card → edit **all** model settings + assign Chat/Utility/Embedding slots. Provider cards remain for connection-level config (base URL, key).
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ ☰ SOMA   Settings                                   👤          │
@@ -394,26 +397,15 @@ SOMA AGENT SCREENS
 │                                                                  │
 │  ┌──────────────┐                                               │
 │  │ CORE          │  ┌─────────────────────────────────────────┐ │
-│  │ 🖥️ UI         │  │                                         │ │
-│  │ 🤖 Model      │  │  Model Provider Configuration            │ │
-│  │ 🧠 Agent      │  │                                         │ │
-│  │ 🔧 Tools      │  │  ┌─────────────────────────────────┐    │ │
-│  │               │  │  │ Active Provider: Groq            │    │ │
-│  │ MODULES       │  │  │ Model: openai/gpt-oss-120b      │    │ │
-│  │ 📦 Modules    │  │  │ API Key: gsk_••••••••••••••••   │    │ │
-│  │ 🔐 Auth       │  │  └─────────────────────────────────┘    │ │
-│  │ 🛡️ Authz      │  │                                         │ │
-│  │ 💳 Billing    │  │  Available Providers:                    │ │
-│  │ 🔑 Secrets    │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐   │ │
-│  │ 📨 Events     │  │  │  Groq   │ │ OpenAI  │ │Anthropic│   │ │
-│  │ ⚙️ Workflows  │  │  │  ●      │ │  ○      │ │  ○      │   │ │
-│  │ 🔌 Plugins    │  │  └─────────┘ └─────────┘ └─────────┘   │ │
-│  │ 📚 Skills     │  │                                         │ │
-│  │ 🔗 MCP        │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐   │ │
-│  │ 🎤 Voice      │  │  │  Ollama │ │  Groq   │ │ OpenRouter│  │ │
-│  │ 📧 Email      │  │  │  ○      │ │  ●      │ │  ○      │   │ │
-│  │ 📊 Analytics  │  │  └─────────┘ └─────────┘ └─────────┘   │ │
-│  │ 📋 Audit      │  │                                         │ │
+│  │ 🖥️ UI         │  │  Model Administration                    │ │
+│  │ 🤖 Model      │  │  ┌─────────────────────────────────┐    │ │
+│  │ 🧠 Agent      │  │  │ Active: Groq · gpt-oss-120b      │    │ │
+│  │ 🔧 Tools      │  │  │ Roles: Chat, Utility  Key: ●OK   │    │ │
+│  │               │  │  │ [Edit Selected] [Test ✓]         │    │ │
+│  │ MODULES       │  │  └─────────────────────────────────┘    │ │
+│  │ 📦 Modules    │  │  Cards:  [GROQ ●] [OpenAI ○] [Ollama ○]│ │
+│  │ 🔐 Auth       │  │          [+ Add model]                  │ │
+│  │ …             │  │  Selected card → FULL editor + slot map  │ │
 │  └──────────────┘  └─────────────────────────────────────────┘ │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘

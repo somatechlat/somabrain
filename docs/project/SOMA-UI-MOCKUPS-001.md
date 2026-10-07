@@ -19,6 +19,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Document control normalised: prior status `Baseline` normalised to `Draft` (no approver named). |
+| 1.0.1 | 2026-10-07 | SomaTech Engineering | Screen 8 rewritten: card grid + full model editor + slot map (SOMA-UI-MODEL-ADMIN-001). |
 
 
 ## COLOR KEY
@@ -371,59 +372,55 @@
 
 ---
 
-## SCREEN 8: SETTINGS — MODEL PROVIDER
+## SCREEN 8: SETTINGS — MODEL ADMINISTRATION (card UI)
+
+**Canonical spec:** `SOMA-UI-MODEL-ADMIN-001.md`. Selecting a **full card** opens the **complete** model editor (every `ModelIn` field). Slots are assigned from the card, not three bare dropdowns.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ ☰  S SOMA        Settings > Model                                  👤        │
+│ ☰  S SOMA        Settings > Models                                 👤        │
 ├──────┬───────────────────────────────────────────────────────┬──────────────┤
-│      │                                                       │              │
-│ S    │  Model Provider Configuration                          │              │
-│ O    │                                                       │              │
-│ M    │  ┌───────────────────────────────────────────────┐   │              │
-│ A    │  │ Active Provider: Groq                          │   │              │
-│      │  │ Model: openai/gpt-oss-120b                     │   │              │
-│ 🔍   │  │ API Key: gsk_••••••••••••••••                 │   │              │
-│      │  │ [Change Provider] [Test Connection ✓]          │   │              │
-│ ───  │  └───────────────────────────────────────────────┘   │              │
-│      │                                                       │              │
-│ +    │  Available Providers                                   │              │
-│ New  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │              │
-│ Chat │  │  Groq   │ │ OpenAI  │ │Anthropic│ │ Ollama  │   │              │
-│      │  │  ●      │ │  ○      │ │  ○      │ │  ○      │   │              │
-│ ───  │  │  Active │ │  Setup  │ │  Setup  │ │  Setup  │   │              │
-│      │  └─────────┘ └─────────┘ └─────────┘ └─────────┘   │              │
-│ Conv │                                                       │              │
-│  1   │  ┌─────────┐ ┌─────────┐ ┌─────────┐                │              │
-│ Conv │  │ Groq    │ │ OpenRouter│ │ Custom │                │              │
-│  2   │  │  ○      │ │  ○      │ │  ○      │                │              │
-│ Conv │  │  Setup  │ │  Setup  │ │  Setup  │                │              │
-│  3   │  └─────────┘ └─────────┘ └─────────┘                │              │
-│      │                                                       │              │
-│      │  Groq Configuration                                    │              │
+│      │  MODEL ADMINISTRATION                                  │              │
+│ S    │  ┌───────────────────────────────────────────────┐   │              │
+│ O    │  │ Active  Provider: Groq · openai/gpt-oss-120b   │   │              │
+│ M    │  │ Roles: [Chat] [Utility]   Key: gsk_••••  ●OK  │   │              │
+│ A    │  │ [Edit Selected] [Test Connection ✓]            │   │              │
+│      │  └───────────────────────────────────────────────┘   │              │
+│ 🔍   │                                                       │              │
+│ ───  │  MODELS                                               │              │
+│      │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐   │              │
+│ +    │  │ ● SELECTED  │ │   OpenAI    │ │   Local     │   │              │
+│ New  │  │   GROQ      │ │   ○ Setup   │ │   ○ Setup   │   │              │
+│ Chat │  │ gpt-oss-120b│ │ gpt-4o-mini │ │ llama3.1    │   │              │
+│      │  │ 131K ⚡ v   │ │ 128K        │ │ 32K         │   │              │
+│ ───  │  │ [Chat][Uty] │ │ [—]         │ │ [—]         │   │              │
+│      │  └─────────────┘ └─────────────┘ └─────────────┘   │              │
+│ Conv │  ┌─────────────┐ ┌─────────────┐                    │              │
+│  1   │  │  OpenRouter │ │  + ADD      │                    │              │
+│ Conv │  │   ○ Setup   │ │             │                    │              │
+│  2   │  │ …           │ │             │                    │              │
+│ Conv │  └─────────────┘ └─────────────┘                    │              │
+│  3   │                                                       │              │
+│      │  FULL MODEL EDIT — openai/gpt-oss-120b                │              │
 │      │  ┌───────────────────────────────────────────────┐   │              │
-│      │  │ API Base URL                                   │   │              │
-│      │  │ ┌───────────────────────────────────────────┐ │   │              │
-│      │  │ │ https://api.groq.com/openai/v1            │ │   │              │
-│      │  │ └───────────────────────────────────────────┘ │   │              │
-│      │  │                                               │   │              │
-│      │  │ API Key                                        │   │              │
-│      │  │ ┌───────────────────────────────────────────┐ │   │              │
-│      │  │ │ gsk_••••••••••••••••••••••••••••••••      │ │   │              │
-│      │  │ └───────────────────────────────────────────┘ │   │              │
-│      │  │ [👁 Show] [Test Connection]                    │   │              │
-│      │  │                                               │   │              │
-│      │  │ Available Models                               │   │              │
-│      │  │ ☑ openai/gpt-oss-120b (131K, fast)            │   │              │
-│      │  │ ☑ openai/gpt-oss-20b (32K, fast)              │   │              │
-│      │  │ ☐ llama-3.3-70b (128K, balanced)              │   │              │
-│      │  │ ☐ llama-3.1-8b (128K, ultra fast)             │   │              │
+│      │  │ Provider  [Groq v]     Model [openai/gpt-oss…]│   │              │
+│      │  │ API key   [••••••] [Show] [Test]              │   │              │
+│      │  │ Vision    [● on]     Type [chat v]            │   │              │
+│      │  │ Assign    ☑ Chat  ☑ Utility  ☐ Embedding     │   │              │
+│      │  │ ▸ Advanced Settings                           │   │              │
+│      │  │   Base URL | ctx_length | max tokens | timeout│   │              │
+│      │  │   cost_tier | domains | priority | capabilities│  │              │
+│      │  │   rate limits | kwargs (JSON)                 │   │              │
+│      │  │ [Save Model] [Delete…]                        │   │              │
 │      │  └───────────────────────────────────────────────┘   │              │
 │      │                                                       │              │
-│      │                                        [Save]         │              │
-│ [⚙️] │                                                       │              │
+│      │  SLOT MAP          Chat → gpt-oss-120b                │              │
+│      │  Utility → gpt-oss-120b   Embedding → —               │              │
+│ [⚙️] │  [Open Presets]                                        │              │
 └──────┴───────────────────────────────────────────────────────┴──────────────┘
 ```
+
+Card states: default · hoverable · **selected** (Soma Blue border). Advanced collapsed (P-03).
 
 ---
 

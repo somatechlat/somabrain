@@ -602,6 +602,10 @@ User types: "Search for latest AI news and summarize"
 | Settings Section | `<soma-settings-section>` | Settings group |
 | Module Card | `<soma-module-card>` | Module toggle card |
 | Provider Card | `<soma-provider-card>` | LLM provider card |
+| **Model Card** | `<soma-model-card>` | Selectable model card (name, roles, ctx, status). Variants: default, hoverable, **selected** |
+| **Model Editor** | `<soma-model-editor>` | Full `ModelIn` editor + Advanced collapse + Assign slots (see SOMA-UI-MODEL-ADMIN-001) |
+| **Model Field** | `<soma-model-field>` | Label + control row for one model setting |
+| **Slot Map** | `<soma-slot-map>` | Chat / Utility / Embedding binding summary |
 | Secret Field | `<soma-secret-field>` | Masked input for secrets |
 
 ---
