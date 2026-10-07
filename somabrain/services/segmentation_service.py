@@ -155,7 +155,14 @@ class SegmentationService:
         return [i + 1 for i, g in enumerate(grad) if g >= thresh]
 
     def _run_hmm(self, values: list[float]) -> list[int]:
-        """Run the online two-state HMM smoother over the salience series."""
+        """Run the online two-state HMM smoother over the salience series.
+
+        Parameters are **FIXED / moment estimates — no Baum-Welch**:
+        - ``A`` is the fixed transition matrix ``((0.95, 0.05), (0.10, 0.90))``.
+        - ``mu`` is (median, 85th percentile) of the window; ``sigma`` is
+          (std, 1.5·std). These are robust moments of the current window,
+          not EM-learned emission parameters. Nothing is fitted across calls.
+        """
 
         if not values:
             return []

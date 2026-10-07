@@ -19,9 +19,8 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from dataclasses import dataclass
 
+from somabrain.memory import consolidation
 from somabrain.services.memory_service import MemoryService
-
-from . import consolidation
 
 
 @dataclass

@@ -301,3 +301,24 @@ def get_personality_store():
     from somabrain.admin.cognitive.personality import PersonalityStore
 
     return _singleton("personality_store", PersonalityStore)
+
+
+def get_prefrontal():
+    """Precision-weighted WM admission gate (T81). One process-wide gate."""
+    from somabrain.admin.cognitive.prefrontal import PrefrontalCortex
+
+    return _singleton("prefrontal", PrefrontalCortex)
+
+
+def get_basal_ganglia():
+    """Boltzmann action-selection policy (T80). One process-wide policy."""
+    from somabrain.admin.cognitive.basal_ganglia import BasalGangliaPolicy
+
+    return _singleton("basal_ganglia", BasalGangliaPolicy)
+
+
+def get_emotion_model():
+    """VAD affective state (T82). One process-wide EmotionModel."""
+    from somabrain.admin.cognitive.emotion import EmotionModel
+
+    return _singleton("emotion_model", EmotionModel)

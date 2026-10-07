@@ -10,6 +10,11 @@ Neuromod couplings (W2.5):
 - Serotonin provides **response smoothing**: higher 5-HT increases gate
   hysteresis and the soft-gate temperature, so decisions flap less.
 
+VAD couplings (W6.3 / T82) — optional arguments on ``score`` / ``gates``:
+- ``affect_boost`` adds an arousal/valence salience term.
+- ``temperature_scale`` multiplies the soft-gate temperature (arousal sharpens).
+- ``threshold_offset`` shifts both gate thresholds (dominance lowers them).
+
 VIBE Compliance:
     - Direct imports of metrics and salience backends (no lazy import shims)
     - All metrics calls are best-effort (silent failure on metrics errors)
@@ -18,6 +23,7 @@ VIBE Compliance:
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -135,6 +141,7 @@ class AmygdalaSalience:
         pred_error: float,
         neuromod: NeuromodState,
         wm_vector: np.ndarray | None = None,
+        affect_boost: float = 0.0,
     ) -> float:
         """
         Compute salience score from novelty and prediction error.
@@ -150,6 +157,9 @@ class AmygdalaSalience:
         wm_vector : Optional[np.ndarray]
             Working-memory vector providing FD energy signals when the FD
             salience pathway is enabled. Ignored for dense salience.
+        affect_boost : float
+            Optional VAD salience contribution (T82). Added after the
+            neuromodulator terms; default 0.0 preserves the dense path.
 
         Returns
         -------
@@ -186,10 +196,19 @@ class AmygdalaSalience:
         s += fd_boost
         # ACh is attention demand: attended input gains salience (stored/acted)
         s += float(neuromod.acetylcholine)
+        # VAD affect (T82): arousal/valence boost from EmotionModel
+        s += float(affect_boost)
         # bound
         return max(0.0, min(1.0, s))
 
-    def gates(self, s: float, neuromod: NeuromodState) -> tuple[bool, bool]:
+    def gates(
+        self,
+        s: float,
+        neuromod: NeuromodState,
+        *,
+        temperature_scale: float = 1.0,
+        threshold_offset: float = 0.0,
+    ) -> tuple[bool, bool]:
         """
         Compute store and act gates from salience score.
 
@@ -199,6 +218,12 @@ class AmygdalaSalience:
             Salience score [0, 1].
         neuromod : NeuromodState
             Current neuromodulator state.
+        temperature_scale : float
+            Multiplier on the soft-gate temperature (T82 arousal coupling).
+            1.0 leaves the configured temperature unchanged. Must be > 0.
+        threshold_offset : float
+            Added to both gate thresholds (T82 dominance coupling). Negative
+            values lower thresholds. Must be finite.
 
         Returns
         -------
@@ -206,8 +231,15 @@ class AmygdalaSalience:
             (do_store, do_act) gate decisions.
         """
         th_store, th_act = self._thresholds(neuromod)
+        th_store += float(threshold_offset)
+        th_act += float(threshold_offset)
         if self.cfg.use_soft:
-            ps, pa = self.gate_probs(s, neuromod)
+            ps, pa = self.gate_probs(
+                s,
+                neuromod,
+                temperature_scale=temperature_scale,
+                threshold_offset=threshold_offset,
+            )
             do_store = ps >= 0.5
             do_act = pa >= 0.5
         else:
@@ -229,7 +261,14 @@ class AmygdalaSalience:
 
         return float(self._last_fd_capture)
 
-    def gate_probs(self, s: float, neuromod: NeuromodState) -> tuple[float, float]:
+    def gate_probs(
+        self,
+        s: float,
+        neuromod: NeuromodState,
+        *,
+        temperature_scale: float = 1.0,
+        threshold_offset: float = 0.0,
+    ) -> tuple[float, float]:
         """
         Compute soft gate probabilities via sigmoid around thresholds.
 
@@ -239,6 +278,10 @@ class AmygdalaSalience:
             Salience score [0, 1].
         neuromod : NeuromodState
             Current neuromodulator state.
+        temperature_scale : float
+            Multiplier on the 5-HT-smoothed soft temperature (T82 arousal).
+        threshold_offset : float
+            Added to both thresholds (T82 dominance).
 
         Returns
         -------
@@ -246,11 +289,16 @@ class AmygdalaSalience:
             (p_store, p_act) probabilities [0, 1].
         """
         th_store, th_act = self._thresholds(neuromod)
+        th_store += float(threshold_offset)
+        th_act += float(threshold_offset)
         if not self.cfg.use_soft:
             return (1.0 if s >= th_store else 0.0, 1.0 if s >= th_act else 0.0)
         # 5-HT response smoothing: higher stability widens the sigmoid
         stability = max(0.0, min(1.0, float(neuromod.serotonin)))
-        T = max(1e-4, float(self.cfg.soft_temperature) * (1.0 + stability))
+        scale = float(temperature_scale)
+        if not math.isfinite(scale) or scale <= 0.0:
+            scale = 1.0
+        T = max(1e-4, float(self.cfg.soft_temperature) * (1.0 + stability) * scale)
 
         def _sig(x: float) -> float:
             # numerically stable sigmoid

@@ -1,4 +1,19 @@
-"""Module hmm."""
+"""Two-state online HMM smoother for cognitive stream segmentation.
+
+**FIXED parameters — no Baum-Welch / EM learning.** The transition matrix
+``A`` is a fixed constant supplied by the caller (production uses
+``A = ((0.95, 0.05), (0.10, 0.90))`` in
+``somabrain/services/segmentation_service.py``). Emission means/standard
+deviations are robust moment estimates (median / 85th percentile / std)
+of the current observation window — they are recomputed per window and
+are **not** learned by expectation-maximisation. Online Viterbi
+probabilities are computed by a forward max-product recursion with
+per-step normalisation; ``detect_boundaries`` thresholds P(TRANSITION).
+
+There is no segment-parameter learning and none is claimed. The RWR
+planner (`somabrain/planning/planner_rwr.py`) is a separate, real
+random-walk-with-restart implementation and is unaffected by this module.
+"""
 
 from __future__ import annotations
 
@@ -12,11 +27,15 @@ class HMMParams:
     """Parameters for a simple two-state HMM with Gaussian emissions.
 
     States are indexed as 0=STABLE, 1=TRANSITION.
+
+    **FIXED transition matrix** — caller-supplied constants; this module
+    never fits ``A`` (no Baum-Welch). Emission parameters ``mu``/``sigma``
+    are moment estimates from the observation window, not EM estimates.
     """
 
-    # Transition probabilities A[i][j] = P(s_t=j | s_{t-1}=i)
+    # Transition probabilities A[i][j] = P(s_t=j | s_{t-1}=i)  — FIXED
     A: tuple[tuple[float, float], tuple[float, float]]
-    # Gaussian emission parameters per state (mean, std)
+    # Gaussian emission parameters per state (mean, std) — window moments
     mu: tuple[float, float]
     sigma: tuple[float, float]
 
