@@ -22,11 +22,15 @@ from typing import Any
 import numpy as np
 
 from somabrain.api.memory.helpers import (
+    LAYER_BOTH,
+    LAYER_LTM,
+    LAYER_WM,
     _get_embedder,
     _get_memory_pool,
     _get_wm,
     _resolve_namespace,
     _serialize_coord,
+    normalize_layer,
 )
 from somabrain.api.memory.models import (
     MemoryRecallItem,
@@ -230,9 +234,10 @@ async def perform_recall(
     text-only path is the honest degradation and is reported as such.
     """
     await _ensure_config_runtime_started()
-    layer = (payload.layer or "all").lower()
-    if layer not in {"wm", "ltm", "all"}:
-        raise HttpError(400, "layer must be wm, ltm, or omitted")
+    try:
+        layer = normalize_layer(payload.layer)
+    except ValueError as exc:
+        raise HttpError(400, str(exc)) from exc
 
     query_vec_list = _require_valid_query_vector(payload.embedding)
 
@@ -259,14 +264,14 @@ async def perform_recall(
             embedder = _get_embedder()
             query_vec = np.asarray(embedder.embed(payload.query), dtype=np.float32)
         except HttpError:
-            if layer in {"wm", "all"}:
+            if layer in (LAYER_WM, LAYER_BOTH):
                 raise
         except Exception:
             embedder = None
             query_vec = None
 
     # WM recall
-    if layer in {"wm", "all"} and query_vec is not None:
+    if layer in (LAYER_WM, LAYER_BOTH) and query_vec is not None:
         try:
             wm = _get_wm()
             stage_start = time.perf_counter()
@@ -299,7 +304,7 @@ async def perform_recall(
             logger.warning("WM recall failed: %s", e)
 
     # LTM recall
-    if layer in {"ltm", "all"}:
+    if layer in (LAYER_LTM, LAYER_BOTH):
         pool = _get_memory_pool()
         resolved_ns = _resolve_namespace(payload.tenant, payload.namespace)
         memsvc = MemoryService(pool, resolved_ns)

@@ -32,12 +32,16 @@ def build_store_payload(
     memory_type: str,
     embedding: list[float] | None = None,
     tenant_id: str | None = None,
+    settings: Any = None,
 ) -> dict:
     """Build the POST /memories body, forwarding the seam fields.
 
     Regression guard: earlier versions rebuilt this body as
     {coord, payload, memory_type} only, silently stripping ``embedding`` and
     ``tenant_id`` so every stored memory fell back to hash vectors.
+
+    ``settings`` is forwarded to the seam-dim gate so Django-free callers can
+    inject the configuration the same way ``resolve_embed_dim`` accepts it.
     """
     body: dict = {
         "coord": coord,
@@ -45,7 +49,7 @@ def build_store_payload(
         "memory_type": memory_type,
     }
     if embedding is not None:
-        ensure_embedding_dim(embedding)
+        ensure_embedding_dim(embedding, settings=settings)
         body["embedding"] = list(embedding)
     if tenant_id:
         body["tenant_id"] = str(tenant_id)
@@ -58,14 +62,19 @@ def build_search_payload(
     top_k: int,
     embedding: list[float] | None = None,
     tenant_id: str | None = None,
+    settings: Any = None,
 ) -> dict:
-    """Build the POST /memories/search body, forwarding the query embedding."""
+    """Build the POST /memories/search body, forwarding the query embedding.
+
+    ``settings`` is forwarded to the seam-dim gate the same way as
+    :func:`build_store_payload`.
+    """
     body: dict = {
         "query": query,
         "top_k": top_k,
     }
     if embedding is not None:
-        ensure_embedding_dim(embedding)
+        ensure_embedding_dim(embedding, settings=settings)
         body["embedding"] = list(embedding)
     if tenant_id:
         body["tenant_id"] = str(tenant_id)

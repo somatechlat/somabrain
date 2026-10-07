@@ -37,9 +37,18 @@ from __future__ import annotations
 
 import time
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
+
+
+class MemoryDurability(StrEnum):
+    """Where a write is durably accepted (T-6). Named vocabulary (AP-06)."""
+
+    PERSISTED_LTM = "persisted_ltm"
+    DURABLE_OUTBOX = "durable_outbox"
+    DEGRADED_JOURNAL = "degraded_journal"
 
 
 class MemoryAttachment(BaseModel):
@@ -329,11 +338,9 @@ class MemoryWriteRequest(BaseModel):
 
 
 class MemoryWriteResponse(BaseModel):
-    """Response model for single memory write operations.
+    """Single memory write response (seam MemoryAck superset).
 
-    Superset of the seam ``MemoryAck``: ``coord`` (canonical ``x,y,z`` string),
-    ``store``, ``ok`` and ``error`` are always present alongside the legacy
-    ``coordinate`` float list.
+    ``ok`` is the DURABLE ACCEPT (T-6). ``durability`` says which — never read ``ok`` alone.
     """
 
     ok: bool
@@ -347,6 +354,11 @@ class MemoryWriteResponse(BaseModel):
     store: str = Field("somafractalmemory", description="Store that acked the write")
     kind: str | None = None
     error: str | None = None
+    durability: MemoryDurability = Field(
+        ...,
+        description="persisted_ltm=LTM acked; durable_outbox=outbox replayed until LTM acks; degraded_journal=journal only",
+    )
+    outbox_event_id: int | None = Field(None, description="OutboxEvent PK when durable_outbox")
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
     queued_for_ltm: bool = False
@@ -377,7 +389,11 @@ class MemoryRecallRequest(BaseModel):
         ),
     )
     layer: str | None = Field(
-        None, description="Set to 'wm', 'ltm', or omit for both"
+        None,
+        description=(
+            "wm, ltm, or both (omit for both). 'all' is a synonym for 'both'. "
+            "Unknown values are rejected with 400 (never a silent empty)."
+        ),
     )
     universe: str | None = None
     tags: list[str] = Field(

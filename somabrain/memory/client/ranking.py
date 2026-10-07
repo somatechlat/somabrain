@@ -9,6 +9,12 @@ from typing import Any
 
 import numpy as np
 
+from somabrain.math.contracts import (
+    RECENCY_CAP,
+    RECENCY_FLOOR,
+    RECENCY_SCALE,
+    RECENCY_SHARPNESS,
+)
 from somabrain.math.recency import recency_features as _shared_recency_features
 
 from .serialization import _extract_memory_coord
@@ -186,63 +192,30 @@ def lexical_bonus(payload: dict, query: str) -> float:
     return bonus
 
 
-def _rank_hits(hits: list[RecallHit], query: str) -> list[RecallHit]:
-    ranked: list[tuple[float, float, float, int, RecallHit]] = []
-    for idx, hit in enumerate(hits):
-        payload = hit.payload if isinstance(hit.payload, dict) else {}
-        lex_bonus = lexical_bonus(payload, query)
-        base = 0.0
-        if hit.score is not None:
-            try:
-                base = float(hit.score)
-                if abs(base) > 1.0:
-                    base = math.copysign(math.log1p(abs(base)), base)
-            except Exception:
-                base = 0.0
-        weight = 1.0
-        if isinstance(payload, dict):
-            try:
-                wf = payload.get("_weight_factor")
-                if isinstance(wf, (int, float)):
-                    weight = float(wf)
-            except Exception:
-                weight = 1.0
-        final_score = (base * weight) + lex_bonus
-        if hit.score is None and lex_bonus > 0:
-            try:
-                hit.score = lex_bonus
-                payload.setdefault("_score", hit.score)
-            except Exception:
-                pass
-        ranked.append((final_score, lex_bonus, weight, -idx, hit))
-    ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
-    return [item[-1] for item in ranked]
-
-
 def _recency_normalisation(cfg: Any) -> tuple[float, float]:
-    scale = getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", 60.0)
+    scale = getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", RECENCY_SCALE)
     if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
-        scale = 60.0
-    cap = getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000.0)
+        scale = RECENCY_SCALE
+    cap = getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", RECENCY_CAP)
     if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
-        cap = 1000.0
+        cap = RECENCY_CAP
     return float(scale), float(cap)
 
 
 def _recency_profile(cfg: Any) -> tuple[float, float, float, float]:
     scale, cap = _recency_normalisation(cfg)
-    sharpness = getattr(cfg, "SOMABRAIN_RECENCY_SHARPNESS", 1.2)
+    sharpness = getattr(cfg, "SOMABRAIN_RECENCY_SHARPNESS", RECENCY_SHARPNESS)
     try:
         sharpness = float(sharpness)
     except Exception:
-        sharpness = 1.2
+        sharpness = RECENCY_SHARPNESS
     if not math.isfinite(sharpness) or sharpness <= 0:
         sharpness = 1.0
-    floor = getattr(cfg, "SOMABRAIN_RECENCY_FLOOR", 0.05)
+    floor = getattr(cfg, "SOMABRAIN_RECENCY_FLOOR", RECENCY_FLOOR)
     try:
         floor = float(floor)
     except Exception:
-        floor = 0.05
+        floor = RECENCY_FLOOR
     if not math.isfinite(floor) or floor < 0:
         floor = 0.0
     if floor >= 1.0:
@@ -294,9 +267,9 @@ def _extract_cleanup_margin(hit: RecallHit) -> float | None:
 def _density_factor(cfg: Any, margin: float | None) -> float:
     if margin is None:
         return 1.0
-    target = getattr(cfg, "recall_density_margin_target", 0.2)
-    floor = getattr(cfg, "recall_density_margin_floor", 0.6)
-    weight = getattr(cfg, "recall_density_margin_weight", 0.35)
+    target = getattr(cfg, "SOMABRAIN_DENSITY_TARGET", 0.2)
+    floor = getattr(cfg, "SOMABRAIN_DENSITY_FLOOR", 0.6)
+    weight = getattr(cfg, "SOMABRAIN_DENSITY_WEIGHT", 0.35)
     try:
         target = float(target)
     except Exception:
@@ -419,6 +392,13 @@ def _extract_stored_vector(hit: RecallHit) -> np.ndarray | None:
     return None
 
 
+# Placeholder vectors for the scorer signature when only the store cosine
+# exists. Their contents are irrelevant: the cosine term is supplied as a hint
+# and the FD backend is not in play. They are NEVER embedded from text — a
+# foreign embedder has no place on this path (INVARIANTS §2.1).
+_NO_VECTOR = np.zeros(0, dtype=np.float32)
+
+
 def _rescore_and_rank_hits(
     cfg: Any,
     scorer: Any,
@@ -427,16 +407,29 @@ def _rescore_and_rank_hits(
     query: str,
     query_vec: list[float] | np.ndarray | None = None,
 ) -> list[RecallHit]:
-    """Rescore hits with the semantic scorer. Never re-embeds hit text.
+    """Rescore hits in ONE embedding space. Never re-embeds hit text.
 
-    When ``query_vec`` is present it is the authoritative query vector
-    (INVARIANTS §2.1) and ``embed`` is not called at all. Stored hit vectors
-    are used for scoring when present; otherwise the store's own similarity
-    (``hit.score``) is the only honest signal. A hit with neither a stored
-    vector nor a score fails closed to 0.0 — text is never hash-embedded into
-    a different vector space.
+    INVARIANTS §2.1: when ``query_vec`` is present it is the authoritative
+    query vector. This function never calls ``embedder.embed`` — a third or
+    fourth embedder (TinyDeterministicEmbedder) is not comparable to the
+    store's vectors and mixing it into the answer is exactly the defect.
+
+    Per-hit rules, in order:
+
+    1. ``query_vec`` + stored vector → scorer on those two vectors (same space).
+       Recency is applied once inside ``scorer.score(age_seconds=...)``, and the
+       FD term is computed from those same two vectors — never from text.
+    2. store cosine only (``hit.score``) → that cosine is the semantic term.
+       The scorer is still invoked so recency (``w_recency``) is applied once;
+       it is given empty vectors and the cosine as a hint, so nothing is ever
+       embedded and the FD term is zero rather than a fake self-similarity.
+    3. neither → fail closed. With a precomputed query vector this raises:
+       the hit cannot be scored in that space and inventing 0.0 would be a
+       fabricated judgment the ranker sorts on. Text-only callers get the hit
+       left unscored (``None``). Text is never hash-embedded into a foreign
+       vector space.
     """
-    query_arr: np.ndarray
+    query_arr: np.ndarray | None = None
     if query_vec is not None:
         query_arr = np.asarray(query_vec, dtype=np.float32).reshape(-1)
         if query_arr.size == 0 or not bool(np.all(np.isfinite(query_arr))):
@@ -446,8 +439,16 @@ def _rescore_and_rank_hits(
                 cfg, scorer, embedder, require_embedder=False
             )
     else:
-        scorer, embedder = _resolve_semantic_scorer(cfg, scorer, embedder)
-        query_arr = np.asarray(embedder.embed(query), dtype=np.float32).reshape(-1)
+        # Text-only caller. Do NOT embed the query here — the only query
+        # vector allowed on this path is the precomputed one. Recency (when
+        # applied) goes through the scorer with a cosine hint, never a
+        # foreign-space embedding.
+        if scorer is not None:
+            pass
+        else:
+            scorer, _ = _resolve_semantic_scorer(
+                cfg, scorer, embedder, require_embedder=False
+            )
 
     now_ts = datetime.now(UTC).timestamp()
 
@@ -470,31 +471,49 @@ def _rescore_and_rank_hits(
             age_seconds = max(0.0, now_ts - ts_epoch)
             recency_steps, recency_boost = _recency_features(cfg, ts_epoch, now_ts)
 
-        # Recency is applied once, inside scorer.score(age_seconds=...).
-        # Do not multiply by recency_boost again — that squares R(age).
-        if stored_vec is not None:
-            # Stored vector is authoritative — never re-embed hit text.
+        new_score: float | None
+        if query_arr is not None and stored_vec is not None:
+            if stored_vec.size != query_arr.size:
+                raise RuntimeError(
+                    "stored vector dim "
+                    f"{stored_vec.size} != query vector dim {query_arr.size} — "
+                    "refusing to score across embedding spaces (INVARIANTS §2.1)"
+                )
+            # Same space, both vectors present: let the scorer compute cosine.
+            # The store hint is not passed — it would override the real cosine.
+            # Recency is applied once, here inside scorer.score(age_seconds=...).
             new_score = scorer.score(
                 query_arr,
                 stored_vec,
                 age_seconds=age_seconds,
-                cosine=cosine_hint,
+                cosine=None,
             )
         elif cosine_hint is not None:
-            # No stored vector: the store's similarity is the only signal in
-            # the caller's space. The query vector doubles as the candidate so
-            # the scorer's signature holds; the cosine term comes from the
-            # hint, so no foreign-space embedding is ever computed.
+            # No stored vector: the store's similarity is the only vector-space
+            # signal. Never embed text to invent a candidate. Recency (w_recency
+            # inside UnifiedScorer) is still applied once, so the scorer is
+            # given the cosine as a hint and empty vectors — it cannot embed.
+            if scorer is None:
+                raise RuntimeError(
+                    "SomaBrain semantic scorer required for recall ranking"
+                )
             new_score = scorer.score(
-                query_arr,
-                query_arr,
+                _NO_VECTOR,
+                _NO_VECTOR,
                 age_seconds=age_seconds,
                 cosine=cosine_hint,
             )
         else:
-            # Fail closed: no stored vector and no store score. Hash-embedding
-            # the text here would rank a different vector space (INVARIANTS §2.1).
-            new_score = 0.0
+            # Neither stored vector nor store score. Never fake 0.0 — a correct
+            # Milvus hit reported as score 0 is a lie the ranker sorts on.
+            # With a precomputed query vector this is a failure (we were asked
+            # to score and cannot). Text-only callers leave the hit unscored.
+            if query_arr is not None:
+                raise RuntimeError(
+                    "recall hit has no stored vector and no store score — cannot "
+                    "score with the precomputed query vector. Refusing to invent 0.0."
+                )
+            new_score = None
 
         try:
             payload.setdefault("_recency_steps", recency_steps)
@@ -502,78 +521,20 @@ def _rescore_and_rank_hits(
         except Exception:
             pass
 
-        margin = _extract_cleanup_margin(hit)
-        density_factor = _density_factor(cfg, margin)
-        new_score *= density_factor
-        if density_factor != 1.0:
-            try:
-                payload.setdefault("_density_factor", density_factor)
-            except Exception:
-                pass
-        new_score = float(new_score)
-        # NaN score is broken input — fail closed to 0.0, never 1.0.
-        new_score = 0.0 if not math.isfinite(new_score) else max(0.0, min(1.0, new_score))
-
-        hit.score = new_score
-        scored_hits.append(hit)
-
-    scored_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
-    return scored_hits
-
-
-def _apply_weighting_to_hits(cfg: Any, hits: list[RecallHit]) -> None:
-    if not hits:
-        return
-    weighting_enabled = False
-    priors_env = ""
-    quality_exp = 1.0
-
-    # Logic to fetch settings... defaulting to passed config or system settings
-    # For now assume cfg is the settings object or similar
-    try:
-        weighting_enabled = bool(getattr(cfg, "memory_enable_weighting", False))
-        priors_env = getattr(cfg, "memory_phase_priors", "") or ""
-        quality_exp = float(getattr(cfg, "memory_quality_exp", 1.0) or 1.0)
-    except Exception:
-        pass
-
-    if not weighting_enabled:
-        return
-
-    try:
-        priors: dict[str, float] = {}
-        if priors_env:
-            for part in priors_env.split(","):
-                if not part.strip() or ":" not in part:
-                    continue
-                k, v = part.split(":", 1)
+        if new_score is not None:
+            margin = _extract_cleanup_margin(hit)
+            density_factor = _density_factor(cfg, margin)
+            new_score *= density_factor
+            if density_factor != 1.0:
                 try:
-                    priors[k.strip().lower()] = float(v)
+                    payload.setdefault("_density_factor", density_factor)
                 except Exception:
                     pass
-        for hit in hits:
-            payload = hit.payload
-            phase_factor = 1.0
-            quality_factor = 1.0
-            try:
-                phase = payload.get("phase") if isinstance(payload, dict) else None
-                if phase and priors:
-                    phase_factor = float(priors.get(str(phase).lower(), 1.0))
-            except Exception:
-                phase_factor = 1.0
-            try:
-                if isinstance(payload, dict) and "quality_score" in payload:
-                    qs = float(payload.get("quality_score") or 0.0)
-                    if qs < 0:
-                        qs = 0.0
-                    if qs > 1:
-                        qs = 1.0
-                    quality_factor = (qs**quality_exp) if qs > 0 else 0.0
-            except Exception:
-                quality_factor = 1.0
-            try:
-                payload.setdefault("_weight_factor", phase_factor * quality_factor)
-            except Exception:
-                pass
-    except Exception:
-        return
+            new_score = float(new_score)
+            # NaN score is broken input — fail closed to 0.0, never 1.0.
+            new_score = 0.0 if not math.isfinite(new_score) else max(0.0, min(1.0, new_score))
+            hit.score = new_score
+        scored_hits.append(hit)
+
+    scored_hits.sort(key=lambda h: h.score if h.score is not None else float("-inf"), reverse=True)
+    return scored_hits

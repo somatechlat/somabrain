@@ -44,10 +44,9 @@ from somabrain.memory.wm.wm_salience import (
 )
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from somabrain.admin.core.learning.scoring import UnifiedScorer
     from somabrain.memory.promotion import WMLTMPromoter
     from somabrain.memory.wm_persistence import WMPersister
-
-    from .scoring import UnifiedScorer
 
 
 @dataclass

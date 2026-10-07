@@ -151,6 +151,10 @@ class TestClientPayloadContract:
     back to hash vectors).
     """
 
+    class _DimSettings:
+        SOMABRAIN_EMBED_DIM = 768
+        SOMABRAIN_EMBED_DIM_SEAM = 768
+
     def test_store_payload_includes_embedding_and_tenant(self):
         from somabrain.memory.client.transport import build_store_payload
 
@@ -160,6 +164,7 @@ class TestClientPayloadContract:
             memory_type="episodic",
             embedding=[0.0] * 768,
             tenant_id="t1",
+            settings=self._DimSettings,
         )
         assert p["embedding"] == [0.0] * 768
         assert p["tenant_id"] == "t1"
@@ -182,6 +187,7 @@ class TestClientPayloadContract:
             build_store_payload(
                 coord="c1", payload=b"x", memory_type="episodic",
                 embedding=[0.0] * 256, tenant_id="t1",
+                settings=self._DimSettings,
             )
         except ValueError as exc:
             assert "768" in str(exc)
@@ -191,7 +197,10 @@ class TestClientPayloadContract:
     def test_search_payload_includes_query_embedding(self):
         from somabrain.memory.client.transport import build_search_payload
 
-        p = build_search_payload(query="hello", top_k=5, embedding=[0.1] * 768, tenant_id="t1")
+        p = build_search_payload(
+            query="hello", top_k=5, embedding=[0.1] * 768, tenant_id="t1",
+            settings=self._DimSettings,
+        )
         assert p["embedding"] == [0.1] * 768
         assert p["query"] == "hello"
         assert p["top_k"] == 5
@@ -310,9 +319,9 @@ class _NoEmbedCfg:
     SOMABRAIN_WM_RECENCY_MAX_STEPS = 1000.0
     SOMABRAIN_RECENCY_SHARPNESS = 1.2
     SOMABRAIN_RECENCY_FLOOR = 0.05
-    recall_density_margin_target = 0.2
-    recall_density_margin_floor = 0.6
-    recall_density_margin_weight = 0.35
+    SOMABRAIN_DENSITY_TARGET = 0.2
+    SOMABRAIN_DENSITY_FLOOR = 0.6
+    SOMABRAIN_DENSITY_WEIGHT = 0.35
 
 
 class TestNoReembedWhenVectorPresent:
@@ -390,7 +399,13 @@ class TestNoReembedWhenVectorPresent:
         assert ranked[0].score == pytest.approx(1.0, abs=1e-6)
         assert ranked[1].score == pytest.approx(0.0, abs=1e-6)
 
-    def test_hit_without_vector_or_score_fails_closed_to_zero(self):
+    def test_hit_without_vector_or_score_refuses_to_invent_score(self):
+        """Neither stored vector nor store score → fail closed, never a fake 0.0.
+
+        A precomputed query vector was supplied and the hit cannot be scored
+        in that space. Reporting score 0.0 would be a fabricated judgment the
+        ranker then sorts on (ADV-41: never re-embed, never invent).
+        """
         from somabrain.memory.client.ranking import _rescore_and_rank_hits
         from somabrain.memory.client.types import RecallHit
 
@@ -398,11 +413,15 @@ class TestNoReembedWhenVectorPresent:
         scorer = _RecordingScorer()
         qvec = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         hit = RecallHit(payload={"text": "no vector no score"}, score=None)
-        ranked = _rescore_and_rank_hits(
-            _NoEmbedCfg(), scorer, spy, [hit], "q", query_vec=qvec
-        )
+        try:
+            _rescore_and_rank_hits(
+                _NoEmbedCfg(), scorer, spy, [hit], "q", query_vec=qvec
+            )
+        except RuntimeError as exc:
+            assert "no stored vector" in str(exc)
+        else:
+            raise AssertionError("expected RuntimeError; refusing to invent 0.0")
         assert spy.calls == [], "fail closed must not hash-embed text"
-        assert ranked[0].score == 0.0
 
     def test_public_recall_with_embedding_skips_embed(self, monkeypatch):
         """Public path: ``recall(..., embedding=)`` must not reach ``embed``.

@@ -33,6 +33,31 @@ from somabrain.api.memory.models import (
 
 logger = logging.getLogger(__name__)
 
+# Canonical recall-layer vocabulary shared by every recall surface
+# (``/api/memory/recall``, ``/memory/recall``). One set of names, one
+# normalizer — a selector must never silently match nothing.
+LAYER_WM = "wm"
+LAYER_LTM = "ltm"
+LAYER_BOTH = "both"
+
+
+def normalize_layer(raw: str | None) -> str:
+    """Normalize a recall layer selector to the canonical vocabulary.
+
+    Returns one of ``LAYER_WM``, ``LAYER_LTM``, ``LAYER_BOTH``. An omitted or
+    empty selector means both layers. ``"all"`` is accepted as a legacy
+    synonym for ``"both"`` so older callers keep working; any other value is
+    rejected so a typo cannot silently return zero hits.
+    """
+    value = (raw or "").strip().lower()
+    if not value:
+        return LAYER_BOTH
+    if value in ("both", "all"):
+        return LAYER_BOTH
+    if value in (LAYER_WM, LAYER_LTM):
+        return value
+    raise ValueError("layer must be wm, ltm, or both")
+
 
 def _get_runtime():
     """Lazy import of runtime module to access singletons.
@@ -333,6 +358,9 @@ def _compose_memory_payload(
 
 
 __all__ = [
+    "LAYER_BOTH",
+    "LAYER_LTM",
+    "LAYER_WM",
     "_as_float_list",
     "_coerce_to_retrieval_request",
     "_compose_memory_payload",
@@ -344,6 +372,7 @@ __all__ = [
     "_map_retrieval_to_memory_items",
     "_resolve_namespace",
     "_serialize_coord",
+    "normalize_layer",
 ]
 
 

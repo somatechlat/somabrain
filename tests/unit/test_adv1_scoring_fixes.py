@@ -89,9 +89,9 @@ class _Cfg:
     SOMABRAIN_WM_RECENCY_MAX_STEPS = _CAP
     SOMABRAIN_RECENCY_SHARPNESS = _SHARPNESS
     SOMABRAIN_RECENCY_FLOOR = _FLOOR
-    recall_density_margin_target = 0.2
-    recall_density_margin_floor = 0.6
-    recall_density_margin_weight = 0.35
+    SOMABRAIN_DENSITY_TARGET = 0.2
+    SOMABRAIN_DENSITY_FLOOR = 0.6
+    SOMABRAIN_DENSITY_WEIGHT = 0.35
 
 
 class _Embedder:

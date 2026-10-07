@@ -47,18 +47,6 @@ from .remember import (
     process_bulk_response,
     remember_sync_persist,
 )
-from .scoring import (
-    apply_weighting_to_hits,
-    coerce_float,
-    compute_density_factor,
-    compute_recency_features,
-    extract_cleanup_margin,
-    get_recency_normalisation,
-    get_recency_profile,
-    parse_payload_timestamp,
-    rank_hits,
-    rescore_and_rank_hits,
-)
 from .superposed_trace import SuperposedTrace, TraceConfig
 from .transport import MemoryHTTPTransport, _http_setting, _response_json
 from .types import RecallHit
@@ -96,17 +84,6 @@ __all__ = [
     "prefer_candidate_hit",
     "deduplicate_hits",
     "lexical_bonus",
-    # Scoring
-    "coerce_float",
-    "parse_payload_timestamp",
-    "get_recency_normalisation",
-    "get_recency_profile",
-    "compute_recency_features",
-    "compute_density_factor",
-    "extract_cleanup_margin",
-    "rank_hits",
-    "apply_weighting_to_hits",
-    "rescore_and_rank_hits",
     # Payload
     "enrich_payload",
     "normalize_metadata",

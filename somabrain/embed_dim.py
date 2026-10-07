@@ -32,14 +32,14 @@ def resolve_embed_dim(settings: Any = None) -> int:
 
         settings = dj_settings
 
-    dim = getattr(settings, "SOMABRAIN_EMBED_DIM")
+    dim = getattr(settings, "SOMABRAIN_EMBED_DIM", None)
     if dim is None:
         raise RuntimeError(
             "SOMABRAIN_EMBED_DIM is not configured; refusing to guess a vector dim"
         )
     dim = int(dim)
 
-    seam = getattr(settings, "SOMABRAIN_EMBED_DIM_SEAM")
+    seam = getattr(settings, "SOMABRAIN_EMBED_DIM_SEAM", None)
     if seam is None:
         raise RuntimeError(
             "SOMABRAIN_EMBED_DIM_SEAM is not configured; refusing to guess a seam contract"

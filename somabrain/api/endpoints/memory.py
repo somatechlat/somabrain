@@ -30,9 +30,13 @@ from pydantic import BaseModel, Field, model_validator
 
 from somabrain.api.auth import api_key_auth, require_auth
 from somabrain.api.memory.helpers import (
+    LAYER_BOTH,
+    LAYER_LTM,
+    LAYER_WM,
     _as_float_list,
     _resolve_namespace,
     _serialize_coord,
+    normalize_layer,
 )
 from somabrain.api.memory.models import ForgetRequest, ForgetResponse, _iso_created_at
 from somabrain.api.memory.recall import _arecall_ltm, _require_valid_query_vector
@@ -139,7 +143,7 @@ def _hit_record(
         "text": _hit_text(payload_dict),
         "coord": coord_str,
         "score": float(score),
-        "store": "somabrain" if layer == "wm" else "somafractalmemory",
+        "store": "somabrain" if layer == LAYER_WM else "somafractalmemory",
         "created_at": _iso_created_at(payload_dict),
         # legacy aliases
         "content": payload,
@@ -167,7 +171,13 @@ class RecallRequest(BaseModel):
         ),
     )
     top_k: int = Field(10, ge=1, le=50, description="Max results")
-    layer: str = Field("both", description="wm, ltm, or both")
+    layer: str = Field(
+        LAYER_BOTH,
+        description=(
+            "wm, ltm, or both. 'all' is a synonym for 'both'. "
+            "Unknown values are rejected with 400 (never a silent empty)."
+        ),
+    )
     tenant: str | None = None
     tenant_id: str | None = Field(None, description="Seam alias for tenant")
     namespace: str | None = None
@@ -247,7 +257,10 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     memsvc = MemoryService(pool, _resolve_namespace(tenant, namespace))
 
     top_k = max(1, int(payload.top_k or payload.k or 10))
-    layer = payload.layer or "both"
+    try:
+        layer = normalize_layer(payload.layer)
+    except ValueError as exc:
+        raise HttpError(400, str(exc)) from exc
     universe = payload.universe or request.headers.get("X-Universe")
 
     t0 = time.perf_counter()
@@ -284,7 +297,7 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
         return True
 
     # 1) Query long-term memory via SFM when requested
-    if layer in ("ltm", "both"):
+    if layer in (LAYER_LTM, LAYER_BOTH):
         try:
             hits = await _arecall_ltm(
                 memsvc,
@@ -334,20 +347,20 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
                 )
         except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
             logger.warning("LTM recall failed for namespace=%s: %s", namespace, exc)
-            if layer == "ltm":
+            if layer == LAYER_LTM:
                 raise _map_memory_error(exc) from exc
             degraded = True
             degraded_reasons.append(f"ltm: {exc}")
         except Exception as exc:
             logger.exception("LTM recall failed for namespace=%s: %s", namespace, exc)
-            if layer == "ltm":
+            if layer == LAYER_LTM:
                 raise HttpError(500, f"ltm recall unavailable: {exc}") from exc
             degraded = True
             degraded_reasons.append(f"ltm: {exc}")
 
     # 2) Add working-memory items when requested — semantic score vs query,
     #    never a hardcoded 1.0 dump (that would crush LTM ranking).
-    if layer in ("wm", "both"):
+    if layer in (LAYER_WM, LAYER_BOTH):
         wm = _get_wm()
         if wm:
             try:
