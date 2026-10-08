@@ -1,15 +1,29 @@
 # SomaBrain — Master Execution Plan
 
+## Document Control
+
 | Field | Value |
 |---|---|
 | Document Title | Master TODO, Waves, Rapid Development Methodology |
 | Document Identifier | SOMA-BR-PLAN-MASTER-001 |
-| Version | 1.0.0 |
-| Date | 2026-10-04 |
-| Status | Active |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
+| Status | Draft |
 | Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-04 |
 | Source of truth | **The code** (docs follow code) |
+| Related | `SOMA-BR-DEBT-001.md`, `SOMA-BR-ARCH-TRUTH-001.md`, `SOMA-BR-MATH-TRUTH-001.md`, `SOMA-BR-CONFIG-API-TEST-001.md`, `SOMA-BR-PHASE-A-GATE-001.md` |
+| Scope | Master TODO, wave plan, and rapid development methodology for somabrain |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-04 | SomaTech Engineering | Initial master execution plan: binding rules, Phase A–D structure, master TODO, waves W1–W6. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2: `## Document Control` + `## Revision History` added; Status `Active`→`Draft`; house field names only. |
 
 ---
 

@@ -14,14 +14,15 @@
 | Classification | Internal |
 | ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
 | Next Review | 2026-12-28 |
+
 ## Revision History
-| 2.1.0 | 2026-10-07 | SomaTech Engineering | Product map 0/0B (full /api/v2); custom URL + Load models; field parity ref SOMA-UI-FIELD-PARITY-001. |
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Document control normalised: prior status `Baseline` normalised to `Draft` (no approver named). |
 | 1.0.1 | 2026-10-07 | SomaTech Engineering | Screen 8 rewritten: card grid + full model editor. |
 | 2.0.0 | 2026-10-07 | SomaTech Engineering | Full Settings suite (Agent, Models, Voice, Interface, Tools, Integrations, Advanced). **No "slot" wording.** Every field tables. Human test language. |
+| 2.1.0 | 2026-10-07 | SomaTech Engineering | Product map 0/0B (full /api/v2); custom URL + Load models; field parity ref SOMA-UI-FIELD-PARITY-001. |
 
 
 ## COLOR KEY

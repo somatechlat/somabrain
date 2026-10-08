@@ -100,6 +100,12 @@ somabrain/
 
 ## Configuration & Secrets (Law)
 
+> **SETTINGS LAW (binding, every agent, every change):**
+> **Settings = Django + `BrainSetting` / agent DB** (administerable).
+> **Secrets = Vault ONLY** (Covenant Art 26).
+> **No file presets. No env secrets. No `.env` as authority.**
+> Violations are defects — see `docs/iso/SOMA-BR-SEC-001.md` §8.
+
 **Covenant Art 26 — Secret Protection:**
 > "Production secrets shall reside exclusively in secure vault systems. Storage in code, configuration files, or environment variables is prohibited."
 
@@ -199,6 +205,19 @@ ISO-compliant documentation in `docs/iso/`:
 - **SOMA-BR-SEC-001.md** (ISO/IEC 27001) — Security: JWT, OPA, constitution signing, TLS, Vault, per-tenant isolation, threat model
 - **SOMA-BR-RISK-001.md** (ISO 31000) — Risk Register: complexity debt, SFM dependency, Kafka availability, Milvus scaling, calibration drift
 - **SOMA-BR-PROD-001.md** (ISO/IEC 25010) — Production Readiness: scorecard (3.96/5.00), standalone GO, AAAS CONDITIONAL GO, K8s status, Helm charts
+- **DOCUMENT-REGISTER.md** — tracking index for every controlled `docs/**/*.md` (status, version, compliance)
+- **SOMA-BR-DOCS-001.md** — document control and traceability procedure
+
+### Living documentation roles (doc governance)
+
+| Role | Canonical sources | Update when |
+|---|---|---|
+| **Constitution** | `AGENT.md` · `docs/VIBE_RULES.md` · `docs/THE-SOMA-COVENANT.md` | Binding rules, law, or covenant change |
+| **Map** | `docs/iso/SOMA-BR-ARCH-001.md` | Architecture, components, or data flow change |
+| **Status** | `docs/iso/SOMA-BR-DEBT-001.md` · `docs/iso/SOMA-BR-PLAN-MASTER-001.md` | Debt, waves, or plan state change |
+| **History** | `docs/plans/a2a/LEDGER.md` · `docs/iso/SOMA-BR-DEBT-001.md` | Commits, waves, proofs, audits (append-only ledger + debt rows) |
+
+Do not invent parallel "source of truth" documents. If it is not in this table and not in `docs/iso/DOCUMENT-REGISTER.md`, it is not controlled documentation.
 
 ---
 

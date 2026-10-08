@@ -11,8 +11,8 @@
 |---|---|
 | Document Title | SomaBrain Quality Manual |
 | Document Identifier | SOMA-BR-QMS-001 |
-| Version | 1.0.2 |
-| Date | 2026-09-28 |
+| Version | 1.0.3 |
+| Date | 2026-10-08 |
 | Status | Approved |
 | Author | SomaTech QA Team |
 | Approver | VP Engineering, SomaTech |
@@ -27,6 +27,7 @@
 | 1.0.0 | 2026-06-15 | SomaTech QA Team | Initial QMS: ISO 9001:2015 compliant quality manual for SomaBrain |
 | 1.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-QMS-001` \| Status added as `Approved` (document names an approver). |
 | 1.0.2 | 2026-09-28 | SomaTech Engineering | Document Reference Matrix added (12 documents, ISO series under `docs/iso/`). Every cell is derived from each document's own Document Control table. |
+| 1.0.3 | 2026-10-08 | SomaTech Engineering | Document Reference Matrix expanded to the full QMS tier (18 documents): ARCH-TRUTH, CONFIG-API-TEST, DEBT, MATH-TRUTH, PHASE-A-GATE, PLAN-MASTER added so register↔QMS C-10 agrees. |
 
 ### Normative References
 
@@ -383,10 +384,16 @@ QMS documents, and are therefore not listed here.
 | Document | Identifier | ISO Reference | File |
 |---|---|---|---|
 | SomaBrain Architecture Document | SOMA-BR-ARCH-001 | ISO/IEC 42010:2011 — Systems and Software Engineering — Architecture Description | `docs/iso/SOMA-BR-ARCH-001.md` |
+| Architecture Truth Document | SOMA-BR-ARCH-TRUTH-001 | ISO/IEC 42010:2011 structure only (not certified) | `docs/iso/SOMA-BR-ARCH-TRUTH-001.md` |
 | SomaBrain Audit Report | SOMA-BR-AUDIT-001 | ISO 19011:2018 — Guidelines for Auditing Management Systems | `docs/iso/SOMA-BR-AUDIT-001.md` |
 | Soma Cognitive Triad Version Compatibility Matrix | SOMA-BR-COMPAT-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-COMPAT-001.md` |
+| Configuration, API, and Test-Map (Truth) | SOMA-BR-CONFIG-API-TEST-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-CONFIG-API-TEST-001.md` |
+| Defect & Architecture Debt Register | SOMA-BR-DEBT-001 | ISO 9001:2015 §8.7 Nonconforming outputs; ISO/IEC 25010 Maintainability | `docs/iso/SOMA-BR-DEBT-001.md` |
 | Document Register | SOMA-BR-DOC-REGISTER-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/DOCUMENT-REGISTER.md` |
 | Document Control and Traceability Procedure | SOMA-BR-DOCS-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-DOCS-001.md` |
+| SomaBrain Mathematical Specification As Implemented | SOMA-BR-MATH-TRUTH-001 | ISO/IEC/IEEE 12207:2017 — Systems and Software Engineering — Software Life Cycle Processes | `docs/iso/SOMA-BR-MATH-TRUTH-001.md` |
+| Phase A Exit Gate Review (DOC-A5) | SOMA-BR-PHASE-A-GATE-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-PHASE-A-GATE-001.md` |
+| Master TODO, Waves, Rapid Development Methodology | SOMA-BR-PLAN-MASTER-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-PLAN-MASTER-001.md` |
 | SomaBrain Production Readiness Assessment | SOMA-BR-PROD-001 | ISO/IEC 25010:2011 — Systems and Software Quality Requirements and Evaluation | `docs/iso/SOMA-BR-PROD-001.md` |
 | SomaBrain Quality Manual | SOMA-BR-QMS-001 | ISO 9001:2015 — Quality Management Systems — Requirements | `docs/iso/SOMA-BR-QMS-001.md` |
 | SomaBrain Risk Register | SOMA-BR-RISK-001 | ISO 31000:2018 — Risk Management — Guidelines | `docs/iso/SOMA-BR-RISK-001.md` |

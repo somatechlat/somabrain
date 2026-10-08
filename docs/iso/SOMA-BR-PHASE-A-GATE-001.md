@@ -1,23 +1,31 @@
 # SOMA-BR-PHASE-A-GATE-001 — Phase A Exit Gate Review
 
+**Gate outcome:** Phase A EXIT GATE: **PASS** (evidence in §2–4).
+
+## Document Control
+
 | Field | Value |
 |---|---|
 | Document Title | Phase A Exit Gate Review (DOC-A5) |
 | Document Identifier | SOMA-BR-PHASE-A-GATE-001 |
-| Version | 1.0.0 |
-| Date | 2026-10-04 |
-| Status | Released — Phase A EXIT GATE: **PASS** |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
+| Status | Approved |
 | Author | SomaTech Engineering (DOC-A5 coordinator) |
+| Approver | Engineering Lead |
 | Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-04 |
 | Source of truth | Code. This gate cross-checks the four truth documents against each other and against Phase A exit criteria in `SOMA-BR-PLAN-MASTER-001` §2. |
-| Inputs | SOMA-BR-ARCH-TRUTH-001, SOMA-BR-MATH-TRUTH-001, SOMA-BR-DEBT-001, SOMA-BR-CONFIG-API-TEST-001 |
-| Related | SOMA-BR-PLAN-MASTER-001 (Phase A exit criteria) |
+| Related | SOMA-BR-PLAN-MASTER-001 (Phase A exit criteria); inputs SOMA-BR-ARCH-TRUTH-001, SOMA-BR-MATH-TRUTH-001, SOMA-BR-DEBT-001, SOMA-BR-CONFIG-API-TEST-001 |
+| Scope | Phase A documentation exit criteria and residual risks |
 
 ## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-10-04 | Engineering | Initial gate review. A1–A4 cross-check, exit criteria evidence, residual risks. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2: `## Document Control` heading added, Status closed-set value `Approved` (gate PASS recorded above control table), house field names only. |
 
 ---
 

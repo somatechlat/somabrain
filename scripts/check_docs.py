@@ -70,6 +70,13 @@ FILENAME_EXCEPTIONS = {
     "docs/USER_GUIDE.md",
     "docs/THE-SOMA-COVENANT.md",
     "docs/VIBE_RULES.md",
+    # SOMA-BR-DOCS-001 §3.3.2 — A2A operational records. Fixed protocol
+    # filenames are a machine contract (agent tooling opens these paths).
+    "docs/plans/2026-10-05-COORDINATION-HANDOFF.md",
+    "docs/plans/a2a/CLAIMS.md",
+    "docs/plans/a2a/INBOX.md",
+    "docs/plans/a2a/LEDGER.md",
+    "docs/plans/a2a/OUTBOX.md",
 }
 
 # SOMA-BR-DOCS-001 §3.3.3 — annexed design artefacts. Mockups carry a sub-identifier

@@ -1,5 +1,31 @@
 # A2A LEDGER — append-only work log
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | A2A LEDGER — append-only work log |
+| Document Identifier | SOMA-BR-A2A-LEDGER-001 |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-05 |
+| Related | `docs/plans/2026-10-05-COORDINATION-HANDOFF.md`, `docs/plans/a2a/CLAIMS.md`, `docs/iso/SOMA-BR-DEBT-001.md` |
+| Source of truth | This file (append-only work log). History role in living-docs governance. |
+| Scope | Cross-agent work log: commits, waves, proofs, audits, directives |
+| Audience | All coding agents (MiMoCode, Claude Code, Codex, Grok) |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-05 | MiMoCode | A2A ledger opened. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control header added (SOMA-BR-DOCS-001). Log rows unchanged — this file is append-only. |
+
 Format: `| timestamp | agent | action | detail |`
 
 | timestamp | agent | action | detail |
@@ -107,3 +133,5 @@ Format: `| timestamp | agent | action | detail |`
 | 2026-10-08T22:00:00Z | MiMoCode-somabrain | AUDIT | python-reviewer-4 code law audit COMPLETE: BLOCK. 8 file-settings sites, 13 env-secret reads, 12 call-site magics, 18 dual aliases, 9 data/config runtime artifacts, 20+ silent excepts. Production Vault path sound. |
 | 2026-10-08T22:10:00Z | MiMoCode-somabrain | SECRET | ROTATED brain_vault_root_token on disk (old len 29). Leaked .test-secrets/vault_token DELETED + gitignored. GitHub push protection worked. Operator must re-seed vault if lookup fails. |
 | 2026-10-08T22:15:00Z | MiMoCode-somabrain | DOCS | Law rewrite LANDED (doc-updater-3): AGENT/README/SEC-001/PROD-001/CONFIG-API-TEST/SRS CON-008 → settings Django+BrainSetting, secrets Vault-only Art 26, no file presets. |
+| docs/OPS_MANUAL.md docs/ONBOARDING.md docs/USER_GUIDE.md docs/SRS_FULL.md docs/SOMABRAIN_ARCHITECTURE.md VIOLATIONS.md | doc-updater | settings/Vault law doc sync complete | 2026-10-08T21:40:00Z | DONE |
+| 2026-10-08T22:45:00Z | triad-iso-docs | FIX | ISO document control WHOLE somabrain: 43/43 Compliant (was 30/43). House DC+RH on CONFIG-API-TEST, MATH-TRUTH, PHASE-A-GATE, PLAN-MASTER; project UI docs RH/fields fixed; A2A plans DC prepended (append-only, zero deletions) + FILENAME_EXCEPTIONS/DOCS-001 §3.3.2 waivers; QMS §8 matrix 12→18 (C-10 green); settings law banner AGENT.md+SEC-001 §8; living-docs roles (Constitution/Map/Status/History) in AGENT.md; gen_register tracked-remediation now truthful; dead root leftover BENCHMARK_PERFORMANCE_REPORT.md removed. check_docs.py RESULT: PASS (0 findings).

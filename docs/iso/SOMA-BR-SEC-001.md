@@ -11,8 +11,8 @@
 |---|---|
 | Document Title | SomaBrain Security Assessment |
 | Document Identifier | SOMA-BR-SEC-001 |
-| Version | 2.0.1 |
-| Date | 2026-06-15 |
+| Version | 2.0.2 |
+| Date | 2026-10-08 |
 | Status | Approved |
 | Author | SomaTech Security Team |
 | Approver | CISO, SomaTech |
@@ -28,6 +28,16 @@
 | 1.5.0 | 2026-04-20 | Security Team | Added multi-tenancy isolation review |
 | 2.0.0 | 2026-06-15 | Security Team | Comprehensive re-assessment: JWT, OPA, Vault, TLS, constitution signing, per-tenant isolation |
 | 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-SEC-001` \| Status added as `Approved` (document names an approver) \| prior classification `Internal / Confidential` normalised to `Confidential`. |
+| 2.0.2 | 2026-10-08 | SomaTech Engineering | Settings/secrets law banner added (§1.3) and §8 tightened: settings = Django + `BrainSetting`/agent DB; secrets = Vault only (Art 26); **no file presets**. |
+
+---
+
+## Settings & Secrets Law (banner — binding)
+
+> **SETTINGS = Django + `BrainSetting` / agent DB** (administerable).
+> **SECRETS = Vault ONLY** (Covenant Art 26).
+> **NO file presets. NO env secrets. NO `.env` as authority.**
+> Full treatment in [§8 Secrets Management](#8-secrets-management). Violations are security defects.
 
 ---
 
@@ -292,6 +302,10 @@ Client Request → Auth + OPA → Memory Operation
 ---
 
 ## 8. Secrets Management
+
+**Settings law (binding):** settings are administered via **Django + `BrainSetting` (agent DB)**.
+Secrets are **Vault ONLY** (not Vault/env, not files). **No file presets** — a YAML/JSON/`.env`
+preset is not a settings or secrets authority (Covenant Art 26 + operator law).
 
 **Normative — Covenant Art 26 (Secret Protection):**
 > "Production secrets shall reside exclusively in secure vault systems. Storage in code, configuration files, or environment variables is prohibited."

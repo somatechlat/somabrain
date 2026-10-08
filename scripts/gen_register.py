@@ -252,10 +252,24 @@ def main() -> int:
     lines.append("")
     lines.append("## 4. Tracked remediation")
     lines.append("")
-    lines.append(
-        "There are no tracked remediation items at this revision: every registered document "
-        "satisfies the content rules in `SOMA-BR-DOCS-001` §5.2."
-    )
+    if n_non == 0:
+        lines.append(
+            "There are no tracked remediation items at this revision: every registered document "
+            "satisfies the content rules in `SOMA-BR-DOCS-001` §5.2."
+        )
+    else:
+        lines.append(
+            f"{n_non} registered document(s) are `Non-compliant` at this revision. "
+            "Each row below is a tracked gap with its concrete content problems, not a silent exception."
+        )
+        lines.append("")
+        lines.append("| File | Gaps |")
+        lines.append("|---|---|")
+        for r in rows:
+            if r["compliance"] != "Non-compliant":
+                continue
+            gaps = "; ".join(r.get("problems") or ["see check_docs.py"]) or "see check_docs.py"
+            lines.append(f"| {r['file']} | {gaps} |")
     lines.append(
         "This section is not decorative. When a document falls out of compliance it is listed "
         "here with its gap and its owner, and its register row reads `Non-compliant` until the "

@@ -1,16 +1,29 @@
 # SOMA-BR-CONFIG-API-TEST-001 — Configuration, API, and Test-Map (Truth)
 
+## Document Control
+
 | Field | Value |
 |---|---|
-| Document ID | SOMA-BR-CONFIG-API-TEST-001 |
-| Revision | A (initial) |
-| Status | Released for Wave W1 contracts |
-| Classification | Internal — ISO-style document control |
-| Repository | `somabrain` @ `/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain` |
-| Scope | Config truth, API truth, test map |
-| Method | Static code reading only. Every row cites `file:line`. No invented keys, no shims. |
-| Predecessors | SOMA-BR-PLAN-MASTER-001 (W1/W4), docs/SomabrainGMD.md (λ*(p)) |
-| Supersedes | (none) |
+| Document Title | Configuration, API, and Test-Map (Truth) |
+| Document Identifier | SOMA-BR-CONFIG-API-TEST-001 |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
+| Status | Approved |
+| Author | SomaTech Engineering |
+| Approver | Engineering Lead |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-08 |
+| Source of truth | Code. Static code reading only. Every row cites `file:line`. No invented keys, no shims. |
+| Related | SOMA-BR-PLAN-MASTER-001 (W1/W4), docs/SomabrainGMD.md (λ*(p)) |
+| Scope | Config truth, API truth, test map. Released for Wave W1 contracts. |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-04 | SomaTech Engineering | Initial issue. Config truth table (DEF-01…14), API truth, VALID/TAUTOLOGY/XFAIL/MISSING testmap. Released for Wave W1 contracts. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2: `## Document Control` + `## Revision History` added; non-house fields (`Document ID`, `Revision`) replaced with house field names; Status closed-set value `Approved`. |
 
 **Normative sources (code is source of truth):**
 

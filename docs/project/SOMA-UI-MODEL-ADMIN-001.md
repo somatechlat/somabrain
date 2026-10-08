@@ -6,23 +6,26 @@
 |---|---|
 | Document Title | Settings Workspace and Model Manager |
 | Document Identifier | SOMA-UI-MODEL-ADMIN-001 |
-| Version | **3.2.0** |
+| Version | 3.2.0 |
 | Date | 2026-10-07 |
 | Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
 | Classification | Internal |
-| Reference UX | `agent-zero-main/webui/components/settings/*` (section nav, Models + Voice in one place) |
-| Field truth | `somaAgent01/admin/llm/api.py` `ModelIn` 117–135 |
-| **Forbidden on screen** | The word **“slot”** and the tab zoo of four disconnected model pages |
-| Related documents | SOMA-UI-FIELD-PARITY-001 · SOMA-UI-MOCKUPS-001 · SOMA-UI-UX-001 · SOMA-UI-SPEC-001 |
+| ISO Reference | ISO 9241-210:2019 — Human-centred design |
+| Next Review | 2026-12-28 |
+| Related | SOMA-UI-FIELD-PARITY-001 · SOMA-UI-MOCKUPS-001 · SOMA-UI-UX-001 · SOMA-UI-SPEC-001 |
+| Source of truth | `somaAgent01/admin/llm/api.py` `ModelIn` 117–135; reference UX `agent-zero-main/webui/components/settings/*` |
+| Scope | Settings workspace and model manager UX. On-screen copy never uses the word "slot"; model admin is one integrated Settings page. |
 
 ## Revision History
 
-| Version | Date | Description |
-|---|---|---|
-| 2.1.0 | 2026-10-07 | Schema-true ModelIn editor |
-| 3.0.0 | 2026-10-07 | **Settings workspace** (agent-zero style). **Slots removed from UX.** One Settings page: Agent · Models · Voice · Interface · Tools · Integrations. Model = full CSS card. |
-| 3.1.0 | 2026-10-07 | Activate + Normal/Advanced modal; key in form → Vault; Custom URL + Load models; seeded DeepSeek 2.8. |
-| 3.2.0 | 2026-10-07 | **Full Agent Zero field parity** (SOMA-UI-FIELD-PARITY-001): ctx_history, max_embeds, timeout, max_tokens, ctx_input, vision sidecar. ISO cross-refs. |
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 2.1.0 | 2026-10-07 | SomaTech Engineering | Schema-true ModelIn editor |
+| 3.0.0 | 2026-10-07 | SomaTech Engineering | **Settings workspace** (agent-zero style). **Slots removed from UX.** One Settings page: Agent · Models · Voice · Interface · Tools · Integrations. Model = full CSS card. |
+| 3.1.0 | 2026-10-07 | SomaTech Engineering | Activate + Normal/Advanced modal; key in form → Vault; Custom URL + Load models; seeded DeepSeek 2.8. |
+| 3.2.0 | 2026-10-07 | SomaTech Engineering | **Full Agent Zero field parity** (SOMA-UI-FIELD-PARITY-001): ctx_history, max_embeds, timeout, max_tokens, ctx_input, vision sidecar. ISO cross-refs. |
 
 ---
 

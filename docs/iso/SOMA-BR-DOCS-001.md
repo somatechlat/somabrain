@@ -6,8 +6,8 @@
 |---|---|
 | Document Title | Document Control and Traceability Procedure |
 | Document Identifier | SOMA-BR-DOCS-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
@@ -23,6 +23,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue for somabrain. Establishes mandatory document control, identifier scheme, register and automated compliance check. Derived from the somaAgent01 procedure of the same name and re-scoped to this repository's actual tree, filename exceptions and tooling. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | §3.3.2 filename-exception list extended with the five A2A operational records (`docs/plans/…`) whose paths are a machine contract for agent tooling. `FILENAME_EXCEPTIONS` in `scripts/check_docs.py` updated in the same change (closed-list rule). |
 
 ## Normative References
 
@@ -180,6 +181,11 @@ These files carry names that predate this procedure or that a platform conventio
 | `docs/USER_GUIDE.md` | `SOMA-BR-GUIDE-USER-001` | Long-standing guide name referenced by external material. |
 | `docs/THE-SOMA-COVENANT.md` | `SOMA-BR-GUIDE-COVENANT-001` | Long-standing guide name referenced by external material. |
 | `docs/VIBE_RULES.md` | `SOMA-BR-GUIDE-VIBE-001` | Standing rules file, referenced by name across the codebase. |
+| `docs/plans/2026-10-05-COORDINATION-HANDOFF.md` | `SOMA-BR-COORD-A2A-001` | A2A protocol machine contract — peer agents open this path by name. |
+| `docs/plans/a2a/CLAIMS.md` | `SOMA-BR-A2A-CLAIMS-001` | A2A protocol machine contract — claim table path is fixed by the a2a skill. |
+| `docs/plans/a2a/INBOX.md` | `SOMA-BR-A2A-INBOX-001` | A2A protocol machine contract — inbox path is fixed by the a2a skill. |
+| `docs/plans/a2a/LEDGER.md` | `SOMA-BR-A2A-LEDGER-001` | A2A protocol machine contract — ledger path is fixed by the a2a skill. |
+| `docs/plans/a2a/OUTBOX.md` | `SOMA-BR-A2A-OUTBOX-001` | A2A protocol machine contract — outbox path is fixed by the a2a skill. |
 
 This list is closed. A new exception requires amending this table **and** `FILENAME_EXCEPTIONS` in `scripts/check_docs.py` in the same change, so that the waiver is visible in the controlled document and enforced by the tool.
 

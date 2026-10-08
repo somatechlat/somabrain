@@ -38,7 +38,7 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Document Identifier | File | Title | Version | Status | Approver | Next Review | Compliance |
 |---|---|---|---|---|---|---|---|
-| SOMA-01-DOCS-002 | docs/iso/DOCUMENT-REGISTER.md | Document Register | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BR-DOC-REGISTER-001 | docs/iso/DOCUMENT-REGISTER.md | Document Register | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-CONTRIB-001 | docs/CONTRIBUTING.md | Contribution Process | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-ONBOARD-001 | docs/ONBOARDING.md | Project Context & Mission | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-OPS-001 | docs/OPS_MANUAL.md | Retrieval Observability Runbook (Strict Real Mode) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
@@ -50,22 +50,35 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-BR-GUIDE-USER-001 | docs/USER_GUIDE.md | Multi-Tenant Usage | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-VIBE-001 | docs/VIBE_RULES.md | 1. NO BULLSHIT | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-ARCH-001 | docs/iso/SOMA-BR-ARCH-001.md | SomaBrain Architecture Document | 2.0.1 | Approved | CTO, SomaTech | 2026-12-28 | Compliant |
+| SOMA-BR-ARCH-TRUTH-001 | docs/iso/SOMA-BR-ARCH-TRUTH-001.md | Architecture Truth Document | 1.0.0 | Draft | — | 2027-01-04 | Compliant |
 | SOMA-BR-AUDIT-001 | docs/iso/SOMA-BR-AUDIT-001.md | SomaBrain Audit Report | 2.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-COMPAT-001 | docs/iso/SOMA-BR-COMPAT-001.md | Soma Cognitive Triad Version Compatibility Matrix | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-BR-DOCS-001 | docs/iso/SOMA-BR-DOCS-001.md | Document Control and Traceability Procedure | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BR-CONFIG-API-TEST-001 | docs/iso/SOMA-BR-CONFIG-API-TEST-001.md | Configuration, API, and Test-Map (Truth) | 1.0.1 | Approved | Engineering Lead | 2027-01-08 | Compliant |
+| SOMA-BR-DEBT-001 | docs/iso/SOMA-BR-DEBT-001.md | Defect & Architecture Debt Register | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BR-DOCS-001 | docs/iso/SOMA-BR-DOCS-001.md | Document Control and Traceability Procedure | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BR-MATH-TRUTH-001 | docs/iso/SOMA-BR-MATH-TRUTH-001.md | SomaBrain Mathematical Specification As Implemented | 1.1.1 | Approved | Engineering Lead | 2027-01-05 | Compliant |
+| SOMA-BR-PHASE-A-GATE-001 | docs/iso/SOMA-BR-PHASE-A-GATE-001.md | Phase A Exit Gate Review (DOC-A5) | 1.0.1 | Approved | Engineering Lead | 2027-01-04 | Compliant |
+| SOMA-BR-PLAN-MASTER-001 | docs/iso/SOMA-BR-PLAN-MASTER-001.md | Master TODO, Waves, Rapid Development Methodology | 1.0.1 | Draft | — | 2027-01-04 | Compliant |
 | SOMA-BR-PROD-001 | docs/iso/SOMA-BR-PROD-001.md | SomaBrain Production Readiness Assessment | 2.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
-| SOMA-BR-QMS-001 | docs/iso/SOMA-BR-QMS-001.md | SomaBrain Quality Manual | 1.0.2 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
+| SOMA-BR-QMS-001 | docs/iso/SOMA-BR-QMS-001.md | SomaBrain Quality Manual | 1.0.3 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-RISK-001 | docs/iso/SOMA-BR-RISK-001.md | SomaBrain Risk Register | 2.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-SDP-001 | docs/iso/SOMA-BR-SDP-001.md | SomaBrain Software Development Plan | 1.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
-| SOMA-BR-SEC-001 | docs/iso/SOMA-BR-SEC-001.md | SomaBrain Security Assessment | 2.0.1 | Approved | CISO, SomaTech | 2026-12-28 | Compliant |
+| SOMA-BR-SEC-001 | docs/iso/SOMA-BR-SEC-001.md | SomaBrain Security Assessment | 2.0.2 | Approved | CISO, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-SRS-001 | docs/iso/SOMA-BR-SRS-001.md | SomaBrain Software Requirements Specification | 1.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-VV-001 | docs/iso/SOMA-BR-VV-001.md | SomaBrain Verification and Validation Plan | 1.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
+| SOMA-BR-COORD-A2A-001 | docs/plans/2026-10-05-COORDINATION-HANDOFF.md | Multi-Agent Coordination Handoff | 1.0.1 | Draft | — | 2027-01-05 | Compliant |
+| SOMA-BR-A2A-CLAIMS-001 | docs/plans/a2a/CLAIMS.md | A2A CLAIMS — file path locks | 1.0.1 | Draft | — | 2027-01-05 | Compliant |
+| SOMA-BR-A2A-INBOX-001 | docs/plans/a2a/INBOX.md | A2A INBOX — messages for the other agent | 1.0.1 | Draft | — | 2027-01-05 | Compliant |
+| SOMA-BR-A2A-LEDGER-001 | docs/plans/a2a/LEDGER.md | A2A LEDGER — append-only work log | 1.0.1 | Draft | — | 2027-01-05 | Compliant |
+| SOMA-BR-A2A-OUTBOX-001 | docs/plans/a2a/OUTBOX.md | A2A OUTBOX — messages from MiMoCode / revision agents | 1.0.1 | Draft | — | 2027-01-05 | Compliant |
 | SOMA-ARCH-REDESIGN-001 | docs/project/SOMA-ARCH-REDESIGN-001.md | Enterprise Architecture Redesign | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-EXEC-001 | docs/project/SOMA-BR-EXEC-001.md | SomaBrain Production Readiness Execution Plan | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-FEAT-MATRIX-001 | docs/project/SOMA-FEAT-MATRIX-001.md | Agent Zero vs Soma Feature Comparison Matrix | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-MOD-ARCH-001 | docs/project/SOMA-MOD-ARCH-001.md | Soma Agent Modular Architecture — Core vs Optional Modules | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-MOD-SPEC-001 | docs/project/SOMA-MOD-SPEC-001.md | Soma Agent Module System Technical Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-UI-FIELD-PARITY-001 | docs/project/SOMA-UI-FIELD-PARITY-001.md | UI Field Parity — Agent Zero to Soma Agent | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-MOCKUPS-001 | docs/project/SOMA-UI-MOCKUPS-001.md | Soma Agent Screen Mockups and Wireframes | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-UI-MODEL-ADMIN-001 | docs/project/SOMA-UI-MODEL-ADMIN-001.md | Settings Workspace and Model Manager | 3.2.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-SPEC-001 | docs/project/SOMA-UI-SPEC-001.md | Soma Agent Definitive UI/UX Specification | 2.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-UI-UX-001 | docs/project/SOMA-UI-UX-001.md | Soma Agent UI/UX Complete Specification | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
 
@@ -73,8 +86,8 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 30 |
-| Compliant | 30 |
+| Registered documents | 43 |
+| Compliant | 43 |
 | Non-compliant (tracked gaps) | 0 |
 | Annexes (design artefacts) | 0 |
 

@@ -16,13 +16,13 @@
 | Next Review | 2026-12-28 |
 
 ## Revision History
-| 1.0.3 | 2026-10-07 | SomaTech Engineering | Cross-link FIELD-PARITY-001 + MODEL-ADMIN-001; Settings suite; no slot language. |
 
 | Version | Date | Author | Description |
-|---------|------|--------|-------------|
+|---|---|---|---|
 | 1.0.0 | 2026-06-15 | SomaTech Engineering | Initial complete UI/UX specification — all screens, journeys, modules |
-| 1.0.2 | 2026-10-07 | SomaTech Engineering | Model settings hub: card-based full-model admin per SOMA-UI-MODEL-ADMIN-001. |
 | 1.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: prior status `Baseline` normalised to `Draft` (no approver named). |
+| 1.0.2 | 2026-10-07 | SomaTech Engineering | Model settings hub: card-based full-model admin per SOMA-UI-MODEL-ADMIN-001. |
+| 1.0.3 | 2026-10-07 | SomaTech Engineering | Cross-link FIELD-PARITY-001 + MODEL-ADMIN-001; Settings suite; no slot language. |
 
 ---
 

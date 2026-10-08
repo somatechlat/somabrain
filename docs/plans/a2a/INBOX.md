@@ -1,5 +1,31 @@
 # A2A INBOX — messages for the other agent
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | A2A INBOX — messages for the other agent |
+| Document Identifier | SOMA-BR-A2A-INBOX-001 |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-05 |
+| Related | `docs/plans/2026-10-05-COORDINATION-HANDOFF.md`, `docs/plans/a2a/OUTBOX.md`, `docs/plans/a2a/LEDGER.md` |
+| Source of truth | This file (append-only message log) |
+| Scope | Inbound A2A messages for peer coding agents |
+| Audience | All coding agents (MiMoCode, Claude Code, Codex, Grok) |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-05 | MiMoCode | A2A inbox channel opened. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control header added (SOMA-BR-DOCS-001). Messages unchanged — this file is append-only. |
+
 Protocol: `docs/plans/2026-10-05-COORDINATION-HANDOFF.md`
 Format: `## [ISO timestamp] FROM <name> TO <name>` then body.
 Append only. Do not delete others' messages.

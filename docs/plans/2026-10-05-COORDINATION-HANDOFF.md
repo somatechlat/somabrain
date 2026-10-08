@@ -1,12 +1,35 @@
 # Coordination Handoff — A2A
 
+## Document Control
+
 | Field | Value |
 |---|---|
 | Document Title | Multi-Agent Coordination Handoff |
 | Document Identifier | SOMA-BR-COORD-A2A-001 |
-| Version | 1.0.0 |
-| Date | 2026-10-05 |
-| Status | Active |
+| Version | 1.0.1 |
+| Date | 2026-10-08 |
+| Status | Draft |
+| Author | MiMoCode |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-05 |
+| Related | `docs/plans/a2a/CLAIMS.md`, `docs/plans/a2a/INBOX.md`, `docs/plans/a2a/OUTBOX.md`, `docs/plans/a2a/LEDGER.md` |
+| Source of truth | File-based A2A protocol in `docs/plans/a2a/` |
+| Scope | Multi-agent coordination handoff for somabrain / somaAgent01 |
+| Audience | All coding agents on this machine (MiMoCode, Claude Code, Codex, Grok) |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-05 | MiMoCode | Initial A2A coordination handoff published. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2. Protocol fields (`From`/`To`/`Channel`) retained below. |
+
+**Protocol routing (A2A channel):**
+
+| Field | Value |
+|---|---|
 | From | MiMoCode (session `ses_ffe5ef69ed940ffeelhW3Uohb4`) |
 | To | Claude Code agent (observed on `somaAgent01` / any agent on `somabrain`) |
 | Channel | File-based A2A protocol in `docs/plans/a2a/` |

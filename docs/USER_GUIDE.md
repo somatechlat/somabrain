@@ -39,7 +39,7 @@
 2. The first 16 characters of the bearer token (implicit).
 3. Fallback `"public"` tenant when neither is available.
 
-The namespace stored in Redis, Prometheus labels, and response bodies is constructed as `<base_namespace>:<tenant_id>`, where `base_namespace` defaults to `somabrain_ns` (see `.env`).
+The namespace stored in Redis, Prometheus labels, and response bodies is constructed as `<base_namespace>:<tenant_id>`, where `base_namespace` defaults to `somabrain_ns` (Django setting / BrainSetting).
 
 ```bash
 curl -sS http://localhost:9696/health \
@@ -90,7 +90,8 @@ In the API, quota enforcement occurs in `somabrain.app.remember` before writes r
 Always include `X-Tenant-ID` when running shared environments:
 
 ```bash
-AUTH="Authorization: Bearer ${SOMABRAIN_API_TOKEN}"
+# Token is supplied by Vault at runtime — never export TOKEN= or store it in .env.
+AUTH="Authorization: Bearer <TOKEN_FROM_VAULT>"
 TENANT="X-Tenant-ID: org_acme"
 
 curl -sS http://localhost:9696/remember \
@@ -731,7 +732,7 @@ score = w_cosine * cosine_sim + w_fd * fd_projection + w_recency * exp(-age/τ)
 
 ## Configuration
 
-| Parameter | Environment Variable | Default | Description |
+| Parameter | Django setting / BrainSetting key | Default | Description |
 |-----------|---------------------|---------|-------------|
 | Embed Provider | `SOMABRAIN_EMBED_PROVIDER` | `tiny` | Embedding model |
 | Embed Dimension | `SOMABRAIN_EMBED_DIM` | `256` | Vector dimensionality |
@@ -860,7 +861,7 @@ Requests can wrap the payload (`{"payload": {...}}`) or send the fields at the t
 ```bash
 curl -sS http://localhost:9696/remember \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${SOMABRAIN_API_TOKEN:-dev-token}" \
+  -H "Authorization: Bearer <TOKEN_FROM_VAULT>" \
   -d '{
         "payload": {
           "task": "kb.geography.paris",
@@ -958,7 +959,7 @@ The `score` is computed by `somabrain.scoring.UnifiedScorer` using weights drawn
 
 ## 5. Controlling Namespaces and Universes
 
-- Tenants are identified via `Authorization` + (optional) `X-Tenant-ID`. The default tenant is configured in `.env` (`SOMABRAIN_DEFAULT_TENANT`).
+- Tenants are identified via `Authorization` + (optional) `X-Tenant-ID`. The default tenant is a Django setting / BrainSetting key (`SOMABRAIN_DEFAULT_TENANT`).
 - Universes provide finer segmentation and can be supplied via the payload (`"universe": "support"`) or via `X-Universe`.
 - Quotas are enforced per tenant (`somabrain.quotas.QuotaManager`). Exceeding quotas yields HTTP 429.
 
@@ -998,21 +999,22 @@ Use these signals to verify that ingestion and recall behave as expected in your
 
 | Setting | Default | Where it comes from |
 |---------|---------|---------------------|
-| Base URL | `http://localhost:9696` | `SOMABRAIN_HOST` / `SOMABRAIN_PORT` in `.env` |
-| Auth | Bearer token | `SOMABRAIN_API_TOKEN` or JWT fields in `somabrain.config.Config` |
+| Base URL | `http://localhost:9696` | Django settings / BrainSetting (`SOMABRAIN_HOST` / `SOMABRAIN_PORT`) |
+| Auth | Bearer token | **Vault only** (static API token / JWT secret). Never ENV, never `.env` |
 | Tenant header | `X-Tenant-ID` | Parsed by `somabrain.tenant.get_tenant` |
 | Content type | `application/json` | All public endpoints expect JSON bodies |
 
 **Authentication**
 
-- For static tokens set `SOMABRAIN_API_TOKEN=...` and supply `Authorization: Bearer <token>`.
+- Static API tokens and JWT secrets live in **Vault only** (Covenant Art 26). Supply `Authorization: Bearer <TOKEN_FROM_VAULT>`; never `export TOKEN=...` and never store tokens in `.env`.
 – In dev mode, auth may be relaxed; otherwise include a valid Bearer token.
-- JWT validation uses HS or RS algorithms depending on `cfg.jwt_secret` / `cfg.jwt_public_key_path`. Configure `SOMABRAIN_JWT_ISSUER` / `SOMABRAIN_JWT_AUDIENCE` if needed.
+- JWT validation uses HS or RS algorithms depending on the Vault-sourced secret / public key. JWT issuer/audience claims are Django settings / BrainSetting keys.
 
 Example curl:
 
 ```bash
-AUTH="Authorization: Bearer ${SOMABRAIN_API_TOKEN:-dev-token}"
+# Token comes from Vault at runtime — never from ENV or .env
+AUTH="Authorization: Bearer <TOKEN_FROM_VAULT>"
 TENANT="X-Tenant-ID: demo"
 curl -sS http://localhost:9696/health -H "$AUTH" -H "$TENANT" | jq
 ```
@@ -1034,7 +1036,7 @@ curl -sS http://localhost:9696/health -H "$AUTH" -H "$TENANT" | jq
 | `/sleep/run` | POST | Trigger NREM/REM consolidation | `somabrain.app.sleep_run` |
 | `/neuromodulators` | POST/GET | Inspect or set neuromodulator state | `somabrain.app.neuromodulators` |
 
-Endpoints gated by `if not _MINIMAL_API` require the full Docker stack (see `.env` flags such as `SOMABRAIN_FORCE_FULL_STACK`, `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`).
+Endpoints gated by `if not _MINIMAL_API` require the full Docker stack (see Django settings / BrainSetting flags such as `SOMABRAIN_FORCE_FULL_STACK`, `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`).
 
 ---
 
@@ -1620,14 +1622,15 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -U pip && pip install -e .[dev]
 
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:10101   # For direct host runs (Django)
-export SOMABRAIN_MODE=development          # dev only (auth relaxed via mode)
-export SOMABRAIN_REQUIRE_MEMORY=0          # unless you have a live backend
+# Non-secret settings only (Django settings / BrainSetting). Never put tokens here.
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:10101
+SOMABRAIN_MODE=development          # dev only (auth relaxed via mode)
+SOMABRAIN_REQUIRE_MEMORY=0          # unless you have a live backend
 
 python manage.py runserver 127.0.0.1:9696
 ```
 
-Do not relax auth outside development mode; use proper Bearer tokens in shared environments.
+Do not relax auth outside development mode; use Bearer tokens from **Vault** in shared environments (never `export TOKEN=`, never `.env` as a token store).
 
 ---
 
@@ -1663,7 +1666,7 @@ If any check fails, consult [FAQ](faq.md) and `docker compose logs`.
 - `503 memory backend unavailable` – the memory HTTP service on port 10101 was not reachable; either point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at a working endpoint or set `SOMABRAIN_REQUIRE_MEMORY=0` for non-production testing.
 - Port clashes on 9696 / 20001‑20007 – adjust exported ports in `.env`.
 - Kafka slow to start – wait for the broker healthcheck (`somabrain_standalone_kafka` container) before sending recall requests.
-- Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`). In dev mode, auth may be relaxed by policy.
+- Authentication failures – provide a Bearer token sourced from **Vault** (never `.env`, never `export TOKEN=`). In dev mode, auth may be relaxed by policy.
 
 ---
 

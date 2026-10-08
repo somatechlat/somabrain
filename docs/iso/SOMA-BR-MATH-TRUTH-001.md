@@ -6,29 +6,31 @@
 
 ---
 
-## 0. Document Control
+## Document Control
 
 | Field | Value |
 |---|---|
 | Document Title | SomaBrain Mathematical Specification As Implemented |
 | Document Identifier | SOMA-BR-MATH-TRUTH-001 |
-| Version | 1.0.0 |
-| Date | 2026-09-28 |
-| Status | Released |
+| Version | 1.1.1 |
+| Date | 2026-10-08 |
+| Status | Approved |
 | Author | SomaTech Engineering (DOC-A2 extraction) |
 | Approver | Engineering Lead |
 | Classification | Internal |
+| ISO Reference | ISO/IEC/IEEE 12207:2017 — Systems and Software Engineering — Software Life Cycle Processes |
+| Next Review | 2027-01-05 |
 | Source of truth | Production source under `rust_core/src/` and `somabrain/` |
-| Supersedes | (none) |
-| Non-authoritative sources | `LEARNING_MATHEMATICAL_PROOF.md`, `SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md` (see Appendix A) |
-| Next Review | On any change to a cited file:line range |
+| Related | `LEARNING_MATHEMATICAL_PROOF.md`, `SOMABRAIN_MATHEMATICAL_PROOF_REPORT.md` (non-authoritative, see Appendix A) |
+| Scope | Equations, symbols, constants, and invariants as implemented in production code |
 
-### Revision History
+## Revision History
 
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | Engineering | Initial extraction of equations, symbols, constants, and invariants from production code only. False-claims appendix for legacy proof docs. |
 | 1.1.0 | 2026-10-05 | Engineering | W2 neuromodulation: one store (`runtime/neuromodulators.py`; admin tree deleted), homeostatic law `m ← Π(m+η(δ−m))`, shared ACh/5-HT target laws, 5-HT gate consumer, Supervisor wired on `/act`, Rust ODE deleted. T32 DELETED, T33/T35 rewritten, T35b added. |
+| 1.1.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2: heading `## Document Control` (was `## 0.`), `## Revision History` (was `###`), Status `Released`→`Approved`, Next Review set to `YYYY-MM-DD`, forbidden/non-house fields moved to `Related`/`Scope`. |
 
 ### Scope Files (read in full)
 

@@ -569,7 +569,7 @@ sequenceDiagram
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `SOMA_API_PORT` | int | `10101` | API server port |
-| `SOMA_API_TOKEN` | str | - | API authentication token |
+| `SOMA_API_TOKEN` | str | **Vault only** | API authentication token |
 | `SOMA_LOG_LEVEL` | enum | `INFO` | Log verbosity |
 | `SOMA_DEBUG` | bool | `false` | Debug mode |
 
@@ -712,7 +712,7 @@ sequenceDiagram
 
 ## Overview
 
-SomaFractalMemory uses Django settings with environment variables prefixed with `SOMA_`.
+SomaFractalMemory settings authority is **Django settings + BrainSetting (DB)**. Secrets are **Vault only** — never env, never files, never DB plaintext.
 
 ---
 
@@ -720,13 +720,15 @@ SomaFractalMemory uses Django settings with environment variables prefixed with 
 
 ### Security
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `SOMA_SECRET_KEY` | str | dev-only | Django secret key |
-| `SOMA_DEBUG` | bool | False | Debug mode |
-| `SOMA_ALLOWED_HOSTS` | list | localhost | Allowed hosts |
-| `SOMA_API_TOKEN` | str | None | API authentication token |
-| `SOMA_API_TOKEN_FILE` | str | None | Path to token file |
+Secrets are **Vault only** (Covenant Art 26).
+
+| Setting | Type | Source | Description |
+|---------|------|--------|-------------|
+| `SOMA_SECRET_KEY` | str | **Vault only** | Django secret key |
+| `SOMA_DEBUG` | bool | Django/BrainSetting | Debug mode |
+| `SOMA_ALLOWED_HOSTS` | list | Django/BrainSetting | Allowed hosts |
+| `SOMA_API_TOKEN` | str | **Vault only** | API authentication token |
+| `SOMA_API_TOKEN_FILE` | str | *(deprecated)* | Do not use file token stores; Vault only |
 
 ---
 
@@ -736,7 +738,7 @@ SomaFractalMemory uses Django settings with environment variables prefixed with 
 |---------|------|---------|-------------|
 | `SOMA_DB_NAME` | str | somamemory | Database name |
 | `SOMA_DB_USER` | str | soma | Database user |
-| `SOMA_DB_PASSWORD` | str | soma | Database password |
+| `SOMA_DB_PASSWORD` | str | **Vault only** (`secret/agent/credentials/postgres_password`) | Database password — never env/file |
 | `SOMA_DB_HOST` | str | postgres | Database host |
 | `SOMA_DB_PORT` | str | 5432 | Database port |
 | `SOMA_POSTGRES_SSL_MODE` | str | None | SSL mode |
@@ -750,7 +752,7 @@ SomaFractalMemory uses Django settings with environment variables prefixed with 
 | `SOMA_REDIS_HOST` | str | redis | Redis host |
 | `SOMA_REDIS_PORT` | int | 6379 | Redis port |
 | `SOMA_REDIS_DB` | int | 0 | Redis database |
-| `SOMA_REDIS_PASSWORD` | str | None | Redis password |
+| `SOMA_REDIS_PASSWORD` | str | **Vault only** | Redis password — never env/file |
 
 ---
 
@@ -1657,16 +1659,18 @@ flowchart TB
 
 ### 3.3 Authentication Settings
 
-| Setting | Type | Default | Description | Editable at Runtime |
-|---------|------|---------|-------------|:-------------------:|
-| `SOMABRAIN_AUTH_REQUIRED` | bool | `false` | Require authentication | ✓ |
-| `SOMABRAIN_API_TOKEN` | str | - | Static API token fallback | ✓ |
-| `SOMABRAIN_JWT_SECRET` | str | - | JWT signing secret | ✗ |
-| `SOMABRAIN_JWT_PUBLIC_KEY_PATH` | str | - | Path to JWT public key | ✗ |
-| `SOMABRAIN_JWT_AUDIENCE` | str | - | Expected JWT audience | ✓ |
-| `SOMABRAIN_JWT_ISSUER` | str | - | Expected JWT issuer | ✓ |
-| `SOMABRAIN_AUTH_SERVICE_URL` | str | - | External auth service URL | ✗ |
-| `SOMABRAIN_AUTH_SERVICE_API_KEY` | str | - | Auth service API key | ✗ |
+Secrets are **Vault only** (Covenant Art 26).
+
+| Setting | Type | Source | Description | Editable at Runtime |
+|---------|------|--------|-------------|:-------------------:|
+| `SOMABRAIN_AUTH_REQUIRED` | bool | Django/BrainSetting | Require authentication | ✓ |
+| `SOMABRAIN_API_TOKEN` | str | **Vault only** | Static API token | ✗ |
+| `SOMABRAIN_JWT_SECRET` | str | **Vault only** | JWT signing secret | ✗ |
+| `SOMABRAIN_JWT_PUBLIC_KEY_PATH` | str | Django/BrainSetting | Path to JWT public key | ✗ |
+| `SOMABRAIN_JWT_AUDIENCE` | str | Django/BrainSetting | Expected JWT audience | ✓ |
+| `SOMABRAIN_JWT_ISSUER` | str | Django/BrainSetting | Expected JWT issuer | ✓ |
+| `SOMABRAIN_AUTH_SERVICE_URL` | str | Django/BrainSetting | External auth service URL | ✗ |
+| `SOMABRAIN_AUTH_SERVICE_API_KEY` | str | **Vault only** | Auth service API key | ✗ |
 
 ### 3.4 Kafka & Messaging Settings
 
@@ -1714,11 +1718,13 @@ flowchart TB
 
 ### 3.8 Vault Integration Settings
 
-| Setting | Type | Default | Description | Editable at Runtime |
-|---------|------|---------|-------------|:-------------------:|
-| `SOMABRAIN_VAULT_ADDR` | str | - | HashiCorp Vault address | ✗ |
-| `SOMABRAIN_VAULT_TOKEN` | str | - | Vault access token | ✗ |
-| `SOMABRAIN_VAULT_PUBKEY_PATH` | str | - | Vault public key path | ✗ |
+Secrets bootstrap via Vault. The Vault token itself is a **Vault-only / T0-secret** credential — never ENV.
+
+| Setting | Type | Source | Description | Editable at Runtime |
+|---------|------|--------|-------------|:-------------------:|
+| `SOMABRAIN_VAULT_ADDR` | str | Django/BrainSetting | HashiCorp Vault address | ✗ |
+| `SOMABRAIN_VAULT_TOKEN` | str | **Vault only** (bootstrap; never env) | Vault access token | ✗ |
+| `SOMABRAIN_VAULT_PUBKEY_PATH` | str | Django/BrainSetting | Vault public key path | ✗ |
 
 ### 3.9 Constitution Settings
 
@@ -2249,7 +2255,7 @@ flowchart LR
 
 ## Overview
 
-SomaBrain uses Django settings with django-environ for configuration. All settings are loaded from environment variables.
+SomaBrain settings authority is **Django settings + BrainSetting (DB)** (plus agent `SettingsModel`). Non-secret tunables come from those surfaces only — not from environment variables as authority and not from YAML/JSON file presets. Secrets (tokens, passwords, signing keys) reside in **Vault only** (Covenant Art 26); storage in code, configuration files, or environment variables is prohibited.
 
 ---
 
@@ -2267,20 +2273,22 @@ SomaBrain uses Django settings with django-environ for configuration. All settin
 
 ### Authentication & Security
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `SOMABRAIN_AUTH_REQUIRED` | bool | False | Require authentication |
-| `SOMABRAIN_API_TOKEN` | str | None | API authentication token |
-| `SOMABRAIN_AUTH_SERVICE_URL` | str | None | Auth service URL |
-| `SOMABRAIN_JWT_SECRET` | str | None | JWT signing secret |
-| `SOMABRAIN_JWT_PUBLIC_KEY_PATH` | str | None | Path to JWT public key |
-| `SOMABRAIN_JWT_AUDIENCE` | str | None | JWT audience claim |
-| `SOMABRAIN_JWT_ISSUER` | str | None | JWT issuer claim |
-| `SOMABRAIN_OPA_PRIVKEY_PATH` | str | None | OPA private key path |
-| `SOMABRAIN_OPA_PUBKEY_PATH` | str | None | OPA public key path |
-| `SOMABRAIN_PROVENANCE_SECRET` | str | None | Provenance signing secret |
-| `SOMABRAIN_VAULT_ADDR` | str | None | HashiCorp Vault address |
-| `SOMABRAIN_VAULT_TOKEN` | str | None | Vault access token |
+Secrets in this category are **Vault only** (Covenant Art 26) — never environment variables, never files. Non-secret claims/settings are Django settings / BrainSetting keys.
+
+| Setting | Type | Source | Description |
+|---------|------|--------|-------------|
+| `SOMABRAIN_AUTH_REQUIRED` | bool | Django/BrainSetting | Require authentication |
+| `SOMABRAIN_API_TOKEN` | str | **Vault only** | API authentication token |
+| `SOMABRAIN_AUTH_SERVICE_URL` | str | Django/BrainSetting | Auth service URL |
+| `SOMABRAIN_JWT_SECRET` | str | **Vault only** | JWT signing secret |
+| `SOMABRAIN_JWT_PUBLIC_KEY_PATH` | str | Django/BrainSetting | Path to JWT public key |
+| `SOMABRAIN_JWT_AUDIENCE` | str | Django/BrainSetting | JWT audience claim |
+| `SOMABRAIN_JWT_ISSUER` | str | Django/BrainSetting | JWT issuer claim |
+| `SOMABRAIN_OPA_PRIVKEY_PATH` | str | Django/BrainSetting | OPA private key path |
+| `SOMABRAIN_OPA_PUBKEY_PATH` | str | Django/BrainSetting | OPA public key path |
+| `SOMABRAIN_PROVENANCE_SECRET` | str | **Vault only** | Provenance signing secret |
+| `SOMABRAIN_VAULT_ADDR` | str | Django/BrainSetting | HashiCorp Vault address |
+| `SOMABRAIN_VAULT_TOKEN` | str | **Vault only** (bootstrap credential; never env) | Vault access token |
 
 ---
 
@@ -3159,7 +3167,7 @@ Operators should alarm on:
 | `circuit_failure_threshold` | `3` | Consecutive failures before opening breaker. |
 | `circuit_reset_interval` | `60` seconds | Minimum wait before retrying a closed circuit. |
 
-Set these through `common/config/settings.py` or environment variables (`SOMABRAIN_MEMORY_DEGRADE_*`, `SOMABRAIN_MEMORY_HEALTH_POLL_INTERVAL`, etc.).
+Set these through Django settings / BrainSetting (`memory_degrade_*`, `memory_health_poll_interval`, etc.). Environment variables are not settings authority.
 
 ### 6.8 Operator Checklist
 
@@ -3703,10 +3711,10 @@ All confidential information uses placeholders:
 ### In Code Examples
 
 ```bash
-# ✅ CORRECT - Uses placeholder
-export SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"
+# ✅ CORRECT - Token is fetched from Vault at runtime; docs use a placeholder
+# Authorization: Bearer <TOKEN_FROM_VAULT>
 
-# ❌ WRONG - Real token
+# ❌ WRONG - Never export a token or put it in ENV/.env
 export SOMABRAIN_MEMORY_HTTP_TOKEN="sk-prod-abc123..."
 ```
 
@@ -4144,8 +4152,8 @@ SOMABRAIN_JWT_ISSUER = "http://localhost:20880/realms/somabrain"
 GOOGLE_CLIENT_ID = "786567505985-46etdi4j46hocuo148a1bush1asiv0od.apps.googleusercontent.com"
 GOOGLE_REDIRECT_URI = "http://localhost:5173/auth/callback"
 
-# API Token (fallback)
-SOMABRAIN_API_TOKEN = None  # Set for simple token auth
+# API Token (fallback) — SECRET: Vault only, never ENV/files
+SOMABRAIN_API_TOKEN = None  # Resolved from Vault at runtime
 SOMABRAIN_AUTH_REQUIRED = True
 ```
 
@@ -4156,7 +4164,7 @@ SOMABRAIN_AUTH_REQUIRED = True
 | NFR-ID | Requirement | Implementation |
 |--------|-------------|----------------|
 | NFR-SEC-001 | JWT keys rotated periodically | TTL-based cache (1 hour) |
-| NFR-SEC-002 | No credentials in source code | Vault/ENV variables |
+| NFR-SEC-002 | No credentials in source code | Vault only (never ENV/files) |
 | NFR-SEC-003 | HTTPS for all auth endpoints | Keycloak SSL config |
 | NFR-SEC-004 | Token validation on every request | `require_auth()` middleware |
 
@@ -4481,7 +4489,7 @@ The Constitution is the **supreme regulatory document** that governs all AI agen
 │   ├── Location: SomaBrain                                                    │
 │   ├── Storage: Redis (hot) + PostgreSQL (historical)                         │
 │   ├── Checksum: SHA3-512 (128 hex chars)                                     │
-│   └── Signatures: PEM-based (Vault or file)                                  │
+│   └── Signatures: PEM-based (private keys in Vault only)                       │
 │                          │                                                  │
 │                          ▼                                                  │
 │   CAPSULE (Agent Identity)                                                   │
@@ -4613,21 +4621,22 @@ def _compute_checksum(document: Dict[str, Any]) -> str:
 |-------|-----------|----------------|
 | Hashing | SHA3-512 | Python hashlib |
 | Signing | Ed25519/PEM | cryptography library |
-| Key Storage | Vault or File | hvac client |
+| Key Storage | **Vault only** | hvac client |
 | Encoding | Hex | Standard encoding |
 
 ## 5.2 Key Management
-```python
-# Environment/Settings for Vault Integration
+```text
+# Vault Integration (Django settings / BrainSetting for non-secret paths)
 SOMABRAIN_VAULT_ADDR = "https://vault.example.com"
-SOMABRAIN_VAULT_TOKEN = "<token>"
+# SOMABRAIN_VAULT_TOKEN is a secret: Vault/T0 only — never ENV, never a file.
 SOMABRAIN_VAULT_PUBKEY_PATH = "secret/data/soma/constitution/pubkeys"
 
-# File-based fallback
+# Non-secret key paths (public material). Private keys live in Vault only —
+# no file-based private-key fallback.
 SOMABRAIN_CONSTITUTION_PUBKEY_PATH = "/path/to/public.pem"
-SOMABRAIN_CONSTITUTION_PRIVKEY_PATH = "/path/to/private.pem"
+SOMABRAIN_CONSTITUTION_PRIVKEY_PATH = "vault://secret/data/soma/constitution/privkeys"
 
-# Multi-signature configuration
+# Multi-signature configuration (Django settings / BrainSetting)
 SOMABRAIN_CONSTITUTION_THRESHOLD = 1  # Required valid signatures
 SOMABRAIN_CONSTITUTION_SIGNER_ID = "admin"
 ```
@@ -6288,16 +6297,18 @@ sequenceDiagram
 
 ---
 
-## 9. Environment Variables
+## 9. Secrets (Vault only)
 
-| Variable | Service | Description |
+Covenant Art 26: production secrets reside exclusively in Vault. Storage in code, configuration files, or environment variables is prohibited.
+
+| Secret | Service | Source |
 |----------|---------|-------------|
-| `SOMABRAIN_API_TOKEN` | SomaBrain | Legacy static token |
-| `SOMA_API_TOKEN` | SomaFractalMemory | API authentication |
-| `LAGO_API_KEY` | Lago | Billing API access |
-| `KEYCLOAK_CLIENT_SECRET` | Keycloak | OAuth client secret |
-| `REDIS_PASSWORD` | Redis | Cache auth (optional) |
-| `POSTGRES_PASSWORD` | PostgreSQL | Database auth |
+| `SOMABRAIN_API_TOKEN` | SomaBrain | **Vault only** |
+| `SOMA_API_TOKEN` | SomaFractalMemory | **Vault only** |
+| `LAGO_API_KEY` | Lago | **Vault only** |
+| `KEYCLOAK_CLIENT_SECRET` | Keycloak | **Vault only** |
+| `REDIS_PASSWORD` | Redis | **Vault only** (optional) |
+| `POSTGRES_PASSWORD` | PostgreSQL | **Vault only** |
 
 ---
 

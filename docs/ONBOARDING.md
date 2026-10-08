@@ -872,16 +872,15 @@ Backlog → Triaged → In Progress → In Review → Testing → Done
 # Clone the repository
 git clone https://github.com/somatech/somabrain.git
 cd somabrain
-
-# Copy environment template
-cp .env.example .env
 ```
 
-### Required Environment Variables
+### Required Settings (Django / BrainSetting) & Secrets (Vault)
 
-```bash
-# Database topology (use the shared SOMA Stack database) — parts, not a DSN.
-# No password here. The password is read from Vault at
+Non-secret topology is configured via Django settings / BrainSetting. Secrets come from **Vault only** — never `.env`, never ENV.
+
+```text
+# Database topology (shared SOMA Stack database) — Django settings / BrainSetting keys.
+# Password is NOT a setting: it is read from Vault at
 # secret/agent/credentials/postgres_password and the connection is assembled
 # at runtime (VIBE Rule 164). Never put a credential in ENV or in a doc.
 SOMA_DB_HOST=localhost
@@ -889,15 +888,15 @@ SOMA_DB_PORT=20432
 SOMA_DB_NAME=somabrain
 SOMA_DB_USER=postgres
 
-# Redis — URL without credentials
+# Redis — URL without credentials (Django setting / BrainSetting)
 REDIS_URL=redis://localhost:20379/1
 
-# Memory Service
+# Memory Service endpoint (Django setting / BrainSetting)
 SOMA_MEMORY_URL=http://localhost:10101
 # SOMA_MEMORY_API_TOKEN is a credential and is read from Vault at
-# secret/agent/credentials/somabrain_memory_http_token. Never set it here.
+# secret/agent/credentials/somabrain_memory_http_token. Never set it in ENV or a file.
 
-# Milvus (Vector DB)
+# Milvus (Vector DB) — Django setting / BrainSetting
 MILVUS_HOST=localhost
 MILVUS_PORT=20530
 ```
@@ -1060,13 +1059,10 @@ jwt_issuer: Optional[str] = None
 jwt_audience: Optional[str] = None
 ```
 
-**Environment Variables**:
-```bash
-SOMABRAIN_JWT_SECRET="<secret>"
-SOMABRAIN_JWT_PUBLIC_KEY_PATH="/path/to/key.pem"
-SOMABRAIN_JWT_ISSUER="somabrain"
-SOMABRAIN_JWT_AUDIENCE="api"
-```
+**Secrets (Vault only — never env)**:
+JWT signing secret and related credentials are stored in **Vault** and loaded by the Vault client at boot. Do not set `SOMABRAIN_JWT_SECRET` (or any secret) in environment variables or files.
+
+Non-secret JWT claims (issuer, audience, public key path) are Django settings / BrainSetting keys.
 
 ## Tenant Isolation
 
@@ -1218,26 +1214,31 @@ tmpfs:
 
 ## Secrets Management
 
-### Environment Variables (Development)
+### Storage Law (Covenant Art 26)
+
+Secrets (tokens, passwords, keys) live in **Vault only**. They are never placed in environment variables, `.env` files, config files, git, or DB plaintext. Application code reads secrets via the Vault client, not `os.getenv` / `os.environ`.
+
+Vault paths (examples):
+- `secret/agent/credentials/somabrain_memory_http_token`
+- `secret/agent/credentials/postgres_password`
+
+### Documentation Placeholders
 
 ```bash
-# ✅ CORRECT - Use placeholders in docs
-SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN>"
+# ✅ CORRECT - Use placeholders in docs; the value is fetched from Vault at runtime
+# SOMABRAIN_MEMORY_HTTP_TOKEN is resolved from Vault — never set it in ENV or a file.
 
-# ❌ WRONG - Never commit real tokens
+# ❌ WRONG - Never put a token in ENV, a file, or a doc
 SOMABRAIN_MEMORY_HTTP_TOKEN="sk-prod-abc123..."
 ```
 
 ### Production Secrets
 
-**Recommended**: Use external secret managers
-
-- AWS Secrets Manager
-- HashiCorp Vault
-- Kubernetes Secrets
+**Required**: HashiCorp Vault (sole secrets authority).
 
 **Never**:
 - Hardcode in source code
+- Store in environment variables or `.env` files
 - Commit to git
 - Log to stdout
 
@@ -1427,35 +1428,27 @@ curl -X POST http://localhost:9696/recall \
 
 ## Configuration Basics
 
-### Environment Variables
+### Settings Authority (Django + DB)
 
-**Required**:
+Non-secret settings resolve from **Django settings** / **BrainSetting (DB)**. Secrets resolve from **Vault only**.
 
-```bash
-SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:10101"
-SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"  # Required - set your actual token
-```
+**Required (non-secret endpoint)**:
+- Memory service endpoint — Django setting / BrainSetting key (`SOMABRAIN_MEMORY_HTTP_ENDPOINT`).
 
-**Optional**:
+**Secrets (Vault only)**:
+- Memory HTTP token — Vault path `secret/agent/credentials/somabrain_memory_http_token`. Never set in ENV, `.env`, or a file.
 
-```bash
-SOMABRAIN_MODE="full-local"  # or "prod"
-SOMABRAIN_PREDICTOR_PROVIDER="mahal"  # mahal|slow|llm
-SOMABRAIN_EMBED_PROVIDER="tiny"  # tiny|openai|...
-```
+**Optional (Django settings / BrainSetting)**:
+- Predictor provider, embed provider, mode, and other tunables.
 
-### Config File (config.yaml)
+### Config & Settings Authority
 
-```yaml
-wm_size: 64
-embed_dim: 256
-use_hrr: false
-rate_rps: 50.0
-```
+Runtime tunables and feature flags come from **Django settings** and **BrainSetting (DB)** (plus agent `SettingsModel`). There is **no** `config.yaml` and **no** `load_config()` settings authority — YAML/JSON file presets are not configuration sources of truth.
 
-**Location**: Project root
+**Location of authority**: `somabrain/settings/` (Django) + BrainSetting admin (DB).
 
-**Loading**: Automatic via `load_config()` in `somabrain/config.py`
+Example tunables (resolve from Django settings / BrainSetting):
+- `wm_size`, `embed_dim`, `use_hrr`, `rate_rps`
 
 ## Common Issues
 
@@ -1509,9 +1502,8 @@ docker compose up -d somabrain_standalone_kafka somabrain_standalone_postgres so
 
 **Fix**: Adjust rate limits
 
-```bash
-export SOMABRAIN_RATE_RPS=100
-export SOMABRAIN_RATE_BURST=200
+```text
+# Change rate limits via Django settings / BrainSetting (not ENV), then restart:
 docker compose restart somabrain_standalone_app
 ```
 
@@ -1584,7 +1576,7 @@ You're ready to build when:
 |----------|-------|--------|
 | **Main API File** | `somabrain/api/v1.py` | Django Ninja application |
 | **API Port** | 9696 (host and container) | `docker-compose.yml` |
-| **Config System** | `somabrain/config.py` | Dataclass-based with env overrides |
+| **Config System** | `somabrain/settings/` + BrainSetting (DB) | Django settings; secrets via Vault |
 | **Memory Dimension** | 256 (default `embed_dim`) | `Config` dataclass |
 | **HRR Dimension** | 8192 (default `hrr_dim`) | `Config` dataclass |
 | **Working Memory Size** | 64 (default `wm_size`) | `Config` dataclass |
@@ -1602,10 +1594,8 @@ You're ready to build when:
   - `GET /health` - Health check
 
 ### 2. Configuration
-- **File**: `somabrain/config.py`
-- **Class**: `Config` (dataclass)
-- **Loading**: `load_config()` function
-- **Env Prefix**: `SOMABRAIN_`
+- **Authority**: Django settings (`somabrain/settings/`) + BrainSetting (DB)
+- **Not authority**: no `config.yaml`, no `load_config()`, no YAML/JSON file presets
 
 ### 3. Quantum/HRR Layer
 - **File**: `somabrain/quantum.py`
@@ -1628,30 +1618,28 @@ You're ready to build when:
 - **Class**: `AdaptationEngine`
 - **Weights**: Retrieval (α, β, γ, τ) + Utility (λ, μ, ν)
 
-## Environment Variables (Real Defaults)
+## Settings & Secrets (Real Defaults)
 
-```bash
-# Memory Backend (REQUIRED)
+```text
+# Memory Backend endpoint (non-secret) — Django setting / BrainSetting
 SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:10101"
-SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"  # Required - set your actual token
 
-# Redis
+# Memory HTTP token — SECRET, Vault only
+#   Vault path: secret/agent/credentials/somabrain_memory_http_token
+#   Never set in ENV, .env, or files (Covenant Art 26).
+
+# Redis / Kafka / Postgres / OPA endpoints — Django settings / BrainSetting
 SOMABRAIN_REDIS_URL="redis://localhost:30100"
-
-# Kafka
 SOMABRAIN_KAFKA_URL="somabrain_standalone_kafka:9092"
-
-# Postgres
-SOMABRAIN_POSTGRES_DSN="postgresql://<user>:<password>@localhost:30106/somabrain"
-
-# OPA
 SOMABRAIN_OPA_URL="http://localhost:30104"
 
-# Mode
-SOMABRAIN_MODE="full-local"  # or "prod"
+# Postgres password — SECRET, Vault only
+#   Vault path: secret/agent/credentials/postgres_password
+#   Connection is assembled at runtime; never put a credential in ENV or a DSN in a file.
 
-# Predictor
-SOMABRAIN_PREDICTOR_PROVIDER="mahal"  # mahal|slow|llm
+# Mode / provider tunables — Django settings / BrainSetting
+SOMABRAIN_MODE="full-local"
+SOMABRAIN_PREDICTOR_PROVIDER="mahal"
 ```
 
 ## Docker Compose Ports (Verified)
@@ -1675,7 +1663,7 @@ SOMABRAIN_PREDICTOR_PROVIDER="mahal"  # mahal|slow|llm
 ## Code Navigation Tips
 
 - **Start here**: `somabrain/api/v1.py` (main Django Ninja app)
-- **Config**: `somabrain/config.py` (all settings)
+- **Config**: `somabrain/settings/` (Django settings + BrainSetting; secrets via Vault)
 - **Math**: `somabrain/quantum.py` (BHDC operations)
 - **Memory**: `somabrain/memory/` (storage abstractions)
 - **Tests**: `tests/` (examples of usage)
@@ -1828,10 +1816,11 @@ score = w_cosine * cosine(q, c) + w_fd * fd_sim(q, c) + w_recency * exp(-age/tau
 
 **Backend**: HTTP-based external memory service
 
-**Required Config**:
+**Secrets (Vault only)**:
 ```python
-http.endpoint = "http://localhost:10101"  # SOMABRAIN_MEMORY_HTTP_ENDPOINT
-http.token = "<YOUR_TOKEN_HERE>"          # SOMABRAIN_MEMORY_HTTP_TOKEN (required)
+# Token is fetched from Vault (secret/agent/credentials/somabrain_memory_http_token).
+# Never assign a token literal here, in ENV, or in a file.
+http.endpoint = "http://localhost:10101"  # Django setting / BrainSetting
 ```
 
 **Circuit Breaker** (fail-fast):
@@ -3650,59 +3639,15 @@ graph TD
 
 ## Configuration Management
 
-### Application Configuration (`somabrain/config.py`)
+### Settings Authority
 
-```python
-class AppConfig(BaseSettings):
-    """
-    Application configuration with environment variable support.
+Application configuration is **Django settings + BrainSetting (DB)** (plus agent `SettingsModel`). Secrets (DB password, API tokens, JWT secret) live in **Vault only** (Covenant Art 26) and are read by the Vault client — never `os.getenv`, never `.env`, never files.
 
-    Supports multiple environments (dev, staging, prod) with
-    appropriate defaults and validation.
-    """
-
-    # Database
-    database_url: str = "postgresql://<user>:<password>@localhost/somabrain"
-    database_pool_size: int = 10
-
-    # Vector Service
-    vector_model: str = "all-MiniLM-L6-v2"
-    vector_dimensions: int = 384
-
-    # Redis Cache
-    redis_url: str = "redis://localhost:6379"
-    cache_ttl: int = 3600
-
-    # API Settings
-    api_key_header: str = "X-API-Key"
-    tenant_id_header: str = "X-Tenant-ID"
-    rate_limit_requests: int = 1000
-    rate_limit_window: int = 60
-
-    # Monitoring
-    prometheus_metrics: bool = True
-    log_level: str = "INFO"
-
-    class Config:
-        env_file = ".env"
-        env_prefix = "SOMABRAIN_"
-```
+Non-secret tunables (pool sizes, TTLs, rate limits, log level, feature switches) are Django settings / BrainSetting keys. There is no `config.yaml` and no `load_config()` authority.
 
 ### Environment-Specific Configs
 
-**Development** (`.env.development`):
-```bash
-SOMABRAIN_DATABASE_URL=postgresql://<user>:<password>@localhost/somabrain_dev
-SOMABRAIN_LOG_LEVEL=DEBUG
-SOMABRAIN_PROMETHEUS_METRICS=false
-```
-
-**Production** (`.env.production`):
-```bash
-SOMABRAIN_DATABASE_URL=postgresql://prod_user:${DB_PASSWORD}@db.prod/somabrain
-SOMABRAIN_LOG_LEVEL=WARNING
-SOMABRAIN_PROMETHEUS_METRICS=true
-```
+Per-environment differences are Django settings modules / BrainSetting values. **Never** put credentials in `.env`, `.env.development`, or `.env.production`. The database password is read from Vault (`secret/agent/credentials/postgres_password`); the DSN is assembled at runtime (VIBE Rule 164).
 
 ---
 

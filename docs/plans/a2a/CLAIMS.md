@@ -1,5 +1,31 @@
 # A2A CLAIMS — file path locks
 
+## Document Control
+
+| Field | Value |
+|---|---|
+| Document Title | A2A CLAIMS — file path locks |
+| Document Identifier | SOMA-BR-A2A-CLAIMS-001 |
+| Version | 1.0.1 |
+| Date | 2026-10-05 |
+| Status | Draft |
+| Author | SomaTech Engineering |
+| Approver | — |
+| Classification | Internal |
+| ISO Reference | ISO 9001:2015 — Quality Management Systems — Requirements |
+| Next Review | 2027-01-05 |
+| Related | `docs/plans/2026-10-05-COORDINATION-HANDOFF.md`, `docs/plans/a2a/LEDGER.md` |
+| Source of truth | This file (append-only claim table) |
+| Scope | File path locks for multi-agent work on this machine |
+| Audience | All coding agents (MiMoCode, Claude Code, Codex, Grok) |
+
+## Revision History
+
+| Version | Date | Author | Description |
+|---|---|---|---|
+| 1.0.0 | 2026-10-05 | SomaTech Engineering | A2A claims channel opened. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control header added (SOMA-BR-DOCS-001). Claim rows unchanged — this file is append-only. |
+
 Format: `| path/prefix | agent | task | started_at | status |`
 Status: ACTIVE | RELEASED | DONE
 Before large edits, claim. Release when done.
@@ -49,3 +75,5 @@ Before large edits, claim. Release when done.
 | somabrain/learning/adaptation/engine.py somabrain/learning/adaptation/utils.py somabrain/math/contracts.py somabrain/context/builder.py somabrain/services/cognitive_loop_service.py tests/unit/ | MiMoCode-somabrain | W1 APM-1: memory-event learning signals into AdaptationEngine weights (alpha/beta/gamma/tau/theta) | 2026-10-08T18:30:00Z | ACTIVE |
 | somabrain/admin/cognitive/collaboration.py somabrain/admin/cognitive/thalamus.py somabrain/admin/cognitive/attention.py somabrain/admin/cognitive/__init__.py somabrain/predictors/ somabrain/services/parameter_supervisor.py somabrain/core/runtime/config_runtime.py somabrain/runtime/modes.py somabrain/api/memory/recall.py | refactor-cleaner | W3 KILL dead research cortex | 2026-10-08T19:30:00Z | ACTIVE |
 | docs/OPS_MANUAL.md docs/ONBOARDING.md docs/USER_GUIDE.md docs/SRS_FULL.md docs/SOMABRAIN_ARCHITECTURE.md VIOLATIONS.md | doc-updater | settings/Vault law doc sync (no file presets, secrets Vault-only) | 2026-10-08T21:00:00Z | ACTIVE |
+| docs/iso/ docs/iso/DOCUMENT-REGISTER.md AGENT.md docs/plans/a2a/CLAIMS.md docs/plans/a2a/LEDGER.md docs/plans/a2a/INBOX.md docs/plans/a2a/OUTBOX.md docs/plans/2026-10-05-COORDINATION-HANDOFF.md docs/project/ scripts/check_docs.py scripts/gen_register.py | triad-iso-docs | ISO doc control + register + settings law + living-docs roles | 2026-10-08T22:30:00Z | DONE |
+| somabrain/runtime_config.py somabrain/services/learner_online.py somabrain/settings/django_core.py somabrain/settings/infra.py somabrain/core/security/legacy_auth.py somabrain/memory/transport.py somabrain/memory/client/transport.py somabrain/services/integrator_hub_triplet.py somabrain/opa/client.py scripts/outbox_admin.py tests/unit/ | python-reviewer-security | LAW sweep: runtime_config no-env, token aliases collapse to SOMA_API_TOKEN, transport/OPA/learner magics -> settings/contracts | 2026-10-08T23:30:00Z | ACTIVE |

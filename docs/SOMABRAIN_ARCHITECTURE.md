@@ -389,13 +389,13 @@ The **AAAS** (Agent-as-a-Service) subsystem lives under `somabrain/aaas/`.
 
 `somabrain/runtime/modes.py` canonicalizes deployment mode:
 
-| Mode | Env var | Behavior |
+| Mode | Mode key (Django setting / BrainSetting) | Behavior |
 |---|---|---|
-| `full-local` | `SOMA_DEPLOY_MODE=FULL_LOCAL` or `SOMABRAIN_MODE=full-local` | All features available; `data/feature_overrides.json` honored |
+| `full-local` | `SOMABRAIN_MODE=full-local` | All features available (flags from Django/BrainSetting) |
 | `ci` | `SOMABRAIN_MODE=ci` | CI-specific gating |
 | `prod` | `SOMABRAIN_MODE=prod` | Production strictness |
 
-`feature_enabled(name)` gates cognitive features. `SOMABRAIN_FEATURE_OVERRIDES` points to `data/feature_overrides.json`, which is only honored in `full-local`.
+`feature_enabled(name)` gates cognitive features from **Django settings / BrainSetting**. There is **no** `data/feature_overrides.json` file authority — YAML/JSON presets are not configuration sources of truth.
 
 `somabrain/core/mode.py` also defines `DeploymentMode` (`dev/staging/production`) controlling auth, OPA strictness, required backends, and minimum replicas. The two mode systems overlap and can be confusing.
 
@@ -434,16 +434,16 @@ Only the WSGI/ASGI entry points call the Vault bootstrap helpers:
 - `somabrain/config/wsgi.py:14` calls `configure_vault_secrets()` and `configure_infra_secrets()` before `get_wsgi_application()`.
 - `somabrain/config/asgi.py:14` does the same.
 
-These helpers (`somabrain/settings/django_core.py`) read Vault and write into `os.environ`:
+These helpers (`somabrain/settings/django_core.py`) resolve secrets from **Vault only** (Covenant Art 26). Secrets are read via the Vault client and consumed in-process — **no plain environment-variable injection** (`os.environ` / `os.getenv` is not a secrets channel):
 
 - `SOMABRAIN_JWT_SECRET` / `SECRET_KEY`
 - `SOMABRAIN_MEMORY_HTTP_TOKEN`
-- `SOMABRAIN_POSTGRES_DSN`
+- `SOMABRAIN_POSTGRES_DSN` (password portion from Vault)
 - `SOMA_API_TOKEN` / `SOMABRAIN_API_TOKEN`
 
 ### 9.3 Critical bootstrap gap
 
-Worker/cognitive entry points (`somabrain/workers/outbox_publisher.py`, `somabrain/services/integrator_hub_triplet.py`, supervisor programs in the `cog` container) do **not** call the Vault bootstrap helpers before importing Django settings. They therefore crash on startup unless the secrets are injected as plain environment variables.
+Worker/cognitive entry points (`somabrain/workers/outbox_publisher.py`, `somabrain/services/integrator_hub_triplet.py`, supervisor programs in the `cog` container) do **not** call the Vault bootstrap helpers before importing Django settings. They therefore crash on startup until they read secrets from **Vault**. Plain environment-variable injection of secrets is **prohibited** (Covenant Art 26) and is not an accepted workaround.
 
 ---
 
@@ -593,9 +593,9 @@ This section records the real state observed in the running standalone deploymen
 | Variable | Default | Meaning |
 |---|---|---|
 | `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | `http://host.docker.internal:10101` | External memory service URL |
-| `SOMABRAIN_MEMORY_HTTP_TOKEN` | `sfm-api-token-123` | Bearer token for memory service and standalone API auth |
-| `SOMABRAIN_JWT_SECRET` / `SECRET_KEY` | loaded from Vault | Django/crypto secret |
-| `SOMABRAIN_POSTGRES_DSN` | loaded from Vault | Postgres connection |
+| `SOMABRAIN_MEMORY_HTTP_TOKEN` | **Vault only** (no ENV default) | Bearer token for memory service and standalone API auth |
+| `SOMABRAIN_JWT_SECRET` / `SECRET_KEY` | **Vault only** | Django/crypto secret |
+| `SOMABRAIN_POSTGRES_DSN` | password from **Vault only** | Postgres connection |
 | `SOMABRAIN_REDIS_URL` | `redis://...:6379/0` | Redis connection |
 | `SOMABRAIN_KAFKA_URL` | `kafka://...:9092` | Kafka bootstrap |
 | `SOMABRAIN_OPA_URL` | `http://...:8181` | OPA policy endpoint |
@@ -649,5 +649,5 @@ The architecture is intentionally **strict-real**: real services, real backends,
 The next engineering steps to make the system fully operational are:
 
 1. Reconcile `MemoryService` with the real `CircuitBreaker` API.
-2. Add Vault/bootstrap calls to all worker and cognitive service entry points, or inject the resolved secrets into their compose environments.
+2. Add Vault bootstrap calls to all worker and cognitive service entry points. Secrets must be resolved from Vault in-process — never injected as plain environment variables.
 3. Clean up the documented interface mismatches in the cognitive pipeline and health endpoints.
