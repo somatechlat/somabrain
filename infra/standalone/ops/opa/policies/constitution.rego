@@ -48,6 +48,60 @@ allow {
 	startswith(input.path, "/api/")
 }
 
+# Product agent↔brain surface (W-H + APM). Django auth still binds tenant.
+# OPA here is surface-gate only (not identity) — fail-closed on unknown paths.
+allow {
+	startswith(input.path, "/memory/")
+}
+
+allow {
+	startswith(input.path, "/context/")
+}
+
+allow {
+	startswith(input.path, "/neuromod/")
+}
+
+allow {
+	startswith(input.path, "/persona/")
+}
+
+allow {
+	startswith(input.path, "/cognitive/")
+}
+
+allow {
+	startswith(input.path, "/threads/")
+}
+
+allow {
+	startswith(input.path, "/sleep/")
+}
+
+allow {
+	startswith(input.path, "/oak/")
+}
+
+allow {
+	startswith(input.path, "/brain/")
+}
+
+allow {
+	startswith(input.path, "/admin/")
+}
+
+allow {
+	startswith(input.path, "/remember")
+}
+
+allow {
+	startswith(input.path, "/recall")
+}
+
+allow {
+	startswith(input.path, "/forget")
+}
+
 # Static admin assets (GET only).
 allow {
 	input.method == "GET"
