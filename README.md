@@ -184,9 +184,13 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment
+# Configure settings (non-secret only)
 cp .env.example .env
-# Edit .env with your credentials
+# .env holds topology/settings placeholders ONLY. Secrets never go in .env
+# (Covenant Art 26): "Production secrets shall reside exclusively in secure
+# vault systems. Storage in code, configuration files, or environment
+# variables is prohibited." Secrets come from Vault at runtime.
+# Settings are administered via Django + BrainSetting (agent DB).
 
 # Initialize database
 python manage.py migrate

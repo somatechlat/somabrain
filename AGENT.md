@@ -1,7 +1,7 @@
 # SomaBrain - Agent Context
 
 > Purpose: Provide a single, accurate reference for agents working on the SomaBrain repo.
-> Last updated: 2026-10-04
+> Last updated: 2026-10-08
 
 ---
 
@@ -62,7 +62,7 @@ somabrain/
 │   ├── api/                   # API endpoints
 │   ├── services/              # Retrieval, integrator, predictors
 │   ├── memory/                # Memory logic and transport
-│   ├── settings/              # Env-backed settings (django_core.py, infra.py, etc.)
+│   ├── settings/              # Django settings (cognitive, django_core, infra, neuro) + BrainSetting DB overlay
 │   ├── core/mode.py           # Deployment posture profiles
 │   └── runtime/modes.py       # Runtime mode definitions
 ├── services/                  # Non-Django service processes
@@ -98,23 +98,35 @@ somabrain/
 
 ---
 
-## Core Environment Variables
+## Configuration & Secrets (Law)
 
-From `somabrain/settings.py`:
+**Covenant Art 26 — Secret Protection:**
+> "Production secrets shall reside exclusively in secure vault systems. Storage in code, configuration files, or environment variables is prohibited."
+
+| Plane | Authority | Rule |
+|---|---|---|
+| **Secrets** | **Vault ONLY** | Never in code, files, `.env`, or environment variables (Art 26) |
+| **Settings** | **Django settings + `BrainSetting` (agent DB, administerable)** | No file presets. No env secrets. |
+
+Environment variables are **not** a secrets authority and not the settings authority.
+Secrets are read from Vault at runtime. Settings are administered through Django
+settings modules (`somabrain/settings/`) and the `BrainSetting` DB overlay
+(`somabrain/brain_settings/models.py`).
+
+**Settings** (Django / `BrainSetting` — administerable):
 
 - `SOMABRAIN_MODE` (dev|staging|production)
-- `SOMABRAIN_POSTGRES_DSN`
-- `SOMABRAIN_REDIS_URL`
-- `SOMABRAIN_KAFKA_URL`
-- `SOMABRAIN_OPA_URL`
+- `SOMABRAIN_REDIS_URL`, `SOMABRAIN_KAFKA_URL`, `SOMABRAIN_OPA_URL` (topology)
 - `SOMABRAIN_MEMORY_HTTP_ENDPOINT`
-- `SOMABRAIN_MEMORY_HTTP_TOKEN`
 - `SOMABRAIN_AUTH_REQUIRED`
+- `SOMABRAIN_JWT_PUBLIC_KEY_PATH`, `SOMABRAIN_JWT_AUDIENCE`, `SOMABRAIN_JWT_ISSUER`
+
+**Secrets** (Vault ONLY — never env, never files):
+
+- `SOMABRAIN_POSTGRES_DSN`
+- `SOMABRAIN_MEMORY_HTTP_TOKEN`
 - `SOMABRAIN_API_TOKEN`
 - `SOMABRAIN_JWT_SECRET`
-- `SOMABRAIN_JWT_PUBLIC_KEY_PATH`
-- `SOMABRAIN_JWT_AUDIENCE`
-- `SOMABRAIN_JWT_ISSUER`
 
 ---
 

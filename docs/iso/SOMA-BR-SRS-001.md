@@ -299,7 +299,7 @@ Requirements for the sleep-inspired consolidation cycles.
 |---|---|---|
 | CON-006 | All code changes SHALL pass pre-commit hooks (Black, Ruff, mypy) before commit. | Quality gate |
 | CON-007 | All new requirements SHALL be assigned a unique REQ-BR-* identifier and added to the traceability matrix. | ISO/IEC/IEEE 29148 compliance |
-| CON-008 | Configuration parameters SHALL use environment variables (not hardcoded values) and be documented in `.env.example`. | 12-factor app compliance |
+| CON-008 | Configuration parameters SHALL be administered via Django settings and the `BrainSetting` DB (agent DB). Production secrets SHALL reside exclusively in Vault (Covenant Art 26). Environment variables are not a secrets authority and not the settings authority; no file presets. | Operator law: settings = Django + BrainSetting; secrets = Vault ONLY |
 
 ---
 
@@ -377,7 +377,7 @@ This SRS (SOMA-BR-SRS-001) formalizes the requirements defined in the master tec
 | §4 Mathematical Foundations | REQ-BR-MATH | GMD, HRR, BHDC, cosine similarity, FWHT |
 | §5 API Reference | INT-001 through INT-014 | Django Ninja endpoint contracts |
 | §6 Services Layer | REQ-BR-COG, REQ-BR-LRN, REQ-BR-PLAN | Service-level requirements |
-| §7 Configuration | CON-005, CON-008 | Environment-driven configuration |
+| §7 Configuration | CON-005, CON-008 | Django/BrainSetting settings; Vault-only secrets |
 
 For detailed API specifications, configuration parameters, and implementation notes, refer to `docs/SRS_FULL.md`. This SRS takes precedence for requirement-level decisions; the master SRS provides implementation-level detail.
 

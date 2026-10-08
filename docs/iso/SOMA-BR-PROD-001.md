@@ -106,7 +106,8 @@ Standalone mode runs SomaBrain as a single-tenant service on port 9696.
 git clone https://github.com/somatechlat/somabrain.git
 cd somabrain
 cp .env.example .env
-# Edit .env with production credentials
+# .env: non-secret settings only. NO production credentials in .env —
+# secrets are Vault-only (Covenant Art 26) and read at runtime.
 
 # 2. Docker Compose
 cd infra/standalone

@@ -26,7 +26,7 @@
 **Reading notes**
 
 1. `somabrain/settings/base.py:9-12` star-imports in order `cognitive → django_core → infra → neuro`. Same-named attributes are **overwritten by the later module**. Effective defaults for dual-declared keys therefore follow `django_core`, not `cognitive` (see DEF-01).
-2. `brain_settings` is a DB-backed overlay (`BrainSetting.get`, `somabrain/brain_settings/models.py:72-97`) with priority: mode-tuned key (`knob:MODE`) → mode-registry override (`somabrain/brain_settings/modes.py:11-55`) → base DB/default. Env settings and brain_settings are **two parallel config planes**; many math knobs exist in both with different names or defaults.
+2. `brain_settings` is a DB-backed overlay (`BrainSetting.get`, `somabrain/brain_settings/models.py:72-97`) with priority: mode-tuned key (`knob:MODE`) → mode-registry override (`somabrain/brain_settings/modes.py:11-55`) → base DB/default. Env settings and brain_settings are **two parallel config planes**; many math knobs exist in both with different names or defaults. **This dual-plane split is NON-COMPLIANT debt (Covenant Art 26 + operator law: settings = Django + `BrainSetting`/agent DB; secrets = Vault ONLY; NO file presets; NO env secrets), not an accepted design.** The administerable settings plane is Django + `BrainSetting`; secrets belong in Vault only.
 3. "Used-by" cites the first production reader found. Absence of a used-by row means the key is declared but no production reader was found in `somabrain/` (defect candidate DEAD-KEY).
 
 ---

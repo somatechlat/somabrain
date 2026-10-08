@@ -65,7 +65,7 @@ This assessment covers the security controls of SomaBrain:
 
 - Architecture review against OWASP ASVS 4.0
 - Code review of security-critical paths
-- Configuration audit of security-related environment variables
+- Configuration audit of security-related settings (Django / `BrainSetting`) and Vault secret handling
 - Threat modeling using STRIDE methodology
 - Compliance mapping to GDPR, HIPAA, SOC2 controls
 
@@ -293,6 +293,11 @@ Client Request → Auth + OPA → Memory Operation
 
 ## 8. Secrets Management
 
+**Normative — Covenant Art 26 (Secret Protection):**
+> "Production secrets shall reside exclusively in secure vault systems. Storage in code, configuration files, or environment variables is prohibited."
+
+Secrets are **Vault ONLY** (not Vault/env). Settings are administered via Django + `BrainSetting` (agent DB).
+
 ### 8.1 HashiCorp Vault Integration
 
 | Property | Value |
@@ -307,18 +312,18 @@ Client Request → Auth + OPA → Memory Operation
 
 | Secret | Storage | Rotation |
 |---|---|---|
-| `SOMABRAIN_POSTGRES_DSN` | Vault / env | Vault dynamic secrets |
-| `SOMABRAIN_REDIS_URL` | Vault / env | Manual or Vault |
-| `SOMABRAIN_JWT_SECRET` | Vault / env | Manual or Vault |
-| `SOMABRAIN_API_TOKEN` | Vault / env | Manual |
-| `SOMABRAIN_MEMORY_HTTP_TOKEN` | Vault / env | Manual |
+| `SOMABRAIN_POSTGRES_DSN` | Vault | Vault dynamic secrets |
+| `SOMABRAIN_REDIS_URL` | Vault | Manual or Vault |
+| `SOMABRAIN_JWT_SECRET` | Vault | Manual or Vault |
+| `SOMABRAIN_API_TOKEN` | Vault | Manual |
+| `SOMABRAIN_MEMORY_HTTP_TOKEN` | Vault | Manual |
 
 ### 8.3 Assessment
 
 | Aspect | Status | Notes |
 |---|---|---|
-| Secrets in code | ✅ None | All secrets via environment variables or Vault |
-| Secrets in version control | ✅ None | `.env.example` contains placeholders only |
+| Secrets in code | ✅ None | All secrets via Vault only (Covenant Art 26) |
+| Secrets in version control | ✅ None | No secret values in VCS; `.env.example` is non-secret settings placeholders only |
 | Rotation capability | ✅ Supported | Vault dynamic secrets for database; others manual |
 | Audit trail | ✅ Vault audit | All Vault access logged |
 

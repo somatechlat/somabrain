@@ -547,7 +547,7 @@ Per VIBE Coding Rules, the degradation system:
 
 ### 3.1 Configuration
 
-| Setting | Environment Variable | Default | Description |
+| Setting | Django setting / BrainSetting key | Default | Description |
 |---------|---------------------|---------|-------------|
 | Failure Threshold | `SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD` | 3 | Consecutive failures before circuit opens |
 | Reset Interval | `SOMABRAIN_CIRCUIT_RESET_INTERVAL` | 60.0s | Time before attempting circuit reset |
@@ -627,7 +627,7 @@ if circuit_open:
 
 ### 4.3 Configuration Flags
 
-| Setting | Environment Variable | Default | Description |
+| Setting | Django setting / BrainSetting key | Default | Description |
 |---------|---------------------|---------|-------------|
 | Degrade Queue | `SOMABRAIN_MEMORY_DEGRADE_QUEUE` | true | Queue writes when degraded |
 | Degrade Readonly | `SOMABRAIN_MEMORY_DEGRADE_READONLY` | false | If true, reject writes entirely |
@@ -643,7 +643,7 @@ The local journal provides durable storage for memory writes that cannot be sent
 
 ### 5.2 Configuration
 
-| Setting | Environment Variable | Default | Description |
+| Setting | Django setting / BrainSetting key | Default | Description |
 |---------|---------------------|---------|-------------|
 | Journal Directory | `SOMABRAIN_JOURNAL_DIR` | `/tmp/somabrain_journal` | Storage location |
 | Max File Size | `SOMABRAIN_JOURNAL_MAX_FILE_SIZE` | 100MB | Rotation threshold |
@@ -829,7 +829,7 @@ Recall responses include degradation flag:
 - [Strict Mode](./strict-mode.md)
 # Runtime Configuration
 
-The `somabrain.runtime_config` module is the single source of truth for runtime tunables. Values are loaded from built‑in defaults and may be overridden in local development via `data/runtime_overrides.json` when running in `full-local` mode. In production modes overrides are ignored.
+Runtime tunables are managed exclusively through **Django settings** and **BrainSetting (DB)** (plus agent `SettingsModel` where applicable). There is **no file-based override authority**: `data/runtime_overrides.json`, YAML/JSON preset files, and similar artifacts are not configuration sources of truth and must not be treated as override mechanisms. Secrets are never tunables — they come from **Vault only** (Covenant Art 26), never from env vars, files, or DB plaintext.
 
 ## Access Helpers
 
@@ -838,18 +838,11 @@ Use the helper functions:
 - `runtime_config.get_bool(key, default)` boolean conversion (`1/true/yes/on`)
 - `runtime_config.get_float(key, default)` float conversion
 - `runtime_config.get_str(key, default)` string conversion
-- `runtime_config.set_overrides(dict)` (dev only) persist overrides to `data/runtime_overrides.json`
 
-## Override File (Dev Only)
-Create or modify `data/runtime_overrides.json` to adjust values during local iteration:
-```json
-{
-  "integrator_alpha": 1.5,
-  "fusion_normalization_enabled": true,
-  "learner_emit_period_s": 10.0
-}
-```
-These overrides are only applied when mode name is `full-local`.
+Tunable values resolve from Django settings / BrainSetting. Do not add JSON/YAML override-file loaders.
+
+## Changing Tunables
+Adjust values via Django settings (ops) or the BrainSetting admin surface (tenant/DB), then restart or reload as appropriate. Never create or edit a local override file.
 
 ## Key Categories
 
@@ -885,17 +878,17 @@ These overrides are only applied when mode name is `full-local`.
 - `learner_allow_json_input` (reserved for future expanded JSON input validation)
 
 ## Rationale
-Centralizing tunables avoids divergent environment variables and ensures consistent behavior across services (predictors, integrator, learner, memory). Defaults are production‑like; local development can iterate quickly via overrides without editing code or compose files.
+Centralizing tunables in Django settings and BrainSetting ensures consistent behavior across services (predictors, integrator, learner, memory) with one administrable source of truth. File presets (JSON/YAML) are not authority.
 
 ## Adding New Tunables
-1. Add a sensible default to `_defaults_for_mode` in `runtime_config.py`.
-2. Consume via `runtime_config.get_*` in the service/module.
+1. Add a sensible Django setting or BrainSetting key (math identities may live in `math/contracts.py` only).
+2. Consume via `runtime_config.get_*` in the service/module (resolve from settings/DB — never a call-site literal).
 3. (Optional) Document the new key here.
-4. For dev experimentation, adjust `data/runtime_overrides.json`.
+4. Change values through Django settings / BrainSetting admin — never a local override file.
 
 ## Anti‑Patterns Avoided
-- No ad‑hoc `os.getenv` calls for tunables in service code (except for true infrastructure endpoints or secrets).
-- No multiple sources (YAML + env + code constants) — single merged dict.
+- No ad‑hoc `os.getenv` calls for tunables. Secrets are never read via `os.getenv`/`os.environ` — Vault only (Covenant Art 26).
+- No multiple sources (YAML + env + code constants) — Django settings / BrainSetting only.
 - No mode‑specific logic scattered across services.
 
 ## Example Usage
@@ -910,21 +903,10 @@ if anneal_mode:
 ```
 
 ## Testing Overrides
-In tests you can temporarily set overrides:
-```python
-from somabrain import runtime_config as rc
-rc.set_overrides({
-  "learner_emit_period_s": 5.0,
-  "learner_tau_min": 0.2,
-  "tau_anneal_mode": "exp",
-  "tau_anneal_rate": 0.05,
-  "learning_state_persistence": True
-})
-```
-Ensure tests clean up if they rely on specific values.
+In tests, inject values through Django settings overrides (e.g. `override_settings`) or BrainSetting test fixtures. Do not write JSON/YAML override files.
 
 ---
-This file documents the central runtime configuration system to maintain a stable, production‑aligned default while enabling fast local iteration. In `full-local` you can safely turn on all advanced learning features (entropy capping, anneal schedules, dynamic learning rate, persistence) for end‑to‑end validation.
+This file documents the central runtime configuration system: Django settings + BrainSetting are the sole tunables authority. Advanced learning features (entropy capping, anneal schedules, dynamic learning rate, persistence) are enabled through those settings for end‑to‑end validation.
 # Strict Mode Posture (Avro-only, Fail-fast)
 
 - Avro-only: All Kafka topics must serialize with Avro; JSON fallbacks removed.
