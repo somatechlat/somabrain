@@ -58,7 +58,9 @@ def _config_snapshot() -> dict[str, Any]:
     snapshot: dict[str, Any] = {}
     try:
         cfg_dict = asdict(cfg)
-        snapshot["learning_loop_enabled"] = cfg_dict.get("learning_loop_enabled")
+        snapshot["learning_loop_enabled"] = bool(
+            getattr(settings, "SOMABRAIN_LEARNING_LOOP_ENABLED", False)
+        )
         snapshot["namespace"] = cfg_dict.get("namespace")
         if isinstance(cfg_dict.get("http"), dict):
             snapshot["http_endpoint"] = cfg_dict["http"].get("endpoint")
@@ -120,9 +122,10 @@ def main(argv: Iterable[str] | None = None) -> int:
         parser.error(f"input file not found: {input_path}")
 
     cfg = settings
-    if not getattr(cfg, "learning_loop_enabled", False) and not args.force:
+    if not getattr(cfg, "SOMABRAIN_LEARNING_LOOP_ENABLED", False) and not args.force:
         parser.error(
-            "learning_loop_enabled flag is false. Enable it in config or rerun with --force."
+            "SOMABRAIN_LEARNING_LOOP_ENABLED is false. Enable it in settings "
+            "or rerun with --force."
         )
 
     records: list[dict] = []
