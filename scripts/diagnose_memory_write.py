@@ -1,20 +1,38 @@
-"""Module diagnose_memory_write."""
+"""Diagnostics: POST a probe memory via Vault-resolved credentials (Art 26).
 
-import os
+Never reads secrets from environment variables.
+"""
+
+from __future__ import annotations
 
 import httpx
 
-ENDPOINT = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:10101")
-TOKEN = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
+
+def _endpoint() -> str:
+    from django.conf import settings
+
+    return str(getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "")).rstrip("/")
 
 
-def try_store():
-    """Execute try store."""
+def _token() -> str:
+    try:
+        from somabrain.memory.sfm_auth import resolve_sfm_api_token
 
-    url = f"{ENDPOINT}/memories"
+        return str(resolve_sfm_api_token() or "")
+    except Exception:
+        return ""
+
+
+def try_store() -> None:
+    """Execute try_store."""
+
+    url = f"{_endpoint()}/memories"
     headers = {"Content-Type": "application/json"}
-    if TOKEN:
-        headers["Authorization"] = f"Bearer {TOKEN}"
+    token = _token()
+    if not token:
+        print("FAIL: no Vault-resolved SOMA token (Art 26 — no env fallback)")
+        return
+    headers["Authorization"] = f"Bearer {token}"
     payload = {
         "content": "Diagnostics Test Memory",
         "key": "diag-001",

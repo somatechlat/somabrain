@@ -1,17 +1,15 @@
 """Runtime configuration helpers for hot-path lookups.
 
-Several learning and persistence modules read lightweight knobs at runtime.
-Those call sites expect a small module-level API instead of importing Django
-settings directly so they can keep a consistent fallback order:
+Operator law: settings = Django + BrainSetting/DB only. Secrets = Vault only.
+Environment variables are never a settings or secrets channel.
 
-1. Explicit Django settings attributes.
-2. Environment variables using the raw, upper-case, or ``SOMABRAIN_*`` names.
-3. Caller-provided defaults.
+Fallback order:
+1. Explicit Django settings attributes (including SOMABRAIN_*).
+2. Caller-provided defaults (never invent a secret from env).
 """
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 try:
@@ -40,10 +38,6 @@ def _read_raw(key: str) -> Any | None:
             value = getattr(settings, name)
             if value not in (None, ""):
                 return value
-    for name in _candidate_names(key):
-        value = os.getenv(name)
-        if value not in (None, ""):
-            return value
     return None
 
 
