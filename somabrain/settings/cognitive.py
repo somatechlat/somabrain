@@ -19,8 +19,10 @@ from somabrain.math.contracts import (
 )
 
 from .infra import KAFKA_BOOTSTRAP_SERVERS as _INFRA_KAFKA_BOOTSTRAP_SERVERS
+from .infra import SOMA_KAFKA_BOOTSTRAP as _INFRA_SOMA_KAFKA_BOOTSTRAP
 from .infra import SOMABRAIN_MEMORY_HTTP_ENDPOINT as _INFRA_MEMORY_HTTP_ENDPOINT
 from .infra import SOMABRAIN_MEMORY_HTTP_TOKEN
+from .infra import SOMABRAIN_OPA_TIMEOUT as _INFRA_OPA_TIMEOUT
 from .infra import _resolved
 
 env = environ.Env()
@@ -409,7 +411,8 @@ SOMABRAIN_ADAPTATION_NU_MAX = env.float("SOMABRAIN_ADAPTATION_NU_MAX", default=A
 
 # Predictor configuration
 SOMABRAIN_PREDICTOR_PROVIDER = env.str("SOMABRAIN_PREDICTOR_PROVIDER", default="mahal")
-SOMABRAIN_MEMORY_FAST_ACK = env.bool("SOMABRAIN_MEMORY_FAST_ACK", default=False)
+# SOMABRAIN_MEMORY_FAST_ACK is defined once above (line ~121) next to the other
+# memory flags. A second assignment here would silently shadow that definition.
 SOMABRAIN_PREDICTOR_DIM = env.int("SOMABRAIN_PREDICTOR_DIM", default=16)
 SOMABRAIN_PREDICTOR_ALPHA = env.float("SOMABRAIN_PREDICTOR_ALPHA", default=2.0)
 # DEF-09 FIXED (W3): predictor gamma default is the signed adaptation gain
@@ -450,10 +453,16 @@ OAK_KAPPA = env.float("OAK_KAPPA", default=1.0)
 # (R-VAL-01: declared exactly once; promoted from former call-site literals.)
 # ============================================================================
 CALIBRATION_ENABLED = env.bool("CALIBRATION_ENABLED", default=False)
+FOCUS_ADMIT_TOP_N = env.int("FOCUS_ADMIT_TOP_N", default=4)
 HEALTH_PING_TIMEOUT = env.float("HEALTH_PING_TIMEOUT", default=0.5)
 # DEF-10 fixed: HRR_DIM unified to BHDC_D (same as SOMABRAIN_HRR_DIM).
 HRR_DIM = env.int("HRR_DIM", default=BHDC_D)
-KAFKA_BOOTSTRAP = env.str("KAFKA_BOOTSTRAP", default="")
+# One Kafka name on the learning path: mirror the canonical bootstrap
+# (SOMABRAIN_KAFKA_URL / SOMA_KAFKA_BOOTSTRAP / KAFKA_BOOTSTRAP_SERVERS).
+KAFKA_BOOTSTRAP = env.str(
+    "KAFKA_BOOTSTRAP",
+    default=_INFRA_SOMA_KAFKA_BOOTSTRAP or _INFRA_KAFKA_BOOTSTRAP_SERVERS,
+)
 KEYCLOAK_REALM = env.str("KEYCLOAK_REALM", default="unknown")
 MEMORY_HEALTH_POLL_INTERVAL = env.float("MEMORY_HEALTH_POLL_INTERVAL", default=5.0)
 OAK_OPTION_MODEL_MANAGED = env.bool("OAK_OPTION_MODEL_MANAGED", default=False)
@@ -518,7 +527,8 @@ JOURNAL_ROTATION_INTERVAL = env.int("JOURNAL_ROTATION_INTERVAL", default=86400)
 JOURNAL_SYNC_WRITES = env.bool("JOURNAL_SYNC_WRITES", default=True)
 LEARNING_TENANTS_OVERRIDES = env.str("LEARNING_TENANTS_OVERRIDES", default="")
 MODE_OPA_POLICY_BUNDLE = env.str("MODE_OPA_POLICY_BUNDLE", default="")
-OPA_TIMEOUT_SECONDS = env.float("OPA_TIMEOUT_SECONDS", default=2.0)
+# One OPA timeout name: mirror the canonical SOMABRAIN_OPA_TIMEOUT (infra.py).
+OPA_TIMEOUT_SECONDS = env.float("OPA_TIMEOUT_SECONDS", default=_INFRA_OPA_TIMEOUT)
 ORCHESTRATOR_ROUTING = env.str("ORCHESTRATOR_ROUTING", default="")
 ORCHESTRATOR_NAMESPACE = env.str("ORCHESTRATOR_NAMESPACE", default="cog")
 OUTBOX_TENANT_QUOTA_LIMIT = env.int("OUTBOX_TENANT_QUOTA_LIMIT", default=1000)

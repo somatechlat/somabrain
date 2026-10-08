@@ -21,22 +21,43 @@ class SleepState(Enum):
 
 @dataclasses.dataclass
 class SleepParameters:
-    """Sleep parameters configuration."""
+    """Sleep parameters configuration.
 
-    K: int = settings.SLEEP_K0
-    t: float = settings.SLEEP_T0
-    tau: float = settings.SLEEP_TAU0
-    eta: float = settings.SLEEP_ETA0
-    lambda_: float = settings.SLEEP_LAMBDA0
-    B: float = settings.SLEEP_B0
+    Defaults are read from Django settings at instantiation time
+    (``default_factory``), not at class-definition time, so importing this
+    module before settings are configured does not explode.
+    """
+
+    K: int = dataclasses.field(default_factory=lambda: int(settings.SLEEP_K0))
+    t: float = dataclasses.field(default_factory=lambda: float(settings.SLEEP_T0))
+    tau: float = dataclasses.field(default_factory=lambda: float(settings.SLEEP_TAU0))
+    eta: float = dataclasses.field(default_factory=lambda: float(settings.SLEEP_ETA0))
+    lambda_: float = dataclasses.field(
+        default_factory=lambda: float(settings.SLEEP_LAMBDA0)
+    )
+    B: float = dataclasses.field(default_factory=lambda: float(settings.SLEEP_B0))
     # Bounds for validation
-    K_min: int = settings.SLEEP_K_MIN
-    t_min: float = settings.SLEEP_T_MIN
-    alpha_K: float = settings.SLEEP_ALPHA_K
-    alpha_t: float = settings.SLEEP_ALPHA_T
-    alpha_tau: float = settings.SLEEP_ALPHA_TAU
-    alpha_eta: float = settings.SLEEP_ALPHA_ETA
-    beta_B: float = settings.SLEEP_BETA_B
+    K_min: int = dataclasses.field(
+        default_factory=lambda: int(settings.SLEEP_K_MIN)
+    )
+    t_min: float = dataclasses.field(
+        default_factory=lambda: float(settings.SLEEP_T_MIN)
+    )
+    alpha_K: float = dataclasses.field(
+        default_factory=lambda: float(settings.SLEEP_ALPHA_K)
+    )
+    alpha_t: float = dataclasses.field(
+        default_factory=lambda: float(settings.SLEEP_ALPHA_T)
+    )
+    alpha_tau: float = dataclasses.field(
+        default_factory=lambda: float(settings.SLEEP_ALPHA_TAU)
+    )
+    alpha_eta: float = dataclasses.field(
+        default_factory=lambda: float(settings.SLEEP_ALPHA_ETA)
+    )
+    beta_B: float = dataclasses.field(
+        default_factory=lambda: float(settings.SLEEP_BETA_B)
+    )
 
 
 class SleepStateManager:

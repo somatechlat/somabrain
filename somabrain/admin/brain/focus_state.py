@@ -92,8 +92,12 @@ class FocusState:
         # Admit task as primary anchor via EXISTING HRRContext (Requirement 7.2)
         self._hrr.admit(f"task_{self._tick}", task_vec, timestamp=ts)
 
-        # Admit top-N recall hits deterministically (Requirement 7.3)
-        top_n = int(getattr(self._cfg, "focus_admit_top_n", 4))
+        # Admit top-N recall hits deterministically (Requirement 7.3).
+        # Resolved through settings (FOCUS_ADMIT_TOP_N); the number lives once
+        # in settings/cognitive.py ADMINISTRABLE KNOBS.
+        from somabrain.settings.resolve import require_setting
+
+        top_n = int(require_setting("FOCUS_ADMIT_TOP_N"))
         # Sort by ID for determinism (Requirement 7.7)
         sorted_hits = sorted(recall_hits, key=lambda x: x[0])[:top_n]
         for hit_id, hit_vec in sorted_hits:

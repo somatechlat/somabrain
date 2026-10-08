@@ -124,6 +124,34 @@ def ping(url: str) -> bool:
         return False
 
 
+def check_cognitive_load() -> dict[str, bool]:
+    """Report whether OAK planner and option manager are actually loaded.
+
+    Both symbols must import and expose their API. Import failure is a real
+    down state (fail-closed) — never an unconditional True.
+    """
+    planner_loaded = False
+    option_manager_loaded = False
+    try:
+        from somabrain.oak.planner import plan_for_tenant
+
+        planner_loaded = callable(plan_for_tenant)
+    except Exception:
+        planner_loaded = False
+    try:
+        from somabrain.oak.option_manager import option_manager
+
+        option_manager_loaded = option_manager is not None and callable(
+            getattr(option_manager, "list_options", None)
+        )
+    except Exception:
+        option_manager_loaded = False
+    return {
+        "planner_loaded": planner_loaded,
+        "option_manager_loaded": option_manager_loaded,
+    }
+
+
 def milvus_metrics_for_tenant(tenant_id: str) -> dict[str, float | None]:
     """Return Milvus telemetry (p95 latencies + segment load) for a tenant."""
 

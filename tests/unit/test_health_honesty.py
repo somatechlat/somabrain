@@ -284,33 +284,15 @@ def test_system_health_simple_is_liveness_only() -> None:
 
 
 # ---------------------------------------------------------------------------
-# config/urls.py check_cognitive must not hardcode True
+# check_cognitive_load must not hardcode True
 # ---------------------------------------------------------------------------
 
 
-def test_check_cognitive_does_not_hardcode_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
-    """check_cognitive must report real load state, not unconditional True.
-
-    When the planner import fails, ``planner_loaded`` must be False.
-    """
-    import importlib
-
-    urls_mod = importlib.import_module("somabrain.config.urls")
-
-    # Pull the nested check_cognitive out of health_view by re-executing the
-    # function source is brittle; instead call health_view's helper via a
-    # thin behavioural probe: simulate a failed planner import and assert
-    # the source no longer unconditionally returns True.
-    #
-    # We exercise the real nested function by running health_view with every
-    # other check stubbed, then reading internal_services.cognitive.
-    from django.http import HttpRequest
-
-    request = HttpRequest()
-    request.headers = {}  # type: ignore[assignment]
-
-    # Force cognitive imports to fail so a hardcoded True would be exposed.
+def test_check_cognitive_load_false_when_imports_fail() -> None:
+    """check_cognitive_load reports False when the OAK modules cannot import."""
     import sys
+
+    from somabrain.health import helpers as health_helpers
 
     real_planner = sys.modules.pop("somabrain.oak.planner", None)
     real_om = sys.modules.pop("somabrain.oak.option_manager", None)
@@ -327,40 +309,29 @@ def test_check_cognitive_does_not_hardcode_loaded(monkeypatch: pytest.MonkeyPatc
     blocker = _Blocker()
     sys.meta_path.insert(0, blocker)
     try:
-        # Call only the nested helper via a minimal reimplementation of the
-        # probe path: import the real check by executing health_view far
-        # enough is too heavy. Instead assert the shipped source is not a
-        # constant True and behaves fail-closed when imports fail.
-        src = (
-            __import__("pathlib").Path(urls_mod.__file__).read_text(encoding="utf-8")
-        )
-        # Behavioural: run the same import-fail path the helper uses.
-        planner_loaded = True  # would be the old hardcoded value
-        option_manager_loaded = True
-        try:
-            from somabrain.oak.planner import plan_for_tenant  # noqa: F401
-
-            planner_loaded = callable(plan_for_tenant)
-        except Exception:
-            planner_loaded = False
-        try:
-            from somabrain.oak.option_manager import option_manager  # noqa: F401
-
-            option_manager_loaded = option_manager is not None and callable(
-                getattr(option_manager, "list_options", None)
-            )
-        except Exception:
-            option_manager_loaded = False
-
-        assert planner_loaded is False, "failed import must not claim planner_loaded"
-        assert (
-            option_manager_loaded is False
-        ), "failed import must not claim option_manager_loaded"
-        # Source must not contain the old unconditional claim.
-        assert 'return {"planner_loaded": True, "option_manager_loaded": True}' not in src
+        result = health_helpers.check_cognitive_load()
+        assert result["planner_loaded"] is False
+        assert result["option_manager_loaded"] is False
     finally:
         sys.meta_path.remove(blocker)
         if real_planner is not None:
             sys.modules["somabrain.oak.planner"] = real_planner
         if real_om is not None:
             sys.modules["somabrain.oak.option_manager"] = real_om
+
+
+def test_check_cognitive_load_matches_real_api() -> None:
+    """check_cognitive_load flags agree with the real callable check."""
+    from somabrain.health import helpers as health_helpers
+
+    result = health_helpers.check_cognitive_load()
+    assert isinstance(result["planner_loaded"], bool)
+    assert isinstance(result["option_manager_loaded"], bool)
+    if result["planner_loaded"]:
+        from somabrain.oak.planner import plan_for_tenant
+
+        assert callable(plan_for_tenant)
+    if result["option_manager_loaded"]:
+        from somabrain.oak.option_manager import option_manager
+
+        assert callable(getattr(option_manager, "list_options", None))

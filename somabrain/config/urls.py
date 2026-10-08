@@ -71,6 +71,17 @@ def readyz_view(request):
     )
 
 
+def check_cognitive_load() -> dict[str, bool]:
+    """Report whether OAK planner and option manager are actually loaded.
+
+    Delegates to ``somabrain.health.helpers.check_cognitive_load`` so the
+    probe is shared and unit-testable without importing the full URL graph.
+    """
+    from somabrain.health.helpers import check_cognitive_load as _probe
+
+    return _probe()
+
+
 def health_view(request):
     """
     COMPREHENSIVE health endpoint for ALL SomaBrain services.
@@ -283,31 +294,8 @@ def health_view(request):
     )
 
     def check_cognitive():
-        """Report whether OAK planner and option manager are actually loaded.
-
-        Previously returned ``planner_loaded: True`` unconditionally. That
-        claim is now probed: both symbols must import and expose their API.
-        """
-        planner_loaded = False
-        option_manager_loaded = False
-        try:
-            from somabrain.oak.planner import plan_for_tenant
-
-            planner_loaded = callable(plan_for_tenant)
-        except Exception:
-            planner_loaded = False
-        try:
-            from somabrain.oak.option_manager import option_manager
-
-            option_manager_loaded = option_manager is not None and callable(
-                getattr(option_manager, "list_options", None)
-            )
-        except Exception:
-            option_manager_loaded = False
-        return {
-            "planner_loaded": planner_loaded,
-            "option_manager_loaded": option_manager_loaded,
-        }
+        """Execute check cognitive."""
+        return check_cognitive_load()
 
     health["internal_services"]["cognitive"] = timed_check("Cognitive", check_cognitive)
 

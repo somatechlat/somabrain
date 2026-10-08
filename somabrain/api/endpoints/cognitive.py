@@ -28,6 +28,7 @@ from somabrain.schemas import (
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.plan_engine import PlanEngine, PlanRequestContext
+from somabrain.memory.recall_ops import MemoryRecallUnavailable
 from somabrain.tenant import get_tenant_sync
 
 logger = logging.getLogger("somabrain.api.endpoints.cognitive")
@@ -106,6 +107,53 @@ def _get_graph_client(mem_client):
     if hasattr(mem_client, "_graph"):
         return mem_client._graph
     return None
+
+
+def _recall_focus_hits(mem_client, query_text: str, embedding, top_k: int) -> list[tuple]:
+    """Live recall for FocusState admission (id, vector) pairs.
+
+    Fail-closed (T-5): a store outage raises rather than silently feeding
+    ``[]`` into focus as if recall had answered empty.
+    """
+    from somabrain.memory.hit_processing import hit_identity
+
+    if mem_client is None:
+        raise MemoryRecallUnavailable(
+            "recall refused: memory client unavailable for focus admission"
+        )
+    hits = mem_client.recall(
+        query_text,
+        top_k=max(1, int(top_k)),
+        embedding=list(embedding) if embedding is not None else None,
+    )
+    pairs: list[tuple] = []
+    for hit in hits:
+        raw = hit.raw if isinstance(hit.raw, dict) else {}
+        payload = hit.payload if isinstance(hit.payload, dict) else {}
+        vec = (
+            raw.get("vector")
+            or raw.get("embedding")
+            or payload.get("vector")
+            or payload.get("embedding")
+        )
+        if vec is None:
+            text = None
+            for field in ("task", "text", "content", "what", "fact", "headline"):
+                value = payload.get(field)
+                if isinstance(value, str) and value.strip():
+                    text = value
+                    break
+            if text is None:
+                continue
+            embedder = _get_embedder()
+            if embedder is None:
+                continue
+            vec = embedder.embed(text)
+        arr = np.asarray(vec, dtype=np.float32).reshape(-1)
+        if arr.size == 0:
+            continue
+        pairs.append((hit_identity(hit), arr))
+    return pairs
 
 
 # Endpoints
@@ -225,7 +273,20 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
     # session focus when the gate is open. Low-precision content is dropped.
     wm_admit = bool(step_result.get("wm_admit", True))
     if focus_state is not None and wm_vec is not None and wm_admit:
-        recall_hits: list[tuple] = []
+        mem_client = mt_memory.for_namespace(ctx.namespace) if mt_memory else None
+        try:
+            from somabrain.settings.resolve import require_setting
+
+            focus_top_n = int(require_setting("FOCUS_ADMIT_TOP_N"))
+        except Exception:
+            focus_top_n = 4
+        try:
+            recall_hits = _recall_focus_hits(
+                mem_client, body.task or "", wm_vec, focus_top_n
+            )
+        except MemoryRecallUnavailable as exc:
+            logger.error("Focus recall unavailable (fail-closed): %s", exc)
+            raise HttpError(503, "memory recall unavailable") from exc
         focus_state.update(wm_vec, recall_hits)
 
     act_step = {

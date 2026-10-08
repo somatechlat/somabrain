@@ -207,6 +207,10 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # OPA policy enforcement on every route (fail-closed in OpaMiddleware).
+    "somabrain.controls.opa_middleware.OpaMiddleware",
+    # Provenance / controls audit (REQUIRE_PROVENANCE, PROVENANCE_STRICT_DENY).
+    "somabrain.controls.django_middleware.ControlsMiddleware",
 ]
 
 ROOT_URLCONF = "somabrain.config.urls"
