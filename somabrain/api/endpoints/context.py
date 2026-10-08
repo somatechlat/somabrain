@@ -14,8 +14,7 @@ from django.http import HttpRequest
 from ninja import Body, Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import api_key_auth, require_auth
-from somabrain.tenant import get_tenant_sync as get_tenant
+from somabrain.api.auth import api_key_auth, bind_credential_tenant, require_auth
 
 logger = logging.getLogger("somabrain.api.endpoints.context")
 
@@ -37,8 +36,9 @@ def feature_flags_endpoint(request: HttpRequest):
 @router.post("/evaluate", auth=api_key_auth)
 def evaluate_endpoint(request: HttpRequest, payload: dict = Body(...)):
     """Evaluate context and return prompt with memories."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
+    # Credential tenant is the sole authority; body tenant_id is an assertion.
+    tenant_id = bind_credential_tenant(request, payload.get("tenant_id"))
 
     try:
         from somabrain.context.factory import get_context_builder, get_context_planner
@@ -46,7 +46,6 @@ def evaluate_endpoint(request: HttpRequest, payload: dict = Body(...)):
         builder = get_context_builder()
         planner = get_context_planner()
 
-        tenant_id = payload.get("tenant_id") or ctx.tenant_id
         query = payload.get("query", "")
         top_k = int(payload.get("top_k", 10))
         session_id = payload.get("session_id")
@@ -71,11 +70,11 @@ def evaluate_endpoint(request: HttpRequest, payload: dict = Body(...)):
 @router.post("/feedback", auth=api_key_auth)
 def feedback_endpoint(request: HttpRequest, payload: dict = Body(...)):
     """Record feedback for learning adaptation."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
+    # Credential tenant is the sole authority; body tenant_id is an assertion.
+    tenant_id = bind_credential_tenant(request, payload.get("tenant_id"))
 
     start_time = time.perf_counter()
-    tenant_id = payload.get("tenant_id") or ctx.tenant_id
 
     try:
         from somabrain.api.context_state import get_context_route_state
@@ -150,10 +149,8 @@ def feedback_endpoint(request: HttpRequest, payload: dict = Body(...)):
 @router.get("/adaptation/state", auth=api_key_auth)
 def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None):
     """Get current adaptation weights and learning state."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
-
-    target_tenant = tenant_id or ctx.tenant_id
+    target_tenant = bind_credential_tenant(request, tenant_id)
 
     try:
         from somabrain.api.context_state import get_context_route_state
@@ -201,14 +198,13 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None
 @router.post("/adaptation/reset", auth=api_key_auth)
 def adaptation_reset_endpoint(request: HttpRequest, payload: dict = Body(...)):
     """Reset adaptation engine to defaults (dev mode only)."""
-    ctx = get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     # Gate to dev mode only
     if getattr(settings, "MODE_NORMALIZED", "prod") != "dev":
         raise HttpError(403, "Adaptation reset not allowed outside dev mode")
 
-    tenant_id = payload.get("tenant_id") or ctx.tenant_id
+    tenant_id = bind_credential_tenant(request, payload.get("tenant_id"))
 
     try:
         from somabrain.api.context_state import get_context_route_state

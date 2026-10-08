@@ -43,6 +43,12 @@ from somabrain.metrics.outbox_metrics import (
     report_outbox_processed,
     report_outbox_replayed,
 )
+from somabrain.metrics.opa import (
+    OPA_ALLOW_TOTAL,
+    OPA_DENY_TOTAL,
+    REWARD_ALLOW_TOTAL,
+    REWARD_DENY_TOTAL,
+)
 
 __all__ = [
     "DEFAULT_TENANT_LABEL",
@@ -64,6 +70,10 @@ __all__ = [
     "MILVUS_UPSERT_RETRY_TOTAL",
     "OPTION_COUNT",
     "OPTION_UTILITY_AVG",
+    "OPA_ALLOW_TOTAL",
+    "OPA_DENY_TOTAL",
+    "REWARD_ALLOW_TOTAL",
+    "REWARD_DENY_TOTAL",
     "advanced_math_metrics",
     "context_metrics",
     "get_counter",

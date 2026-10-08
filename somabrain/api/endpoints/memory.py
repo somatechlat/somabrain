@@ -28,7 +28,7 @@ from ninja import Router
 from ninja.errors import HttpError
 from pydantic import BaseModel, Field, model_validator
 
-from somabrain.api.auth import api_key_auth, require_auth
+from somabrain.api.auth import api_key_auth, bind_credential_tenant, require_auth
 from somabrain.api.memory.helpers import (
     LAYER_BOTH,
     LAYER_LTM,
@@ -548,10 +548,10 @@ def memory_metrics(
     request: HttpRequest, tenant: str | None = None, namespace: str | None = None
 ):
     """Get real memory metrics for a tenant/namespace."""
-    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
-
-    target_tenant = tenant or ctx.tenant_id
+    # Credential tenant is the sole authority; query tenant is an assertion.
+    target_tenant = bind_credential_tenant(request, tenant)
+    ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     target_namespace = namespace or ctx.namespace
 
     pool = _get_memory_pool()

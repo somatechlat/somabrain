@@ -11,7 +11,7 @@ from typing import Any
 from django.http import HttpRequest
 from ninja import Router, Schema
 
-from somabrain.api.auth import api_key_auth
+from somabrain.api.auth import api_key_auth, bind_credential_tenant
 from somabrain.brain_settings.models import BrainSetting
 from somabrain.brain_settings.modes import BRAIN_MODES
 
@@ -43,7 +43,7 @@ def set_brain_mode(request: HttpRequest, data: SetModeSchema):
     Atomic cognitive shift. Immediate cache invalidation.
     Persona: Django Architect / Security Auditor
     """
-    tenant_id = request.auth.get("tenant_id", "default")
+    tenant_id = bind_credential_tenant(request)
     mode = data.mode.upper()
 
     if mode not in BRAIN_MODES:
@@ -67,7 +67,7 @@ def set_brain_mode(request: HttpRequest, data: SetModeSchema):
 @router.get("/status", auth=api_key_auth)
 def get_brain_status(request: HttpRequest):
     """Get current operational state and critical GMD knobs."""
-    tenant_id = request.auth.get("tenant_id", "default")
+    tenant_id = bind_credential_tenant(request)
 
     return {
         "active_mode": BrainSetting.get("active_brain_mode", tenant_id),

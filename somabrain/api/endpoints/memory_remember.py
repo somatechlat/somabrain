@@ -20,7 +20,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import api_key_auth, require_auth
+from somabrain.api.auth import api_key_auth, bind_credential_tenant, require_auth
 from somabrain.api.memory.helpers import (
     _compose_memory_payload,
     _get_embedder,
@@ -250,16 +250,16 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     if not pool:
         raise HttpError(503, "Memory services not available")
 
-    # Tenant scoping: body tenant_id (seam) or tenant (rich), falling back to
-    # the X-Tenant-ID header. Never silently default — a write without a tenant
-    # cannot be isolated and is rejected.
-    tenant = (payload.tenant or payload.tenant_id or "").strip()
-    if not tenant:
-        tenant = (request.headers.get("X-Tenant-ID") or "").strip()
-    if not tenant:
-        raise HttpError(
-            400, "tenant_id is required (body tenant_id or X-Tenant-ID header)"
-        )
+    # Tenant scoping: credential tenant is the sole authority. Body tenant_id /
+    # tenant and the X-Tenant-ID header are assertions only — a mismatch is 403
+    # (thread.py contract). Never silently default.
+    asserted = (
+        payload.tenant
+        or payload.tenant_id
+        or request.headers.get("X-Tenant-ID")
+        or None
+    )
+    tenant = bind_credential_tenant(request, asserted)
     payload.tenant = tenant
     payload.tenant_id = tenant
 
@@ -480,6 +480,8 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
 async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteRequest):
     """Store multiple memories in batch."""
     require_auth(request, settings)
+    # Credential tenant is the sole authority; payload.tenant is an assertion.
+    payload.tenant = bind_credential_tenant(request, payload.tenant)
     pool = _get_memory_pool()
     wm = _get_wm()
     embedder = _get_embedder()

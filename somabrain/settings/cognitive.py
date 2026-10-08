@@ -368,6 +368,11 @@ SOMABRAIN_ENTROPY_CAP = env.float("SOMABRAIN_ENTROPY_CAP", default=0.0)
 SOMABRAIN_LEARNING_RATE_DYNAMIC = env.bool(
     "SOMABRAIN_LEARNING_RATE_DYNAMIC", default=False
 )
+# Master switch for the online learning loop (LearnerService). Declared here
+# so the compose-required key has a real reader (was hollow).
+SOMABRAIN_LEARNING_LOOP_ENABLED = env.bool(
+    "SOMABRAIN_LEARNING_LOOP_ENABLED", default=False
+)
 
 SOMABRAIN_UTILITY_LAMBDA = env.float("SOMABRAIN_UTILITY_LAMBDA", default=1.0)
 SOMABRAIN_UTILITY_MU = env.float("SOMABRAIN_UTILITY_MU", default=0.1)

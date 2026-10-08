@@ -71,6 +71,12 @@ class LearnerService:
         ``confluent_kafka`` is not installed. This avoids the silent no‑op
         behavior of earlier fallback implementations.
         """
+        # Master switch (settings/cognitive.py SOMABRAIN_LEARNING_LOOP_ENABLED).
+        if not getattr(self._settings, "SOMABRAIN_LEARNING_LOOP_ENABLED", False):
+            raise RuntimeError(
+                "LearnerService.run() refused: SOMABRAIN_LEARNING_LOOP_ENABLED is "
+                "false. Enable it in settings to run the online learning loop."
+            )
         # Use centralized Settings for Kafka bootstrap; no env fallback needed.
         bootstrap = getattr(self._settings, "KAFKA_BOOTSTRAP_SERVERS", "") or getattr(
             self._settings, "SOMA_KAFKA_BOOTSTRAP", ""
