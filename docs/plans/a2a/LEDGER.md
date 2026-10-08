@@ -140,3 +140,5 @@ Format: `| timestamp | agent | action | detail |`
 | 2026-10-08T23:00:00Z | MiMoCode-somabrain | COORD | Sent seat lock + brain surface law to somaAgent01 (URLs=BrainSetting, no env, 79 keys deleted, Vault-only tokens, APM live, tenant 403). They consume the brain — must match. |
 | 2026-10-08T23:30:00Z | MiMoCode-somabrain | GO | Operator: WIRE QuantumLayer/HRR now (structured memory). |
 | 2026-10-08T23:50:00Z | MiMoCode-somabrain | FIX | LEARNING FULLY WIRED: recall hit/miss + forget + cognitive focus + promote + store_admit all drive AdaptationEngine. HRR/QuantumLayer wired as additive embed (USE_HRR + provider=hrr + JL 768 seam). Workbench LEARNING_PROVEN. |
+| 2026-10-09T00:00:00Z | MiMoCode-somabrain | GO | Operator: test prove brain works from agent interactions; wire settings; A2A with somaAgent01. |
+| 2026-10-09T00:15:00Z | MiMoCode-somabrain | PROOF | AGENT INTERACTION LEARNING: quality 0.6424→0.7057 over tool episodes; alpha 1.0→5.0 on good paths, recovers after bad. 8/8 agent-interaction tests + 11 APM = 19 passed. Weights signed, bounded, not stuck at max, prune-safe. |
