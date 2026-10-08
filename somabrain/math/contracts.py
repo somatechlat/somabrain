@@ -113,6 +113,26 @@ ADAPT_BOUNDS: Final[dict[str, tuple[float, float]]] = {
 }
 
 # ---------------------------------------------------------------------------
+# APM-1 memory-event signals — signed learning signal per experience kind.
+# Memory interactions are the teacher (Operator binding). Magnitudes are
+# engineering choices in [-1, 1]; they scale ADAPT_GAINS via weight_delta.
+# ---------------------------------------------------------------------------
+
+#: Map of memory-event kind → signed utility signal in [-1, 1].
+MEMORY_EVENT_SIGNALS: Final[dict[str, float]] = {
+    "recall_hit": 1.0,
+    "recall_miss": -1.0,
+    "promote_success": 0.8,
+    "promote_fail": -0.8,
+    "store_admit": 0.3,
+    "forget": -0.2,
+    "feedback": 0.0,  # replaced by explicit utility/reward
+}
+
+#: Clamp any incoming learning signal before use (NaN-safe path also required).
+MEMORY_EVENT_SIGNAL_CLAMP: Final[tuple[float, float]] = (-1.0, 1.0)
+
+# ---------------------------------------------------------------------------
 # Tau schedule — ONE set (from the live runtime task tasks/temperature_anneal.py)
 # ---------------------------------------------------------------------------
 # DEF-05 / DEF-06 / DEBT-009: previously four floors and two decay semantics.

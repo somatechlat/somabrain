@@ -32,6 +32,8 @@ from somabrain.math.contracts import (
     ADAPT_LR_SCALE_FLOOR,
     ADAPT_STAGE_EASY,
     ADAPT_STAGE_HARD,
+    MEMORY_EVENT_SIGNAL_CLAMP,
+    MEMORY_EVENT_SIGNALS,
     TAU_FLOOR,
     TAU_ERROR_COEF,
 )
@@ -341,6 +343,7 @@ class AdaptationEngine:
         self, utility: float | Feedback, reward: float | None = None
     ) -> bool:
         """Execute apply feedback."""
+        import math as _math
 
         if hasattr(utility, "score"):
             utility_val = float(utility.score)
@@ -348,6 +351,12 @@ class AdaptationEngine:
             utility_val = float(utility)
         signal = reward if reward is not None else utility_val
         if signal is None:
+            return False
+        try:
+            signal = float(signal)
+        except (TypeError, ValueError):
+            return False
+        if not _math.isfinite(signal):
             return False
         self._update_learning_rate()
         self._history.save(self._retrieval, self._utility)
@@ -357,13 +366,44 @@ class AdaptationEngine:
         )
         self._apply_weight_updates(semantic_signal, utility_signal)
         self._apply_tau_and_entropy()
-        try:
-            self._feedback_count = getattr(self, "_feedback_count", 0) + 1
-        except Exception:
-            pass
+        self._feedback_count = int(getattr(self, "_feedback_count", 0)) + 1
         self._persist_if_enabled()
         self._update_metrics()
         return True
+
+    def apply_memory_event(
+        self,
+        kind: str,
+        utility: float | None = None,
+        reward: float | None = None,
+    ) -> bool:
+        """APM-1: learn weights from a memory interaction event.
+
+        ``kind`` is a key of ``math.contracts.MEMORY_EVENT_SIGNALS`` (or
+        ``"feedback"`` with an explicit utility/reward). Signal is signed and
+        clamped to ``MEMORY_EVENT_SIGNAL_CLAMP``; non-finite input is rejected.
+        """
+        import math as _math
+
+        if reward is not None:
+            signal = float(reward)
+        elif utility is not None:
+            signal = float(utility)
+        else:
+            signal = float(MEMORY_EVENT_SIGNALS.get(kind, 0.0))
+            if kind == "feedback":
+                return False
+        if not _math.isfinite(signal):
+            return False
+        lo, hi = MEMORY_EVENT_SIGNAL_CLAMP
+        signal = min(max(signal, lo), hi)
+        if kind == "recall_miss" and signal > 0:
+            signal = -signal
+        return self.apply_feedback(signal, reward=signal)
+
+    def memory_event(self, kind: str, utility: float | None = None) -> bool:
+        """Alias: map event kind to a signed signal and adapt."""
+        return self.apply_memory_event(kind, utility=utility)
 
     def _update_learning_rate(self) -> None:
         """Execute update learning rate."""
@@ -456,14 +496,18 @@ class AdaptationEngine:
         return float(get_neuromodulators().get_state(self._tenant_id).dopamine)
 
     def _constrain(self, name: str, value: float) -> float:
-        """Execute constrain."""
+        """Execute constrain. Non-finite values never pass through (NaN trap)."""
+        import math as _math
 
         lower, upper = self._constraints.get(name, (None, None))
-        if lower is not None and value < lower:
-            return lower
-        if upper is not None and value > upper:
-            return upper
-        return value
+        v = float(value)
+        if not _math.isfinite(v):
+            return float(lower if lower is not None else 0.0)
+        if lower is not None and v < lower:
+            return float(lower)
+        if upper is not None and v > upper:
+            return float(upper)
+        return v
 
     def rollback(self) -> bool:
         """Execute rollback."""

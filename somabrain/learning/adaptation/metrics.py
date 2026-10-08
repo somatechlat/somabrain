@@ -29,4 +29,6 @@ def update_metrics(
         _metrics.update_learning_gains(tenant_id=tenant_id, **asdict(gains))
         _metrics.update_learning_bounds(tenant_id=tenant_id, **asdict(constraints))
     except Exception:
-        pass
+        import logging
+
+        logging.getLogger(__name__).exception("LEARNING_METRICS_UPDATE_FAILED")

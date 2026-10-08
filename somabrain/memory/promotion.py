@@ -337,6 +337,11 @@ class WMLTMPromoter:
             # aremember returns the coordinate tuple directly
             self._ltm_references[item_id] = ltm_coord
 
+            # APM-1: promotion success is a memory-learning event
+            from somabrain.learning.memory_events import remember_learned
+
+            remember_learned(self._tenant_id, kind="promote_success")
+
             # Create "promoted_from" link in graph store (A2.6).
             # create_link is sync/Django-ORM — must leave the async context.
             if self._graph_client and wm_coordinate:

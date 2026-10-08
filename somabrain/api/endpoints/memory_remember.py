@@ -365,6 +365,10 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
             from somabrain.db.outbox import mark_event_sent
 
             await sync_to_async(mark_event_sent)(outbox_event_id)
+            # APM-1: durable store is a memory-learning event
+            from somabrain.learning.memory_events import remember_learned
+
+            remember_learned(payload.tenant, kind="store_admit")
         except CircuitBreakerOpen as exc:
             # Outbox row stays pending — durable and replayable.
             degraded_warnings.append(

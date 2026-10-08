@@ -20,15 +20,23 @@ except Exception:  # pragma: no cover - optional dependency
 from somabrain.core.infrastructure_defs import get_redis_url
 
 
+def _settings_get(name: str, default=None):
+    """Safe getattr(settings, name) — LazySettings is truthy when unconfigured."""
+    if settings is None:
+        return default
+    try:
+        return getattr(settings, name)
+    except Exception:
+        return default
+
+
 def get_redis() -> Redis | None:
     """Get Redis client for per-tenant state persistence.
 
     Strict mode: requires real Redis (SOMABRAIN_REDIS_URL).
     Returns None if Redis is not available or not required.
     """
-    require_backends = (
-        getattr(settings, "REQUIRE_EXTERNAL_BACKENDS") if settings else False
-    )
+    require_backends = _settings_get("REQUIRE_EXTERNAL_BACKENDS", False)
     require_backends = str(require_backends).strip().lower() in {
         "1",
         "true",
@@ -45,9 +53,9 @@ def get_redis() -> Redis | None:
 
             if redis_url:
                 return redis.from_url(redis_url)
-            redis_host = getattr(settings, "REDIS_HOST", None) if settings else None
-            redis_port = getattr(settings, "REDIS_PORT", None) if settings else None
-            redis_db = getattr(settings, "REDIS_DB") if settings else 0
+            redis_host = _settings_get("REDIS_HOST", None)
+            redis_port = _settings_get("REDIS_PORT", None)
+            redis_db = _settings_get("REDIS_DB", 0)
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
         except Exception:
@@ -65,10 +73,9 @@ def is_persistence_enabled() -> bool:
     except Exception:
         pass
     if not _persist_enabled:
-        if settings:
-            _persist_enabled = str(
-                getattr(settings, "ENABLE_LEARNING_STATE_PERSISTENCE")
-            ).strip().lower() in {"1", "true", "yes", "on"}
+        _persist_enabled = str(
+            _settings_get("ENABLE_LEARNING_STATE_PERSISTENCE", False)
+        ).strip().lower() in {"1", "true", "yes", "on"}
     return _persist_enabled
 
 
