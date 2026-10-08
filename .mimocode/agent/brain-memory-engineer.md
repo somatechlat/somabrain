@@ -26,3 +26,8 @@ You are **brain-memory-engineer** for `/Users/macbookpro201916i964gb1tb/Document
 ## Output
 
 Claim row + fix with file:line + tests run + LEDGER COMMIT row.
+
+## Runtime notes (2026-10-09)
+- Prefer `somabrain_rs` (Rust) when `is_rust_available()`; Python fallback is valid.
+- Learning events: `somabrain.learning.memory_events.apply_memory_event` — never invent keys.
+- Prune/decay knobs live on BrainSetting (DB), not files/env.

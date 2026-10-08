@@ -237,3 +237,11 @@ await ParameterSupervisor(config_svc).apply_preset(tenant="t1", preset_name="pla
 ```
 
 See `docs/technical/configuration_optimization.md` for the full strategy.
+
+## Runtime truth (2026-10-09)
+
+- **Rust core `somabrain_rs` is the fast path** (BHDC, Wiener, adaptation, neuromod). Python is fallback. `cargo test` 17/17.
+- **Brain learns from memory/agent interactions** (APM): recall hit/miss, store, promote, forget, `/context/feedback` move weights. Proven unit + live.
+- **HRR/QuantumLayer is additive** on embed path (`SOMABRAIN_USE_HRR`, provider `hrr`, JL→768 seam). Tiny embed is fallback.
+- **Settings law:** Django + BrainSetting/agent DB (administerable). **Secrets: Vault only** (Covenant Art 26). No env secrets. No file presets.
+- **Prune/decay knobs** (BrainSetting): `memory_decay_rate`, `wm_prune_threshold`, `ltm_prune_threshold`, `max_wm_items`, `max_ltm_items_per_tenant`.

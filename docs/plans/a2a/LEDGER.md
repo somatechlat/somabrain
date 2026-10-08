@@ -144,3 +144,5 @@ Format: `| timestamp | agent | action | detail |`
 | 2026-10-09T00:15:00Z | MiMoCode-somabrain | PROOF | AGENT INTERACTION LEARNING: quality 0.6424→0.7057 over tool episodes; alpha 1.0→5.0 on good paths, recovers after bad. 8/8 agent-interaction tests + 11 APM = 19 passed. Weights signed, bounded, not stuck at max, prune-safe. |
 | 2026-10-09T00:20:00Z | MiMoCode-somabrain | GO | Operator GO: live docker learning loop + prune/decay BrainSetting knobs. |
 | 2026-10-09T00:35:00Z | MiMoCode-somabrain | PROOF | LIVE :30101 adaptation_applied x8. alpha 1.342→1.684, history 8→16. Vault root RESTORED after rotation (generate-root). Prune/decay BrainSetting knobs: memory_decay_rate, wm/ltm_prune_threshold, max_wm/ltm_items (agent-tunable). |
+| 2026-10-09T00:45:00Z | MiMoCode-somabrain | COORD | Full knob map + live proof to somaAgent01 for system-role UI. Prune enforcement next on WM tick. |
+| 2026-10-09T01:00:00Z | MiMoCode-somabrain | VERIFY | rust_core ACTIVE (somabrain_rs installed). cargo test 17/17. Learning workbench PROVEN. 61 py tests green. ISO 43/43. AGENT.md + brain-memory-engineer synced (rust, APM, HRR additive, settings law, prune knobs). |
