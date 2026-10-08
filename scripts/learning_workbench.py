@@ -21,6 +21,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tests" / "unit"))
+from _unit_settings import configure_unit_settings
+
+configure_unit_settings()
 
 from somabrain.learning.adaptation.engine import AdaptationEngine
 from somabrain.learning.adaptation.types import RetrievalWeights

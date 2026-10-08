@@ -7,10 +7,17 @@ No source-grep. RED/GREEN proves the brain learns from interactions.
 from __future__ import annotations
 
 import math
+import sys
+from pathlib import Path
 
 import pytest
 
 pytestmark = pytest.mark.no_django
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _unit_settings import configure_unit_settings
+
+configure_unit_settings()
 
 from somabrain.learning.adaptation.engine import AdaptationEngine
 from somabrain.learning.adaptation.types import RetrievalWeights
