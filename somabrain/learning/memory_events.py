@@ -26,14 +26,30 @@ def _get_engine(tenant_id: str):
     from somabrain.learning.adaptation.engine import AdaptationEngine
     from somabrain.learning.adaptation.types import RetrievalWeights
     from somabrain.learning.config import UtilityWeights
+    from somabrain.math.contracts import ADAPT_DEFAULT_LR, ADAPT_DEFAULT_MAX_HISTORY
+
+    lr = ADAPT_DEFAULT_LR
+    max_history = ADAPT_DEFAULT_MAX_HISTORY
+    try:
+        from somabrain.brain_settings.models import BrainSetting
+
+        lr = float(BrainSetting.get("adapt_lr", tid))
+        max_history = int(BrainSetting.get("adapt_max_history", tid))
+    except Exception:
+        try:
+            from django.conf import settings as dj_settings
+
+            lr = float(getattr(dj_settings, "SOMABRAIN_ADAPT_LR", lr))
+            max_history = int(getattr(dj_settings, "SOMABRAIN_ADAPT_MAX_HISTORY", max_history))
+        except Exception:
+            pass
 
     # Isolated per-tenant objects (do not share a factory singleton).
-    # learning_rate / max_history explicit so BrainSetting is not required.
     eng = AdaptationEngine(
         retrieval=RetrievalWeights(1.0, 0.3, 0.5, 0.7),
         utility=UtilityWeights(),
-        learning_rate=0.1,
-        max_history=64,
+        learning_rate=lr,
+        max_history=max_history,
         tenant_id=tid,
         enable_dynamic_lr=False,
     )

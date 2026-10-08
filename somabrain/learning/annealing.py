@@ -115,14 +115,27 @@ def check_entropy_cap(
         sharpen_rate = float(BrainSetting.get("entropy_sharpen_rate", tenant_id))
         final_sharpen = float(BrainSetting.get("entropy_final_sharpen", tenant_id))
     except Exception:
+        from somabrain.math.contracts import (
+            ENTROPY_FINAL_SHARPEN,
+            ENTROPY_SHARPEN_RATE,
+        )
+
         try:
             from django.conf import settings as dj_settings
 
-            sharpen_rate = float(getattr(dj_settings, "SOMABRAIN_ENTROPY_SHARPEN_RATE", 0.8))
-            final_sharpen = float(getattr(dj_settings, "SOMABRAIN_ENTROPY_FINAL_SHARPEN", 0.05))
+            sharpen_rate = float(
+                getattr(dj_settings, "SOMABRAIN_ENTROPY_SHARPEN_RATE", ENTROPY_SHARPEN_RATE)
+            )
+            final_sharpen = float(
+                getattr(
+                    dj_settings,
+                    "SOMABRAIN_ENTROPY_FINAL_SHARPEN",
+                    ENTROPY_FINAL_SHARPEN,
+                )
+            )
         except Exception:
-            sharpen_rate = 0.8
-            final_sharpen = 0.05
+            sharpen_rate = ENTROPY_SHARPEN_RATE
+            final_sharpen = ENTROPY_FINAL_SHARPEN
 
     sharpened, was_sharpened = sharpen_mixture_weights(
         [alpha, beta, gamma],

@@ -55,7 +55,9 @@ def rwr_plan(
     steps = steps if steps is not None else 20
     restart = restart if restart is not None else 0.15
     max_items = max_items if max_items is not None else 5
-    max_nodes = 100  # Maximum nodes in local subgraph
+    from somabrain.math.contracts import PLANNER_RWR_MAX_NODES
+
+    max_nodes = PLANNER_RWR_MAX_NODES
 
     # Get MemoryClient from memory client if not provided directly
     graph = graph_client or get_graph_client(mem)

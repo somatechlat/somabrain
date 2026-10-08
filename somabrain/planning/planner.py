@@ -64,7 +64,9 @@ def plan_from_graph(
     visited: set = set()
     queue: list[tuple[tuple[float, ...], int]] = [(start_coord, 0)]
     results: list[str] = []
-    graph_limit = 20  # Limit neighbors per node
+    from somabrain.math.contracts import PLANNER_GRAPH_LIMIT
+
+    graph_limit = PLANNER_GRAPH_LIMIT
 
     while queue and len(results) < max_steps:
         current_coord, depth = queue.pop(0)

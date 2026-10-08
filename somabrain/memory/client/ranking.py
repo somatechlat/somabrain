@@ -270,28 +270,30 @@ def _extract_cleanup_margin(hit: RecallHit) -> float | None:
 
 
 def _density_factor(cfg: Any, margin: float | None) -> float:
+    from somabrain.math.contracts import DENSITY_FLOOR, DENSITY_TARGET, DENSITY_WEIGHT
+
     if margin is None:
         return 1.0
-    target = getattr(cfg, "SOMABRAIN_DENSITY_TARGET", 0.2)
-    floor = getattr(cfg, "SOMABRAIN_DENSITY_FLOOR", 0.6)
-    weight = getattr(cfg, "SOMABRAIN_DENSITY_WEIGHT", 0.35)
+    target = getattr(cfg, "SOMABRAIN_DENSITY_TARGET", DENSITY_TARGET)
+    floor = getattr(cfg, "SOMABRAIN_DENSITY_FLOOR", DENSITY_FLOOR)
+    weight = getattr(cfg, "SOMABRAIN_DENSITY_WEIGHT", DENSITY_WEIGHT)
     try:
         target = float(target)
     except Exception:
-        target = 0.2
+        target = DENSITY_TARGET
     if not math.isfinite(target) or target <= 0:
-        target = 0.2
+        target = DENSITY_TARGET
     try:
         floor = float(floor)
     except Exception:
-        floor = 0.6
+        floor = DENSITY_FLOOR
     if not math.isfinite(floor) or floor < 0:
         floor = 0.0
     floor = min(floor, 1.0)
     try:
         weight = float(weight)
     except Exception:
-        weight = 0.35
+        weight = DENSITY_WEIGHT
     if not math.isfinite(weight) or weight < 0:
         weight = 0.0
     if margin >= target:

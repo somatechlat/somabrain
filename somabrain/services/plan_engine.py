@@ -20,6 +20,7 @@ import numpy as np
 if TYPE_CHECKING:
     from somabrain.memory.client import MemoryClient
 
+from somabrain.math.contracts import PLANNER_GRAPH_LIMIT, PLANNER_RWR_RESTART
 from somabrain.metrics.planning import PLAN_EMPTY, PLAN_LATENCY
 from somabrain.planning.planner import plan_from_graph
 from somabrain.planning.planner_rwr import rwr_plan
@@ -174,8 +175,14 @@ class PlanEngine:
         return rwr_plan(
             task_key=ctx.task_key,
             mem=self._mem,
-            steps=int(getattr(self._cfg, "planner_rwr_steps", 20) or 20),
-            restart=float(getattr(self._cfg, "planner_rwr_restart", 0.15) or 0.15),
+            steps=int(
+                getattr(self._cfg, "planner_rwr_steps", PLANNER_GRAPH_LIMIT)
+                or PLANNER_GRAPH_LIMIT
+            ),
+            restart=float(
+                getattr(self._cfg, "planner_rwr_restart", PLANNER_RWR_RESTART)
+                or PLANNER_RWR_RESTART
+            ),
             universe=ctx.universe,
             max_items=ctx.max_steps,
             graph_client=self._graph,

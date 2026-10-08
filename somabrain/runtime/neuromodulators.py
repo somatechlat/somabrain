@@ -133,7 +133,10 @@ def acetylcholine_target(
     Shared by the adaptive feedback path and ``Supervisor.adjust`` so every
     caller drives ACh the same way.
     """
-    demand = 0.5 * _unit(novelty) + 0.3 * _unit(pred_error) + 0.2 * _unit(memory_load)
+    from somabrain.math.contracts import ACH_DEMAND_WEIGHTS
+
+    w_nov, w_err, w_load = ACH_DEMAND_WEIGHTS
+    demand = w_nov * _unit(novelty) + w_err * _unit(pred_error) + w_load * _unit(memory_load)
     lo, hi = NEURO_BOUNDS["acetylcholine"]
     return lo + (hi - lo) * demand
 

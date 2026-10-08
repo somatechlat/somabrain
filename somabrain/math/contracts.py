@@ -264,6 +264,48 @@ SCORER_WEIGHT_MIN: Final[float] = 0.0
 SCORER_WEIGHT_MAX: Final[float] = 1.0
 
 # ---------------------------------------------------------------------------
+# Density factor (recall ranking) — single defaults for SOMABRAIN_DENSITY_*
+# ---------------------------------------------------------------------------
+#: Target cleanup margin for full density credit.
+DENSITY_TARGET: Final[float] = 0.2
+#: Lower clamp for density factor.
+DENSITY_FLOOR: Final[float] = 0.6
+#: Penalty weight when margin is below target.
+DENSITY_WEIGHT: Final[float] = 0.35
+
+# ---------------------------------------------------------------------------
+# Entropy sharpen (single defaults for BrainSetting entropy_*)
+# ---------------------------------------------------------------------------
+#: Mixture sharpen step when entropy cap is exceeded.
+ENTROPY_SHARPEN_RATE: Final[float] = 0.8
+#: Final residual sharpen after the main pass.
+ENTROPY_FINAL_SHARPEN: Final[float] = 0.05
+
+# ---------------------------------------------------------------------------
+# ACh demand blend (homeostatic target) — one law, one weights triple
+# ---------------------------------------------------------------------------
+#: (novelty, pred_error, memory_load) weights for ACh demand in [0,1].
+ACH_DEMAND_WEIGHTS: Final[tuple[float, float, float]] = (0.5, 0.3, 0.2)
+
+# ---------------------------------------------------------------------------
+# Adaptation engine defaults when BrainSetting is unavailable
+# ---------------------------------------------------------------------------
+#: Default step size for APM/AdaptationEngine.
+ADAPT_DEFAULT_LR: Final[float] = 0.1
+#: Default history cap for AdaptationEngine.
+ADAPT_DEFAULT_MAX_HISTORY: Final[int] = 64
+
+# ---------------------------------------------------------------------------
+# Planner / graph expansion limits
+# ---------------------------------------------------------------------------
+#: Neighbors expanded per planner node.
+PLANNER_GRAPH_LIMIT: Final[int] = 20
+#: Max nodes in local subgraph for RWR planning.
+PLANNER_RWR_MAX_NODES: Final[int] = 100
+#: Random-walk restart probability for RWR planning.
+PLANNER_RWR_RESTART: Final[float] = 0.15
+
+# ---------------------------------------------------------------------------
 # WM→LTM promotion contract
 # ---------------------------------------------------------------------------
 
