@@ -6,7 +6,7 @@ construction.
 
 Mathematical Properties:
 - Spectral properties: \|H_k\|≈1 for all operations
-- Perfect binding invertibility
+- Binding is invertible in the Wiener sense (approximate, λ-dependent)
 - Role orthogonality
 - Superposition normalization
 """
@@ -64,16 +64,18 @@ class HRRConfig:
         """Execute post init  ."""
 
         s = _get_settings()
+        from somabrain.math.contracts import BHDC_D, BHDC_P
+
         if self.dim is None:
-            self.dim = s.SOMABRAIN_HRR_DIM
+            self.dim = int(getattr(s, "SOMABRAIN_HRR_DIM", BHDC_D) or BHDC_D)
         if self.seed is None:
-            self.seed = s.SOMABRAIN_GLOBAL_SEED
+            self.seed = int(getattr(s, "SOMABRAIN_GLOBAL_SEED", 42) or 42)
         if self.dtype is None:
-            self.dtype = s.SOMABRAIN_HRR_DTYPE
+            self.dtype = str(getattr(s, "SOMABRAIN_HRR_DTYPE", None) or "float32")
         if self.renorm is None:
-            self.renorm = s.SOMABRAIN_HRR_RENORM
+            self.renorm = bool(getattr(s, "SOMABRAIN_HRR_RENORM", True))
         if self.sparsity is None:
-            self.sparsity = s.SOMABRAIN_BHDC_SPARSITY
+            self.sparsity = float(getattr(s, "SOMABRAIN_BHDC_SPARSITY", BHDC_P) or BHDC_P)
 
         # Validation
         if self.dim <= 0:

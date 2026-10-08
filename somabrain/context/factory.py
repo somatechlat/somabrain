@@ -17,16 +17,18 @@ from somabrain.memory.pool import MultiTenantMemory
 
 _embedder = None
 try:
-    # HRR/QuantumLayer is additive: same factory, quantum wired when USE_HRR.
+    # HRR/QuantumLayer is the DEFAULT brain path (Operator: always on).
+    # Tiny embed is only a fallback when HRR is explicitly disabled or init fails.
     from somabrain.bootstrap.singletons import make_quantum_layer
 
     _quantum = make_quantum_layer(settings)
-    if getattr(settings, "ALLOW_TINY_EMBEDDER") and _quantum is None:
+    if _quantum is not None:
+        _embedder = make_embedder(settings, quantum=_quantum)
+    else:
+        # Explicit disable or HRR init failure — last-resort tiny (fail-honest log).
         from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
         _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
-    else:
-        _embedder = make_embedder(settings, quantum=_quantum)
 except Exception:
     from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 

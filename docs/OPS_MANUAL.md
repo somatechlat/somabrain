@@ -168,7 +168,7 @@ Strict realism mandates authentic failure exposure; treat empty results as truth
 - Ops checks: monitor lag gauge and DLQ count; ensure `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1` in integration runs.
 
 ## Planner
-- Stateless DFS planner with action catalog (cost-ordered) and guaranteed non-empty plan (falls back to `analyze_goal`).
+- Stateless DFS planner with action catalog (cost-ordered); empty plan returns analyze_goal fallback (not a performance guarantee).
 - Execution hook: `Planner.execute(plan, executor)` runs steps with early stop on failure; returns result list.
 - Tests: `tests/services/test_planner_costs.py`, `tests/services/test_planner_execute.py` cover ordering and stop-on-failure.
 - Integration: wire executor to your action runtime and feed outcomes back into learning (future work).

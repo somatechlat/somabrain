@@ -253,10 +253,9 @@ SOMABRAIN_SALIENCE_SOFT_TEMPERATURE = env.float(
 SOMABRAIN_USE_SOFT_SALIENCE = env.bool("SOMABRAIN_USE_SOFT_SALIENCE", default=False)
 
 # Feature toggles
-# HRR/QuantumLayer is ON as additive improvement (structured bind/unbind)
-# over TinyDeterministic + memory store. Not a replacement.
-SOMABRAIN_USE_HRR = True
-SOMABRAIN_EMBED_PROVIDER = "hrr"
+# HRR/QuantumLayer is ALWAYS ON by default (Operator law). Optional disable only.
+SOMABRAIN_USE_HRR = env.bool("SOMABRAIN_USE_HRR", default=True)
+SOMABRAIN_EMBED_PROVIDER = env.str("SOMABRAIN_EMBED_PROVIDER", default="hrr")
 SOMABRAIN_USE_META_BRAIN = env.bool("SOMABRAIN_USE_META_BRAIN", default=False)
 SOMABRAIN_USE_EXEC_CONTROLLER = env.bool("SOMABRAIN_USE_EXEC_CONTROLLER", default=False)
 SOMABRAIN_USE_DRIFT_MONITOR = env.bool("SOMABRAIN_USE_DRIFT_MONITOR", default=False)

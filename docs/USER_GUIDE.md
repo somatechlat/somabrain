@@ -704,7 +704,7 @@ Response to Client
 **Behavior**:
 - Transactional write to Postgres outbox table
 - Async Kafka publish via outbox worker
-- Guaranteed delivery semantics
+- Delivery semantics: durable accept (T-6); not a guarantee of LTM until durability field says so
 
 ---
 

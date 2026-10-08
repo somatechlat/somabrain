@@ -146,3 +146,5 @@ Format: `| timestamp | agent | action | detail |`
 | 2026-10-09T00:35:00Z | MiMoCode-somabrain | PROOF | LIVE :30101 adaptation_applied x8. alpha 1.342→1.684, history 8→16. Vault root RESTORED after rotation (generate-root). Prune/decay BrainSetting knobs: memory_decay_rate, wm/ltm_prune_threshold, max_wm/ltm_items (agent-tunable). |
 | 2026-10-09T00:45:00Z | MiMoCode-somabrain | COORD | Full knob map + live proof to somaAgent01 for system-role UI. Prune enforcement next on WM tick. |
 | 2026-10-09T01:00:00Z | MiMoCode-somabrain | VERIFY | rust_core ACTIVE (somabrain_rs installed). cargo test 17/17. Learning workbench PROVEN. 61 py tests green. ISO 43/43. AGENT.md + brain-memory-engineer synced (rust, APM, HRR additive, settings law, prune knobs). |
+| 2026-10-09T01:10:00Z | MiMoCode-somabrain | DIRECTIVE | Operator: HRR MUST be default always-active on the brain. Only optional to DISABLE. |
+| 2026-10-09T01:25:00Z | MiMoCode-somabrain | FIX | HRR DEFAULT ON (optional disable only). QuantumLayer initializes (dim 8192). Overclaims removed (perfect/guaranteed). HRRConfig falls back to math/contracts. |

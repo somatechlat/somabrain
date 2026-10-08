@@ -98,33 +98,36 @@ def make_predictor(cfg) -> BudgetedPredictor:
 
 
 def make_quantum_layer(cfg) -> QuantumLayer | None:
-    """Create the optional quantum layer for HRR-based operations.
+    """Create the QuantumLayer for HRR-based operations.
+
+    DEFAULT: always on. Optional disable only via SOMABRAIN_USE_HRR=False.
 
     Args:
         cfg: Application configuration object with HRR settings.
 
     Returns:
-        QuantumLayer if cfg.use_hrr is True and initialization succeeds,
-        None otherwise.
+        QuantumLayer if HRR is enabled (default) and init succeeds, else None.
     """
-    if not getattr(settings, "SOMABRAIN_USE_HRR"):
+    # Operator law: HRR is the default brain path — disable is the exception.
+    if not getattr(settings, "SOMABRAIN_USE_HRR", True):
         return None
 
     try:
         from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
+        from somabrain.math.contracts import BHDC_D, BHDC_P
 
         hrr_cfg = HRRConfig(
-            dim=getattr(settings, "SOMABRAIN_HRR_DIM"),
-            seed=getattr(settings, "SOMABRAIN_HRR_SEED"),
-            binding_method=getattr(
-                settings, "SOMABRAIN_MATH_BINDING_METHOD", "circular"
+            dim=int(getattr(settings, "SOMABRAIN_HRR_DIM", BHDC_D) or BHDC_D),
+            seed=int(getattr(settings, "SOMABRAIN_HRR_SEED", 42) or 42),
+            binding_method=str(
+                getattr(settings, "SOMABRAIN_MATH_BINDING_METHOD", None) or "bhdc"
             ),
-            sparsity=getattr(settings, "SOMABRAIN_BHDC_SPARSITY"),
-            binary_mode=getattr(settings, "SOMABRAIN_MATH_BHDC_BINARY_MODE"),
-            mix=getattr(settings, "SOMABRAIN_MATH_BHDC_MIX"),
-            binding_seed=getattr(settings, "SOMABRAIN_MATH_BINDING_SEED"),
-            binding_model_version=getattr(
-                settings, "SOMABRAIN_MATH_BINDING_MODEL_VERSION", "v1"
+            sparsity=float(getattr(settings, "SOMABRAIN_BHDC_SPARSITY", BHDC_P) or BHDC_P),
+            binary_mode=bool(getattr(settings, "SOMABRAIN_MATH_BHDC_BINARY_MODE", False)),
+            mix=str(getattr(settings, "SOMABRAIN_MATH_BHDC_MIX", None) or "none"),
+            binding_seed=int(getattr(settings, "SOMABRAIN_MATH_BINDING_SEED", 42) or 42),
+            binding_model_version=str(
+                getattr(settings, "SOMABRAIN_MATH_BINDING_MODEL_VERSION", None) or "v1"
             ),
         )
         return QuantumLayer(hrr_cfg)
