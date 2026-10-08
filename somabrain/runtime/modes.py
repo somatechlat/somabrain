@@ -24,7 +24,16 @@ from django.conf import settings
 
 @dataclass(frozen=True)
 class ModeConfig:
-    """Canonical feature matrix for a resolved runtime mode."""
+    """Canonical feature matrix for a resolved runtime mode.
+
+    All feature flags are True in every mode (full-potential matrix). The only
+    real gates are:
+      - ``enable_cog_threads`` — settings master switch for cognitive threads;
+      - ``_load_overrides()`` in ``full-local`` — operator-disabled feature keys.
+
+    ``feature_enabled()`` is the single read path; the flags exist so that
+    call sites do not re-parse mode strings.
+    """
 
     name: str
     enable_integrator: bool
@@ -123,70 +132,19 @@ def _load_overrides() -> list[str]:
 
 
 def get_mode_config() -> ModeConfig:
-    """Build the current feature matrix for the active deployment mode."""
+    """Build the current feature matrix for the active deployment mode.
 
+    Every mode resolves to the same full-potential matrix (all feature flags
+    True). Differences are only the mode ``name`` (drives override loading in
+    ``feature_enabled``) and ``enable_cog_threads`` from settings. Previously
+    three copy-pasted constructors all set the same True flags — one builder
+    is the source of truth.
+    """
     name = _resolve_mode()
-    if name == "ci":
-        # CI mode should provide a full feature set to allow the test suite to run
-        # without disabling optional components. Previously this configuration
-        # disabled many features (e.g., ``hmm_segmentation``) which caused a
-        # cascade of failures across the test suite. We now enable all features
-        # that are required for the core functionality while keeping the
-        # deterministic behaviour (e.g., ``avro_required`` and ``fail_fast_kafka``)
-        # that CI expects.
-        return ModeConfig(
-            name=name,
-            enable_integrator=True,
-            enable_orchestrator=True,
-            enable_reward_ingest=True,
-            enable_learner=True,
-            enable_next_event=True,
-            enable_wm_updates_cache=True,
-            enable_tiered_memory=True,
-            memory_weighting=True,
-            enable_drift=True,
-            enable_auto_rollback=True,
-            enable_segmentation=True,
-            enable_hmm_segmentation=True,
-            enable_teach_feedback=True,
-            enable_metrics=True,
-            enable_health_http=True,
-            avro_required=True,
-            fail_fast_kafka=True,
-            fusion_normalization=True,
-            calibration_enabled=True,
-            consistency_checks=True,
-            enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS"),
-        )
-    # full-local: production parity but allow dev overrides & relaxed Avro if runtime_config requests it
-    if name == "full-local":
-        return ModeConfig(
-            name=name,
-            enable_integrator=True,
-            enable_orchestrator=True,
-            enable_reward_ingest=True,
-            enable_learner=True,
-            enable_next_event=True,
-            enable_wm_updates_cache=True,
-            enable_tiered_memory=True,
-            memory_weighting=True,
-            enable_drift=True,
-            enable_auto_rollback=True,
-            enable_segmentation=True,
-            enable_hmm_segmentation=True,
-            enable_teach_feedback=True,
-            enable_metrics=True,
-            enable_health_http=True,
-            avro_required=True,
-            fail_fast_kafka=True,
-            fusion_normalization=True,
-            calibration_enabled=True,
-            consistency_checks=True,
-            enable_cog_threads=getattr(settings, "ENABLE_COG_THREADS"),
-        )
-    # prod: same semantics (strict, all ON) – operational differences handled outside python.
+    # full-local / ci / prod share one feature matrix. prod differences are
+    # operational (secrets, replica count) and live outside this Python gate.
     return ModeConfig(
-        name="prod",
+        name=name,
         enable_integrator=True,
         enable_orchestrator=True,
         enable_reward_ingest=True,

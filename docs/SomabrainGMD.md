@@ -21,12 +21,78 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Brought under the house ISO document-control contract. |
+| 1.0.1 | 2026-10-08 | SomaTech Engineering | Honesty notes: learning is constant-gain SA (not full Sutton/RL/GD); Theorem 3 MMSE is a Wiener-ridge derivation only; binding is permute-then-multiply in production; QuantumLayer is HRR/BHDC, not physics quantum; live request path is Python with optional Rust. |
 
 
 **SomaBrain MathCore – Agentic Formulation**
 **Version 4.4 (Mathematically Consistent Model)**
 **Date:** February 2026
-**Implementation Target:** Deterministic Rust Runtime
+**Implementation Target (aspirational):** Deterministic Rust Runtime — see Honesty Note H4.
+
+---
+
+## Honesty Notes (read before citing this document)
+
+> These notes bind every theorem below to what production code actually does.
+> Where this paper and the code disagree, the code wins
+> (`docs/iso/SOMA-BR-MATH-TRUTH-001.md`, THE-SOMA-COVENANT Title V).
+
+**H1 — Learning is NOT full Sutton / RL / gradient descent.**
+This paper defines memory dynamics (GMD) and a regularizer. It does **not**
+implement, and the service does **not** run, temporal-difference learning with
+`δ_t = r_t + γV(s_{t+1}) − V(s_t)`, policy gradients, Q-learning, or Bellman
+updates. The live learning head is **constant-gain stochastic approximation**
+on AdaptationEngine retrieval/utility weights (the APM head):
+
+```
+Δw = lr × gain × signal          # somabrain/learning/adaptation/utils.py:11-13
+w  ← clamp(w + Δw, w_min, w_max) # somabrain/learning/adaptation/engine.py:364-411
+```
+
+Signals come from **memory events** (remember / recall / promote / feedback),
+not from a reward-prediction-error learner. Rust exposes Sutton-style TD
+helpers (`compute_td_error`, `compute_td_return`,
+`rust_core/src/adaptation.rs:281-305`) but they are **EXPORTED with no Python
+caller** (`docs/iso/SOMA-BR-ARCH-TRUTH-001.md` §3). There is no gradient
+descent of a value function anywhere on the live path.
+
+**H2 — Theorem 3 "minimum-MSE" is a ridge-parameter derivation, not an online MMSE learner.**
+`λ* = σ_ε² / σ_v²` is the linear-MMSE / Wiener ridge for the **unbind
+regularizer**. It is implemented as `compute_wiener_lambda(p, bits)`
+(`somabrain/math/contracts.py`, mirrored `rust_core/src/mathcore.rs`) and
+consumed by binder/quantum unbind. Nothing in the request path performs
+iterative MMSE estimation, LMS/RLS adaptation, or gradient-based error
+minimization. The live learner is H1.
+
+**H3 — Binding in §0.3 is idealized.**
+`b = k ⊙ v` (pure element-wise multiply) is the analysis form. Production
+binding is **permute-then-multiply** (`PermutationBinder`, T6 in
+`SOMA-BR-MATH-TRUTH-001`: `b′ = π(b); c = a ⊙ b′`), with an optional FWHT mix.
+`QuantumLayer.bind` is FFT circular convolution (T8), not BHDC permutation
+binding. Do not cite §0.3 as the shipping algebra.
+
+**H4 — "Deterministic Rust Runtime" is a target, not the live path.**
+The HTTP request path (`/cognitive/act`, `/memory/*`, `/context/*`) runs
+**Python** (`somabrain/learning/adaptation/engine.py`,
+`somabrain/admin/core/learning/prediction.py`, `somabrain/math/*`). Rust
+(`somabrain_rs`) is an optional accelerator behind
+`somabrain/core/rust_bridge.py` with Python fallbacks; Rust/Python fallbacks
+can disagree on seeds and sparse fill (MATH-TRUTH T3/T3b, T4/T4b).
+
+**H5 — "QuantumLayer" is HRR/BHDC, not physics quantum.**
+`QuantumLayer` (`somabrain/admin/core/quantum.py`) is a **hyperdimensional**
+layer: bind / unbind / superpose / cleanup on dense or sparse hypervectors
+(HRR FFT convolution + BHDC permutation binder). The name is historical. There
+is no qubit, superposition in the quantum-mechanics sense, entanglement, or
+quantum hardware anywhere in this codebase. Treat "quantum" here as a
+hypervector-algebra label only.
+
+**H6 — GMD update rule scope.**
+`m_t = (1−η) m_{t−1} + η b_t` (§0.4) is implemented as Rust `BayesianMemory`
+(`rust_core/src/mathcore.rs:386-455`, MATH-TRUTH T74) and is **not** the live
+working-memory eviction/admission rule (`somabrain/memory/wm/core.py` uses
+cosine/salience). Do not claim Theorem 2 / SNR horizon governs the request
+path until `BayesianMemory` is wired in.
 
 ---
 
@@ -261,6 +327,12 @@ FWHT therefore provides a practical speedup of hundreds× while remaining determ
 | Decay η       | 0.05–0.08   | Defines weight spectrum and memory horizon |
 | Regularizer λ | σ_ε² / σ_v² | Optimal quantization ridge                 |
 | Mixing        | FWHT        | Deterministic orthogonalization            |
+
+**Production values differ where noted.** Live hypervector dimension is
+`SOMABRAIN_HRR_DIM` / `contracts.BHDC_D` = **8192** (this table's `D = 2048`
+is the worked-example size, not the production default). Live `p = 0.1` and
+`λ = compute_wiener_lambda(p, 8)` match. See
+`docs/iso/SOMA-BR-MATH-TRUTH-001.md` §4 for the constants table.
 
 ---
 

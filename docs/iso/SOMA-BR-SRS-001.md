@@ -83,7 +83,7 @@ This SRS covers all functional and non-functional requirements for the SomaBrain
 | **LTM** | Long-Term Memory — persistent memory store in PostgreSQL + Milvus |
 | **AAAS** | As-a-Service — multi-tenant deployment mode within SomaStack |
 | **SFM** | SomaFractalMemory — distributed long-term memory component |
-| **TD Learning** | Temporal-Difference Learning — reinforcement learning for cognitive parameter adjustment |
+| **TD Learning** | ~~Temporal-Difference Learning — reinforcement learning for cognitive parameter adjustment~~ **NOT IMPLEMENTED as Sutton TD.** Live learning is constant-gain stochastic approximation `Δw = lr × gain × signal` on AdaptationEngine weights (see §2.5 truth note). |
 | **NREM** | Non-Rapid Eye Movement — sleep phase for batch consolidation |
 | **REM** | Rapid Eye Movement — sleep phase for associative recombination |
 | **HNSW** | Hierarchical Navigable Small World — approximate nearest-neighbor index in Milvus |

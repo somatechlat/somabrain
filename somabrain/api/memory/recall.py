@@ -40,13 +40,11 @@ from somabrain.api.memory.models import (
 from somabrain.core.runtime.config_runtime import (
     ensure_config_dispatcher,
     ensure_supervisor_worker,
-    submit_metrics_snapshot,
 )
 from somabrain.embed_dim import EmbeddingDimensionError, ensure_embedding_dim
 from somabrain.metrics import observe_recall_latency, record_memory_snapshot
 from ninja.errors import HttpError
 from somabrain.services.memory_service import MemoryService
-from somabrain.services.parameter_supervisor import MetricsSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -401,31 +399,6 @@ async def perform_recall(
             payload.scoring_mode,
             all_results,
         )
-
-    # Submit metrics snapshot
-    top_confidence = 0.0
-    if all_results:
-        confidence = all_results[0].confidence
-        if confidence is not None:
-            try:
-                top_confidence = float(confidence)
-            except Exception:
-                top_confidence = 0.0
-
-    try:
-        await submit_metrics_snapshot(
-            MetricsSnapshot(
-                tenant=payload.tenant,
-                namespace=payload.namespace,
-                metrics={
-                    "top1_accuracy": top_confidence,
-                    "latency_p95_ms": duration * 1000.0,
-                    "result_count": float(len(chunk_results)),
-                },
-            )
-        )
-    except Exception as e:
-        logger.debug("Failed to submit metrics snapshot: %s", e)
 
     return MemoryRecallResponse(
         tenant=payload.tenant,

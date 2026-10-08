@@ -1,12 +1,12 @@
 """
 Cognitive Enhancements package for SomaBrain.
 
-Provides higher‑level cognitive capabilities such as multi‑step planning,
-emotional state modelling, and collaborative agent interaction.
+Provides higher-level cognitive capabilities such as multi-step planning
+and emotional state modelling. These modules are on the LIVE eval_step path
+(BG/PFC/amygdala/emotion/personality) or used by the planner proofs.
 """
 
-from .collaboration import CollaborationManager
 from .emotion import EmotionModel
 from .planning import Planner
 
-__all__ = ["CollaborationManager", "EmotionModel", "Planner"]
+__all__ = ["EmotionModel", "Planner"]

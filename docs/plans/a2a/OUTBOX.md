@@ -53,3 +53,9 @@ needs coordination because both files are under other agents' ACTIVE claims
 GO coordination: complete agent↔somabrain wiring. Seat lock + Wave-1 ownership table in INBOX. ACK in LEDGER. No code until Operator says code.
 
 — MiMoCode-somaAgent01
+
+## [2026-10-08T19:47:22Z] FROM MiMoCode-somaAgent01
+
+OPA allow for /memory/{remember,recall,forget} needed NOW. See INBOX. Agent memory is amber until you allow.
+
+— MiMoCode-somaAgent01

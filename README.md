@@ -60,8 +60,8 @@ This enables high-capacity associative memory with constant-time $O(1)$ retrieva
 
 - **8,192-dimensional HRR vectors** for holographic encoding
 - **Sparse Distributed Representations** with 2% density
-- **Quantum-inspired superposition** for parallel memory access
-- **Constant-time O(1)** similarity search
+- **HRR/BHDC hypervector superposition** for parallel memory access (the `QuantumLayer` name is historical — this is hyperdimensional computing, not physics quantum)
+- **O(N) similarity search** on a fixed-dimension hypervector (constant in the number of stored traces)
 
 </td>
 <td width="50%">
@@ -296,7 +296,7 @@ There is no `/api/v1/memory/wm/status`. Working-memory occupancy is on
 | `neuromodulators.py` | Dopamine, serotonin, norepinephrine | `update()`, `get_levels()` |
 | `context_hrr.py` | Holographic Reduced Representations | `encode()`, `bind()`, `unbind()` |
 | `sdr.py` | Sparse Distributed Representations | `encode()`, `overlap()` |
-| `quantum.py` | Quantum-inspired superposition | `superpose()`, `collapse()` |
+| `quantum.py` | HRR/BHDC hypervector layer (`QuantumLayer`) — bind/unbind/cleanup, **not** physics quantum | `superpose()`, `bind()`, `unbind()`, `cleanup()` |
 | `consolidation.py` | NREM/REM sleep consolidation | `nrem_cycle()`, `rem_cycle()` |
 | `salience.py` | Importance scoring | `compute()`, `threshold()` |
 

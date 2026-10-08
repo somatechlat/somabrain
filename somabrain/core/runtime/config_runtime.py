@@ -15,7 +15,7 @@ import logging
 from django.conf import settings
 
 from somabrain.services.config_service import ConfigService
-from somabrain.services.parameter_supervisor import MetricsSnapshot, ParameterSupervisor
+from somabrain.services.parameter_supervisor import ParameterSupervisor
 
 logger = logging.getLogger(__name__)
 
@@ -74,18 +74,3 @@ async def ensure_supervisor_worker() -> None:
     except Exception as e:
         logger.error(f"Failed to ensure supervisor worker: {e}")
         raise RuntimeError(f"Supervisor worker failed: {e}") from e
-
-
-async def submit_metrics_snapshot(snapshot: MetricsSnapshot) -> None:
-    """Submit a metrics snapshot to the supervisor.
-
-    Args:
-        snapshot: The metrics snapshot to record.
-    """
-    try:
-        sup = get_supervisor()
-        await sup.evaluate(snapshot)
-    except Exception as e:
-        logger.warning(
-            f"Failed to submit metrics snapshot for {snapshot.tenant}/{snapshot.namespace}: {e}"
-        )
