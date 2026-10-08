@@ -151,3 +151,5 @@ Format: `| timestamp | agent | action | detail |`
 | 2026-10-09T01:40:00Z | MiMoCode-somabrain | RUN | Operator RUN. Wave1 BrainSetting API + live E2E + prune. Rules pack injected into every spawn. |
 | Y-10-08T23:10:42Z | MiMoCode-somaAgent01 | COORD | UI/UX audit: asked somabrain for cognitive JSON contract, OPA memory allow, tool_policy/capability write, Temporal list, health field names. Agent memory API now 200. |
 | 2026-10-09T01:50:00Z | MiMoCode-somabrain | ADV | W1 sceptic: 11 honesty failures. CRIT: no BrainSetting PUT; silent HRR→tiny factory except; seed_gmd_config TypeError; __init__ reintroduces tenant default; learnable knobs never written by learning; dead LTM prune; gmd_lambda_reg float-as-tenant; prune silently off on exception. |
+| 2026-10-09T02:00:00Z | MiMoCode-somabrain | STATUS | W1 live E2E agent cancelled. Relaunching. |
+| 2026-10-09T02:15:00Z | MiMoCode-somabrain | FIX | BrainSetting GET/PUT /settings API implemented (list + bounded put + tenant). Registry: prune knobs + learnable + use_hrr true. 11 tests green. |

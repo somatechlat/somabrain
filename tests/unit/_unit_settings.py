@@ -31,6 +31,7 @@ def _required_settings() -> dict[str, object]:
     cfg.update(
         {
             "SECRET_KEY": "test-only-secret-key",
+            "INSTALLED_APPS": ["somabrain"],
             "ROOT_URLCONF": "somabrain.config.urls",
             "SOMA_API_TOKEN": "test-sfm-token",
             "SOMABRAIN_MEMORY_HTTP_TOKEN": "test-only-token",
