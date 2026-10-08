@@ -107,7 +107,7 @@ class ContextBuilder:
         self._tau_increment_up = settings.SOMABRAIN_TAU_INC_UP
         self._tau_increment_down = settings.SOMABRAIN_TAU_INC_DOWN
         self._dup_ratio_threshold = settings.SOMABRAIN_DUP_RATIO_THRESHOLD
-        # Per-tenant overrides cache (learning.tenants.yaml)
+        # Per-tenant overrides cache (BrainSetting / Django only — no files)
         # Uses somabrain.context.tenant_overrides for loading
         # Bounded TTLCache: max 1000 tenants, 5 minute TTL for config reload
         self._tenant_overrides_cache: TTLCache[str, dict] = TTLCache(
