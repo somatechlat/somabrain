@@ -188,7 +188,7 @@ Strict realism mandates authentic failure exposure; treat empty results as truth
 - Environment
   - Strict mode flags set: `ENABLE_DRIFT_DETECTION`, `ENABLE_AUTO_ROLLBACK` (as desired), `SOMABRAIN_FF_COG_INTEGRATOR`
   - Disable legacy flags and fallbacks; Avro-only IO confirmed
-  - Learning tenants file mounted (`config/learning.tenants.yaml`) with per-tenant `entropy_cap`
+  - Per-tenant `entropy_cap` via BrainSetting (DB) — no YAML files
   - Drift state dir writeable (`SOMABRAIN_DRIFT_STORE`, default `./data/drift/state.json`)
 
 - Observability

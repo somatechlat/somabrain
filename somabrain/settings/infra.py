@@ -107,8 +107,6 @@ def configure_infra_secrets() -> None:
             "SUPERVISOR_HTTP_PASS",
             runtime_secrets.get("supervisor_http_pass"),
         )
-        _remember("OUTBOX_API_TOKEN", runtime_secrets.get("api_token"))
-        _remember("SOMABRAIN_API_TOKEN", runtime_secrets.get("api_token"))
         _remember("SOMA_API_TOKEN", runtime_secrets.get("api_token"))
         _remember(
             "SOMABRAIN_PROVENANCE_SECRET",
@@ -262,7 +260,7 @@ SOMABRAIN_AUTH_URL = env.str("SOMABRAIN_AUTH_URL", default="")
 
 # External Memory (SFM)
 # ----------------------------------------------------------------------------
-SOMABRAIN_MEMORY_HTTP_ENDPOINT = env.str("SOMABRAIN_MEMORY_HTTP_ENDPOINT", default="")
+SOMABRAIN_MEMORY_HTTP_ENDPOINT = ""  # managed: BrainSetting memory_http_endpoint (no ENV)
 
 # Legacy alias used by somabrain/config/urls.py and system_health.py health checks.
 SOMA_FRACTAL_MEMORY_URL = env.str(
@@ -333,7 +331,9 @@ OUTBOX_MAX_RETRIES = env.int("OUTBOX_MAX_RETRIES", default=5)
 OUTBOX_POLL_INTERVAL = env.float("OUTBOX_POLL_INTERVAL", default=1.0)
 OUTBOX_PRODUCER_RETRY_MS = env.int("OUTBOX_PRODUCER_RETRY_MS", default=1000)
 # Secret: Vault only (somabrain/runtime[api_token]). No ENV, no "".
-OUTBOX_API_TOKEN = _resolved("OUTBOX_API_TOKEN")
+# ONE canonical name for the brain API token: SOMA_API_TOKEN. The former
+# OUTBOX_API_TOKEN / SOMABRAIN_API_TOKEN aliases are deleted (no dual keys).
+SOMA_API_TOKEN = _resolved("SOMA_API_TOKEN")
 
 # Journal
 SOMABRAIN_SPECTRAL_CACHE_DIR = env.str("SOMABRAIN_SPECTRAL_CACHE_DIR", default="")

@@ -1741,7 +1741,6 @@ Secrets bootstrap via Vault. The Vault token itself is a **Vault-only / T0-secre
 | Setting | Type | Default | Description | Editable at Runtime |
 |---------|------|---------|-------------|:-------------------:|
 | `SOMABRAIN_FEATURE_FLAGS_PORT` | int | `9697` | Feature flags service port | ✗ |
-| `SOMABRAIN_FEATURE_OVERRIDES` | str | `./data/feature_overrides.json` | Feature overrides file | ✓ |
 | `SOMABRAIN_ALLOW_TINY_EMBEDDER` | bool | `false` | Allow tiny embedder model | ✓ |
 
 ### 3.11 Service Ports
