@@ -602,7 +602,7 @@ BRAIN_DEFAULTS = {
     # GRAPH
     "use_graph_augment": {"v": False, "cat": "graph"},
     # HRR
-    "use_hrr": {"v": False, "cat": "hrr"},
+    "use_hrr": {"v": True, "cat": "hrr"},
     # BRAIN
     "use_meta_brain": {"v": False, "cat": "brain"},
     # CIRCUIT
