@@ -526,6 +526,7 @@ class WorkingMemory:
         cycle to advance the tick and check promotion eligibility.
         """
         self._t += 1
+        self._prune_by_managed_settings()
 
         if self._promoter is None:
             return
@@ -541,6 +542,70 @@ class WorkingMemory:
                 else f"wm_{idx}_{item.tick}"
             )
             self._check_promotion(item_id, salience, item)
+
+    def _prune_by_managed_settings(self) -> None:
+        """Apply administerable prune/decay knobs (BrainSetting DB).
+
+        Agent system-role UI tunes: wm_prune_threshold, memory_decay_rate,
+        max_wm_items. Evicts lowest-salience items under threshold or over cap.
+        """
+        try:
+            from somabrain.brain_settings.models import BrainSetting
+
+            threshold = float(BrainSetting.get("wm_prune_threshold", "default") or 0.0)
+            max_items = int(BrainSetting.get("max_wm_items", "default") or 0)
+            decay = float(BrainSetting.get("memory_decay_rate", "default") or 0.0)
+        except Exception:
+            threshold, max_items, decay = 0.0, 0, 0.0
+
+        # Exponential decay on stored recency (administerable rate).
+        if decay > 0.0:
+            for item in self._items:
+                try:
+                    item.recency = float(item.recency) * (1.0 - decay)
+                except Exception:
+                    continue
+
+        now = self._now()
+        # Drop items under managed salience threshold (keep at least 1).
+        if threshold > 0.0 and len(self._items) > 1:
+            keep_idx = []
+            for idx, item in enumerate(self._items):
+                sal = self._compute_item_salience(item, now)
+                if sal >= threshold or len(keep_idx) == 0:
+                    keep_idx.append(idx)
+            if len(keep_idx) < len(self._items):
+                self._apply_prune_indices(keep_idx)
+
+        # Cap WM size using managed max_wm_items.
+        if max_items > 0:
+            while len(self._items) > max_items and len(self._items) > 1:
+                self._evict_lowest_salience()
+
+    def _apply_prune_indices(self, keep_idx: list[int]) -> None:
+        """Keep only selected indices; mark others evicted (not hard delete)."""
+        if not keep_idx:
+            return
+        new_items = []
+        new_ids = []
+        for idx, item in enumerate(self._items):
+            if idx in set(keep_idx):
+                new_items.append(item)
+                if idx < len(self._item_ids):
+                    new_ids.append(self._item_ids[idx])
+            else:
+                item_id = (
+                    self._item_ids[idx]
+                    if idx < len(self._item_ids)
+                    else f"wm_{idx}_{getattr(item, 'tick', 0)}"
+                )
+                try:
+                    evict_item(self._items, self._item_ids, idx, self._persister)
+                except Exception:
+                    pass
+        self._items = new_items
+        if new_ids:
+            self._item_ids = new_ids
 
     def _compute_item_salience(self, item: WMItem, now: float) -> float:
         """Compute salience score for a single WM item.

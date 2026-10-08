@@ -8,6 +8,7 @@ from django.conf import settings
 from somabrain.embed_dim import ensure_embedding_dim
 
 from somabrain.core.infrastructure_defs import get_memory_http_endpoint
+from somabrain.math.contracts import HTTP_MAX_RETRIES
 from somabrain.memory.transport import MemoryHTTPTransport
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,7 @@ class TransportMixin:
         # Brain→SFM bearer is SOMA_API_TOKEN (SFM's own credential). The
         # agent↔brain somabrain_memory_http_token is a different trust
         # boundary and must not be presented to SFM.
+        from somabrain.math.contracts import HTTP_MAX_RETRIES
         from somabrain.memory.sfm_auth import resolve_sfm_api_token
 
         token_value = resolve_sfm_api_token(self.cfg)
@@ -230,7 +232,7 @@ class TransportMixin:
         body: dict,
         headers: dict,
         *,
-        max_retries: int = 2,
+        max_retries: int = HTTP_MAX_RETRIES,
     ) -> tuple[bool, int, Any]:
         transport = getattr(self, "_transport", None)
         if transport is None:
@@ -245,7 +247,7 @@ class TransportMixin:
         body: dict,
         headers: dict,
         *,
-        max_retries: int = 2,
+        max_retries: int = HTTP_MAX_RETRIES,
     ) -> tuple[bool, int, Any]:
         transport = getattr(self, "_transport", None)
         if transport is None:
