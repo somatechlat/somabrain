@@ -9,8 +9,8 @@ Provides multiple subcommands:
     check  -> fail when pending/failed counts exceed a threshold (for CI)
 
 Authentication:
-  Uses the same Bearer token as the main API. Either pass --token or set
-  SOMABRAIN_API_TOKEN/SOMA_API_TOKEN in the environment.
+  Uses the same Bearer token as the main API. Either pass --token or resolve
+  from Django settings / Vault (Art 26 — never environment variables).
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def _auth_headers(token: str | None) -> dict[str, str]:
 
     if not token:
         raise SystemExit(
-            "Admin token required. Pass --token or set SOMABRAIN_API_TOKEN."
+            "Admin token required. Pass --token or provision Vault/settings SOMABRAIN_API_TOKEN."
         )
     return {"Authorization": f"Bearer {token}"}
 

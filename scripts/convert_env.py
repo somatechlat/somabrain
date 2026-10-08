@@ -74,10 +74,9 @@ ENV_TO_ATTR: dict[str, str] = {
     "REWARD_PRODUCER_PORT": "reward_producer_port",
     "REWARD_PRODUCER_HOST_PORT": "reward_producer_host_port",
     "BASE_URL": "api_url",
-    # Authentication and security
-    "SOMABRAIN_API_TOKEN": "outbox_api_token",
-    "SOMA_API_TOKEN": "outbox_api_token",
-    "SOMABRAIN_JWT_SECRET": "jwt_secret",
+    # Authentication and security (Art 26: secrets live in Vault — never
+    # copied from env into files; these names are mapping metadata only and
+    # must not carry secret values).
     "SOMABRAIN_JWT_PUBLIC_KEY_PATH": "jwt_public_key_path",
     # Observability
     "OTEL_EXPORTER_OTLP_ENDPOINT": "otel_exporter_otlp_endpoint",

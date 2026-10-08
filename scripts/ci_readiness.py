@@ -212,9 +212,12 @@ def check_outbox_pending() -> CheckResult:
     from django.conf import settings
 
     base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or settings.api_url
-    token = _env("SOMABRAIN_API_TOKEN") or _env("SOMA_API_TOKEN")
+    # Art 26: secrets from Vault/settings module state, never os.getenv
+    token = getattr(settings, "SOMABRAIN_API_TOKEN", None) or getattr(
+        settings, "SOMA_API_TOKEN", None
+    )
     if not token:
-        return CheckResult("outbox", False, "SOMABRAIN_API_TOKEN not set")
+        return CheckResult("outbox", False, "API token not in Vault/settings")
     try:
         max_pending = int(_env("SOMABRAIN_OUTBOX_MAX_PENDING", "100") or 100)
     except Exception:
