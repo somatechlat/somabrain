@@ -63,9 +63,8 @@ topic_config_updates = SOMABRAIN_TOPIC_CONFIG_UPDATES
 TOPIC_SEGMENTS = SOMABRAIN_TOPIC_SEGMENTS
 
 # --- LEARNER SETTINGS ---
-SOMABRAIN_LEARNING_TENANTS_FILE = env.str(
-    "SOMABRAIN_LEARNING_TENANTS_FILE", default="/app/config/learning.tenants.yaml"
-)
+# Operator law: no file presets. Kept empty and ignored — use BrainSetting / Django.
+SOMABRAIN_LEARNING_TENANTS_FILE = ""
 
 # --- SEGMENTATION SETTINGS ---
 ENABLE_COG_THREADS = env.bool("ENABLE_COG_THREADS", default=True)

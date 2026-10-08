@@ -7,7 +7,7 @@ Single source of truth for behaviour:
 
 Strict defaults: Avro-only, fail‑fast Kafka, and only real backends. Legacy ENABLE_* or
 SOMABRAIN_FF_* env flags are removed. Optional operator overrides are persisted
-in a JSON file (``SOMABRAIN_FEATURE_OVERRIDES`` path, default ``./data/feature_overrides.json``)
+Django settings ``SOMABRAIN_FEATURE_DISABLED`` (no files).
 listing disabled feature keys. Overrides are applied only in ``full-local`` mode;
 in ``prod`` they are ignored (fail‑closed semantics).
 """
@@ -107,28 +107,18 @@ def _resolve_mode() -> str:
 
 
 def _load_overrides() -> list[str]:
-    """Load disabled feature keys from the overrides file.
+    """Disabled feature keys from Django settings only (no files).
 
-    File format (JSON): {"disabled": ["calibration", "fusion_normalization", ...]}
-    In full-local mode these are applied; ignored in prod.
+    Operator law: no file presets. Read ``SOMABRAIN_FEATURE_DISABLED``
+    (comma-separated) from Django settings if present.
     """
-    # Use the Settings attribute that holds the overrides file path.
-    path = (
-        getattr(settings, "FEATURE_OVERRIDES_PATH", None)
-        or getattr(settings, "SOMABRAIN_FEATURE_OVERRIDES", None)
-        or "./data/feature_overrides.json"
-    )
     try:
-        p = Path(path)
-        if not p.exists():
-            return []
-        data = json.loads(p.read_text(encoding="utf-8"))
-        disabled = data.get("disabled")
-        if isinstance(disabled, list):
-            return [str(x).strip().lower() for x in disabled]
+        raw = str(getattr(settings, "SOMABRAIN_FEATURE_DISABLED", "") or "")
     except Exception:
-        pass
-    return []
+        raw = ""
+    if not raw.strip():
+        return []
+    return [x.strip().lower() for x in raw.split(",") if x.strip()]
 
 
 def get_mode_config() -> ModeConfig:
@@ -247,24 +237,47 @@ def get_learning_config() -> dict:
         "nu_min": 0.01,
         "nu_max": 5.0,
     }
-    cfg = mode_config()
-    # Apply developer overrides only in full-local mode
-    if cfg.name == "full-local":
-        try:
-            path = settings.feature_overrides_path or "./data/feature_overrides.json"
-            p = Path(path)
-            if p.exists():
-                data = json.loads(p.read_text(encoding="utf-8"))
-                lg = data.get("learning_gains") or {}
-                lc = data.get("learning_constraints") or {}
-                if isinstance(lg, dict):
-                    for k, v in lg.items():
-                        if k in gains_defaults and isinstance(v, (int, float)):
-                            gains_defaults[k] = float(v)
-                if isinstance(lc, dict):
-                    for k, v in lc.items():
-                        if k in constraints_defaults and isinstance(v, (int, float)):
-                            constraints_defaults[k] = float(v)
-        except Exception:
-            pass
+    # Operator rule: NO FILE PRESETS. Gains come from math/contracts + BrainSetting.
+    try:
+        from somabrain.math.contracts import ADAPT_BOUNDS, ADAPT_GAINS
+
+        gains_defaults = {
+            "alpha": float(ADAPT_GAINS["alpha"]),
+            "gamma": float(ADAPT_GAINS["gamma"]),
+            "lambda_": float(ADAPT_GAINS["lambda_"]),
+            "mu": float(ADAPT_GAINS["mu"]),
+            "nu": float(ADAPT_GAINS["nu"]),
+        }
+        constraints_defaults = {
+            "alpha_min": float(ADAPT_BOUNDS["alpha"][0]),
+            "alpha_max": float(ADAPT_BOUNDS["alpha"][1]),
+            "gamma_min": float(ADAPT_BOUNDS["gamma"][0]),
+            "gamma_max": float(ADAPT_BOUNDS["gamma"][1]),
+            "lambda_min": float(ADAPT_BOUNDS["lambda_"][0]),
+            "lambda_max": float(ADAPT_BOUNDS["lambda_"][1]),
+            "mu_min": float(ADAPT_BOUNDS["mu"][0]),
+            "mu_max": float(ADAPT_BOUNDS["mu"][1]),
+            "nu_min": float(ADAPT_BOUNDS["nu"][0]),
+            "nu_max": float(ADAPT_BOUNDS["nu"][1]),
+        }
+    except Exception:
+        pass
+    try:
+        from somabrain.brain_settings.models import BrainSetting
+
+        for key, attr in (
+            ("adaptation_gain_alpha", "alpha"),
+            ("adaptation_gain_gamma", "gamma"),
+            ("adaptation_gain_lambda", "lambda_"),
+            ("adaptation_gain_mu", "mu"),
+            ("adaptation_gain_nu", "nu"),
+        ):
+            try:
+                val = BrainSetting.get(key, None)
+                if val is not None:
+                    gains_defaults[attr] = float(val)
+            except Exception:
+                pass
+    except Exception:
+        pass
     return {"gains": gains_defaults, "constraints": constraints_defaults}

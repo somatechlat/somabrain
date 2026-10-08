@@ -15,58 +15,59 @@ from somabrain.settings.resolve import require_tenant
 
 
 def load_tenant_overrides() -> dict[str, dict[str, Any]]:
-    """Load per-tenant overrides from YAML/JSON or env JSON string.
+    """Load per-tenant overrides from DB/Django only (no files).
 
-    Reads from:
-    1. SOMABRAIN_LEARNING_TENANTS_FILE (YAML or JSON file)
-    2. LEARNING_TENANTS_OVERRIDES (JSON string in env)
+    Authority order (Operator: NO FILE PRESETS):
+    1. BrainSetting rows (DB, administrable)
+    2. Django settings ``LEARNING_TENANTS_OVERRIDES`` (JSON string)
 
-    Returns:
-        Dict mapping tenant IDs to their override configurations
+    File paths are ignored if present — settings must be DB or Django.
     """
-    path = settings.SOMABRAIN_LEARNING_TENANTS_FILE
     overrides: dict[str, dict[str, Any]] = {}
 
-    if path and os.path.exists(path):
+    try:
+        from somabrain.brain_settings.models import BrainSetting
+
+        # Administrable per-tenant knobs already live on BrainSetting.
+        # Group learnable keys that context/learning cares about.
+        for key in (
+            "retrieval_alpha",
+            "retrieval_beta",
+            "retrieval_gamma",
+            "retrieval_tau",
+            "entropy_cap",
+            "adapt_lr",
+            "density_target",
+            "density_floor",
+            "density_weight",
+        ):
+            try:
+                value = BrainSetting.get(key, None)
+            except Exception:
+                continue
+            if value is None:
+                continue
+            bucket = overrides.setdefault("default", {})
+            bucket[key] = value
+    except Exception:
+        pass
+
+    raw = ""
+    try:
+        raw = str(getattr(settings, "LEARNING_TENANTS_OVERRIDES", "") or "").strip()
+    except Exception:
+        raw = ""
+    if raw:
         try:
-            import yaml
+            import json as _json
 
-            with open(path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
+            data = _json.loads(raw)
             if isinstance(data, dict):
-                overrides = {
-                    str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
-                }
+                for k, v in data.items():
+                    if isinstance(v, dict):
+                        overrides[str(k)] = {**overrides.get(str(k), {}), **v}
         except Exception:
-            try:
-                import json as _json
-
-                with open(path, "r", encoding="utf-8") as f:
-                    data = _json.load(f)
-                if isinstance(data, dict):
-                    overrides = {
-                        str(k): (v or {})
-                        for k, v in data.items()
-                        if isinstance(v, dict)
-                    }
-            except Exception:
-                overrides = {}
-
-    if not overrides:
-        raw = settings.LEARNING_TENANTS_OVERRIDES.strip()
-        if raw:
-            try:
-                import json as _json
-
-                data = _json.loads(raw)
-                if isinstance(data, dict):
-                    overrides = {
-                        str(k): (v or {})
-                        for k, v in data.items()
-                        if isinstance(v, dict)
-                    }
-            except Exception:
-                overrides = {}
+            pass
 
     return overrides
 

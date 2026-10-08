@@ -1,13 +1,12 @@
 """Tenant overrides cache for per-tenant learning configuration.
 
-This module provides caching for tenant-specific learning configuration
-overrides that can be loaded from YAML/JSON files or environment variables.
+Operator law (Covenant Art 26 + VIBE): NO file presets. Overrides come from
+BrainSetting (DB, administerable) or Django settings only.
 """
 
 from __future__ import annotations
 
 import json
-import os
 
 try:
     from django.conf import settings
@@ -18,81 +17,62 @@ from somabrain.core.container import container
 
 
 class TenantOverridesCache:
-    """Cache for per-tenant configuration overrides.
-
-    This class encapsulates the caching logic for tenant-specific learning
-    configuration overrides. Overrides can be loaded from a YAML/JSON file
-    or from an environment variable.
-
-    Cache Invalidation:
-        The cache is invalidated when the configured file path changes.
-        Call clear() to force a reload on next access.
-    """
+    """Cache for per-tenant configuration overrides (DB / Django only)."""
 
     def __init__(self) -> None:
         """Initialize the instance."""
 
         self._overrides: dict[str, dict] | None = None
-        self._path: str | None = None
 
     def load(self) -> dict[str, dict]:
-        """Load tenant overrides from file or environment.
+        """Load tenant overrides from BrainSetting (DB) then Django settings.
 
-        Returns cached overrides if available and path hasn't changed.
+        Files are never read (Operator: settings must be administerable).
         """
-        path = getattr(settings, "LEARNING_TENANTS_FILE", None) if settings else None
-        # Reload if cache empty or path changed
-        if self._overrides is not None and path == self._path:
+        if self._overrides is not None:
             return self._overrides
 
         overrides: dict[str, dict] = {}
-        # Attempt to load from YAML if available
-        if path and os.path.exists(path):
+        try:
+            from somabrain.brain_settings.models import BrainSetting
+
+            for key in (
+                "retrieval_alpha",
+                "retrieval_beta",
+                "retrieval_gamma",
+                "retrieval_tau",
+                "entropy_cap",
+                "adapt_lr",
+                "density_target",
+                "density_floor",
+                "density_weight",
+            ):
+                try:
+                    value = BrainSetting.get(key, None)
+                except Exception:
+                    continue
+                if value is None:
+                    continue
+                overrides.setdefault("default", {})[key] = value
+        except Exception:
+            pass
+
+        raw = ""
+        try:
+            raw = str(getattr(settings, "LEARNING_TENANTS_OVERRIDES", "") or "").strip()
+        except Exception:
+            raw = ""
+        if raw:
             try:
-                import yaml
-
-                with open(path, "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f) or {}
+                data = json.loads(raw)
                 if isinstance(data, dict):
-                    overrides = {
-                        str(k): (v or {})
-                        for k, v in data.items()
-                        if isinstance(v, dict)
-                    }
+                    for k, v in data.items():
+                        if isinstance(v, dict):
+                            overrides[str(k)] = {**overrides.get(str(k), {}), **v}
             except Exception:
-                # Fallback to JSON parse if YAML not available or fails
-                try:
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    if isinstance(data, dict):
-                        overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
-                        }
-                except Exception:
-                    overrides = {}
-
-        # Optional: overrides via env JSON string
-        if not overrides:
-            raw = (
-                getattr(settings, "LEARNING_TENANTS_OVERRIDES") if settings else ""
-            )
-            raw = (raw or "").strip()
-            if raw:
-                try:
-                    data = json.loads(raw)
-                    if isinstance(data, dict):
-                        overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
-                        }
-                except Exception:
-                    overrides = {}
+                pass
 
         self._overrides = overrides
-        self._path = path
         return overrides
 
     def get(self, tenant_id: str) -> dict:

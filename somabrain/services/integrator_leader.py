@@ -132,47 +132,44 @@ class IntegratorLeaderElection:
             raise RuntimeError(f"Failed to initialize Redis for leader election: {e}")
 
     def _load_configs(self) -> None:
-        """Load leader election configurations from YAML file."""
+        """Load leader election configuration from BrainSetting (DB) only.
+
+        Operator law: no YAML/JSON file presets.
+        """
         try:
-            import yaml
+            from somabrain.brain_settings.models import BrainSetting
 
-            config_path = settings.SOMABRAIN_LEARNING_TENANTS_FILE
-
-            if os.path.exists(config_path):
-                with open(config_path, "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f) or {}
-
-                for tenant, tenant_cfg in data.items():
-                    if isinstance(tenant_cfg, dict):
-                        config = LeaderConfig()
-
-                        # Load min_dwell
-                        min_dwell = tenant_cfg.get("min_dwell_ms")
-                        if isinstance(min_dwell, int) and min_dwell > 0:
-                            config.min_dwell_ms = min_dwell
-
-                        # Load entropy_cap
-                        entropy_cap = tenant_cfg.get("entropy_cap")
-                        if (
-                            isinstance(entropy_cap, (int, float))
-                            and 0 < entropy_cap <= 1.0
-                        ):
-                            config.entropy_cap = float(entropy_cap)
-
-                        # Load other settings
-                        lock_ttl = tenant_cfg.get("leader_lock_ttl_seconds")
-                        if isinstance(lock_ttl, int) and lock_ttl > 0:
-                            config.lock_ttl_seconds = lock_ttl
-
-                        self._configs[tenant] = config
-
-                        # Update metrics
-                        LEADER_MIN_DWELL.labels(tenant=tenant).set(config.min_dwell_ms)
-                        LEADER_ENTROPY_CAP.labels(tenant=tenant).set(config.entropy_cap)
-
-        except Exception as e:
-            # Use defaults for all tenants if config loading fails
-            print(f"Warning: Failed to load leader configs: {e}")
+            config = LeaderConfig()
+            for key, attr in (
+                ("leader_min_dwell_ms", "min_dwell_ms"),
+                ("entropy_cap", "entropy_cap"),
+                ("leader_lock_ttl_seconds", "leader_lock_ttl_seconds"),
+            ):
+                try:
+                    val = BrainSetting.get(key, None)
+                except Exception:
+                    val = None
+                if val is None:
+                    continue
+                try:
+                    if attr == "entropy_cap":
+                        fv = float(val)
+                        if 0 < fv <= 1.0:
+                            config.entropy_cap = fv
+                    else:
+                        iv = int(val)
+                        if iv > 0:
+                            setattr(config, attr, iv)
+                except Exception:
+                    continue
+            self._configs = {"default": config}
+            try:
+                LEADER_MIN_DWELL.labels(tenant="default").set(config.min_dwell_ms)
+                LEADER_ENTROPY_CAP.labels(tenant="default").set(config.entropy_cap)
+            except Exception:
+                pass
+        except Exception:
+            self._configs = {}
 
     def get_config(self, tenant: str) -> LeaderConfig:
         """Get leader election configuration for a tenant."""

@@ -42,13 +42,13 @@ class LearnerService:
         """Initialize the instance."""
 
         self._tenant_overrides: dict[str, dict[str, Any]] = {}
-        overrides_path = settings.SOMABRAIN_LEARNING_TENANTS_FILE
-        if overrides_path:
-            try:
-                with open(overrides_path, "r", encoding="utf-8") as f:
-                    self._tenant_overrides = yaml.safe_load(f) or {}
-            except Exception as exc:  # pragma: no cover – defensive
-                logger.exception("Failed to load learner tenant overrides: %s", exc)
+        # Operator rule: NO FILE PRESETS. DB / Django only.
+        try:
+            from somabrain.context.tenant_overrides import load_tenant_overrides
+
+            self._tenant_overrides = load_tenant_overrides()
+        except Exception:
+            self._tenant_overrides = {}
 
         # Producer is set by the run loop or injected by tests.
         self._producer: Any = None
