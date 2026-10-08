@@ -70,7 +70,7 @@ def get_entropy_cap(tenant_id: str) -> float:
     try:
         from somabrain import runtime_config as _rt
 
-        env_cap = getattr(settings, "ENTROPY_CAP", None) if settings else None
+        env_cap = getattr(settings, "SOMABRAIN_ENTROPY_CAP", None) if settings else None
         entropy_cap = (
             float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
         )

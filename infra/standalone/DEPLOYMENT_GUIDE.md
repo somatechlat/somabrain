@@ -108,6 +108,53 @@ The actual bootstrap sequence is:
 5. `somabrain.settings.django_core` and `somabrain.settings.infra` fetch the
    runtime secrets and derive DSNs/tokens inside the process.
 
+## SFM vault mount (`somafractalmemory/`)
+
+SomaFractalMemory reads secrets from the KV-v2 mount `somafractalmemory/` (NOT
+`somabrain/` — that is the brain's own mount). If SFM crash-loops with
+`SecretNotFound` or `VaultNotConfigured` for `somafractalmemory/credentials`
+or `somafractalmemory/database`, the mount is missing on the Vault SFM points at.
+
+**Operator command** (SFM's own vault_init is in the SFM repo, not this one):
+
+```bash
+cd /path/to/somafractalmemory
+docker compose -f infra/standalone/docker-compose.yml \
+  --env-file infra/standalone/.env \
+  up somafractalmemory-standalone-vault-init
+```
+
+This mounts `somafractalmemory/` KV-v2 and seeds `database`, `redis`, and
+`credentials`. Verify:
+
+```bash
+docker exec somafractalmemory-standalone-vault vault secrets list
+# expect: somafractalmemory/   kv-v2
+```
+
+## `docker-compose.override.yml` — `replicas: 0` footgun
+
+`infra/standalone/docker-compose.override.yml` is a **resource-constrained
+testing profile** (fits in 8 GB Docker). It sets `deploy.replicas: 0` on:
+`cog`, `integrator_triplet`, `outbox_publisher`, `prometheus`, `jaeger`,
+`minio`, `schema_registry`, `kafka_exporter`, `postgres_exporter`.
+
+Docker Compose auto-loads `docker-compose.override.yml` when present. This
+means `docker compose up` (without `-f`) **silently skips outbox, cog, and
+integrator** — and Kafka action_updates / state_updates / agent_updates
+consumers never start.
+
+**To run the full stack**, bypass the override explicitly:
+
+```bash
+docker compose -f infra/standalone/docker-compose.yml \
+  --env-file infra/standalone/.env \
+  up -d
+```
+
+Do NOT delete the override — it is an intentional operator choice for
+resource-constrained environments. Just be aware of what it disables.
+
 ## Troubleshooting
 
 `VaultNotConfigured`

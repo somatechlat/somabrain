@@ -21,6 +21,8 @@ VIBE Compliance:
 
 from __future__ import annotations
 
+import math
+
 import logging
 import time as _t
 import types
@@ -348,11 +350,19 @@ def eval_step(
         )
 
         err = float(pred.error)
+        if not math.isfinite(err):
+            err = 0.0
+        acc = float(s)
+        if not math.isfinite(acc):
+            acc = 0.0
+        lat = float(pred_latency)
+        if not math.isfinite(lat):
+            lat = 1e-6
         perf = PerformanceMetrics(
             success_rate=max(0.0, min(1.0, 1.0 - err)),
             error_rate=err,
-            latency=max(1e-6, float(pred_latency)),
-            accuracy=float(s),
+            latency=max(1e-6, lat),
+            accuracy=acc,
         ).clamp()
         adaptive = get_adaptive_per_tenant_neuromods()
         adapted = adaptive.adapt_from_performance(

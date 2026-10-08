@@ -261,13 +261,18 @@ class MahalanobisPredictor:
         _var (Optional[np.ndarray]): Online variance vector (diagonal).
     """
 
-    def __init__(self, alpha: float = 0.01):
+    def __init__(self, alpha: float | None = None):
         """
         Initialize Mahalanobis predictor.
 
         Args:
-            alpha (float): Learning rate for EWMA updates. Default: 0.01
+            alpha (float): Learning rate for EWMA updates.
+                Default: math.contracts.PREDICTOR_EWMA_ALPHA.
         """
+        if alpha is None:
+            from somabrain.math.contracts import PREDICTOR_EWMA_ALPHA
+
+            alpha = PREDICTOR_EWMA_ALPHA
         self.alpha = float(alpha)
         self._mean: np.ndarray | None = None
         self._var: np.ndarray | None = None  # diagonal variance

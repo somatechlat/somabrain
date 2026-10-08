@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import asyncio
 import logging
 import time
@@ -82,7 +84,10 @@ class WriteMixin:
             if "quality_score" in payload:
                 try:
                     qs = float(payload["quality_score"])
-                    payload["quality_score"] = max(0.0, min(1.0, qs))
+                    if not math.isfinite(qs):
+                        payload.pop("quality_score", None)
+                    else:
+                        payload["quality_score"] = max(0.0, min(1.0, qs))
                 except Exception:
                     payload.pop("quality_score", None)
             if "domains" in payload:

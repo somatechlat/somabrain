@@ -13,18 +13,6 @@ from somabrain.memory.transport import MemoryHTTPTransport
 logger = logging.getLogger(__name__)
 
 
-def _http_setting(attr: str, default_val: int) -> int:
-    """Fetch HTTP client tuning knobs from shared settings with default."""
-    if settings is not None:
-        try:
-            value = getattr(settings, attr, default_val)
-            return int(value)
-        except Exception:
-            pass
-    return default_val
-
-
-
 def build_store_payload(
     *,
     coord: str,
@@ -129,24 +117,10 @@ class TransportMixin:
             except Exception:
                 pass
 
-        # Allow tuning via environment variables for production/dev use
-        default_max = _http_setting("http_max_connections", 64)
-        try:
-            max_conns = int(getattr(settings, "HTTP_MAX_CONNECTIONS"))
-        except Exception:
-            max_conns = default_max
-        default_keepalive = _http_setting("http_keepalive_connections", 32)
-        try:
-            keepalive = int(
-                getattr(settings, "HTTP_KEEPALIVE_CONNECTIONS")
-            )
-        except Exception:
-            keepalive = default_keepalive
-        default_retries = _http_setting("http_retries", 1)
-        try:
-            retries = int(getattr(settings, "HTTP_RETRIES"))
-        except Exception:
-            retries = default_retries
+        # EXISTING keys (settings/cognitive.py HTTP_*); numeric declaration defaults.
+        max_conns = int(getattr(settings, "HTTP_MAX_CONNECTIONS"))
+        keepalive = int(getattr(settings, "HTTP_KEEPALIVE_CONNECTIONS"))
+        retries = int(getattr(settings, "HTTP_RETRIES"))
 
         limits = None
         try:

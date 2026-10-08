@@ -48,7 +48,7 @@ from .remember import (
     remember_sync_persist,
 )
 from .superposed_trace import SuperposedTrace, TraceConfig
-from .transport import MemoryHTTPTransport, _http_setting, _response_json
+from .transport import MemoryHTTPTransport, _response_json
 from .types import RecallHit
 from .utils import (
     coord_for_key,
@@ -69,7 +69,6 @@ __all__ = [
     "RecallHit",
     # Transport
     "MemoryHTTPTransport",
-    "_http_setting",
     "_response_json",
     # Normalization
     "_stable_coord",

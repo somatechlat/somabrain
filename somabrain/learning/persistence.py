@@ -94,19 +94,28 @@ def persist_state(
     """
     if not redis_client:
         return
+    from somabrain.brain_settings.models import BRAIN_DEFAULTS
+    from somabrain.learning.config import UtilityWeights
+
+    _u = UtilityWeights()
+    # Retrieval fallbacks: BrainSetting BRAIN_DEFAULTS (single declaration).
+    _alpha = float(retrieval.get("alpha", BRAIN_DEFAULTS["retrieval_alpha"]["v"]))
+    _beta = float(retrieval.get("beta", BRAIN_DEFAULTS["retrieval_beta"]["v"]))
+    _gamma = float(retrieval.get("gamma", BRAIN_DEFAULTS["retrieval_gamma"]["v"]))
+    _tau = float(retrieval.get("tau", BRAIN_DEFAULTS["retrieval_tau"]["v"]))
     state_key = f"adaptation:state:{tenant_id}"
     state_data = json.dumps(
         {
             "retrieval": {
-                "alpha": float(retrieval.get("alpha", 1.0)),
-                "beta": float(retrieval.get("beta", 0.2)),
-                "gamma": float(retrieval.get("gamma", 0.1)),
-                "tau": float(retrieval.get("tau", 0.7)),
+                "alpha": _alpha,
+                "beta": _beta,
+                "gamma": _gamma,
+                "tau": _tau,
             },
             "utility": {
-                "lambda_": float(utility.get("lambda_", 1.0)),
-                "mu": float(utility.get("mu", 0.1)),
-                "nu": float(utility.get("nu", 0.05)),
+                "lambda_": float(utility.get("lambda_", _u.lambda_)),
+                "mu": float(utility.get("mu", _u.mu)),
+                "nu": float(utility.get("nu", _u.nu)),
             },
             "feedback_count": int(feedback_count),
             "learning_rate": float(learning_rate),

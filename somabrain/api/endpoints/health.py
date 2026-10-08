@@ -32,7 +32,25 @@ from somabrain.health.helpers import (
     get_app_config,
     get_embedder,
     get_mt_memory,
+    ping,
 )
+
+
+def _ping() -> float | None:
+    """Probe the memory HTTP endpoint and return latency in milliseconds.
+
+    Fail-closed: returns None when no endpoint is configured or the probe does
+    not return 2xx. Never fabricates a successful ping.
+    """
+    endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)
+    if not endpoint:
+        return None
+    url = str(endpoint).rstrip("/") + "/healthz"
+    start = time.perf_counter()
+    ok = ping(url)
+    if not ok:
+        return None
+    return (time.perf_counter() - start) * 1000.0
 
 
 @router.get("/health", response=HealthResponse)
@@ -58,9 +76,10 @@ def health(request: HttpRequest) -> dict[str, Any]:
     deadline_ms = request.headers.get("X-Deadline-MS")
     idempotency_key = request.headers.get("X-Idempotency-Key")
 
-    # Base health payload
+    # Base health payload. ``ok`` starts False and is recomputed at the end
+    # from the component probes (fail-closed: never claim healthy up front).
     resp = {
-        "ok": True,
+        "ok": False,
         "components": {
             "memory": {},
             "memory_circuit_open": False,
@@ -154,18 +173,31 @@ def health(request: HttpRequest) -> dict[str, Any]:
         resp["components"]["memory"]["ping_ms"] = None
         resp["components"]["memory"]["ok"] = False
 
-    # Database checks
+    # Database checks. Both helpers require a DSN/Bootstrap argument; an
+    # empty value is a real probe failure, not a silent True.
     try:
-        db_ok = check_postgres()
-        resp["components"]["postgres"] = {"ok": db_ok}
+        db_ok = check_postgres(getattr(settings, "SOMABRAIN_POSTGRES_DSN", None))
+        resp["components"]["postgres"] = {"ok": bool(db_ok)}
     except Exception:
         resp["components"]["postgres"] = {"ok": False}
 
     try:
-        kafka_ok = check_kafka()
-        resp["components"]["kafka"] = {"ok": kafka_ok}
+        kafka_ok = check_kafka(getattr(settings, "KAFKA_BOOTSTRAP_SERVERS", None))
+        resp["components"]["kafka"] = {"ok": bool(kafka_ok)}
     except Exception:
         resp["components"]["kafka"] = {"ok": False}
+
+    # Top-level ok is the rollup of probed components (fail-closed).
+    def _comp_ok(entry: Any) -> bool:
+        return bool(isinstance(entry, dict) and entry.get("ok"))
+
+    memory_ok = _comp_ok(resp["components"].get("memory"))
+    postgres_ok = _comp_ok(resp["components"].get("postgres"))
+    kafka_ok = _comp_ok(resp["components"].get("kafka"))
+    resp["memory_ok"] = memory_ok
+    resp["postgres_ok"] = postgres_ok
+    resp["kafka_ok"] = kafka_ok
+    resp["ok"] = memory_ok and postgres_ok and kafka_ok
 
     return resp
 
@@ -223,8 +255,13 @@ def health_check(request: HttpRequest) -> dict[str, Any]:
 
 @router.get("/healthz")
 def healthz(request: HttpRequest) -> dict[str, str]:
-    """Minimal health check for k8s liveness probes."""
-    return {"status": "ok"}
+    """Liveness probe only — the process is up and serving HTTP.
+
+    This is NOT a component-health aggregate. A 200 response means the
+    process is alive; it does not claim Postgres, Kafka, or memory are
+    reachable. Use ``/health`` for component health.
+    """
+    return {"status": "alive", "probe": "liveness"}
 
 
 @router.get("/diagnostics", response=dict[str, Any])

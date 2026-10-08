@@ -94,9 +94,9 @@ class PromotionTracker:
         if threshold is None:
             threshold = BrainSetting.get("promotion_threshold", tenant_id)
         if min_ticks is None:
-            # Reusing min_ticks logic or adding new setting if needed.
-            # Defaulting to 3 if not found or if setting doesn't exist yet.
-            min_ticks = 3
+            from somabrain.math.contracts import PROMOTE_TICKS
+
+            min_ticks = PROMOTE_TICKS
 
         self._threshold = float(threshold)
         self._min_ticks = int(min_ticks)

@@ -6,6 +6,8 @@ before storage.
 
 from __future__ import annotations
 
+import math
+
 import time
 from typing import Any
 
@@ -89,11 +91,14 @@ def normalize_metadata(payload: dict[str, Any]) -> dict[str, Any]:
         if "quality_score" in payload:
             try:
                 qs = float(payload["quality_score"])
-                if qs < 0:
-                    qs = 0.0
-                if qs > 1:
-                    qs = 1.0
-                payload["quality_score"] = qs
+                if not math.isfinite(qs):
+                    payload.pop("quality_score", None)
+                else:
+                    if qs < 0:
+                        qs = 0.0
+                    if qs > 1:
+                        qs = 1.0
+                    payload["quality_score"] = qs
             except Exception:
                 payload.pop("quality_score", None)
         # domains

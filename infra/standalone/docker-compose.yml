@@ -468,7 +468,39 @@ services:
     depends_on:
       somabrain_standalone_vault:
         condition: service_healthy
-    restart: "no"
+    # One-shot gate for vault_init (service_completed_successfully). Retries on
+    # failure so a briefly-unreachable Vault does not strand the stack; exits 0
+    # once unsealed. Durable re-unseal is the watch loop below.
+    restart: on-failure
+
+  # Durable unseal: Vault reseals on every server restart. The one-shot above
+  # only runs at `compose up`; this watcher re-unseals whenever the seal comes
+  # back (container restart, crash, host reboot). Same script, same key file,
+  # idempotent — a no-op when already unsealed.
+  somabrain_standalone_vault_unseal_watch:
+    image: python:3.11-alpine
+    container_name: somabrain_standalone_vault_unseal_watch
+    working_dir: /work
+    volumes:
+      - ./vault_unseal.py:/work/vault_unseal.py:ro
+      # Read-only is enough: the key file already exists after first init.
+      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/work/secrets:ro
+    environment:
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      SECRETS_DIR: /work/secrets
+    entrypoint: [ "sh", "-c" ]
+    command:
+      - |
+        while true; do
+          python3 /work/vault_unseal.py || true
+          sleep 20
+        done
+    networks:
+      - somabrain_standalone_net
+    depends_on:
+      somabrain_standalone_vault:
+        condition: service_healthy
+    restart: unless-stopped
 
   somabrain_standalone_vault_init:
     image: alpine:latest
@@ -860,9 +892,16 @@ services:
       - somabrain_standalone_net
     volumes:
       - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      # Same live-code mount as app/outbox: the image's baked-in vault_client
+      # only reads VAULT_TOKEN from ENV (banned, Rule 164). The mounted tree
+      # resolves secrets via VAULT_TOKEN_FILE.
+      - ../../somabrain:/app/somabrain:ro
     environment:
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
+      # Host aliases this worker's Django install will accept (same contract as
+      # app/outbox). django_core fails closed when the list is empty (Rule 91).
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:?set ALLOWED_HOSTS}"
 
       # VAULT BOOTSTRAP ONLY — address + token FILE, never the token value.
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
@@ -880,6 +919,17 @@ services:
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:?set SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:?set SOMABRAIN_REQUIRE_MEMORY}"
       SOMABRAIN_MODE: "${SOMABRAIN_MODE:?set SOMABRAIN_MODE}"
+      # Topology the cognitive workers need to reach their backends. Same
+      # contract as app/outbox: required, no invented defaults (Rule 91).
+      SOMABRAIN_KAFKA_URL: "kafka://somabrain_standalone_kafka:9092"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:?set KAFKA_BOOTSTRAP_SERVERS}"
+      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL:?set SOMABRAIN_OPA_URL}"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT:?set MINIO_ENDPOINT}"
+      SCHEMA_REGISTRY_URL: "${SCHEMA_REGISTRY_URL:?set SCHEMA_REGISTRY_URL}"
+      SOMABRAIN_MILVUS_HOST: "${SOMABRAIN_MILVUS_HOST:?set SOMABRAIN_MILVUS_HOST}"
+      SOMABRAIN_MILVUS_PORT: "${SOMABRAIN_MILVUS_PORT:?set SOMABRAIN_MILVUS_PORT}"
+      ENABLE_OAK: "${ENABLE_OAK:?set ENABLE_OAK}"
+      EMBED_DIM: "${EMBED_DIM:?set EMBED_DIM}"
       SOMA_HEAT_METHOD: "lanczos"
       # Enable OTEL tracing to Jaeger collector
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:?set OTEL_EXPORTER_OTLP_ENDPOINT}"
@@ -1002,10 +1052,27 @@ services:
       - /app/logs:rw,size=64m,mode=1777
       - /tmp:rw,size=64m,mode=1777
     healthcheck:
-      test: [ "CMD", "true" ]
-      interval: 30s
-      timeout: 5s
-      retries: 1
+      # Real probe, not `CMD true`. The publisher is a headless worker with no
+      # HTTP port, so health = "its own startup contract still holds":
+      #   1. Django settings import (fails on ImproperlyConfigured — e.g. a
+      #      sealed Vault leaving SOMABRAIN_MEMORY_HTTP_TOKEN unprovisioned)
+      #   2. the Vault-resolved memory token is actually present
+      #   3. Postgres answers (the outbox table it polls)
+      #   4. the publisher process is still alive
+      # A green result means the worker can do work; a red one is a real fault.
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import django; django.setup();
+          from django.conf import settings;
+          assert settings.SOMABRAIN_MEMORY_HTTP_TOKEN, 'memory token empty';
+          from django.db import connection; connection.ensure_connection()"
+          && kill -0 1
+      interval: 60s
+      # django.setup() + DB connect on the live mount can exceed 15s under load.
+      timeout: 30s
+      retries: 3
+      start_period: 60s
 
   # --- MinIO object storage (used by SFM, not brain-local Milvus) -----------
   somabrain_standalone_minio:

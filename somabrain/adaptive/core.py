@@ -27,8 +27,18 @@ class PerformanceMetrics:
     accuracy: float = 0.0
 
     def clamp(self) -> PerformanceMetrics:
-        """Execute clamp."""
+        """Execute clamp. Non-finite inputs are rejected first (NaN class)."""
 
+        import math
+
+        if not math.isfinite(self.success_rate):
+            self.success_rate = 0.0
+        if not math.isfinite(self.error_rate):
+            self.error_rate = 0.0
+        if not math.isfinite(self.latency):
+            self.latency = 1.0
+        if not math.isfinite(self.accuracy):
+            self.accuracy = 0.0
         self.success_rate = min(max(self.success_rate, 0.0), 1.0)
         self.error_rate = min(max(self.error_rate, 0.0), 1.0)
         self.latency = max(self.latency, 1e-6)

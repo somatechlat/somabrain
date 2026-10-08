@@ -254,6 +254,44 @@ PROMOTE_THETA: Final[float] = 0.85
 PROMOTE_TICKS: Final[int] = 3
 
 # ---------------------------------------------------------------------------
+# Lexical ranking bonus contract (one formula, one home)
+# ---------------------------------------------------------------------------
+#: Exact field match bonus.
+LEXICAL_BONUS_EXACT: Final[float] = 1.5
+#: Query-as-substring field match bonus.
+LEXICAL_BONUS_SUBSTRING: Final[float] = 1.0
+#: Per-token overlap weight.
+LEXICAL_BONUS_TOKEN: Final[float] = 0.25
+#: Cap on the token-overlap term.
+LEXICAL_BONUS_TOKEN_CAP: Final[float] = 1.0
+
+# ---------------------------------------------------------------------------
+# Outbox backpressure (E2.5)
+# ---------------------------------------------------------------------------
+#: Pending-outbox count that engages backpressure.
+OUTBOX_BACKPRESSURE_THRESHOLD: Final[int] = 10000
+
+# ---------------------------------------------------------------------------
+# Adaptation / learning-rate schedule (one home)
+# ---------------------------------------------------------------------------
+#: DA→LR scale floor (scale = clamp(floor + dopamine, floor, ceil)).
+ADAPT_LR_SCALE_FLOOR: Final[float] = 0.5
+#: DA→LR scale ceiling.
+ADAPT_LR_SCALE_CEIL: Final[float] = 1.2
+#: Curriculum "easy" LR multiplier.
+ADAPT_STAGE_EASY: Final[float] = 1.2
+#: Curriculum "hard" LR multiplier.
+ADAPT_STAGE_HARD: Final[float] = 0.5
+#: Tau error-damping coefficient (τ ← τ · (1 − coef·error)).
+TAU_ERROR_COEF: Final[float] = 0.05
+
+# ---------------------------------------------------------------------------
+# Predictor EWMA (Mahalanobis online mean/var)
+# ---------------------------------------------------------------------------
+#: EWMA learning rate for the Mahalanobis predictor.
+PREDICTOR_EWMA_ALPHA: Final[float] = 0.01
+
+# ---------------------------------------------------------------------------
 # Neuromodulator bounds
 # ---------------------------------------------------------------------------
 # One clamp table for every consumer (API, Rust ODE, Python hubs).
@@ -315,6 +353,21 @@ __all__ = [
     # Promotion
     "PROMOTE_THETA",
     "PROMOTE_TICKS",
+    # Lexical bonus
+    "LEXICAL_BONUS_EXACT",
+    "LEXICAL_BONUS_SUBSTRING",
+    "LEXICAL_BONUS_TOKEN",
+    "LEXICAL_BONUS_TOKEN_CAP",
+    # Outbox
+    "OUTBOX_BACKPRESSURE_THRESHOLD",
+    # Adaptation / LR
+    "ADAPT_LR_SCALE_FLOOR",
+    "ADAPT_LR_SCALE_CEIL",
+    "ADAPT_STAGE_EASY",
+    "ADAPT_STAGE_HARD",
+    "TAU_ERROR_COEF",
+    # Predictor
+    "PREDICTOR_EWMA_ALPHA",
     # Neuromod
     "NEURO_BOUNDS",
     # Numerics

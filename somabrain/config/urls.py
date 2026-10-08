@@ -283,9 +283,31 @@ def health_view(request):
     )
 
     def check_cognitive():
-        """Execute check cognitive."""
+        """Report whether OAK planner and option manager are actually loaded.
 
-        return {"planner_loaded": True, "option_manager_loaded": True}
+        Previously returned ``planner_loaded: True`` unconditionally. That
+        claim is now probed: both symbols must import and expose their API.
+        """
+        planner_loaded = False
+        option_manager_loaded = False
+        try:
+            from somabrain.oak.planner import plan_for_tenant
+
+            planner_loaded = callable(plan_for_tenant)
+        except Exception:
+            planner_loaded = False
+        try:
+            from somabrain.oak.option_manager import option_manager
+
+            option_manager_loaded = option_manager is not None and callable(
+                getattr(option_manager, "list_options", None)
+            )
+        except Exception:
+            option_manager_loaded = False
+        return {
+            "planner_loaded": planner_loaded,
+            "option_manager_loaded": option_manager_loaded,
+        }
 
     health["internal_services"]["cognitive"] = timed_check("Cognitive", check_cognitive)
 

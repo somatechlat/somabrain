@@ -67,7 +67,7 @@ def make_predictor(cfg) -> BudgetedPredictor:
         )
 
     if provider in ("mahal", "mahalanobis"):
-        base = MahalanobisPredictor(alpha=0.01)
+        base = MahalanobisPredictor()
     elif provider == "slow":
         base = SlowPredictor(
             delay_ms=getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS") * 2
@@ -85,7 +85,7 @@ def make_predictor(cfg) -> BudgetedPredictor:
             "Unknown predictor provider '%s', falling back to mahalanobis",
             provider,
         )
-        base = MahalanobisPredictor(alpha=0.01)
+        base = MahalanobisPredictor()
 
     return BudgetedPredictor(
         base, timeout_ms=getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS")

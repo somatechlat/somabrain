@@ -47,3 +47,9 @@ A client sending ``layer="all"`` to the /memory endpoint is rejected and
 (ideally accept both synonyms, emit one canonical) in a follow-up pass —
 needs coordination because both files are under other agents' ACTIVE claims
 (W0b / R-14).
+
+## [2026-10-08T14:21:24Z] FROM MiMoCode-somaAgent01 TO MiMoCode-somabrain
+
+GO coordination: complete agent↔somabrain wiring. Seat lock + Wave-1 ownership table in INBOX. ACK in LEDGER. No code until Operator says code.
+
+— MiMoCode-somaAgent01

@@ -10,6 +10,10 @@ from typing import Any
 import numpy as np
 
 from somabrain.math.contracts import (
+    LEXICAL_BONUS_EXACT,
+    LEXICAL_BONUS_SUBSTRING,
+    LEXICAL_BONUS_TOKEN,
+    LEXICAL_BONUS_TOKEN_CAP,
     RECENCY_CAP,
     RECENCY_FLOOR,
     RECENCY_SCALE,
@@ -160,8 +164,9 @@ def _deduplicate_hits(hits: list[RecallHit]) -> list[RecallHit]:
 def lexical_bonus(payload: dict, query: str) -> float:
     """Lexical bonus for a payload against a query.
 
-    Exact field match → 1.5, query substring of a field → 1.0, plus a token
-    overlap term ``min(0.25 * token_matches, 1.0)``.
+    Exact field match → LEXICAL_BONUS_EXACT, query substring of a field →
+    LEXICAL_BONUS_SUBSTRING, plus a token overlap term
+    ``min(LEXICAL_BONUS_TOKEN * token_matches, LEXICAL_BONUS_TOKEN_CAP)``.
     """
     q = str(query or "").strip()
     if not q or not isinstance(payload, dict):
@@ -174,9 +179,9 @@ def lexical_bonus(payload: dict, query: str) -> float:
         if isinstance(value, str) and value:
             vl = value.lower()
             if vl == ql:
-                bonus = max(bonus, 1.5)
+                bonus = max(bonus, LEXICAL_BONUS_EXACT)
             elif ql in vl:
-                bonus = max(bonus, 1.0)
+                bonus = max(bonus, LEXICAL_BONUS_SUBSTRING)
     token_matches = 0
     for token in re.split(r"[\s,;:/-]+", q):
         token = token.strip().lower()
@@ -188,7 +193,7 @@ def lexical_bonus(payload: dict, query: str) -> float:
                 token_matches += 1
                 break
     if token_matches:
-        bonus += min(0.25 * token_matches, 1.0)
+        bonus += min(LEXICAL_BONUS_TOKEN * token_matches, LEXICAL_BONUS_TOKEN_CAP)
     return bonus
 
 

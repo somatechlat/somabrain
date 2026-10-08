@@ -27,7 +27,14 @@ except Exception:  # pragma: no cover - optional dependency
 from somabrain.learning.annealing import (
     check_entropy_cap,
 )
-from somabrain.math.contracts import TAU_FLOOR
+from somabrain.math.contracts import (
+    ADAPT_LR_SCALE_CEIL,
+    ADAPT_LR_SCALE_FLOOR,
+    ADAPT_STAGE_EASY,
+    ADAPT_STAGE_HARD,
+    TAU_FLOOR,
+    TAU_ERROR_COEF,
+)
 from somabrain.learning.config import (
     AdaptationConstraints,
     AdaptationGains,
@@ -235,12 +242,19 @@ class AdaptationEngine:
                     float(rw.tau),
                 )
             except Exception:
+                from somabrain.brain_settings.models import BRAIN_DEFAULTS as _BD
+
                 (
                     self._retrieval.alpha,
                     self._retrieval.beta,
                     self._retrieval.gamma,
                     self._retrieval.tau,
-                ) = (1.0, 0.2, 0.1, 0.7)
+                ) = (
+                    float(_BD["retrieval_alpha"]["v"]),
+                    float(_BD["retrieval_beta"]["v"]),
+                    float(_BD["retrieval_gamma"]["v"]),
+                    float(_BD["retrieval_tau"]["v"]),
+                )
         if utility_defaults is not None:
             self._utility.lambda_, self._utility.mu, self._utility.nu = (
                 float(utility_defaults.lambda_),
@@ -248,7 +262,12 @@ class AdaptationEngine:
                 float(utility_defaults.nu),
             )
         else:
-            self._utility.lambda_, self._utility.mu, self._utility.nu = 1.0, 0.1, 0.05
+            _u = UtilityWeights()
+            self._utility.lambda_, self._utility.mu, self._utility.nu = (
+                _u.lambda_,
+                _u.mu,
+                _u.nu,
+            )
         if base_lr is not None:
             self.set_base_learning_rate(float(base_lr))
         else:
@@ -354,7 +373,10 @@ class AdaptationEngine:
         )
         if dyn_lr_active:
             dopamine = self._get_dopamine_level()
-            lr_scale = min(max(0.5 + dopamine, 0.5), 1.2)
+            lr_scale = min(
+                max(ADAPT_LR_SCALE_FLOOR + dopamine, ADAPT_LR_SCALE_FLOOR),
+                ADAPT_LR_SCALE_CEIL,
+            )
             self._lr = self._base_lr * lr_scale
         else:
             self._lr = self._base_lr
@@ -529,9 +551,9 @@ class AdaptationEngine:
 
         key, base = str(stage).strip().lower(), float(self._base_lr)
         if key == "easy":
-            self._lr = _clamp(base * 1.2, 0.001, 1.0)
+            self._lr = _clamp(base * ADAPT_STAGE_EASY, 0.001, 1.0)
         elif key == "hard":
-            self._lr = _clamp(base * 0.5, 0.001, 1.0)
+            self._lr = _clamp(base * ADAPT_STAGE_HARD, 0.001, 1.0)
         else:
             self._lr = _clamp(base, 0.001, 1.0)
 
@@ -563,10 +585,11 @@ class AdaptationEngine:
             pass
         try:
             self.apply_feedback(utility=reward, reward=reward)
+            tau_max = float(getattr(settings, "SOMABRAIN_TAU_MAX"))
             self._retrieval.tau = _clamp(
-                self._retrieval.tau * (1.0 - 0.05 * error),
+                self._retrieval.tau * (1.0 - TAU_ERROR_COEF * error),
                 TAU_FLOOR,
-                10.0,
+                tau_max,
             )
         except Exception:
             pass

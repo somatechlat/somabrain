@@ -621,5 +621,15 @@ def get_database_health(request):
 
 @router.get("/simple")
 def get_simple_health(request):
-    """Simple health check for load balancers."""
-    return {"status": "ok", "timestamp": timezone.now().isoformat()}
+    """Load-balancer liveness probe only.
+
+    Returns 200 while this process is up and serving HTTP. This is NOT a
+    component-health aggregate — Postgres, Kafka, or memory may be down and
+    this endpoint will still report the process as alive. Use ``/full`` for
+    component health.
+    """
+    return {
+        "status": "alive",
+        "probe": "liveness",
+        "timestamp": timezone.now().isoformat(),
+    }

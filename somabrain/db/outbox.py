@@ -23,6 +23,7 @@ from django.db.models import Count
 
 from somabrain.admin.core.models import OutboxEvent
 from somabrain.journal import JournalEvent, get_journal
+from somabrain.math.contracts import OUTBOX_BACKPRESSURE_THRESHOLD
 from somabrain.settings.resolve import UnconfiguredServiceError, require_tenant
 
 logger = logging.getLogger(__name__)
@@ -41,8 +42,7 @@ MEMORY_TOPICS: dict[str, str] = {
     "wm.promote": "Promote WM item to LTM",
 }
 
-# Backpressure threshold per E2.5
-OUTBOX_BACKPRESSURE_THRESHOLD = 10000
+# Backpressure threshold per E2.5 — single source math/contracts.py
 
 
 class OutboxBackpressureError(Exception):

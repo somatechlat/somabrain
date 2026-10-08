@@ -19,27 +19,6 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def _http_setting(attr: str, default_val: int) -> int:
-    """Fetch HTTP client tuning knobs from shared settings with default.
-
-    Args:
-        attr: The settings attribute name to fetch.
-        default_val: Default value if attribute is not found or invalid.
-
-    Returns:
-        The integer value from settings or the default.
-    """
-    if settings is not None:
-        try:
-            value = getattr(settings, attr)
-            if value is None:
-                return default_val
-            return int(value)
-        except Exception:
-            pass
-    return default_val
-
-
 def _response_json(resp: Any) -> Any:
     """Extract JSON from an HTTP response safely.
 
@@ -340,9 +319,9 @@ def create_memory_transport(
     headers["X-Soma-Namespace"] = namespace
     headers["X-Soma-Tenant"] = tenant
 
-    max_conns = _http_setting("http_max_connections", 64)
-    keepalive = _http_setting("http_keepalive_connections", 32)
-    retries = _http_setting("http_retries", 1)
+    max_conns = int(getattr(settings, "HTTP_MAX_CONNECTIONS"))
+    keepalive = int(getattr(settings, "HTTP_KEEPALIVE_CONNECTIONS"))
+    retries = int(getattr(settings, "HTTP_RETRIES"))
 
     try:
         import httpx

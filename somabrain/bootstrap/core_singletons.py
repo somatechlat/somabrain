@@ -128,19 +128,17 @@ def create_amygdala(cfg, fd_sketch: Any = None):
         SalienceConfig(
             w_novelty=getattr(settings, "SOMABRAIN_SALIENCE_W_NOVELTY"),
             w_error=getattr(settings, "SOMABRAIN_SALIENCE_W_ERROR"),
-            threshold_store=getattr(
-                settings, "SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.6
-            ),
+            threshold_store=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_STORE"),
             threshold_act=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_ACT"),
             hysteresis=getattr(settings, "SOMABRAIN_SALIENCE_HYSTERESIS"),
             use_soft=getattr(settings, "SOMABRAIN_USE_SOFT_SALIENCE"),
             soft_temperature=getattr(
-                settings, "SOMABRAIN_SOFT_SALIENCE_TEMPERATURE", 1.0
+                settings, "SOMABRAIN_SALIENCE_SOFT_TEMPERATURE"
             ),
             method=getattr(settings, "SOMABRAIN_SALIENCE_METHOD"),
             w_fd=getattr(settings, "SOMABRAIN_SALIENCE_FD_WEIGHT"),
             fd_energy_floor=getattr(
-                settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.01
+                settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR"
             ),
         ),
         fd_backend=fd_sketch,
