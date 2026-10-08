@@ -314,7 +314,9 @@ class QuantumLayer:
 
         default_lambda = production_wiener_lambda()
         try:
-            lambda_reg = float(BrainSetting.get("gmd_lambda_reg", default_lambda))
+            from somabrain.settings.resolve import require_tenant
+
+            lambda_reg = float(BrainSetting.get("gmd_lambda_reg", require_tenant()))
         except Exception:
             lambda_reg = default_lambda
 

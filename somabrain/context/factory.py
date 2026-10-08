@@ -25,11 +25,22 @@ try:
     if _quantum is not None:
         _embedder = make_embedder(settings, quantum=_quantum)
     else:
-        # Explicit disable or HRR init failure — last-resort tiny (fail-honest log).
+        # Explicit disable or HRR init failure — last-resort tiny (FAIL HONEST).
+        import logging
+
+        logging.getLogger(__name__).error(
+            "HRR/QuantumLayer UNAVAILABLE — falling back to TinyDeterministicEmbedder. "
+            "Operator law: HRR is default. Investigate immediately."
+        )
         from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
         _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
 except Exception:
+    import logging
+
+    logging.getLogger(__name__).exception(
+        "HRR/QuantumLayer init FAILED — TinyDeterministicEmbedder fallback (NOT silent)."
+    )
     from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
     _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())

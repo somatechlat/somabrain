@@ -14,5 +14,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Initialized {count} settings."))
 
         # Ensure active mode is ANALYTIC for consistent testing
-        BrainSetting.set("active_brain_mode", "ANALYTIC")
+        from somabrain.settings.resolve import require_tenant
+
+        BrainSetting.set("active_brain_mode", "ANALYTIC", require_tenant())
         self.stdout.write(self.style.SUCCESS("Set active_brain_mode to ANALYTIC."))
