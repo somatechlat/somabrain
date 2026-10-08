@@ -551,6 +551,13 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
             logger.warning("WM evict failed for coord=%s: %s", coord_str, exc)
 
     ok = bool(deleted) or wm_removed > 0
+    if ok:
+        try:
+            from somabrain.learning.memory_events import remember_learned
+
+            remember_learned(tenant, kind="forget")
+        except Exception:
+            logger.debug("forget learning hook failed", exc_info=True)
     return {
         "ok": ok,
         "coord": coord_str,

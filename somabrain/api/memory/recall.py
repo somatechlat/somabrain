@@ -387,6 +387,16 @@ async def perform_recall(
     except Exception as e:
         logger.debug("Failed to observe recall latency: %s", e)
 
+    # APM-1: every recall is a learning event (hit vs miss) for the brain.
+    try:
+        from somabrain.learning.memory_events import remember_learned
+
+        kind = "recall_hit" if all_results else "recall_miss"
+        utility = float(all_results[0].score) if all_results and all_results[0].score is not None else None
+        remember_learned(payload.tenant, kind=kind, utility=utility)
+    except Exception as e:
+        logger.debug("recall learning hook failed: %s", e)
+
     # Session management
     current_session = payload.session_id or str(uuid.uuid4())
     _prune_sessions()

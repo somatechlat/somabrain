@@ -288,6 +288,15 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
             logger.error("Focus recall unavailable (fail-closed): %s", exc)
             raise HttpError(503, "memory recall unavailable") from exc
         focus_state.update(wm_vec, recall_hits)
+        # APM-1: cognitive focus recall is a learning event
+        try:
+            from somabrain.learning.memory_events import remember_learned
+
+            kind = "recall_hit" if recall_hits else "recall_miss"
+            utility = float(recall_hits[0][1]) if recall_hits and len(recall_hits[0]) > 1 else None
+            remember_learned(body.tenant_id or "", kind=kind, utility=utility)
+        except Exception:
+            logger.debug("cognitive recall learning hook failed", exc_info=True)
 
     act_step = {
         "step": body.task,

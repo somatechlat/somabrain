@@ -17,14 +17,16 @@ from somabrain.memory.pool import MultiTenantMemory
 
 _embedder = None
 try:
-    # Use production embedder by default; allow tiny embedder only when explicitly enabled.
-    # Use Settings attribute "allow_tiny_embedder" (bool) instead of getenv.
-    if getattr(settings, "ALLOW_TINY_EMBEDDER"):
+    # HRR/QuantumLayer is additive: same factory, quantum wired when USE_HRR.
+    from somabrain.bootstrap.singletons import make_quantum_layer
+
+    _quantum = make_quantum_layer(settings)
+    if getattr(settings, "ALLOW_TINY_EMBEDDER") and _quantum is None:
         from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 
         _embedder = TinyDeterministicEmbedder(dim=resolve_embed_dim())
     else:
-        _embedder = make_embedder(settings, quantum=None)
+        _embedder = make_embedder(settings, quantum=_quantum)
 except Exception:
     from somabrain.admin.core.embeddings import TinyDeterministicEmbedder
 

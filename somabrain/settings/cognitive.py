@@ -141,6 +141,9 @@ SOMABRAIN_DEBUG_MEMORY_CLIENT = env.bool("SOMABRAIN_DEBUG_MEMORY_CLIENT", defaul
 # MEM_EMBED_DIM (agent) == SOMABRAIN_EMBED_DIM == SOMA_VECTOR_DIM (SFM).
 # Configuration-owned and auditable via system health — never hardcoded in logic.
 SOMABRAIN_EMBED_DIM = env.int("EMBED_DIM", default=768)
+# JL projection target: HRR/BHDC native dim (8192) → seam dim (768)
+# so agent MEM_EMBED_DIM == brain SOMABRAIN_EMBED_DIM == SOMA_VECTOR_DIM.
+SOMABRAIN_EMBED_DIM_TARGET_K = SOMABRAIN_EMBED_DIM
 # Certified seam contract the effective dim must match (fail-closed on mismatch).
 SOMABRAIN_EMBED_DIM_SEAM = env.int("EMBED_DIM_SEAM", default=768)
 SOMABRAIN_WM_SIZE = env.int("SOMABRAIN_WM_SIZE", default=64)
@@ -250,7 +253,10 @@ SOMABRAIN_SALIENCE_SOFT_TEMPERATURE = env.float(
 SOMABRAIN_USE_SOFT_SALIENCE = env.bool("SOMABRAIN_USE_SOFT_SALIENCE", default=False)
 
 # Feature toggles
-SOMABRAIN_USE_HRR = env.bool("SOMABRAIN_USE_HRR", default=False)
+# HRR/QuantumLayer is ON as additive improvement (structured bind/unbind)
+# over TinyDeterministic + memory store. Not a replacement.
+SOMABRAIN_USE_HRR = True
+SOMABRAIN_EMBED_PROVIDER = "hrr"
 SOMABRAIN_USE_META_BRAIN = env.bool("SOMABRAIN_USE_META_BRAIN", default=False)
 SOMABRAIN_USE_EXEC_CONTROLLER = env.bool("SOMABRAIN_USE_EXEC_CONTROLLER", default=False)
 SOMABRAIN_USE_DRIFT_MONITOR = env.bool("SOMABRAIN_USE_DRIFT_MONITOR", default=False)
