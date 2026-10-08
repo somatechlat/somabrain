@@ -20,14 +20,18 @@ def update_metrics(
             gamma=retrieval.gamma,
             tau=retrieval.tau,
         )
-        _metrics.update_learning_utility_weights(
-            tenant_id=tenant_id,
-            lambda_=utility.lambda_,
-            mu=utility.mu,
-            nu=utility.nu,
-        )
-        _metrics.update_learning_gains(tenant_id=tenant_id, **asdict(gains))
-        _metrics.update_learning_bounds(tenant_id=tenant_id, **asdict(constraints))
+        # Optional helpers — skip quietly if the metrics surface is partial.
+        if hasattr(_metrics, "update_learning_utility_weights"):
+            _metrics.update_learning_utility_weights(
+                tenant_id=tenant_id,
+                lambda_=utility.lambda_,
+                mu=utility.mu,
+                nu=utility.nu,
+            )
+        if hasattr(_metrics, "update_learning_gains"):
+            _metrics.update_learning_gains(tenant_id=tenant_id, **asdict(gains))
+        if hasattr(_metrics, "update_learning_bounds"):
+            _metrics.update_learning_bounds(tenant_id=tenant_id, **asdict(constraints))
     except Exception:
         import logging
 
