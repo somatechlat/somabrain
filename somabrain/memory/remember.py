@@ -33,10 +33,14 @@ def _record_to_outbox(
     payload: dict,
     tenant: str,
     request_id: str,
-) -> int | None:
+) -> int:
     """Record memory operation to outbox before SFM call.
 
     Per Requirement E2.1: Record to outbox before SFM call.
+
+    Fail closed (ADV F2): any outbox failure is a missing durable trail and
+    MUST raise. A silent ``None`` lets the store hop proceed with no row to
+    replay.
 
     Args:
         coord: Memory coordinate
@@ -45,38 +49,29 @@ def _record_to_outbox(
         request_id: Request ID for tracking
 
     Returns:
-        Outbox event ID if recorded, None if outbox unavailable
+        Outbox event ID (integer PK).
+
+    Raises:
+        OutboxBackpressureError: outbox above threshold (E2.5).
+        Exception: any other enqueue failure — never swallowed.
     """
-    try:
-        from somabrain.db.outbox import (
-            OutboxBackpressureError,
-            enqueue_memory_event,
-        )
+    from somabrain.db.outbox import enqueue_memory_event
 
-        event_id = enqueue_memory_event(
-            topic="memory.store",
-            payload={
-                "coord": list(coord),
-                "payload": payload,
-                "request_id": request_id,
-            },
-            tenant_id=tenant,
-            coord=coord,
-            extra_key=request_id,
-            check_backpressure_flag=True,
-        )
-        return event_id
-
-    except OutboxBackpressureError as exc:
-        logger.warning(
-            "Outbox backpressure, skipping outbox recording",
-            pending_count=exc.pending_count,
-            threshold=exc.threshold,
-        )
-        return None
-    except Exception as exc:
-        logger.debug(f"Outbox recording failed (non-critical): {exc}")
-        return None
+    event_id = enqueue_memory_event(
+        topic="memory.store",
+        payload={
+            "coord": list(coord),
+            "payload": payload,
+            "request_id": request_id,
+        },
+        tenant_id=tenant,
+        coord=coord,
+        # INVARIANTS §3.3: identity is mem:{coord} only. request_id is
+        # payload metadata, never part of the dedupe key.
+        extra_key=None,
+        check_backpressure_flag=True,
+    )
+    return int(event_id)
 
 
 def _mark_outbox_sent(event_id: int) -> None:
@@ -176,8 +171,7 @@ def remember_sync_persist(
             server_coord = None
 
         # E2.2: Mark outbox event as sent on success
-        if outbox_event_id is not None:
-            _mark_outbox_sent(outbox_event_id)
+        _mark_outbox_sent(outbox_event_id)
 
     # E2.3: If not stored, outbox entry remains "pending" for retry
     if not stored:
@@ -238,8 +232,7 @@ async def aremember_background(
                     pass
 
             # E2.2: Mark outbox event as sent on success
-            if outbox_event_id is not None:
-                _mark_outbox_sent(outbox_event_id)
+            _mark_outbox_sent(outbox_event_id)
         elif not ok:
             logger.error(
                 "Background memory persist schema/logic failure",

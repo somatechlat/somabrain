@@ -111,6 +111,15 @@ def pytest_configure(config):
     except Exception:
         pass
 
+    # Boot the full somabrain.settings chain once, before any test module
+    # import. A later ``dj_settings.configure(minimal_dict)`` from a
+    # ``no_django`` file would replace this and break SLEEP_K0 / neuro
+    # attributes for every subsequent suite (test isolation).
+    try:
+        _ensure_django()
+    except Exception:
+        pass
+
 
 _DJANGO_READY = False
 

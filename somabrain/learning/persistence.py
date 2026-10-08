@@ -111,6 +111,15 @@ def persist_state(
     _gamma = float(retrieval.get("gamma", BRAIN_DEFAULTS["retrieval_gamma"]["v"]))
     _tau = float(retrieval.get("tau", BRAIN_DEFAULTS["retrieval_tau"]["v"]))
     state_key = f"adaptation:state:{tenant_id}"
+
+    def _sf(name: str, default: float) -> float:
+        try:
+            from django.conf import settings as dj_settings
+
+            return float(getattr(dj_settings, name, default))
+        except Exception:
+            return default
+
     state_data = json.dumps(
         {
             "retrieval": {

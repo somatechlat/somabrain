@@ -50,6 +50,28 @@ _background_ltm_failures: dict[str, int] = {}
 _background_tasks: set[asyncio.Task] = set()
 
 
+def _memory_content_equal(existing_payload: dict, stored_payload: dict) -> bool:
+    """Compare the memory content of an outbox envelope with a new payload.
+
+    The envelope is ``{"key", "payload", "request_id", ...}``; ``request_id``
+    legitimately differs across retries of the same write, so only the
+    nested ``payload`` is identity. JSON-normalise both sides so a JSONField
+    round-trip (tuples -> lists) does not invent a difference.
+    """
+    import json
+
+    def _content(envelope: dict) -> Any:
+        inner = envelope.get("payload")
+        return inner if isinstance(inner, dict) else envelope
+
+    try:
+        return json.dumps(_content(existing_payload), sort_keys=True, default=str) == (
+            json.dumps(_content({"payload": stored_payload}), sort_keys=True, default=str)
+        )
+    except Exception:
+        return _content(existing_payload) == stored_payload
+
+
 async def _durable_accept(
     *,
     tenant: str,
@@ -57,11 +79,12 @@ async def _durable_accept(
     stored_payload: dict,
     request_id: str,
     coord: tuple | None,
-) -> int:
+) -> tuple[int, bool, bool]:
     """T-6 durable accept: outbox row written and verified before any hop.
 
     Idempotency is coord-only (INVARIANTS §3.3) — never a request id, never a
     UUID. Same (tenant, coord) collapses to one row. Refuses if row is missing.
+    Returns ``(event_id, deduplicated, already_sent)``.
     """
     from django.db import IntegrityError
 
@@ -82,13 +105,24 @@ async def _durable_accept(
             check_backpressure_flag=True,
         )
     except IntegrityError:
-        # Same (tenant, coord) already accepted — replay, not a new memory.
+        # Same (tenant, coord) already accepted. Refuse to claim a durable
+        # accept for a payload that is not what that row holds (F1).
         existing = await sync_to_async(get_event_by_dedupe_key)(
             _idempotency_key("memory.store", coord, tenant, None), tenant_id=tenant
         )
         if existing is None:
             raise
-        return int(existing.id)
+        existing_payload = existing.payload or {}
+        if not _memory_content_equal(existing_payload, stored_payload):
+            # Different payload for the same coord is NOT a replay (ADV A3).
+            # The new write would be silently dropped behind the old row.
+            raise HttpError(
+                409,
+                "idempotency collision: a different payload already exists for "
+                f"this coord (event={existing.id} status={existing.status}); "
+                "refusing to drop the new write",
+            )
+        return int(existing.id), True, existing.status == "sent"
     row = await sync_to_async(
         lambda: OutboxEvent.objects.filter(id=event_id)
         .values("id", "status", "tenant_id", "topic")
@@ -99,7 +133,7 @@ async def _durable_accept(
             503,
             f"durable accept failed: outbox row id={event_id} missing after enqueue",
         )
-    return event_id
+    return event_id, False, False
 
 
 async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int:
@@ -114,7 +148,9 @@ async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int
     def _fetch_pending():
         return list(
             OutboxEvent.objects.filter(
-                topic="memory.store", tenant_id=tenant_id, status="pending"
+                topic="memory.store",
+                tenant_id=tenant_id,
+                status__in=("pending", "failed"),
             )
             .order_by("created_at")
             .values("id", "payload")
@@ -126,13 +162,31 @@ async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int
         payload = dict(row.get("payload") or {})
         key = payload.get("key")
         if key is None:
+            # Agent-path rows carry ``coord`` rather than ``key``. Derive the
+            # store key from the same coordinate identity as the dedupe key.
+            coord = payload.get("coord")
+            if coord is not None:
+                if isinstance(coord, str):
+                    key = coord.strip()
+                else:
+                    key = f"{coord[0]},{coord[1]},{coord[2]}"
+        if key is None:
             continue
         try:
             await memsvc.aremember(key, payload.get("payload") or payload)
         except Exception as exc:
             _note_background_ltm_failure(tenant_id, str(key), row["id"], exc)
             continue
-        await sync_to_async(mark_event_sent)(row["id"])
+        try:
+            marked = await sync_to_async(mark_event_sent)(row["id"])
+        except Exception:
+            marked = False
+        if not marked:
+            # Store accepted; bookkeeping did not. Row stays replayable.
+            logger.warning(
+                "outbox mark_event_sent failed id=%s tenant=%s", row["id"], tenant_id
+            )
+            continue
         closed += 1
     return closed
 
@@ -184,7 +238,14 @@ async def _persist_ltm_in_background(
     from somabrain.db.outbox import mark_event_sent
 
     try:
-        await sync_to_async(mark_event_sent)(event_id)
+        marked = await sync_to_async(mark_event_sent)(event_id)
+        if not marked:
+            logger.warning(
+                "outbox mark_event_sent returned False id=%s tenant=%s",
+                event_id,
+                tenant_id,
+            )
+            raise RuntimeError(f"mark_event_sent failed for event {event_id}")
     except Exception:
         logger.exception(
             "Failed to mark outbox event id=%s sent for tenant=%s key=%s",
@@ -316,7 +377,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         raise _map_memory_error(exc) from exc
 
     try:
-        outbox_event_id = await _durable_accept(
+        outbox_event_id, write_deduplicated, already_sent = await _durable_accept(
             tenant=payload.tenant,
             key=payload.key,
             stored_payload=stored_payload,
@@ -333,7 +394,13 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     queued_for_ltm = True
     durability = MemoryDurability.DURABLE_OUTBOX
 
-    if memsvc._is_circuit_open():
+    if already_sent:
+        # Pure idempotent replay of a write the STORE already acked. The row
+        # is ``sent`` — do not re-queue and do not claim a new hop (F5).
+        persisted_to_ltm = True
+        durability = MemoryDurability.PERSISTED_LTM
+        queued_for_ltm = False
+    elif memsvc._is_circuit_open():
         # Store is down. The outbox row IS the durable accept; leave it
         # pending for replay. Never fall through to a journal-only 200.
         degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
@@ -469,7 +536,7 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         "promoted_to_wm": promoted_to_wm,
         "persisted_to_ltm": persisted_to_ltm,
         "queued_for_ltm": queued_for_ltm,
-        "deduplicated": False,
+        "deduplicated": write_deduplicated,
         "importance": signal_feedback.importance,
         "novelty": signal_feedback.novelty,
         "ttl_applied": signal_feedback.ttl_seconds,
@@ -540,8 +607,10 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
         )
 
     if not item_contexts:
+        # Vacuous accept: nothing to write, so nothing failed. Still not a
+        # hardcoded success claim — there are simply no items to judge.
         return {
-            "ok": True,
+            "ok": not payload.items,
             "tenant": payload.tenant,
             "namespace": payload.namespace,
             "results": [],
@@ -553,19 +622,23 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
     try:
         for ctx in item_contexts:
             item_coord = None
+            # ADV A2: item universe wins over the batch default. Identity
+            # (coord / dedupe key) must follow the item, not the envelope.
+            item_universe = ctx["payload"].get("universe") or payload.universe
             try:
-                item_coord = memsvc.client().coord_for_key(ctx["key"], None)
+                item_coord = memsvc.client().coord_for_key(ctx["key"], item_universe)
             except Exception:
                 item_coord = None
-            outbox_ids.append(
-                await _durable_accept(
-                    tenant=payload.tenant,
-                    key=ctx["key"],
-                    stored_payload=ctx["payload"],
-                    request_id=f"{request_id}:{len(outbox_ids)}",
-                    coord=item_coord,
-                )
+            accepted_id, item_dedup, item_already_sent = await _durable_accept(
+                tenant=payload.tenant,
+                key=ctx["key"],
+                stored_payload=ctx["payload"],
+                request_id=f"{request_id}:{len(outbox_ids)}",
+                coord=item_coord,
             )
+            outbox_ids.append(accepted_id)
+            ctx["deduplicated"] = item_dedup
+            ctx["already_sent"] = item_already_sent
     except HttpError:
         raise
     except Exception as exc:
@@ -574,7 +647,8 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
 
     try:
         coords = await memsvc.aremember_bulk(
-            [(ctx["key"], ctx["payload"]) for ctx in item_contexts], universe=None
+            [(ctx["key"], ctx["payload"]) for ctx in item_contexts],
+            universe=payload.universe,
         )
         persisted_to_ltm = True
     except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
@@ -588,16 +662,29 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
             _note_background_ltm_failure(payload.tenant, ctx["key"], event_id, exc)
         raise HttpError(500, f"store failed: {exc}")
 
-    # Store acked the batch: close the outbox rows.
+    # Store acked the batch: close the outbox rows. A row whose mark-sent
+    # fails is still queued for LTM (F5) — report that, do not hardcode.
     from somabrain.db.outbox import mark_event_sent
 
-    for event_id in outbox_ids:
+    for idx, event_id in enumerate(outbox_ids):
+        if item_contexts[idx].get("already_sent"):
+            # Already closed before this request; nothing left to queue.
+            item_contexts[idx]["queued_for_ltm"] = False
+            continue
         try:
-            await sync_to_async(mark_event_sent)(event_id)
+            marked = await sync_to_async(mark_event_sent)(event_id)
+            if not marked:
+                logger.warning(
+                    "outbox mark_event_sent returned False id=%s", event_id
+                )
+                item_contexts[idx]["queued_for_ltm"] = True
+            else:
+                item_contexts[idx]["queued_for_ltm"] = False
         except Exception:
             logger.exception(
                 "Failed to mark batch outbox event id=%s sent", event_id
             )
+            item_contexts[idx]["queued_for_ltm"] = True
 
     results = []
 
@@ -630,7 +717,13 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
                 "coordinate": coordinate,
                 "promoted_to_wm": promoted_to_wm,
                 "persisted_to_ltm": persisted_to_ltm,
-                "deduplicated": False,
+                "queued_for_ltm": bool(ctx.get("queued_for_ltm", not persisted_to_ltm)),
+                "durability": (
+                    MemoryDurability.PERSISTED_LTM
+                    if persisted_to_ltm
+                    else MemoryDurability.DURABLE_OUTBOX
+                ),
+                "deduplicated": bool(ctx.get("deduplicated", False)),
                 "importance": signal_feedback.importance,
                 "novelty": signal_feedback.novelty,
                 "ttl_applied": signal_feedback.ttl_seconds,
@@ -648,8 +741,11 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
     except Exception:
         pass
 
+    # T-6 / R-15: ok is durable accept, never a hardcoded true. Every item got
+    # a verified outbox row before the hop and the store acked the batch.
+    durable_accept = persisted_to_ltm or bool(outbox_ids)
     return {
-        "ok": True,
+        "ok": durable_accept,
         "tenant": payload.tenant,
         "namespace": payload.namespace,
         "results": results,

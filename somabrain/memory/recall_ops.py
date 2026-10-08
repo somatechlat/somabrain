@@ -363,9 +363,10 @@ def recall_with_graph_boost(
             if isinstance(coord, list):
                 coord = tuple(coord)
             boost = score_boosts.get(coord, 0.0)
-            if boost > 0:
-                # Create new hit with boosted score
-                new_score = (hit.score or 0.0) + boost
+            if boost > 0 and hit.score is not None:
+                # Boost only a real score. A missing score stays unscored
+                # (ADV S1) — never coerce None → 0.0.
+                new_score = float(hit.score) + boost
                 boosted_hit = RecallHit(
                     payload=hit.payload,
                     score=new_score,
@@ -377,8 +378,11 @@ def recall_with_graph_boost(
         else:
             boosted_hits.append(hit)
 
-    # Sort by score descending
-    boosted_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
+    # Sort by score descending; unscored (None) last.
+    boosted_hits.sort(
+        key=lambda h: float("-inf") if h.score is None else float(h.score),
+        reverse=True,
+    )
 
     return boosted_hits
 

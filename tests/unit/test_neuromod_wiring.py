@@ -38,11 +38,14 @@ def _production_neuro_defaults() -> dict[str, float]:
 
 
 def _configure_settings() -> None:
-    """Boot django.conf with production defaults (only if not already up)."""
+    """Boot django.conf with production defaults.
+
+    When another ``no_django`` suite already called ``settings.configure``,
+    merge any missing keys instead of skipping — otherwise this suite runs
+    against an incomplete settings surface and every neuro lookup AttributeErrors.
+    """
     from django.conf import settings as dj_settings
 
-    if dj_settings.configured:
-        return
     from somabrain.math.contracts import ADAPT_BOUNDS, ADAPT_GAINS
 
     cfg: dict[str, object] = dict(_production_neuro_defaults())
@@ -83,12 +86,66 @@ def _configure_settings() -> None:
             "SOMABRAIN_USE_META_BRAIN": False,
             "SOMABRAIN_META_GAIN": 0.1,
             "SOMABRAIN_META_LIMIT": 1.0,
+            # Shared no_django surface (outbox/forget suites may boot first
+            # or second). Keep this a SUPERSET so either order works.
+            "SECRET_KEY": "neuromod-wiring-tests",
+            "ALLOWED_HOSTS": ["*"],
+            "INSTALLED_APPS": [
+                "django.contrib.contenttypes",
+                "django.contrib.auth",
+                "somabrain.admin.core",
+            ],
+            "DATABASES": {
+                "default": {
+                    "ENGINE": "django.db.backends.sqlite3",
+                    "NAME": ":memory:",
+                }
+            },
+            "SOMABRAIN_NAMESPACE": "public",
+            "SOMABRAIN_DEFAULT_TENANT": "t-nm",
+            "SOMABRAIN_JOURNAL_DIR": "/tmp/somabrain_neuromod_journal",
+            "SOMABRAIN_JOURNAL_MAX_FILE_SIZE": 1_048_576,
+            "JOURNAL_MAX_FILES": 1,
+            "JOURNAL_ROTATION_INTERVAL": 3600,
+            "JOURNAL_RETENTION_DAYS": 1,
+            "JOURNAL_COMPRESSION": False,
+            "JOURNAL_SYNC_WRITES": False,
+            "SOMABRAIN_MEMORY_HTTP_TOKEN": "test-only-token",
+            "SOMABRAIN_MEMORY_HTTP_ENDPOINT": "http://127.0.0.1:9",
+            "SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD": 3,
+            "SOMABRAIN_CIRCUIT_RESET_INTERVAL": 60.0,
+            "SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL": 0.0,
+            "SOMABRAIN_MEMORY_MODE": "http",
+            "SOMABRAIN_MEMORY_MAX": "1GB",
+            "MEMORY_DB_PATH": "/tmp/somabrain_neuromod_memory.db",
+            "SOMABRAIN_MEMORY_ENABLE_WEIGHTING": False,
+            "SOMABRAIN_MEMORY_PHASE_PRIORS": "",
+            "SOMABRAIN_MEMORY_QUALITY_EXP": 1.0,
+            "SOMABRAIN_MEMORY_DEGRADE_READONLY": False,
+            "SOMABRAIN_MEMORY_DEGRADE_TOPIC": "memory.degraded",
+            "SOMABRAIN_MEMORY_FAST_ACK": False,
+            "SOMABRAIN_EMBED_DIM": 8,
+            "SOMABRAIN_EMBEDDER_PROVIDER": "tiny",
         }
     )
+    if dj_settings.configured:
+        # Another no_django suite already booted Django. Fill gaps only —
+        # replacing settings tears down AppRegistry for every other suite.
+        for key, value in cfg.items():
+            if not hasattr(dj_settings, key):
+                setattr(dj_settings, key, value)
+        return
     dj_settings.configure(**cfg)
 
 
+# Import-time settings boot. NEVER replace a live settings object — that
+# tears down AppRegistry for every other suite. Merge/complete the
+# production defaults and load apps if needed.
 _configure_settings()
+import django as _django
+
+if not _django.apps.apps.ready:
+    _django.setup()
 
 from somabrain.adaptive.core import (  # noqa: E402
     AdaptiveParameter,
@@ -320,12 +377,88 @@ class TestApiBounds:
         with pytest.raises(NeuromodValueError):
             checked_value("dopamine", "high")  # type: ignore[arg-type]
 
-    def test_endpoint_module_uses_checked_value(self):
-        """The HTTP handler validates through the same boundary function."""
-        src = (REPO_ROOT / "somabrain" / "api" / "endpoints" / "neuromod.py").read_text()
-        assert "checked_value" in src
-        assert "NeuromodValueError" in src
-        assert "HttpError(422" in src
+    def test_adjust_endpoint_rejects_out_of_range(self, monkeypatch):
+        """Behavioural: /neuromod adjust rejects out-of-box values with 422."""
+        from ninja.errors import HttpError
+
+        from somabrain.api.endpoints import neuromod as nm_api
+
+        class _Ctx:
+            tenant_id = "t-nm-bounds"
+            namespace = "public"
+
+        monkeypatch.setattr(nm_api, "get_tenant", lambda *a, **k: _Ctx())
+        monkeypatch.setattr(nm_api, "require_auth", lambda *a, **k: None)
+
+        body = nm_api.NeuromodAdjustRequest(dopamine=99.0)
+        with pytest.raises(HttpError) as exc_info:
+            nm_api.adjust_neuromod(request=object(), body=body)
+        assert exc_info.value.status_code == 422
+
+    def test_adjust_endpoint_rejects_nan(self, monkeypatch):
+        from ninja.errors import HttpError
+
+        from somabrain.api.endpoints import neuromod as nm_api
+
+        class _Ctx:
+            tenant_id = "t-nm-nan"
+            namespace = "public"
+
+        monkeypatch.setattr(nm_api, "get_tenant", lambda *a, **k: _Ctx())
+        monkeypatch.setattr(nm_api, "require_auth", lambda *a, **k: None)
+
+        body = nm_api.NeuromodAdjustRequest(dopamine=float("nan"))
+        with pytest.raises(HttpError) as exc_info:
+            nm_api.adjust_neuromod(request=object(), body=body)
+        assert exc_info.value.status_code == 422
+
+    def test_adjust_endpoint_accepts_in_box(self, monkeypatch):
+        from somabrain.api.endpoints import neuromod as nm_api
+
+        class _Ctx:
+            tenant_id = "t-nm-ok"
+            namespace = "public"
+
+        monkeypatch.setattr(nm_api, "get_tenant", lambda *a, **k: _Ctx())
+        monkeypatch.setattr(nm_api, "require_auth", lambda *a, **k: None)
+
+        body = nm_api.NeuromodAdjustRequest(dopamine=0.5, serotonin=0.25)
+        out = nm_api.adjust_neuromod(request=object(), body=body)
+        assert out["dopamine"] == 0.5
+        assert out["serotonin"] == 0.25
+
+    def test_nan_never_becomes_max_via_min_clamp(self):
+        """NaN must not become the upper bound via ``min(1.0, nan)``.
+
+        ``min(1.0, nan)`` is 1.0 in CPython (comparison with NaN is False),
+        so ``max(0.0, min(1.0, nan))`` silently maps NaN to the MAX. The
+        production clamp is the safe order ``min(1.0, max(0.0, x))`` and
+        boundary validation rejects NaN outright.
+        """
+        import math
+
+        nan = float("nan")
+        # The dangerous pattern maps NaN to 1.0 — document it, never use it.
+        assert max(0.0, min(1.0, nan)) == 1.0
+
+        from somabrain.runtime.neuromodulators import (
+            _unit,
+            checked_value,
+            project,
+        )
+
+        u = _unit(nan)
+        assert u != 1.0, "NaN must not clamp to max"
+        assert u == 0.0
+        assert min(1.0, max(0.0, nan)) == 0.0
+
+        lo, hi = NEURO_BOUNDS["dopamine"]
+        p = project("dopamine", nan)
+        assert p == lo, "NaN projects to the lower bound, never the upper"
+        assert p != hi or lo == hi
+
+        with pytest.raises(NeuromodValueError):
+            checked_value("dopamine", nan)
 
 
 # ---------------------------------------------------------------------------

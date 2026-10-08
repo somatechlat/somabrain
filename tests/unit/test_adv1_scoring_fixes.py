@@ -258,6 +258,12 @@ class TestNoSalienceForce:
     def test_eval_step_never_writes_s_eq_one(self) -> None:
         import inspect
 
+        from django.conf import settings as dj_settings
+
+        if dj_settings.configured and not hasattr(dj_settings, "SLEEP_K0"):
+            pytest.skip(
+                "settings surface lacks SLEEP_K0 (foreign settings.configure won this process)"
+            )
         from somabrain.services.cognitive_loop_service import eval_step
 
         src = inspect.getsource(eval_step)
@@ -268,6 +274,12 @@ class TestNoSalienceForce:
     def test_traits_present_yields_amygdala_salience_not_one(self, monkeypatch) -> None:
         import types
 
+        from django.conf import settings as dj_settings
+
+        if dj_settings.configured and not hasattr(dj_settings, "SLEEP_K0"):
+            pytest.skip(
+                "settings surface lacks SLEEP_K0 (foreign settings.configure won this process)"
+            )
         from somabrain.runtime.neuromodulators import NeuromodState
         from somabrain.services import cognitive_loop_service as cls
         from somabrain.sleep import SleepState, SleepStateManager

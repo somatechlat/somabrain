@@ -73,7 +73,7 @@ behaviour is observable at the cited `file:line`.
 | DEBT-006 | P2 | Neuromod | W2 | Serotonin stored/exported but never consumed for control — **FIXED (W2)** |
 | DEBT-007 | P1 | Neuromod | W2 | Rust neuromod ODE (`update`) is dead outside a migration script — **FIXED (W2)** |
 | DEBT-008 | P0 | Learning | W3 | Python vs Rust adaptation gains differ in sign and magnitude |
-| DEBT-009 | P1 | Learning | W3 | Three τ mechanisms + four floors (0.4 / 0.1 / 0.05 / 0.01) |
+| DEBT-009 | P1 | Learning | W3 | Three τ mechanisms + four floors (0.4 / 0.1 / 0.05 / 0.01) — **FIXED (W3)** — one `TAU_FLOOR=0.1` in `math/contracts.py`; `SOMABRAIN_TAU_MIN` defaults to it; `apply_tau_annealing` uses `anneal_tau(…, TAU_FLOOR)` |
 | DEBT-010 | P1 | Learning | W3 | Entropy cap rewrites τ (and all retrieval weights) in place |
 | DEBT-011 | P0 | Mathcore | W3 | Wiener λ* formula vs hardcoded constant — **FIXED (W4)** |
 | DEBT-012 | P1 | Mathcore | W3 | Theorem 1 `p*` formula ≥ 0.5 vs comment/docs "p ≈ 0.1" — **FIXED (W4)** |
@@ -592,14 +592,14 @@ Every `REQUIRED FIX` above is either **DELETE** (remove the dead/false code or c
 | ADD-14 | Replay twins dual impl | **DELETED** |
 | ADD-15 | Live triad e2e gate | **FIXED (ClaudeCode GATE)** — LTM durable across restart; persisted_to_ltm=true |
 
-**Totals addendum (ADD-01…ADD-15 only):** 15 of 15 addendum items closed (FIXED or DELETED). This is **not** a full close-out: R-14 and R-15 below remain **OPEN**, so the late-revision work as a whole is **not** "15/15 fixed".
+**Totals addendum (ADD-01…ADD-15 only):** 15 of 15 addendum items closed (FIXED or DELETED). R-14 is closed. R-15 remains open only for the `somaAgent01` adapter call-site (outside this repo).
 
 ### 6.1 Post-GATE remaining (conversation quality — R-14 / R-15)
 
 | ID | Item | Owner | Status |
 |---|---|---|---|
-| R-14 | Recall logs `no precomputed query vector`; query hash-embeds in another space so search misses durable LTM rows | ClaudeCode WAVE A | **OPEN** — the last defect before chat works well. Brain side accepts a precomputed query vector (`embedding=` on recall/search, INVARIANTS §2.1); the remaining defect is the agent adapter still hash-embedding on the send side. |
-| R-15 | Fast-ack honesty | ClaudeCode WAVE A2 | **OPEN** |
+| R-14 | Recall logs `no precomputed query vector`; query hash-embeds in another space so search misses durable LTM rows | ClaudeCode WAVE A / MiMoCode C2 | **CLOSED** — Brain ranking accepts `embedding=` and never re-embeds (C1/C3, spy-embedder proof). C2 ONE SPACE landed: `embed_text` is bit-identical to `TinyDeterministicEmbedder` (blake2b+fold+trigrams, golden fp match). Agent query vectors live in the brain's space. Live HTTP remember→recall gate PASS (score 1.0 exact hit). |
+| R-15 | Fast-ack honesty | ClaudeCode WAVE A2 / MiMoCode contract+brain | **BRAIN + CONTRACT CLOSED** — `MemoryAck.from_brain_response` is the honest mapper (reads ok/durability/persisted_to_ltm/queued_for_ltm; never hardcodes ok=true; fails closed). Brain `/memory/remember` single path `ok=durable_accept`; batch `durable_accept`. Live response: `durability=persisted_ltm`, `persisted_to_ltm=true`. **Remaining outside somabrain:** `somaAgent01` `somabrain_adapter.remember` must call `from_brain_response` (ClaudeCode ACTIVE claim; OUTBOX posted). |
 
-**Honest status:** ADD table closed; R-14 and R-15 open. Do not cite "FIXED 15/15" for the revision — that claim was withdrawn 2026-10-07.
+**Honest status:** ADD table closed. R-14 closed. R-15 closed on somabrain; adapter call-site is somaAgent01. Do not cite "FIXED 15/15" for the revision — that claim was withdrawn 2026-10-07.
 

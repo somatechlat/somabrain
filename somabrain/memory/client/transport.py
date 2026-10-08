@@ -112,8 +112,14 @@ class TransportMixin:
         if ns:
             headers["X-Soma-Namespace"] = ns
             try:
-                tenant_guess = ns.split(":")[-1] if ":" in ns else ns
-                headers["X-Soma-Tenant"] = tenant_guess
+                # Namespace is ``base:tenant:namespace`` (api/memory/helpers
+                # _resolve_namespace). Tenant is the MIDDLE segment — the tail
+                # is the namespace, not the tenant (ADV C1).
+                parts = ns.split(":")
+                if len(parts) >= 2:
+                    headers["X-Soma-Tenant"] = parts[1]
+                else:
+                    headers["X-Soma-Tenant"] = ns
             except Exception:
                 pass
 

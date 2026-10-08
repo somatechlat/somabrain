@@ -479,11 +479,13 @@ def _rescore_and_rank_hits(
         new_score: float | None
         if query_arr is not None and stored_vec is not None:
             if stored_vec.size != query_arr.size:
-                raise RuntimeError(
-                    "stored vector dim "
-                    f"{stored_vec.size} != query vector dim {query_arr.size} — "
-                    "refusing to score across embedding spaces (INVARIANTS §2.1)"
-                )
+                # Skip, do not abort the batch (ADV H3). Cross-space rows
+                # must not kill every other hit.
+                try:
+                    payload["_unscorable"] = "vector-dim-mismatch"
+                except Exception:
+                    pass
+                continue
             # Same space, both vectors present: let the scorer compute cosine.
             # The store hint is not passed — it would override the real cosine.
             # Recency is applied once, here inside scorer.score(age_seconds=...).
@@ -509,15 +511,15 @@ def _rescore_and_rank_hits(
                 cosine=cosine_hint,
             )
         else:
-            # Neither stored vector nor store score. Never fake 0.0 — a correct
-            # Milvus hit reported as score 0 is a lie the ranker sorts on.
-            # With a precomputed query vector this is a failure (we were asked
-            # to score and cannot). Text-only callers leave the hit unscored.
+            # Neither stored vector nor store score. Never fake 0.0.
+            # Skip this hit (ADV H3) — one unscorable hit must not abort
+            # the whole recall batch.
             if query_arr is not None:
-                raise RuntimeError(
-                    "recall hit has no stored vector and no store score — cannot "
-                    "score with the precomputed query vector. Refusing to invent 0.0."
-                )
+                try:
+                    payload["_unscorable"] = "no-vector-no-score"
+                except Exception:
+                    pass
+                continue
             new_score = None
 
         try:

@@ -562,6 +562,8 @@ class MemoryBatchWriteResult(BaseModel):
     coordinate: list[float] | None = None
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
+    queued_for_ltm: bool = False
+    durability: MemoryDurability | None = None
     deduplicated: bool = False
     importance: float | None = None
     novelty: float | None = None
