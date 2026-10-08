@@ -36,80 +36,21 @@ function check_services() {
     return 0
 }
 
-# Update feature flags for roadmap compliance
+# Feature flags / runtime / tenant config: BrainSetting + Django only.
+# Operator law: NO file presets (no feature_overrides.json / runtime_overrides.json / YAML).
 function update_feature_flags() {
-    echo "⚙️  Updating feature flags for roadmap compliance..."
-    
-    # Update feature overrides
-    cat > data/feature_overrides.json << EOF
-{
-  "enabled": [
-    "fusion_normalization",
-    "consistency_checks", 
-    "calibration",
-    "hmm_segmentation",
-    "drift_detection",
-    "auto_rollback"
-  ],
-  "disabled": []
-}
-EOF
-
-    echo "${GREEN}✅ Feature flags updated for roadmap compliance${NC}"
+    echo "⚙️  Feature flags: manage via Django settings / BrainSetting (no files)."
+    echo "${GREEN}✅ Feature flags are administered in DB/Django${NC}"
 }
 
-# Update runtime configuration
 function update_runtime_config() {
-    echo "⚙️  Updating runtime configuration..."
-    
-    # Ensure runtime overrides are set
-    cat > data/runtime_overrides.json << EOF
-{
-  "integrator_alpha": 2.0,
-  "integrator_alpha_min": 0.1,
-  "integrator_alpha_max": 5.0,
-  "integrator_target_regret": 0.15,
-  "integrator_alpha_eta": 0.05,
-  "integrator_enforce_conf": true,
-  "drift_detection_enabled": true,
-  "tau_anneal_mode": "exponential",
-  "tau_anneal_rate": 0.95,
-  "tau_min": 0.05
-}
-EOF
-
-    echo "${GREEN}✅ Runtime configuration updated${NC}"
+    echo "⚙️  Runtime config: manage via BrainSetting (DB) / Django settings (no files)."
+    echo "${GREEN}✅ Runtime configuration is administered in DB/Django${NC}"
 }
 
-# Update tenant configurations
 function update_tenant_configs() {
-    echo "🏢 Updating tenant configurations..."
-    
-    # Ensure tenant learning configuration has proper parameters
-    cat > config/learning.tenants.yaml << 'EOF'
-production:
-  hazard_lambda: 0.01
-  hazard_vol_mult: 2.5
-  min_samples: 50
-  entropy_cap: 1.1
-  alpha_target_regret: 0.15
-  
-demo:
-  hazard_lambda: 0.03
-  hazard_vol_mult: 3.5
-  min_samples: 15
-  entropy_cap: 1.1
-  alpha_target_regret: 0.20
-
-sandbox:
-  hazard_lambda: 0.05
-  hazard_vol_mult: 4.0
-  min_samples: 10
-  entropy_cap: 1.2
-  alpha_target_regret: 0.25
-EOF
-
-    echo "${GREEN}✅ Tenant configuration updated${NC}"
+    echo "🏢 Tenant learning params: BrainSetting rows (DB) only (no YAML files)."
+    echo "${GREEN}✅ Tenant configuration is administered in DB${NC}"
 }
 
 # Restart services with new configuration

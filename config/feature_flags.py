@@ -1,23 +1,19 @@
 """
 Feature flags view derived from central modes.
 
-This module exposes a stable API for the Features router and tooling while
-delegating the source of truth to `somabrain.runtime.modes`. Environment-variable based
-flags are removed; optional local overrides are persisted in a JSON file and
-applied only in `full-local` mode.
+Source of truth: `somabrain.runtime.modes` + Django settings
+(``SOMABRAIN_FEATURE_DISABLED``). Operator law: no file presets, no env secrets.
 """
 
-import json
-from pathlib import Path
-from typing import Any
+from __future__ import annotations
 
-from django.conf import settings
+from typing import Any
 
 from somabrain.runtime.modes import feature_enabled, mode_config
 
 
 class FeatureFlags:
-    """Computed feature flag status."""
+    """Computed feature flag status (Django/DB only)."""
 
     KEYS: list[str] = [
         "hmm_segmentation",
@@ -30,36 +26,25 @@ class FeatureFlags:
 
     @staticmethod
     def _load_overrides() -> list[str]:
-        # Use the centralized Settings path to avoid direct os.getenv access.
-        """Execute load overrides."""
+        """Disabled keys from Django settings (comma-separated). No files."""
+        from django.conf import settings
 
-        path = settings.feature_overrides_path
         try:
-            p = Path(path)
-            if not p.exists():
-                return []
-            data = json.loads(p.read_text(encoding="utf-8"))
-            disabled = data.get("disabled")
-            if isinstance(disabled, list):
-                return [str(x).strip().lower() for x in disabled]
+            raw = str(getattr(settings, "SOMABRAIN_FEATURE_DISABLED", "") or "")
         except Exception:
-            pass
-        return []
+            raw = ""
+        if not raw.strip():
+            return []
+        return [x.strip().lower() for x in raw.split(",") if x.strip()]
 
     @classmethod
     def get_status(cls) -> dict[str, Any]:
         """Retrieve status."""
 
         cfg = mode_config()
-        disabled = cls._load_overrides() if cfg.name == "full-local" else []
+        disabled = cls._load_overrides()
 
         def resolved(k: str) -> bool:
-            """Execute resolved.
-
-            Args:
-                k: The k.
-            """
-
             mapping = {
                 "hmm_segmentation": "hmm_segmentation",
                 "fusion_normalization": "fusion_normalization",
@@ -76,17 +61,5 @@ class FeatureFlags:
 
     @classmethod
     def set_overrides(cls, disabled: list[str]) -> None:
-        """Persist disabled keys to overrides file (full-local only)."""
-        cfg = mode_config()
-        if cfg.name != "full-local":
-            return
-        # Persist overrides using the centralized Settings path.
-        path = settings.feature_overrides_path
-        try:
-            p = Path(path)
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(
-                json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
-            )
-        except Exception:
-            pass
+        """No-op file write — manage flags via Django settings / BrainSetting."""
+        return None

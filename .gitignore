@@ -184,3 +184,5 @@ Cargo.lock
 
 # --- Gemini/Agent Artifacts ---
 .gemini/
+.test-secrets/
+.playwright-cli/
