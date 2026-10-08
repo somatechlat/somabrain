@@ -312,6 +312,31 @@ def _default_wiener_lambda() -> float:
 BRAIN_DEFAULTS = {
     # ==================== OPERATIONAL MODES ====================
     "active_brain_mode": {"v": "ANALYTIC", "cat": "mode", "type": "text"},
+    # ==================== PRUNE / DECAY (administerable) ====================
+    # Agent system-role UI can tune these via BrainSetting (DB).
+    "memory_decay_rate": {
+        "v": 0.05,
+        "cat": "prune",
+        "learnable": True,
+        "min": 0.0,
+        "max": 0.5,
+    },
+    "wm_prune_threshold": {
+        "v": 0.15,
+        "cat": "prune",
+        "learnable": True,
+        "min": 0.0,
+        "max": 1.0,
+    },
+    "ltm_prune_threshold": {
+        "v": 0.05,
+        "cat": "prune",
+        "learnable": True,
+        "min": 0.0,
+        "max": 1.0,
+    },
+    "max_wm_items": {"v": 128, "cat": "prune", "min": 1, "max": 10000},
+    "max_ltm_items_per_tenant": {"v": 100000, "cat": "prune", "min": 1},
     # ==================== TOPOLOGY (DB-managed URLs — not env) ====================
     # Operator law: URLs and hosts are administerable settings, never ENV.
     "memory_http_endpoint": {"v": "", "cat": "TOPOLOGY", "type": "text"},
