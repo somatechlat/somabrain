@@ -18,7 +18,7 @@ The compose file currently defines 16 default services (17 with the `dev` profil
 
 Important architecture notes:
 
-- Standalone mode strips AAAS apps and middleware in
+- Standalone mode strips Soma Platform apps and middleware in
   `somabrain.settings.standalone`.
 - Secrets are seeded into Vault by `somabrain_standalone_vault_init`, then read
   back by the Python settings bootstrap through `vault_client.py`.

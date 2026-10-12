@@ -188,7 +188,7 @@ SomaBrain's V&V strategy follows a test pyramid approach, with broad coverage at
 | # | File | Scope |
 |---|---|---|
 | 1 | `tests/unit/test_memory_service.py` | Memory service CRUD operations |
-| 2 | `tests/unit/test_aaas_mode.py` | AAAS mode configuration and tenancy |
+| 2 | `tests/unit/test_aaas_mode.py` | Soma Platform mode configuration and tenancy |
 | 3 | `tests/unit/test_outbox_sync.py` | Transactional outbox synchronization |
 | 4 | `tests/unit/test_learning_math.py` | TD learning mathematical operations |
 | 5 | `tests/unit/memory/test_pool.py` | Memory pool management |
@@ -446,7 +446,7 @@ Per SOMA-BR-PROD-001, Section 10.1:
 
 **Verdict: ✅ GO — All criteria satisfied.**
 
-### 6.2 AAAS Mode: CONDITIONAL GO
+### 6.2 Soma Platform Mode: CONDITIONAL GO
 
 Per SOMA-BR-PROD-001, Section 10.2:
 
@@ -470,7 +470,7 @@ Per SOMA-BR-PROD-001, Section 10.2:
 | Mode | Verdict | Confidence | Blocking Conditions |
 |---|---|---|---|
 | **Standalone** | **GO** ✅ | High | None |
-| **AAAS** | **CONDITIONAL GO** ⚠️ | Medium-High | C-001 through C-005 (target: 2026-10-01) |
+| **Soma Platform** | **CONDITIONAL GO** ⚠️ | Medium-High | C-001 through C-005 (target: 2026-10-01) |
 
 ---
 

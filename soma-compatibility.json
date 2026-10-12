@@ -52,7 +52,7 @@
         "sleep_consolidation"
       ]
     },
-    "aaas": {
+    "platform": {
       "needs": ["somabrain", "somafractalmemory"],
       "enabled_features": [
         "brain_bridge",

@@ -84,7 +84,7 @@ somabrain/
 │   ├── services/           # Background services (27 files)
 │   ├── memory/             # Memory subsystem (22 files)
 │   ├── metrics/            # Prometheus metrics (22 files)
-│   ├── aaas/               # Multi-tenant (21 files)
+│   ├── platform/               # Multi-tenant (21 files)
 │   ├── brain/              # Cognitive core (5 files)
 │   ├── math/               # Mathematical modules (10 files)
 │   └── [74 standalone modules]
@@ -333,7 +333,7 @@ somabrain/
 Models split by **bounded context**:
 
 ```
-aaas/
+platform/
 ├── models.py      → Split to:
 │   ├── tenant.py          # Tenant domain
 │   ├── subscription.py    # Billing domain
@@ -360,7 +360,7 @@ Enums and constants in dedicated modules to avoid circular imports.
 
 ## 4. Applies To
 
-All `api/`, `aaas/`, and `common/` modules in SomaBrain.
+All `api/`, `platform/`, and `common/` modules in SomaBrain.
 # SRS-10: SomaFractalMemory Complete Specification
 
 **Document Version:** 1.0.0  
@@ -899,7 +899,7 @@ Secrets are **Vault only** (Covenant Art 26).
 
 *SomaFractalMemory Settings - VIBE Coding Rules Compliant*
 # Software Requirements Specification (SRS)
-# SomaBrain AAAS Platform
+# SomaBrain Soma Platform Platform
 
 **Document Version:** 1.0.0  
 **Date:** 2025-12-24  
@@ -911,12 +911,12 @@ Secrets are **Vault only** (Covenant Art 26).
 ## 1. Introduction
 
 ### 1.1 Purpose
-This SRS defines the functional and non-functional requirements for transforming SomaBrain into a fully AAAS-oriented cognitive platform with Lago billing integration.
+This SRS defines the functional and non-functional requirements for transforming SomaBrain into a fully Soma Platform-oriented cognitive platform with Lago billing integration.
 
 ### 1.2 Scope
 | Item | Description |
 |------|-------------|
-| Product Name | SomaBrain AAAS Platform |
+| Product Name | SomaBrain Soma Platform Platform |
 | Product Version | 2.0.0 |
 | Target Framework | Django 5.x / Django Ninja |
 | Billing Engine | Lago (self-hosted) |
@@ -926,7 +926,7 @@ This SRS defines the functional and non-functional requirements for transforming
 ### 1.3 Definitions and Acronyms
 | Term | Definition |
 |------|------------|
-| AAAS | Software as a Service |
+| Soma Platform | Software as a Service |
 | Lago | Open-source billing/metering platform |
 | ReBAC | Relationship-Based Access Control |
 | Tenant | A billable customer organization |
@@ -935,7 +935,7 @@ This SRS defines the functional and non-functional requirements for transforming
 
 ### 1.4 7 Personas Perspective
 
-| Persona | AAAS Feature Focus |
+| Persona | Soma Platform Feature Focus |
 |---------|-------------------|
 | 🎓 PhD Developer | Clean architecture, production-grade billing code |
 | 🔍 PhD Analyst | Usage analytics, revenue metrics, data flow |
@@ -944,13 +944,13 @@ This SRS defines the functional and non-functional requirements for transforming
 | 🔒 Security Auditor | Payment PCI compliance, credential isolation |
 | ⚡ Performance Engineer | Meter efficiency, DB query optimization |
 | 🎨 UX Consultant | Billing UX, upgrade flows, usage dashboards |
-| 🏗️ Django Architect | Django patterns for AAAS, middleware design |
+| 🏗️ Django Architect | Django patterns for Soma Platform, middleware design |
 | ⚙️ Django Expert | ORM for billing models, migrations |
 | ⛪ Django Evangelist | NO non-Django billing libraries |
 
 ---
 
-## 2. Complete AAAS Feature Requirements
+## 2. Complete Soma Platform Feature Requirements
 
 ### 2.1 Multi-Tenancy (CORE)
 
@@ -1107,7 +1107,7 @@ This SRS defines the functional and non-functional requirements for transforming
 
 ---
 
-### 2.9 API Design (AAAS Patterns)
+### 2.9 API Design (Soma Platform Patterns)
 
 | REQ-ID | Requirement | Priority | Status |
 |--------|-------------|----------|--------|
@@ -1197,7 +1197,7 @@ This SRS defines the functional and non-functional requirements for transforming
 ## 5. Next Steps
 
 1. **User Review**: Approve this SRS document
-2. **Merge with task.md**: Add AAAS phases (22-27) to existing task list
+2. **Merge with task.md**: Add Soma Platform phases (22-27) to existing task list
 3. **Lago Setup**: Confirm Lago Docker container is running
 4. **Implementation**: Begin Phase 22 (Lago Client)
 
@@ -1215,7 +1215,7 @@ This SRS defines the functional and non-functional requirements for transforming
 
 ## 1. Overview
 
-The SomaBrain AAAS Platform consists of **two microservices** that work together to provide complete memory management for AI agents:
+The SomaBrain Soma Platform Platform consists of **two microservices** that work together to provide complete memory management for AI agents:
 
 | Service | Port | Purpose |
 |---------|------|---------|
@@ -1228,7 +1228,7 @@ The SomaBrain AAAS Platform consists of **two microservices** that work together
 
 ```mermaid
 flowchart TB
-    subgraph UI["SomaBrain AAAS UI (Lit Components)"]
+    subgraph UI["SomaBrain Soma Platform UI (Lit Components)"]
         D[Dashboard]
         T[Tenants]
         M[Memory Admin]
@@ -1561,7 +1561,7 @@ flowchart TB
 
 ---
 
-*Unified Memory Platform - SomaBrain AAAS*
+*Unified Memory Platform - SomaBrain Soma Platform*
 # SRS-08: Platform Administration - Complete Specification
 
 **Document Version:** 1.0.0  
@@ -1955,7 +1955,7 @@ Secrets bootstrap via Vault. The Vault token itself is a **Vault-only / T0-secre
 
 ## 1. Overview
 
-The Multi-Tenancy module provides complete tenant isolation, lifecycle management, and quota enforcement for the SomaBrain AAAS platform.
+The Multi-Tenancy module provides complete tenant isolation, lifecycle management, and quota enforcement for the SomaBrain Soma Platform platform.
 
 ### 1.1 Scope
 
@@ -2487,7 +2487,7 @@ Secrets in this category are **Vault only** (Covenant Art 26) — never environm
 
 ## 1. Overview
 
-The Subscription & Billing module manages subscription tiers, usage metering, and billing integration with Lago for the SomaBrain AAAS platform.
+The Subscription & Billing module manages subscription tiers, usage metering, and billing integration with Lago for the SomaBrain Soma Platform platform.
 
 ### 1.1 Scope
 
@@ -2856,7 +2856,7 @@ sequenceDiagram
 
 ## 1. Overview
 
-The API Gateway module manages request processing, per-tenant rate limiting, quota enforcement, and request routing for the SomaBrain AAAS platform.
+The API Gateway module manages request processing, per-tenant rate limiting, quota enforcement, and request routing for the SomaBrain Soma Platform platform.
 
 ### 1.1 Scope
 
@@ -3205,7 +3205,7 @@ The response should show `circuit_open: false` and `memory_service: "healthy"`.
 
 ## 1. Overview
 
-The Platform Admin Administration module provides platform-level oversight, multi-tenant management, revenue dashboards, and audit capabilities for SomaBrain AAAS administrators.
+The Platform Admin Administration module provides platform-level oversight, multi-tenant management, revenue dashboards, and audit capabilities for SomaBrain Soma Platform administrators.
 
 ### 1.1 Scope
 
@@ -3504,7 +3504,7 @@ classDiagram
 
 ## 1. Overview
 
-The Observability module provides health checks, metrics collection, logging, and alerting for the SomaBrain AAAS platform.
+The Observability module provides health checks, metrics collection, logging, and alerting for the SomaBrain Soma Platform platform.
 
 ### 1.1 Scope
 
@@ -3955,7 +3955,7 @@ flowchart LR
 
 ## 1. Overview
 
-The Authentication & SSO module provides secure authentication via Keycloak, Google OAuth, and JWT token validation for the SomaBrain AAAS platform.
+The Authentication & SSO module provides secure authentication via Keycloak, Google OAuth, and JWT token validation for the SomaBrain Soma Platform platform.
 
 ### 1.1 Scope
 
@@ -4421,7 +4421,7 @@ definition memory {
 
 ---
 
-*SomaBrain AAAS - Complete Permission Matrix*
+*SomaBrain Soma Platform - Complete Permission Matrix*
 # SRS-CONSTITUTION-ISO
 ## ISO/IEC/IEEE 29148:2018 Compliant Specification
 ## SOMA System Constitution — The Supreme Regulatory Framework
@@ -5024,7 +5024,7 @@ docs/srs/
 
 ```mermaid
 flowchart TB
-    subgraph UI["SomaBrain AAAS UI"]
+    subgraph UI["SomaBrain Soma Platform UI"]
         Admin[Platform Admin Admin]
         Tenant[Tenant Portal]
     end
@@ -5067,7 +5067,7 @@ flowchart TB
 
 ---
 
-*SomaBrain AAAS Platform - ISO/IEC/IEEE 29148:2018*
+*SomaBrain Soma Platform Platform - ISO/IEC/IEEE 29148:2018*
 # SomaBrain + SomaFractalMemory - Master SRS Catalog
 
 **Version:** 2.0.0  
@@ -5361,11 +5361,11 @@ flowchart TB
 ---
 
 *Last Updated: 2025-12-24*
-# AAAS User Journey Screens - Master Index
+# Soma Platform User Journey Screens - Master Index
 
 **Document Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Purpose:** Define UI screens for every major AAAS use case
+**Purpose:** Define UI screens for every major Soma Platform use case
 
 ---
 
@@ -5726,7 +5726,7 @@ flowchart TB
 │                        ┌────────────────────┐                      │
 │                        │                    │                      │
 │                        │   🧠 SomaBrain    │                      │
-│                        │      AAAS         │                      │
+│                        │      Soma Platform         │                      │
 │                        │                    │                      │
 │                        └────────────────────┘                      │
 │                                                                    │
@@ -5768,12 +5768,12 @@ flowchart TB
 
 ---
 
-*SomaBrain AAAS - User Journey Screens - VIBE Compliant*
+*SomaBrain Soma Platform - User Journey Screens - VIBE Compliant*
 # Unified Platform Screen Map
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Purpose:** Complete screen navigation for unified SomaBrain + SomaFractalMemory AAAS UI
+**Purpose:** Complete screen navigation for unified SomaBrain + SomaFractalMemory Soma Platform UI
 
 ---
 
@@ -5866,7 +5866,7 @@ flowchart TB
 
 ```
 ┌─────────────────────────────────────┐
-│  🧠 SomaBrain AAAS                  │
+│  🧠 SomaBrain Soma Platform                  │
 │  Platform Administration            │
 ├─────────────────────────────────────┤
 │                                     │
@@ -6047,7 +6047,7 @@ flowchart TB
 
 ---
 
-*Unified Platform Screen Map - SomaBrain AAAS*
+*Unified Platform Screen Map - SomaBrain Soma Platform*
 # API Key Authentication Layer
 
 **Version:** 1.0.0  
@@ -6058,7 +6058,7 @@ flowchart TB
 
 ## 1. Overview
 
-Every component in the SomaBrain AAAS platform uses API key authentication for service-to-service and client-to-service communication.
+Every component in the SomaBrain Soma Platform platform uses API key authentication for service-to-service and client-to-service communication.
 
 ---
 
@@ -6068,7 +6068,7 @@ Every component in the SomaBrain AAAS platform uses API key authentication for s
 flowchart TB
     subgraph Clients["Clients"]
         Agent[AI Agent]
-        UI[AAAS UI]
+        UI[Soma Platform UI]
         Service[External Service]
     end
     
@@ -6324,12 +6324,12 @@ Covenant Art 26: production secrets reside exclusively in Vault. Storage in code
 
 ---
 
-*API Key Authentication Layer - SomaBrain AAAS Platform*
+*API Key Authentication Layer - SomaBrain Soma Platform Platform*
 # Platform Admin: Complete Tenant Creation Journey
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** Soma Platform Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Complete step-by-step tenant creation flow in Platform Admin interface
 
 ---
@@ -6360,7 +6360,7 @@ flowchart TB
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ 🔱 Platform Admin - SomaBrain AAAS Administration                [Admin ▼] [?] │
+│ 🔱 Platform Admin - SomaBrain Soma Platform Administration                [Admin ▼] [?] │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────┐│
@@ -6863,7 +6863,7 @@ Every tenant creation generates audit events:
 
 ---
 
-*Platform Admin: Complete Tenant Creation Journey - SomaBrain AAAS*
+*Platform Admin: Complete Tenant Creation Journey - SomaBrain Soma Platform*
 # Memory Integration Flows
 
 **Version:** 1.0.0  
@@ -6944,7 +6944,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant Admin
-    participant UI as AAAS UI
+    participant UI as Soma Platform UI
     participant SB as SomaBrain
     participant SFM as SomaFractalMemory
     participant PG as PostgreSQL
@@ -6976,7 +6976,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Admin
-    participant UI as AAAS UI
+    participant UI as Soma Platform UI
     participant SFM as SomaFractalMemory
     participant PG as PostgreSQL
     
@@ -7133,7 +7133,7 @@ flowchart LR
 
 ---
 
-*Memory Integration Flows - SomaBrain AAAS*
+*Memory Integration Flows - SomaBrain Soma Platform*
 # Platform Admin - Admin Permissions & User Management Design
 
 **Document Version:** 1.1.0  
@@ -7656,7 +7656,7 @@ flowchart TD
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** Soma Platform Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Administer memories across all tenants from Platform Admin
 
 ---
@@ -7924,7 +7924,7 @@ flowchart TB
 
 ---
 
-*Platform Admin: Memory Administration Journey - SomaBrain AAAS*
+*Platform Admin: Memory Administration Journey - SomaBrain Soma Platform*
 # Audit Log Flow
 
 **Document Version:** 1.0.0  
@@ -8056,7 +8056,7 @@ flowchart LR
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** AAAS Sys Admin (Super Admin / Platform Admin)  
+**Actor:** Soma Platform Sys Admin (Super Admin / Platform Admin)  
 **Purpose:** Complete journey for connecting SomaBrain to a billing service
 
 ---
@@ -8177,7 +8177,7 @@ flowchart TB
 
 ### 2.1 Lago Deployment
 
-Before the AAAS Admin can connect, Lago must be running:
+Before the Soma Platform Admin can connect, Lago must be running:
 
 **Option A: Self-Hosted (Docker)**
 ```yaml
@@ -8212,7 +8212,7 @@ API Key: Obtained from Lago Cloud dashboard
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                                                                                 │
 │                              🧠 SomaBrain                                       │
-│                           AAAS Administration                                   │
+│                           Soma Platform Administration                                   │
 │                                                                                 │
 │                        ┌────────────────────────────┐                           │
 │                        │                            │                           │
@@ -8408,7 +8408,7 @@ API Key: Obtained from Lago Cloud dashboard
 │ │                                                                             ││
 │ │  ✅ CONNECTION SUCCESSFUL                                                   ││
 │ │                                                                             ││
-│ │  Organization:    SomaBrain AAAS                                           ││
+│ │  Organization:    SomaBrain Soma Platform                                           ││
 │ │  Lago ID:         3e970518-e37d-4d6d-8cff-d989a3a413b7                     ││
 │ │  Currency:        USD                                                       ││
 │ │  Timezone:        UTC                                                       ││
@@ -8513,7 +8513,7 @@ API Key: Obtained from Lago Cloud dashboard
 │ ═════════════════════════════════════════════════════════════════════════════  │
 │                                                                                 │
 │ Status: ✅ Connected                                                            │
-│ Organization: SomaBrain AAAS                                                   │
+│ Organization: SomaBrain Soma Platform                                                   │
 │ Last Sync: Just now                                                             │
 │                                                                                 │
 │ ┌─────────────────────────────────────────────────────────────────────────────┐│
@@ -8680,7 +8680,7 @@ class BillingConfiguration(models.Model):
 
 ## 17. Success Criteria
 
-- [ ] AAAS Admin can configure Lago connection from UI
+- [ ] Soma Platform Admin can configure Lago connection from UI
 - [ ] Connection test validates URL and API key
 - [ ] Configuration persists across sessions
 - [ ] Plans can be imported from Lago
@@ -8690,7 +8690,7 @@ class BillingConfiguration(models.Model):
 
 ---
 
-*Billing Service Connection Flow - SomaBrain AAAS*
+*Billing Service Connection Flow - SomaBrain Soma Platform*
 *ALL 7 PERSONAS Applied*
 # Tenant Creation Complete Flow
 
@@ -8702,7 +8702,7 @@ class BillingConfiguration(models.Model):
 
 ## 1. Overview
 
-This document describes the **complete flow** for creating tenants in the SomaBrain AAAS platform, covering:
+This document describes the **complete flow** for creating tenants in the SomaBrain Soma Platform platform, covering:
 - Platform Admin Admin creating tenants
 - Self-signup tenant registration
 - Backend processing and integrations
@@ -8775,7 +8775,7 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant Admin as Platform Admin Admin
-    participant UI as AAAS UI (5173)
+    participant UI as Soma Platform UI (5173)
     participant API as SomaBrain API (9696)
     participant TM as TenantManager
     participant TR as TenantRegistry
@@ -9319,7 +9319,7 @@ sequenceDiagram
 │                                                             │
 │                    ╔═══════════════════╗                    │
 │                    ║   👁️ PLATFORM ADMIN   ║                    │
-│                    ║   AAAS Admin      ║                    │
+│                    ║   Soma Platform Admin      ║                    │
 │                    ╚═══════════════════╝                    │
 │                                                             │
 │              ┌─────────────────────────────┐                │
@@ -9600,7 +9600,7 @@ stateDiagram-v2
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** Soma Platform Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Manage billing, subscriptions, and revenue from Platform Admin
 
 ---
@@ -9867,7 +9867,7 @@ Platform Admin integrates with Lago (open-source billing) at `http://lago:3000`.
 
 ---
 
-*Platform Admin: Billing Management Journey - SomaBrain AAAS*
+*Platform Admin: Billing Management Journey - SomaBrain Soma Platform*
 # User Journey: Integrated Memory Operations
 
 **Version:** 1.0.0  
@@ -10186,7 +10186,7 @@ User journey documentation for **SomaBrain management interfaces**. SomaBrain pr
 
 ## 1. Overview
 
-Complete authentication flows for SomaBrain AAAS platform: login, logout, SSO, password reset.
+Complete authentication flows for SomaBrain Soma Platform platform: login, logout, SSO, password reset.
 
 ---
 
@@ -10312,7 +10312,7 @@ stateDiagram-v2
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** AAAS Sys Admin (Platform Admin / Super Admin)  
+**Actor:** Soma Platform Sys Admin (Platform Admin / Super Admin)  
 **Purpose:** Monitor unified SomaBrain + SomaFractalMemory platform health
 
 ---
@@ -10341,7 +10341,7 @@ Based on SomaFractalMemory docs:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     SomaBrain AAAS Platform                                  │
+│                     SomaBrain Soma Platform Platform                                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐   │
@@ -10613,7 +10613,7 @@ The Platform Admin monitoring screens consume these SomaFractalMemory endpoints:
 
 ---
 
-*Platform Admin: System Monitoring Journey - SomaBrain AAAS*
+*Platform Admin: System Monitoring Journey - SomaBrain Soma Platform*
 # User Management Flow
 
 **Document Version:** 1.0.0  
@@ -10910,7 +10910,7 @@ stateDiagram-v2
 
 **Version:** 1.0.0  
 **Date:** 2025-12-24  
-**Actor:** AAAS Sys Admin (Super Admin)  
+**Actor:** Soma Platform Sys Admin (Super Admin)  
 **Purpose:** Manage platform administrators and impersonate tenants
 
 ---
@@ -11210,7 +11210,7 @@ All user management actions generate audit events:
 
 ---
 
-*Platform Admin: User & Access Management Journey - SomaBrain AAAS*
+*Platform Admin: User & Access Management Journey - SomaBrain Soma Platform*
 # Billing & Invoices Flow
 
 **Document Version:** 1.0.0  
@@ -11641,7 +11641,7 @@ except QuotaExceededError as e:
 
 ---
 
-*Developer API Integration Journey - SomaBrain AAAS*
+*Developer API Integration Journey - SomaBrain Soma Platform*
 # User Journey: Platform Onboarding
 
 **Version:** 1.0.0  
@@ -11652,7 +11652,7 @@ except QuotaExceededError as e:
 
 ## Journey Overview
 
-Steps for setting up a new SomaBrain AAAS platform from scratch.
+Steps for setting up a new SomaBrain Soma Platform platform from scratch.
 
 ---
 
@@ -11710,7 +11710,7 @@ flowchart TB
 │ 🧠 SomaBrain - Platform Setup                                      │
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                    │
-│ Welcome to SomaBrain AAAS Platform                                 │
+│ Welcome to SomaBrain Soma Platform Platform                                 │
 │                                                                    │
 │ Let's configure your platform in a few simple steps:              │
 │                                                                    │
@@ -11892,7 +11892,7 @@ flowchart TB
 
 ---
 
-*Platform Onboarding Journey - SomaBrain AAAS*
+*Platform Onboarding Journey - SomaBrain Soma Platform*
 # Settings & Configuration Flow
 
 **Document Version:** 1.0.0  

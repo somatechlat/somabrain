@@ -54,7 +54,7 @@
 | **Tests** | **A-** | 95 test files across 8 proof categories. Property-based tests with Hypothesis. Integration tests against real infrastructure (no mocks). Minor deduction: smoke tests not pytest-collected; some edge cases in neuromodulator calibration untested. |
 | **Documentation** | **A-** | Comprehensive docs: SRS, ONBOARDING, USER_GUIDE, OPS_MANUAL, CONTRIBUTING, VIBE_RULES. Mathematical notes for GMD algorithm. Deduction: no automated Sphinx/MkDocs generation in CI. |
 | **Security** | **B+** | JWT authentication, OPA policy enforcement, Vault integration, PII masking, audit logging, per-tenant circuit breakers. Deduction: VIBE enforcement mechanism defined but automation unclear; constitution signing mechanism needs validation. |
-| **Maturity** | **Late Beta / Early Production** | All core services operational. Dual deployment modes (Standalone + AAAS). Enterprise features (multi-tenancy, observability) in place. Not yet GA: some configuration sprawl, scaling validation pending. |
+| **Maturity** | **Late Beta / Early Production** | All core services operational. Dual deployment modes (Standalone + Soma Platform). Enterprise features (multi-tenancy, observability) in place. Not yet GA: some configuration sprawl, scaling validation pending. |
 
 ### 1.2 Overall Assessment
 
@@ -215,7 +215,7 @@ API documentation is not auto-generated from docstrings. This creates:
 | Coupling | Moderate — service layer depends on shared settings and Django ORM |
 | Extensibility | Good — predictor, retriever, and preset systems are pluggable |
 | Fault tolerance | Good — per-tenant circuit breakers, transactional outbox |
-| Scalability | Moderate — single-process Django; horizontal scaling via AAAS mode |
+| Scalability | Moderate — single-process Django; horizontal scaling via Soma Platform mode |
 
 ### 5.2 Finding: Test Quality
 
@@ -271,7 +271,7 @@ API documentation is not auto-generated from docstrings. This creates:
 | R-004 | Create module-level architecture diagrams for the largest modules | Reduce onboarding time for the 116K LOC codebase |
 | R-005 | Consolidate overlapping documentation sections across audit reports | Single source of truth for each topic area |
 | R-006 | Add chaos engineering tests for per-tenant circuit breaker behavior | Validate isolation under adversarial conditions |
-| R-007 | Benchmark horizontal scaling in AAAS mode under realistic load | Validate multi-tenant production readiness |
+| R-007 | Benchmark horizontal scaling in Soma Platform mode under realistic load | Validate multi-tenant production readiness |
 
 ### 6.3 Low Priority
 

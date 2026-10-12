@@ -174,7 +174,7 @@ What kept it from being *the* best (status 2026-10-09, Wave A landed):
 | A8 | Client-path outbox `IntegrityError` → idempotent replay | `memory/remember.py` | INBOX W0 |
 | A9 | `aremember_background` never silent-return | `memory/remember.py` | INBOX W0 |
 | A10 | Remove `"all"` layer alias; fix `namespace` doc leak | `api/memory/helpers.py`, `models.py` | free-ish |
-| A11 | Delete dead/stale: `tests/aaas/`, unused exports, `fde` provider name, `milvus_client` compat shim, placeholder-named vectors | both repos | verify no callers |
+| A11 | Delete dead/stale: `tests/platform/`, unused exports, `fde` provider name, `milvus_client` compat shim, placeholder-named vectors | both repos | verify no callers |
 | A12 | `remember_bulk` no silent partial drop | `remember_bulk.py` | mine |
 | A13 | `recall_service` fallback delete or typed non-silent | `services/recall_service.py` | R-14 |
 | A14 | Sweep **every** `return []` / `return None` / `except: pass` — prove success-empty or convert to raise | both repos | test_ann_empty_is_success |

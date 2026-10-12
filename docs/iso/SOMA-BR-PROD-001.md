@@ -25,7 +25,7 @@
 | Version | Date | Author | Description |
 |---|---|---|---|
 | 1.0.0 | 2026-03-01 | Operations Team | Initial production readiness assessment |
-| 1.5.0 | 2026-04-20 | Operations Team | Added AAAS mode assessment |
+| 1.5.0 | 2026-04-20 | Operations Team | Added Soma Platform mode assessment |
 | 2.0.0 | 2026-06-15 | Operations Team | Comprehensive re-assessment: scorecards, deployment modes, K8s status, Helm charts |
 | 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-PROD-001` \| Status added as `Approved` (document names an approver). |
 
@@ -35,7 +35,7 @@
 
 1. [Production Readiness Scorecard](#1-production-readiness-scorecard)
 2. [Standalone Mode Readiness](#2-standalone-mode-readiness)
-3. [AAAS Mode Readiness](#3-aaas-mode-readiness)
+3. [Soma Platform Mode Readiness](#3-platform-mode-readiness)
 4. [Kubernetes Deployment Status](#4-kubernetes-deployment-status)
 5. [Helm Charts](#5-helm-charts)
 6. [Infrastructure Dependencies](#6-infrastructure-dependencies)
@@ -76,7 +76,7 @@
 SomaBrain is rated **Conditional Go** for production deployment:
 
 - **Standalone mode:** Ready for production with standard monitoring.
-- **AAAS mode:** Ready for controlled production with the conditions listed in Section 3.
+- **Soma Platform mode:** Ready for controlled production with the conditions listed in Section 3.
 
 ---
 
@@ -124,11 +124,11 @@ All required dependencies are satisfied. Optional components (Kafka, OPA) can be
 
 ---
 
-## 3. AAAS Mode Readiness
+## 3. Soma Platform Mode Readiness
 
 ### 3.1 Assessment
 
-AAAS mode runs SomaBrain as a multi-tenant service on port 63996 within the integrated SomaStack cluster.
+Soma Platform mode runs SomaBrain as a multi-tenant service on port 63996 within the integrated SomaStack cluster.
 
 | Criterion | Status | Evidence |
 |---|---|---|
@@ -143,7 +143,7 @@ AAAS mode runs SomaBrain as a multi-tenant service on port 63996 within the inte
 | Horizontal scaling | ⚠️ Needs Validation | K8s deployment available; load testing needed |
 | Vault integration | ✅ Ready | Dynamic secrets, key rotation |
 
-### 3.2 AAAS Conditions for Production
+### 3.2 Soma Platform Conditions for Production
 
 | Condition | Priority | Status | Target Date |
 |---|---|---|---|
@@ -153,7 +153,7 @@ AAAS mode runs SomaBrain as a multi-tenant service on port 63996 within the inte
 | C-004: Add SFM health check to readiness probe | Medium | Pending | 2026-08-15 |
 | C-005: Chaos testing for per-tenant isolation | Medium | Pending | 2026-10-01 |
 
-### 3.3 AAAS Readiness: **Conditional Go** ⚠️
+### 3.3 Soma Platform Readiness: **Conditional Go** ⚠️
 
 Core functionality is ready. Five conditions must be met before unrestricted production use.
 
@@ -175,7 +175,7 @@ Core functionality is ready. Five conditions must be met before unrestricted pro
 | PodDisruptionBudget | ⚠️ Not Configured | Needs min-available specification |
 | NetworkPolicy | ⚠️ Not Configured | Needs ingress/egress rules |
 
-### 4.2 Deployment Topology (AAAS in K8s)
+### 4.2 Deployment Topology (Soma Platform in K8s)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -289,7 +289,7 @@ somabrain:
 | Finalize and publish SomaBrain Helm chart | High | 2026-08-15 |
 | Create SomaStack umbrella chart | Medium | 2026-09-15 |
 | Add Helm chart CI testing (chart-testing) | Medium | 2026-09-01 |
-| Document Helm values overrides for AAAS vs Standalone | Medium | 2026-09-01 |
+| Document Helm values overrides for Soma Platform vs Standalone | Medium | 2026-09-01 |
 
 ---
 
@@ -297,7 +297,7 @@ somabrain:
 
 ### 6.1 Dependency Matrix
 
-| Dependency | Version | Required (Standalone) | Required (AAAS) | Health Check |
+| Dependency | Version | Required (Standalone) | Required (Soma Platform) | Health Check |
 |---|---|---|---|---|
 | PostgreSQL | 15+ | ✅ Yes | ✅ Yes | `pg_isready` |
 | Redis | 7+ | ✅ Yes | ✅ Yes | `PING` |
@@ -312,7 +312,7 @@ somabrain:
 
 ### 6.2 Port Allocation
 
-| Service | Standalone Port | AAAS Port (Docker) | AAAS Port (K8s) |
+| Service | Standalone Port | Soma Platform Port (Docker) | Soma Platform Port (K8s) |
 |---|---|---|---|
 | SomaBrain API | 9696 | 63996 | 63996 (ClusterIP) |
 | PostgreSQL | 5432 | 30106 | Managed |
@@ -388,7 +388,7 @@ See `docs/iso/SOMA-BR-VV-001.md` for verification status. Do not cite these numb
 
 ### 8.3 Resource Limits
 
-| Resource | Standalone | AAAS (per pod) |
+| Resource | Standalone | Soma Platform (per pod) |
 |---|---|---|
 | CPU | 4 cores | 2-4 cores |
 | Memory | 8Gi | 4-8Gi |
@@ -436,7 +436,7 @@ All criteria met. Ready for unrestricted production deployment.
 | Documentation complete | ✅ |
 | Security controls in place | ✅ |
 
-### 10.2 AAAS Mode: **CONDITIONAL GO** ⚠️
+### 10.2 Soma Platform Mode: **CONDITIONAL GO** ⚠️
 
 Core criteria met. Five conditions must be fulfilled for unrestricted deployment.
 
@@ -458,7 +458,7 @@ Core criteria met. Five conditions must be fulfilled for unrestricted deployment
 | Mode | Verdict | Confidence | Conditions |
 |---|---|---|---|
 | Standalone | **GO** | High | None |
-| AAAS | **CONDITIONAL GO** | Medium-High | 5 conditions (target: 2026-10-01) |
+| Soma Platform | **CONDITIONAL GO** | Medium-High | 5 conditions (target: 2026-10-01) |
 
 ---
 

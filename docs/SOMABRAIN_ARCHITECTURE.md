@@ -253,7 +253,7 @@ The circuit breaker itself (`somabrain/infrastructure/circuit_breaker.py:27`) ma
 | `/context` | `somabrain/api/endpoints/context.py` | Context evaluation / feedback |
 | `/neuromod` | `somabrain/api/endpoints/neuromod.py` | Neuromodulator read/adjust |
 | `/health` | `somabrain/api/endpoints/health.py` | Ninja health routes |
-| AAAS routers | `somabrain/api/v1.py` | Auth, tenants, billing, admin (conditional on `INSTALLED_APPS`) |
+| Soma Platform routers | `somabrain/api/v1.py` | Auth, tenants, billing, admin (conditional on `INSTALLED_APPS`) |
 
 ### 5.1 Memory endpoints
 
@@ -266,7 +266,7 @@ The circuit breaker itself (`somabrain/infrastructure/circuit_breaker.py:27`) ma
 `somabrain/api/auth.py:30` dispatches auth:
 
 - If `SOMABRAIN_DEFAULT_TENANT == "standalone"` → `StandaloneAPIKeyAuth` validates the bearer token against `SOMABRAIN_MEMORY_HTTP_TOKEN`.
-- Otherwise → AAAS `APIKeyAuth` validates `sbk_*` keys against the `aaas_api_keys` table.
+- Otherwise → Soma Platform `APIKeyAuth` validates `sbk_*` keys against the `aaas_api_keys` table.
 
 Tenant resolution is handled by `somabrain/tenant.py:get_tenant()` / `get_tenant_sync()`, with priority:
 
@@ -352,9 +352,9 @@ out-of-box values.
 
 ---
 
-## 7. Security & Multi-Tenancy (AAAS)
+## 7. Security & Multi-Tenancy (Soma Platform)
 
-The **AAAS** (Agent-as-a-Service) subsystem lives under `somabrain/aaas/`.
+The **Soma Platform** (Agent-as-a-Service) subsystem lives under `somabrain/platform/`.
 
 ### 7.1 Authentication
 
@@ -365,20 +365,20 @@ The **AAAS** (Agent-as-a-Service) subsystem lives under `somabrain/aaas/`.
 
 ### 7.2 Authorization
 
-- `somabrain/aaas/granular.py:43` defines `PlatformRole` (9 roles) and `Permission` (65+ resource:action permissions).
+- `somabrain/platform/granular.py:43` defines `PlatformRole` (9 roles) and `Permission` (65+ resource:action permissions).
 - `require_permission("resource:action")` checks the static permission matrix.
 - `require_scope(...)` checks API-key scopes.
 
 ### 7.3 Tenant registry
 
-- `TenantRegistry` (`somabrain/aaas/logic/tenant_registry.py:36`) is Redis-backed.
-- `TenantManager` (`somabrain/aaas/logic/tenant_manager.py:25`) is the high-level async facade.
+- `TenantRegistry` (`somabrain/platform/logic/tenant_registry.py:36`) is Redis-backed.
+- `TenantManager` (`somabrain/platform/logic/tenant_manager.py:25`) is the high-level async facade.
 - `get_tenant()` resolves tenant context per request.
 
 ### 7.4 Rate limiting and quotas
 
-- `TokenBucketRateLimiter` (`somabrain/aaas/rate_limit.py:69`) — cache-backed token bucket.
-- `QuotaManager` (`somabrain/aaas/governance/quotas.py:80`) — daily/monthly write and API-call quotas.
+- `TokenBucketRateLimiter` (`somabrain/platform/rate_limit.py:69`) — cache-backed token bucket.
+- `QuotaManager` (`somabrain/platform/governance/quotas.py:80`) — daily/monthly write and API-call quotas.
 - `RateLimitMiddleware` is defined but **not registered by default** in `django_core.py`.
 
 ### 7.5 Audit
@@ -634,7 +634,7 @@ This section records the real state observed in the running standalone deploymen
 | Sleep | `somabrain/api/endpoints/sleep.py` |
 | Settings / bootstrap | `somabrain/settings/django_core.py`, `somabrain/settings/infra.py`, `somabrain/settings/standalone.py` |
 | Vault client | `somabrain/core/security/vault_client.py` |
-| AAAS | `somabrain/aaas/auth`, `somabrain/aaas/logic`, `somabrain/aaas/granular.py` |
+| Soma Platform | `somabrain/platform/auth`, `somabrain/platform/logic`, `somabrain/platform/granular.py` |
 | Standalone deployment | `infra/standalone/docker-compose.yml`, `infra/standalone/docker-entrypoint.sh` |
 
 ---

@@ -22,9 +22,9 @@ from typing import Any
 import django
 from django.conf import settings
 from django.utils import timezone
-from ninja import Router
+from ninja import Router, Schema
 
-from somabrain.api.auth import api_key_auth, Schema
+from somabrain.api.auth import api_key_auth
 
 router = Router(tags=["Health"])
 

@@ -26,7 +26,7 @@
 |---|---|---|---|
 | 2.0.2 | 2026-10-09 | SomaTech Engineering | Removed 'Python fallback when Rust unavailable' for adaptation — Rust is required (DEBT-008 closed); missing `somabrain_rs` raises. |
 | 1.0.0 | 2026-01-15 | Architecture Team | Initial architecture baseline |
-| 1.1.0 | 2026-03-01 | Architecture Team | Added AAAS deployment mode, Rust core section |
+| 1.1.0 | 2026-03-01 | Architecture Team | Added Soma Platform deployment mode, Rust core section |
 | 1.2.0 | 2026-04-20 | Architecture Team | Expanded integration points, multi-tenancy section |
 | 2.0.0 | 2026-06-15 | Architecture Team | Full rewrite: ISO/IEC 42010 compliant, all views updated, Rust core expansion, observability and debt sections added |
 | 2.0.1 | 2026-09-28 | SomaTech Engineering | Document control normalised: identifier `(blank)` set to filename stem `SOMA-BR-ARCH-001` \| Status added as `Approved` (document names an approver). |
@@ -60,7 +60,7 @@ SomaBrain is a **Hyperdimensional Cognitive Memory System** designed to provide 
 This document describes the software architecture of SomaBrain across all architectural viewpoints defined by ISO/IEC 42010:2011. It covers:
 
 - The mathematical foundation (GMD algorithm)
-- Dual deployment topologies (Standalone and AAAS)
+- Dual deployment topologies (Standalone and Soma Platform)
 - Logical, process, and physical architecture views
 - Core algorithmic components
 - The Rust acceleration core
@@ -76,10 +76,10 @@ SomaBrain operates within the **SomaStack** ecosystem:
 
 | Component | Role | Port Range |
 |---|---|---|
-| SomaBrain | Cognitive memory engine | 9696 (standalone) / 63996 (AAAS) |
+| SomaBrain | Cognitive memory engine | 9696 (standalone) / 63996 (Soma Platform) |
 | SomaAgent01 | Agent orchestration gateway | 63900 |
 | SomaFractalMemory | Distributed long-term storage | 63901 |
-| SomaStack AAAS | Admin dashboard UI | — |
+| SomaStack Soma Platform | Admin dashboard UI | — |
 
 ### 1.4 Codebase Metrics
 
@@ -156,7 +156,7 @@ SomaBrain operates as a **single-tenant**, self-contained cognitive memory servi
 
 **Use Case:** Development, evaluation, research, and small-scale production deployments where a single agent or user requires memory services.
 
-### 3.2 AAAS (As-a-Service) Mode
+### 3.2 Soma Platform (As-a-Service) Mode
 
 SomaBrain operates as a **multi-tenant** service within the integrated SomaStack cluster.
 
@@ -168,7 +168,7 @@ SomaBrain operates as a **multi-tenant** service within the integrated SomaStack
 | SomaFractalMemory | Port 63901 — distributed long-term storage, HTTP + optional direct import |
 | Memory Backend | Milvus (clustered) + SomaFractalMemory |
 | Auth | Mandatory JWT; OPA policy enforcement |
-| Configuration | `SOMABRAIN_MODE=production` + AAAS platform flags |
+| Configuration | `SOMABRAIN_MODE=production` + Soma Platform platform flags |
 
 **Use Case:** Production deployments serving multiple agents or users through the SomaStack ecosystem.
 
@@ -515,7 +515,7 @@ Schema registry: Port 30108 (Docker compose default).
 
 ### 9.1 Isolation Model
 
-SomaBrain implements cryptographic tenant isolation in AAAS mode:
+SomaBrain implements cryptographic tenant isolation in Soma Platform mode:
 
 | Mechanism | Description |
 |---|---|

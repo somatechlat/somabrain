@@ -65,9 +65,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# AAAS Mode: Agent As A Service - direct SomaFractalMemory import for sub-ms latency
-# Install with: pip install somabrain[aaas]
-aaas = [
+# Soma Platform Mode: Agent As A Service - direct SomaFractalMemory import for sub-ms latency
+# Install with: pip install somabrain[platform]
+platform = [
   "somafractalmemory",
 ]
 dev = [

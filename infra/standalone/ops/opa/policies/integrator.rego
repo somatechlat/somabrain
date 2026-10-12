@@ -7,22 +7,22 @@ package soma.policy.integrator
 default allow = false
 
 # Proposed leader defaults to candidate leader (can be overridden by rules)
-leader := input.candidate.leader
+leader = input.candidate.leader
 
 # If action weight is very strong, choose action explicitly
-leader := "action" if {
+leader = "action" {
   w := input.candidate.weights["action"]
   w >= 0.7
 }
 
 # Explicit allow: integrator evaluation for a non-blocked tenant with a candidate.
-allow if {
+allow {
   input.tenant != "blocked"
   input.candidate
   input.action
 }
 
 # Explicit deny: blocked tenant is never allowed.
-allow = false if {
+allow = false {
   input.tenant == "blocked"
 }

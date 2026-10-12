@@ -175,7 +175,7 @@ Impact
 
 ### 4.1 Description
 
-**SomaBrain's AAAS mode depends on SomaFractalMemory (port 63901) for distributed long-term memory persistence.** If SomaFractalMemory becomes unavailable or degraded, SomaBrain cannot persist consolidated memories or serve cross-agent memory queries.
+**SomaBrain's Soma Platform mode depends on SomaFractalMemory (port 63901) for distributed long-term memory persistence.** If SomaFractalMemory becomes unavailable or degraded, SomaBrain cannot persist consolidated memories or serve cross-agent memory queries.
 
 ### 4.2 Assessment
 
@@ -297,7 +297,7 @@ Impact
 | Memory count | 12M | 100M+ | Index build time, storage |
 | Vector dimension | 8,192 | 8,192 | Memory per vector |
 | Query QPS | 5,000/s | 20,000/s | Query latency |
-| Tenants (AAAS) | ~10 | ~100 | Collection count, resource isolation |
+| Tenants (Soma Platform) | ~10 | ~100 | Collection count, resource isolation |
 
 ### 6.4 Existing Mitigations
 
@@ -314,7 +314,7 @@ Impact
 |---|---|---|---|
 | Benchmark Milvus at 100M vectors | Infrastructure Team | 2026-09-01 | High |
 | Evaluate Milvus partition strategies for multi-tenancy | Architecture Team | 2026-09-15 | High |
-| Implement Milvus cluster mode for AAAS | Infrastructure Team | 2026-10-01 | Medium |
+| Implement Milvus cluster mode for Soma Platform | Infrastructure Team | 2026-10-01 | Medium |
 | Add Milvus index build time monitoring | DevOps | 2026-08-15 | Medium |
 | Evaluate alternative vector stores (Qdrant, Weaviate) as contingency | Architecture Team | 2026-12-01 | Low |
 

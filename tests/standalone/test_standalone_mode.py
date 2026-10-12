@@ -30,8 +30,8 @@ class TestStandaloneConfig:
 
         assert settings_module is not None
         # SomaBrain is HTTP + containers only: there is no product-tenancy app.
-        assert "somabrain.aaas" not in settings_module.INSTALLED_APPS
-        assert not any("aaas" in m.lower() for m in settings_module.MIDDLEWARE)
+        assert "somabrain.platform" not in settings_module.INSTALLED_APPS
+        assert not any("platform" in m.lower() for m in settings_module.MIDDLEWARE)
 
     def test_somabrain_mode_setting_exists(self):
         """Verify SOMABRAIN_MODE setting is available."""

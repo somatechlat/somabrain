@@ -71,7 +71,7 @@
 
 | Task | Owner | Start | End | Deliverable |
 |------|-------|-------|-----|-------------|
-| BR-D.1 Full AAAS integration test | SomaBrain Team | Sep 15 | Sep 18 | Brain works in AAAS stack |
+| BR-D.1 Full Soma Platform integration test | SomaBrain Team | Sep 15 | Sep 18 | Brain works in Soma Platform stack |
 | BR-D.2 Version compatibility validation | SomaBrain Team | Sep 18 | Sep 19 | COMPAT matrix verified |
 | BR-D.3 Cognitive pipeline stress test | SomaBrain Team | Sep 22 | Sep 26 | Kafka pipeline under load |
 | BR-D.4 Validation gate | PM | Oct 2 | Oct 5 | Gate signed off |

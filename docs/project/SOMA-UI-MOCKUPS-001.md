@@ -53,7 +53,7 @@ Every prefix must be reachable from UI. Missing today → **must mock**.
 | Prefix | Ops | Screen (Settings nav unless noted) |
 |---|---|---|
 | /auth | login, register, OAuth, SSO, MFA, impersonate | 1 Login · 1A Profile · 1B MFA |
-| /aaas | users, roles, api-keys, audit, health | 12 Admin · 12A Users · 12B Audit |
+| /platform | users, roles, api-keys, audit, health | 12 Admin · 12A Users · 12B Audit |
 | /core | settings_v2, degradation, kafka, migrate, agentiq | **7H System** |
 | /agents | agent CRUD, personality, tools, clone, lifecycle | 4 + 5 Wizard · 4A Agent detail |
 | /chat | conversations, messages, export | 3 + 3A |

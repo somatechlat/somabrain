@@ -303,7 +303,7 @@ Runtime API for system-role UI: `GET/PUT /settings` (`somabrain/api/endpoints/br
 | [SOMA-BR-AUDIT-001](docs/iso/SOMA-BR-AUDIT-001.md) | ISO 19011 | Audit Report — Executive scorecard, code quality analysis, strengths, weaknesses, recommendations |
 | [SOMA-BR-SEC-001](docs/iso/SOMA-BR-SEC-001.md) | ISO/IEC 27001 | Security Assessment — JWT auth, OPA policies, constitution signing, TLS, Vault, per-tenant isolation |
 | [SOMA-BR-RISK-001](docs/iso/SOMA-BR-RISK-001.md) | ISO 31000 | Risk Register — Complexity debt, SFM dependency, Kafka availability, Milvus scaling, calibration drift |
-| [SOMA-BR-PROD-001](docs/iso/SOMA-BR-PROD-001.md) | ISO/IEC 25010 | Production Readiness — Scorecard, standalone vs AAAS readiness, K8s deployment, Helm charts |
+| [SOMA-BR-PROD-001](docs/iso/SOMA-BR-PROD-001.md) | ISO/IEC 25010 | Production Readiness — Scorecard, standalone vs Soma Platform readiness, K8s deployment, Helm charts |
 
 ---
 
@@ -361,7 +361,7 @@ The design draws on published work in cognitive science and vector-symbolic comp
 | SomaAgent01 | Agent orchestration gateway | [GitHub](https://github.com/somatechlat/somaAgent01) |
 | SomaFractalMemory | Distributed long-term storage | [GitHub](https://github.com/somatechlat/somafractalmemory) |
 
-SomaStack AAAS admin UI lives in the sibling `somaAgent01` repository (not in this tree).
+SomaStack Soma Platform admin UI lives in the sibling `somaAgent01` repository (not in this tree).
 
 ---
 

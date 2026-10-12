@@ -2,11 +2,11 @@
 
 VIBE Coding Rules Compliant:
 - Real infrastructure only (NO mocks)
-- AAAS/Standalone mode separation
+- Soma Platform/Standalone mode separation
 - Centralized environment configuration
 
 Test Structure:
-- tests/aaas/      - SOMA_AAAS_MODE=true tests
+- tests/platform/      - SOMA_AAAS_MODE=true tests
 - tests/standalone/ - SOMA_AAAS_MODE=false tests
 - tests/unit/      - Pure unit tests (no infra)
 - tests/integration/ - Cross-service tests
@@ -18,7 +18,7 @@ import os
 import pytest
 
 # ===========================================================================
-# ENVIRONMENT CONFIGURATION - AAAS INFRASTRUCTURE (Port 639xx)
+# ENVIRONMENT CONFIGURATION - Soma Platform INFRASTRUCTURE (Port 639xx)
 # ===========================================================================
 
 AAAS_ENV = {
@@ -38,7 +38,7 @@ AAAS_ENV = {
     "KAFKA_BOOTSTRAP_SERVERS": "127.0.0.1:63992",
     # Mode flags
     "SOMA_AAAS_MODE": "true",
-    "SA01_DEPLOYMENT_MODE": "AAAS",
+    "SA01_DEPLOYMENT_MODE": "Soma Platform",
 }
 
 STANDALONE_ENV = {
@@ -64,7 +64,7 @@ def _apply_env(env_dict: dict) -> None:
 
 def pytest_configure(config):
     """Register custom markers and seed test-only secret state."""
-    config.addinivalue_line("markers", "aaas: AAAS mode tests (requires Docker infra)")
+    config.addinivalue_line("markers", "platform: Soma Platform mode tests (requires Docker infra)")
     config.addinivalue_line("markers", "standalone: Standalone mode tests")
     config.addinivalue_line("markers", "slow: Long-running tests")
     config.addinivalue_line("markers", "infra: Requires real infrastructure")
@@ -245,7 +245,7 @@ def init_brain_settings(request):
 
 @pytest.fixture
 def aaas_mode():
-    """Fixture to ensure AAAS mode environment."""
+    """Fixture to ensure Soma Platform mode environment."""
     _apply_env(AAAS_ENV)
     yield
 

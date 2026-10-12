@@ -250,7 +250,7 @@ All development of SomaBrain follows the **VIBE Coding Standards** (`docs/VIBE_R
 | **Reliability** | Degraded mode operation | Verified | Verified | ✅ |
 | **Reliability** | Outbox replay integrity | Verified | Verified | ✅ |
 | **Security** | VIBE compliance | 99.8%+ | ≥ 99% | ✅ |
-| **Security** | Auth enforcement | Mandatory (AAAS) | Mandatory | ✅ |
+| **Security** | Auth enforcement | Mandatory (Soma Platform) | Mandatory | ✅ |
 | **Security** | Tenant isolation | Cryptographic | Cryptographic | ✅ |
 | **Maintainability** | Code review coverage | 100% of PRs | 100% | ✅ |
 | **Maintainability** | ISO document suite | 10/10 | 10/10 | ✅ |
@@ -333,7 +333,7 @@ Detection → Classification → Root Cause → Corrective Action → Verificati
 | IMP-003 | VIBE enforcement in CI pipeline | DevOps | 2026-08-01 | Planned |
 | IMP-004 | Dependency vulnerability scanning in CI | Security Team | 2026-09-01 | Planned |
 | IMP-005 | Constitution signing end-to-end validation | Security Team | 2026-08-15 | Planned |
-| IMP-006 | AAAS horizontal scaling load test | Operations Team | 2026-09-01 | Planned |
+| IMP-006 | Soma Platform horizontal scaling load test | Operations Team | 2026-09-01 | Planned |
 | IMP-007 | Chaos engineering for per-tenant isolation | QA Team | 2026-10-01 | Planned |
 | IMP-008 | Module-level architecture diagrams (top-20) | Architecture Team | 2026-09-15 | Planned |
 | IMP-009 | Performance regression gates in CI | DevOps | 2026-09-01 | Planned |

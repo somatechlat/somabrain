@@ -34,7 +34,7 @@ Each repository maintains an identical copy of this file. When a version is bump
 
 ## 2. Component Registry
 
-| Component | Repository | Current Version | Standalone Port | AAAS Port |
+| Component | Repository | Current Version | Standalone Port | Soma Platform Port |
 |-----------|-----------|----------------|-----------------|-----------|
 | SomaAgent01 | somaAgent01 | 2.0.0 | 20020 | 63900 |
 | SomaBrain | somabrain | 0.2.0 | 9696 | 63996 |
@@ -91,19 +91,19 @@ Any component can run independently without the other two.
 
 | Component | Standalone Config | Disabled Features |
 |-----------|-------------------|-------------------|
-| SomaAgent01 | `SA01_DEPLOYMENT_MODE=STANDALONE` | BrainBridge, SFM adapter, AAAS billing, neuromodulator sync |
-| SomaBrain | `SOMABRAIN_MODE=standalone` | SFM HTTP transport, multi-tenant quotas, AAAS billing |
-| SomaFractalMemory | Standalone Docker Compose | SomaBrain token validation (sbk_* keys), AAAS admin |
+| SomaAgent01 | `SA01_DEPLOYMENT_MODE=STANDALONE` | BrainBridge, SFM adapter, Soma Platform billing, neuromodulator sync |
+| SomaBrain | `SOMABRAIN_MODE=standalone` | SFM HTTP transport, multi-tenant quotas, Soma Platform billing |
+| SomaFractalMemory | Standalone Docker Compose | SomaBrain token validation (sbk_* keys), Soma Platform admin |
 
-### 4.2 AAAS Mode
+### 4.2 Soma Platform Mode
 
 All three components run together as an integrated cognitive stack.
 
-| Component | AAAS Config | Required Peers |
+| Component | Soma Platform Config | Required Peers |
 |-----------|-------------|----------------|
-| SomaAgent01 | `SA01_DEPLOYMENT_MODE=AAAS` | SomaBrain (port 63996), SomaFractalMemory (port 63901) |
+| SomaAgent01 | `SA01_DEPLOYMENT_MODE=Soma Platform` | SomaBrain (port 63996), SomaFractalMemory (port 63901) |
 | SomaBrain | `SOMABRAIN_MODE=production` | SomaFractalMemory (port 63901) |
-| SomaFractalMemory | AAAS Docker Compose | None (consumed by others) |
+| SomaFractalMemory | Soma Platform Docker Compose | None (consumed by others) |
 
 ---
 
@@ -160,7 +160,7 @@ All three components run together as an integrated cognitive stack.
 | OPA | 20181 | 8181 | 10818 |
 | SpiceDB | 20051 | — | — |
 
-### 6.2 AAAS Ports (63xxx)
+### 6.2 Soma Platform Ports (63xxx)
 
 | Service | Port | Component |
 |---------|------|-----------|
@@ -174,9 +174,9 @@ All three components run together as an integrated cognitive stack.
 
 ---
 
-## 7. Shared Infrastructure (AAAS Mode)
+## 7. Shared Infrastructure (Soma Platform Mode)
 
-When running in AAAS mode, the three components share:
+When running in Soma Platform mode, the three components share:
 
 | Resource | Isolation Strategy |
 |----------|-------------------|
@@ -197,7 +197,7 @@ When releasing a new version of any component:
 3. **Update this file** in ALL THREE repositories simultaneously
 4. **Tag the release** with semantic version
 5. **Publish Docker image** with version tag
-6. **Update AAAS deployment manifest** with new image tags
+6. **Update Soma Platform deployment manifest** with new image tags
 
 ---
 

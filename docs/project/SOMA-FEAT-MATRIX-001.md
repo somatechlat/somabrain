@@ -238,9 +238,9 @@ docker run -p 80:80 soma/agent
 - SomaBrain embedded (in-process, no separate service)
 - SFM embedded (local Milvus or pgvector)
 
-### Enterprise Mode (AAAS)
+### Enterprise Mode (Soma Platform)
 ```
-docker compose -f docker-compose.aaas.yml up -d
+docker compose -f docker-compose.platform.yml up -d
 ```
 - Keycloak + LDAP/AD/SSO
 - PostgreSQL + Redis + Kafka + Milvus

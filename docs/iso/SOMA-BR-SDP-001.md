@@ -86,7 +86,7 @@ Phases overlap intentionally: documentation evolves alongside integration, and h
 |---|---|---|
 | P1 Docs | **Complete** | SRS, architecture, security, risk, audit documents all at v2.0.0 |
 | P2 Integration | **Complete** | All services operational; 95 test files passing |
-| P3 Hardening | **In Progress** | Standalone mode hardened; AAAS validation ongoing |
+| P3 Hardening | **In Progress** | Standalone mode hardened; Soma Platform validation ongoing |
 | P4 Validation | **Pending** | Conditional Go per SOMA-BR-PROD-001 |
 
 ---
@@ -173,7 +173,7 @@ Phases overlap intentionally: documentation evolves alongside integration, and h
 | Category | Tool | Purpose |
 |---|---|---|
 | **Containerization** | Docker | Application packaging |
-| **Orchestration** | Kubernetes (K8s) | Container orchestration (AAAS mode) |
+| **Orchestration** | Kubernetes (K8s) | Container orchestration (Soma Platform mode) |
 | **Package Manager** | Helm | K8s application packaging |
 | **Local Dev** | Tilt | Development-time K8s workflow |
 | **Monitoring** | Prometheus | Metrics collection (30+ metric modules) |

@@ -55,7 +55,7 @@ and an external memory HTTP service (SomaFractalMemory or compatible).
   backends, and minimum replicas.
 - **System software mode (platform requirement):** `StandAlone` vs
   `SomaStackClusterMode` is defined at the platform level (see
-  `somaAgent01/docs/srs/SRS-UNIFIED-AAAS.md`). SomaBrain must pair with
+  `somaAgent01/docs/srs/SRS-UNIFIED-Soma Platform.md`). SomaBrain must pair with
   SomaFractalMemory in integrated mode via `SOMABRAIN_MEMORY_HTTP_ENDPOINT`.
 
 ---
@@ -215,7 +215,7 @@ ISO-compliant documentation in `docs/iso/`:
 - **SOMA-BR-AUDIT-001.md** (ISO 19011) — Audit: Executive scorecard (Arch A-, Code B+, Tests A-, Docs A-, Security B+), strengths, weaknesses, recommendations
 - **SOMA-BR-SEC-001.md** (ISO/IEC 27001) — Security: JWT, OPA, constitution signing, TLS, Vault, per-tenant isolation, threat model
 - **SOMA-BR-RISK-001.md** (ISO 31000) — Risk Register: complexity debt, SFM dependency, Kafka availability, Milvus scaling, calibration drift
-- **SOMA-BR-PROD-001.md** (ISO/IEC 25010) — Production Readiness: scorecard (3.96/5.00), standalone GO, AAAS CONDITIONAL GO, K8s status, Helm charts
+- **SOMA-BR-PROD-001.md** (ISO/IEC 25010) — Production Readiness: scorecard (3.96/5.00), standalone GO, Soma Platform CONDITIONAL GO, K8s status, Helm charts
 - **DOCUMENT-REGISTER.md** — tracking index for every controlled `docs/**/*.md` (status, version, compliance)
 - **SOMA-BR-DOCS-001.md** — document control and traceability procedure
 

@@ -66,7 +66,7 @@ SomaBrain is a full-stack cognitive memory engine comprising:
 - **116,735 lines** of Python code (Django 5.1 + Django Ninja 1.3)
 - **1,782 lines** of Rust code (via PyO3/maturin for performance-critical paths)
 - **95 test files** across 8 proof categories
-- **Dual deployment modes:** Standalone (port 9696) and AAAS (port 63996)
+- **Dual deployment modes:** Standalone (port 9696) and Soma Platform (port 63996)
 
 This SRS covers all functional and non-functional requirements for the SomaBrain component within the SomaStack ecosystem (SomaAgent01, SomaFractalMemory).
 
@@ -81,7 +81,7 @@ This SRS covers all functional and non-functional requirements for the SomaBrain
 | **FWHT** | Fast Walsh-Hadamard Transform — O(N log N) binding operation |
 | **WM** | Working Memory — short-term, salience-gated memory buffer |
 | **LTM** | Long-Term Memory — persistent memory store in PostgreSQL + Milvus |
-| **AAAS** | As-a-Service — multi-tenant deployment mode within SomaStack |
+| **Soma Platform** | As-a-Service — multi-tenant deployment mode within SomaStack |
 | **SFM** | SomaFractalMemory — distributed long-term memory component |
 | **TD Learning** | ~~Temporal-Difference Learning — reinforcement learning for cognitive parameter adjustment~~ **NOT IMPLEMENTED as Sutton TD.** Live learning is constant-gain stochastic approximation `Δw = lr × gain × signal` on AdaptationEngine weights (see §2.5 truth note). |
 | **NREM** | Non-Rapid Eye Movement — sleep phase for batch consolidation |
@@ -94,7 +94,7 @@ This SRS covers all functional and non-functional requirements for the SomaBrain
 
 SomaBrain operates as the cognitive memory engine within the SomaStack:
 
-| Component | Role | Port (Standalone) | Port (AAAS) |
+| Component | Role | Port (Standalone) | Port (Soma Platform) |
 |---|---|---|---|
 | SomaBrain | Cognitive memory engine | 9696 | 63996 |
 | SomaAgent01 | Agent orchestration gateway | 20020 | 63900 |
@@ -218,18 +218,18 @@ Requirements for the sleep-inspired consolidation cycles.
 | ID | Requirement | Target | Verification |
 |---|---|---|---|
 | NFR-REL-001 | The system SHALL maintain memory state integrity across process restarts via PostgreSQL and Milvus persistence. | Zero data loss | `tests/proofs/category_b/test_wm_persistence.py` |
-| NFR-REL-002 | The system SHALL implement per-tenant circuit breakers in AAAS mode, preventing cascading failures between tenants. | No cross-tenant impact | `tests/proofs/category_f/test_circuit_state_machine.py` |
+| NFR-REL-002 | The system SHALL implement per-tenant circuit breakers in Soma Platform mode, preventing cascading failures between tenants. | No cross-tenant impact | `tests/proofs/category_f/test_circuit_state_machine.py` |
 | NFR-REL-003 | The system SHALL gracefully degrade when optional dependencies (Kafka, OPA, SomaFractalMemory) are unavailable. | Core functionality preserved | `tests/proofs/category_f/test_degraded_mode.py` |
 | NFR-REL-004 | The system SHALL use the transactional outbox pattern for reliable event publishing, ensuring no dual-write inconsistency. | Zero event loss | `tests/proofs/category_e/test_outbox_replay.py` |
-| NFR-REL-005 | The system SHALL support horizontal scaling in AAAS mode via stateless Django pods behind a load balancer. | Linear throughput scaling | `tests/proofs/category_g/test_throughput.py` |
+| NFR-REL-005 | The system SHALL support horizontal scaling in Soma Platform mode via stateless Django pods behind a load balancer. | Linear throughput scaling | `tests/proofs/category_g/test_throughput.py` |
 
 ### 3.3 Scalability
 
 | ID | Requirement | Target | Verification |
 |---|---|---|---|
 | NFR-SCAL-001 | The system SHALL support ≥ 12 million stored memories per tenant with sub-15ms recall latency. | Per tenant | `tests/integration/test_recall_quality.py` |
-| NFR-SCAL-002 | The system SHALL support ≥ 50 concurrent tenants in AAAS mode with independent memory isolation. | Multi-tenant | `tests/proofs/category_d/test_memory_isolation.py` |
-| NFR-SCAL-003 | The system SHALL support Milvus clustered deployment for AAAS mode, with per-tenant collection isolation. | Production scale | `tests/integration/test_milvus_integration.py` |
+| NFR-SCAL-002 | The system SHALL support ≥ 50 concurrent tenants in Soma Platform mode with independent memory isolation. | Multi-tenant | `tests/proofs/category_d/test_memory_isolation.py` |
+| NFR-SCAL-003 | The system SHALL support Milvus clustered deployment for Soma Platform mode, with per-tenant collection isolation. | Production scale | `tests/integration/test_milvus_integration.py` |
 
 ---
 
@@ -239,7 +239,7 @@ Requirements for the sleep-inspired consolidation cycles.
 
 | ID | Requirement | Details |
 |---|---|---|
-| INT-001 | SomaBrain SHALL accept requests from SomaAgent01 via HTTP/1.1 + Server-Sent Events on port 63996 (AAAS) or 9696 (standalone). | Auth: Bearer token (`SOMA_API_TOKEN`) |
+| INT-001 | SomaBrain SHALL accept requests from SomaAgent01 via HTTP/1.1 + Server-Sent Events on port 63996 (Soma Platform) or 9696 (standalone). | Auth: Bearer token (`SOMA_API_TOKEN`) |
 | INT-002 | SomaBrain SHALL expose endpoints `POST /api/v1/memory/store`, `POST /api/v1/memory/recall`, `POST /v1/context/evaluate`, `PUT /v1/neuromodulators`, `POST /v1/learning/reward`. | Django Ninja API |
 | INT-003 | SomaBrain SHALL respond to health checks at `GET /health` and `GET /health/ready`. | Readiness and liveness probes |
 
@@ -262,8 +262,8 @@ Requirements for the sleep-inspired consolidation cycles.
 
 | ID | Requirement | Details |
 |---|---|---|
-| INT-009 | SomaBrain SHALL store and query hypervectors in Milvus using HNSW indices with cosine similarity distance metric. | Per-tenant collections in AAAS |
-| INT-010 | SomaBrain SHALL support both Milvus local (standalone) and clustered (AAAS) deployment configurations. | Port 19530 |
+| INT-009 | SomaBrain SHALL store and query hypervectors in Milvus using HNSW indices with cosine similarity distance metric. | Per-tenant collections in Soma Platform |
+| INT-010 | SomaBrain SHALL support both Milvus local (standalone) and clustered (Soma Platform) deployment configurations. | Port 19530 |
 
 ### 4.5 PostgreSQL Interface
 
@@ -277,7 +277,7 @@ Requirements for the sleep-inspired consolidation cycles.
 | ID | Requirement | Details |
 |---|---|---|
 | INT-013 | SomaBrain SHALL use Redis for caching, session storage, and per-tenant key-prefixed working memory state (`tenant:{id}:*`). | Redis 7+ |
-| INT-014 | SomaBrain SHALL support Redis TLS for cluster mode deployments. | Production AAAS |
+| INT-014 | SomaBrain SHALL support Redis TLS for cluster mode deployments. | Production Soma Platform |
 
 ---
 
