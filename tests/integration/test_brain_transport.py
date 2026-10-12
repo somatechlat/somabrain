@@ -102,7 +102,9 @@ def backend() -> InMemoryMemoryService:
 
 
 @pytest_asyncio.fixture
-async def bus(backend: InMemoryMemoryService) -> AsyncIterator[tuple[grpc.aio.Server, str]]:
+async def bus(
+    backend: InMemoryMemoryService,
+) -> AsyncIterator[tuple[grpc.aio.Server, str]]:
     """Bring up the real gRPC server on a fresh owner-only Unix socket.
 
     The socket lives under a short temporary directory rather than pytest's

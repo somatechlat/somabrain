@@ -49,7 +49,9 @@ def run_server() -> None:
     # port at the call site (Rule 91).
     host = os.environ.get("HOST")
     if not host:
-        raise SystemExit("HOST is required configuration; there is no default bind address")
+        raise SystemExit(
+            "HOST is required configuration; there is no default bind address"
+        )
     port = os.environ.get("PORT")
     if not port:
         raise SystemExit("PORT is required configuration; there is no default port")

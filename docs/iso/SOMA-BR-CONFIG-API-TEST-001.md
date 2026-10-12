@@ -6,8 +6,8 @@
 |---|---|
 | Document Title | Configuration, API, and Test-Map (Truth) |
 | Document Identifier | SOMA-BR-CONFIG-API-TEST-001 |
-| Version | 1.0.1 |
-| Date | 2026-10-08 |
+| Version | 1.0.2 |
+| Date | 2026-10-09 |
 | Status | Approved |
 | Author | SomaTech Engineering |
 | Approver | Engineering Lead |
@@ -22,6 +22,7 @@
 
 | Version | Date | Author | Description |
 |---|---|---|---|
+| 1.0.2 | 2026-10-09 | SomaTech Engineering | DEF-09 CLOSED: predictor_gamma default -0.5 is inside brain_settings bounds [-1.0, 1.0]. |
 | 1.0.0 | 2026-10-04 | SomaTech Engineering | Initial issue. Config truth table (DEF-01…14), API truth, VALID/TAUTOLOGY/XFAIL/MISSING testmap. Released for Wave W1 contracts. |
 | 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2: `## Document Control` + `## Revision History` added; non-house fields (`Document ID`, `Revision`) replaced with house field names; Status closed-set value `Approved`. |
 
@@ -165,7 +166,7 @@
 | `SOMABRAIN_PREDICTOR_PROVIDER` | "mahal" | str | settings/cognitive.py:386 | predictors | |
 | `SOMABRAIN_PREDICTOR_DIM` | 16 | int | settings/cognitive.py:388 | predictors | brain_settings `predictor_dim` models.py:534 |
 | `SOMABRAIN_PREDICTOR_ALPHA` | 2.0 | float | settings/cognitive.py:389 | services/integrator_hub_triplet.py:107,229 | Twin `PREDICTOR_ALPHA` cognitive.py:505. brain_settings `predictor_alpha` models.py:527-533 |
-| `SOMABRAIN_PREDICTOR_GAMMA` | -0.5 | float | settings/cognitive.py:390 | predictors | brain_settings `predictor_gamma` models.py:535-541 (bounds 0..1 — **default -0.5 is outside brain_settings bounds**) DEF-09 |
+| `SOMABRAIN_PREDICTOR_GAMMA` | -0.5 | float | settings/cognitive.py | predictors | brain_settings `predictor_gamma` `brain_settings/models.py` — `v: -0.5`, `min: -1.0`, `max: 1.0` (default inside bounds) DEF-09 **CLOSED** |
 | `PREDICTOR_ALPHA` | 2.0 | float | settings/cognitive.py:505 | (no direct reader) | |
 | `HEAT_METHOD` | "chebyshev" | str | settings/cognitive.py:487 | math/lanczos_chebyshev | |
 | `TRUTH_APPR_EPS` | "1e-4" | str | settings/cognitive.py:516 | math approx (string-typed) | Type is str not float |
@@ -183,7 +184,9 @@
 | `SOMABRAIN_HRR_VECTOR_FAMILY` | "bhdc" | str | settings/cognitive.py:263 | math/bhdc_encoder | |
 | `SOMABRAIN_BHDC_SPARSITY` | 0.1 | float | settings/cognitive.py:264 | bhdc | django_core.py:45,65 re-declares same default 0.1 (consistent). brain_settings `bhdc_sparsity` models.py:391; `gmd_sparsity` models.py:260-266 |
 | `SOMABRAIN_MATH_BHDC_SPARSITY` | 0.1 | float | settings/cognitive.py:462 | math | Third BHDC sparsity name. DEF-04 |
-| `SOMABRAIN_MATH_BHDC_MIX` | 0.5 | float | settings/cognitive.py:461 | math/bhdc_encoder | |
+| `SOMABRAIN_MATH_BHDC_MIX` | `none` | str vocab (`none`\|`hadamard`) | settings/cognitive.py (declaration) | math/bhdc_encoder, admin/core/quantum.py, bootstrap/singletons.py | **FIXED** — was `env.float` default `0.5` which made HRRConfig reject the value and fall back to Tiny. Vocab, not a float. |
+| `SOMABRAIN_MEMORY_FAST_ACK` | `true` | bool | settings/cognitive.py | api/endpoints/memory_remember.py | **LIVE default true** — accept returns `durable_outbox` (T-6 outbox row) + background LTM. Sync path returns `persisted_ltm`. |
+| `SOMABRAIN_REQUIRE_PROVENANCE` | `false` | bool | settings/cognitive.py | controls/django_middleware.py PolicyEngine | **FAIL-HONEST boot** if true and `SOMABRAIN_PROVENANCE_SECRET` empty (was brick "policy deny"). |
 | `SOMABRAIN_MATH_BHDC_BINARY_MODE` | False | bool | settings/cognitive.py:460 | math | |
 | `SOMABRAIN_MATH_BINDING_SEED` | 42 | int | settings/cognitive.py:463 | math binding | Twin of GLOBAL_SEED / HRR_SEED |
 | `SOMABRAIN_HRR_SEED` | 42 | int | settings/cognitive.py:455 | HRR | brain_settings `global_seed` v=42 models.py:223 |
@@ -262,7 +265,7 @@ Each row = same concept, different name and/or default. This is the W1 unificati
 | DEF-06 | Tau decay rate | `SOMABRAIN_TAU_DECAY_RATE` 0.0 (cognitive.py:335) | `TAU_DECAY_FACTOR` 0.95 (cognitive.py:513) | — | multiplicative factor vs additive rate | Unify to one schedule | **FIXED (W1b)** — `contracts.TAU_DECAY_FACTOR=0.95`; twins deleted |
 | DEF-07 | Wiener λ* | **FIXED (W4):** single source `compute_wiener_lambda(p, 8)` (Rust `mathcore.rs` + Python `math/bhdc_encoder.py`) | brain_settings `gmd_lambda_reg` computed from formula | quantum.py fallback uses `production_wiener_lambda()`; binder default = formula at production p | GMD doc λ*(p)=5.126e-6/(p(1−p)) | one formula, no constants | **FIXED (W4)** |
 | DEF-08 | Chebyshev K | `CHEBYSHEV_K` **30** (cognitive.py:482) | `TRUTH_CHEBYSHEV_K` **32** (cognitive.py:517) | `SOMABRAIN_CHEB_K` **30** (cognitive.py:438) | predictors/* use CHEBYSHEV_K; math/lanczos_chebyshev.py:75 uses TRUTH_CHEBYSHEV_K | Heat-kernel approx order differs by path | **FIXED (W1b)** — one key `SOMABRAIN_CHEB_K`; twins deleted |
-| DEF-09 | Predictor gamma bounds | env default **-0.5** (cognitive.py:390) | brain_settings `predictor_gamma` min **0.0** max 1.0 (models.py:535-541) | — | default outside learnable bounds | set() would reject the seeded default | **OPEN** (W3 gains parity) |
+| DEF-09 | Predictor gamma bounds | default **-0.5** | brain_settings `predictor_gamma` min **-1.0** max 1.0, `v: -0.5` (`brain_settings/models.py`) | — | default is inside learnable bounds | seeded default accepted by `set()` | **CLOSED** (2026-10-09, DEBT-008) |
 | DEF-10 | HRR dim | `SOMABRAIN_HRR_DIM` **8192** (cognitive.py:260) | `HRR_DIM` **512** (cognitive.py:425) | brain_settings `hrr_dim` 8192 (models.py:221) | cognitive.py:84 reads `HRR_DIM` | FocusState HRR dim 512 vs system 8192 | **FIXED (W1b)** — `HRR_DIM` unified to `BHDC_D` (8192) |
 | DEF-11 | Sleep K0 | `SLEEP_K0` **10** (cognitive.py:314) | brain_settings `sleep_k0` **100** (models.py:287) | — | 10× divergence | Sleep schedule rate | **FIXED (W1b)** — `SLEEP_K0` default unified to 100 |
 | DEF-12 | Sleep α/min duplicates in BRAIN_DEFAULTS | RESOURCE block models.py:323-371 (k_min=5, t_min=0.5, α_k=0.1, α_t=0.05, α_tau=0.05, α_eta=0.01, β_b=0.1) | sleep block models.py:565-571 (**k_min=1, t_min=0.1, α_k=0.8, α_t=0.5, α_tau=0.5, α_eta=1.0, β_b=0.5**) | dict later entry silently overwrites earlier | Python dict literal — second value wins at models.py:565-571 | Seed data wrong; two "authoritative" tables in one dict | **FIXED (W1b)** — duplicate sleep block deleted |
@@ -512,7 +515,7 @@ Legend: **VALID** = exercises a production function/equation; **TAUTOLOGY** = te
 | DEF-05/06 | tau floor/schedule split | TAU_MIN 0.4 vs TAU_MIN_FLOOR 0.1; decay rate vs factor | Unify schedule API in learning/annealing + one settings family | **FIXED (W1b)** |
 | DEF-07 | Wiener λ* | **FIXED (W4)** — `compute_wiener_lambda(p, 8)` is the only source | done (PLAN W4.1) | **FIXED (W4)** |
 | DEF-08 | Chebyshev K | 30 vs 32 vs 30 | One key consumed by predictors and lanczos_chebyshev | **FIXED (W1b)** |
-| DEF-09 | bounds vs default | predictor_gamma default −0.5 outside [0,1] | Align bounds or default | **OPEN** (W3) |
+| DEF-09 | bounds vs default | predictor_gamma default −0.5 now inside [-1,1] | — | **CLOSED** (2026-10-09) |
 | DEF-10 | HRR dim | 8192 vs 512 | One dim (seam unity) | **FIXED (W1b)** |
 | DEF-11/12 | sleep schedule | K0 10 vs 100; duplicate BRAIN_DEFAULTS sleep keys | Deduplicate models.py dict; one seed | **FIXED (W1b)** |
 | DEF-13 | naming | adapt_* vs adaptation_* vs SOMABRAIN_ADAPTATION_* | One namespace | **FIXED (W1b)** |

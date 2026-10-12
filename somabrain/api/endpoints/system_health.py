@@ -22,7 +22,9 @@ from typing import Any
 import django
 from django.conf import settings
 from django.utils import timezone
-from ninja import Router, Schema
+from ninja import Router
+
+from somabrain.api.auth import api_key_auth, Schema
 
 router = Router(tags=["Health"])
 
@@ -240,12 +242,12 @@ def check_opa() -> dict[str, Any]:
     """Check OPA policy engine health."""
     import httpx
 
-    from somabrain.settings.resolve import optional_url
+    from somabrain.settings.resolve import require_url
 
     def _check():
         """Execute check."""
 
-        opa_url = optional_url("SOMABRAIN_OPA_URL")
+        opa_url = require_url("SOMABRAIN_OPA_URL")
         if not opa_url:
             raise RuntimeError(
                 "SOMABRAIN_OPA_URL is not configured; there is no default "
@@ -277,12 +279,12 @@ def check_minio() -> dict[str, Any]:
     """Check MinIO object storage health."""
     import httpx
 
-    from somabrain.settings.resolve import optional_url
+    from somabrain.settings.resolve import require_url
 
     def _check():
         """Execute check."""
 
-        minio_url = optional_url("MINIO_ENDPOINT")
+        minio_url = require_url("MINIO_ENDPOINT")
         if not minio_url:
             raise RuntimeError(
                 "MINIO_ENDPOINT is not configured; there is no default "
@@ -314,12 +316,12 @@ def check_schema_registry() -> dict[str, Any]:
     """Check Kafka Schema Registry health."""
     import httpx
 
-    from somabrain.settings.resolve import optional_url
+    from somabrain.settings.resolve import require_url
 
     def _check():
         """Execute check."""
 
-        registry_url = optional_url("SCHEMA_REGISTRY_URL")
+        registry_url = require_url("SCHEMA_REGISTRY_URL")
         if not registry_url:
             raise RuntimeError(
                 "SCHEMA_REGISTRY_URL is not configured; there is no default "
@@ -385,7 +387,6 @@ def check_keycloak() -> dict[str, Any]:
         "details": result,
         "error": error,
     }
-
 
 
 # =============================================================================
@@ -492,7 +493,7 @@ def check_embedder_service() -> dict[str, Any]:
 # =============================================================================
 
 
-@router.get("/full", response=SystemHealthResponse)
+@router.get("/full", response=SystemHealthResponse, auth=api_key_auth)
 def get_full_health(request):
     """
     Get comprehensive health status of ALL SomaBrain services.
@@ -573,7 +574,7 @@ def get_full_health(request):
     )
 
 
-@router.get("/infrastructure")
+@router.get("/infrastructure", auth=api_key_auth)
 def get_infrastructure_health(request):
     """Get health of infrastructure services only."""
     return {
@@ -590,7 +591,7 @@ def get_infrastructure_health(request):
     }
 
 
-@router.get("/database")
+@router.get("/database", auth=api_key_auth)
 def get_database_health(request):
     """Get detailed database health."""
     from django.db import connection
@@ -601,14 +602,12 @@ def get_database_health(request):
     try:
         with connection.cursor() as cursor:
             # Table counts
-            cursor.execute(
-                """
+            cursor.execute("""
                 SELECT schemaname, relname, n_live_tup 
                 FROM pg_stat_user_tables 
                 ORDER BY n_live_tup DESC 
                 LIMIT 10
-            """
-            )
+            """)
             tables = [
                 {"schema": r[0], "table": r[1], "rows": r[2]} for r in cursor.fetchall()
             ]

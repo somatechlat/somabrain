@@ -64,7 +64,6 @@ class NullMetrics:
             value: The value.
         """
 
-
     def observe_histogram(
         self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
@@ -76,7 +75,6 @@ class NullMetrics:
             labels: The labels.
         """
 
-
     def set_gauge(
         self, name: str, value: float, labels: dict[str, str] | None = None
     ) -> None:
@@ -87,7 +85,6 @@ class NullMetrics:
             value: The value.
             labels: The labels.
         """
-
 
 
 # Singleton null metrics instance

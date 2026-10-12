@@ -16,15 +16,17 @@ class AnnConfig:
     """Configuration for ANN cleanup indexes.
 
     Supported backends (explicit, no implicit fallbacks):
-    - "milvus": Milvus vector database (default, scalable, persistent, recommended for production)
     - "hnsw": HNSW index via hnswlib (fast, in-memory) – requires library present
-    - "simple": In-memory cosine search (only when explicitly configured)
+    - "simple": In-memory cosine search
+
+    T-1 / B29: SomaBrain never writes Milvus. Milvus is owned by SFM only.
+    Cleanup indexes are in-process cognitive state (HRR anchors), not LTM.
 
     Configuration is loaded from settings by default. Override via constructor
     for testing or custom deployments.
     """
 
-    backend: str = "milvus"  # "milvus", "hnsw", or "simple"
+    backend: str = "simple"  # "simple" or "hnsw" (hnsw requires hnswlib)
     top_k: int = 64
     hnsw_m: int = 32
     hnsw_ef_construction: int = 200
@@ -211,30 +213,32 @@ def create_cleanup_index(
     tenant_id: str = "default",
     namespace: str = "cleanup",
 ) -> CleanupIndex:
-    """Create a CleanupIndex based on configuration.
+    """Create an in-process CleanupIndex (cognitive HRR anchors only).
 
-    **VIBE RULES COMPLIANCE** – No implicit fallback to alternative backends.
-    The system must use Milvus exclusively; any other backend configuration
-    results in an explicit error, preventing silent degradation.
+    T-1 / B29: SomaBrain never writes Milvus. Vector memory goes through
+    MemoryClient → SFM. Every direct pymilvus write path is deleted.
+    Requesting a milvus backend is a hard error, not a fallback.
     """
     config = cfg or AnnConfig.from_settings()
-    backend = (config.backend or "milvus").lower()
+    backend = (config.backend or "simple").lower()
 
-    if backend != "milvus":
-        # Hardening: disallow fallback to HNSW or simple in‑memory indexes.
+    if backend == "milvus":
         raise ValueError(
-            f"Milvus backend is required; configured backend '{backend}' is not supported"
+            "Milvus backend is forbidden in SomaBrain (T-1/B29). "
+            "Milvus is written only by SFM via MemoryClient. "
+            "Use 'hnsw' or 'simple' for in-process cleanup indexes."
         )
-
-    # Import is safe because Milvus support is mandatory.
-    from somabrain.services.milvus_ann import MilvusAnnIndex
-
-    return MilvusAnnIndex(
-        dim,
-        tenant_id=tenant_id,
-        namespace=namespace,
-        top_k=config.top_k,
-        ef_search=config.hnsw_ef_search,
+    if backend == "simple":
+        return SimpleAnnIndex(dim)
+    if backend == "hnsw":
+        return HNSWAnnIndex(
+            dim,
+            m=config.hnsw_m,
+            ef_construction=config.hnsw_ef_construction,
+            ef_search=config.hnsw_ef_search,
+        )
+    raise ValueError(
+        f"Unsupported cleanup backend '{backend}'; use 'hnsw' or 'simple'"
     )
 
 

@@ -343,9 +343,109 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- Vault Agent sidecars (enterprise pattern) ------------------------------
+  # AppRole auto-auth + template rendering onto tmpfs. Application processes
+  # never hold a root token, never fetch secrets over shell, never see a
+  # credential in env/compose/YAML/disk.
+  somabrain_standalone_vault_agent_postgres:
+    image: hashicorp/vault:1.13.3
+    container_name: somabrain_standalone_vault_agent_postgres
+    restart: unless-stopped
+    entrypoint: ["vault"]
+    command: ["agent", "-config=/vault/agent/postgres.hcl"]
+    environment:
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+    volumes:
+      - ./vault-agent/postgres.hcl:/vault/agent/postgres.hcl:ro
+      - vault_pg_secrets:/run/secrets:rw
+      - approle_bootstrap:/run/approle:ro
+    networks:
+      - somabrain_standalone_net
+    depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
+      somabrain_standalone_vault_unseal_watch:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD-SHELL", "test -s /run/secrets/postgres_password" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    cap_drop: [ "ALL" ]
+    security_opt:
+      - no-new-privileges:true
+
+  somabrain_standalone_vault_agent_minio:
+    image: hashicorp/vault:1.13.3
+    container_name: somabrain_standalone_vault_agent_minio
+    restart: unless-stopped
+    entrypoint: ["vault"]
+    command: ["agent", "-config=/vault/agent/minio.hcl"]
+    environment:
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+    volumes:
+      - ./vault-agent/minio.hcl:/vault/agent/minio.hcl:ro
+      - vault_minio_secrets:/run/secrets:rw
+      - approle_bootstrap:/run/approle:ro
+    networks:
+      - somabrain_standalone_net
+    depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
+      somabrain_standalone_vault_unseal_watch:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD-SHELL", "test -s /run/secrets/minio_access_key && test -s /run/secrets/minio_secret_key" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    cap_drop: [ "ALL" ]
+    security_opt:
+      - no-new-privileges:true
+
+  # App-side agent: sinks a scoped, auto-renewed AppRole token to tmpfs.
+  # Runs as uid 1000 so the sink file is owned by the app user (Dockerfile
+  # USER 1000:1000) without world-readable perms.
+  somabrain_standalone_vault_agent_app:
+    image: hashicorp/vault:1.13.3
+    container_name: somabrain_standalone_vault_agent_app
+    restart: unless-stopped
+    user: "1000:1000"
+    entrypoint: ["vault"]
+    command: ["agent", "-config=/vault/agent/app.hcl"]
+    environment:
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+    volumes:
+      - ./vault-agent/app.hcl:/vault/agent/app.hcl:ro
+      - vault_app_secrets:/run/vault:rw
+      - approle_bootstrap:/run/approle:ro
+    networks:
+      - somabrain_standalone_net
+    depends_on:
+      somabrain_standalone_vault_init:
+        condition: service_completed_successfully
+      somabrain_standalone_vault_unseal_watch:
+        condition: service_started
+    healthcheck:
+      test: [ "CMD-SHELL", "test -s /run/vault/token" ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    cap_drop: [ "ALL" ]
+    security_opt:
+      - no-new-privileges:true
+
   somabrain_standalone_postgres:
     image: postgres:15-alpine
     restart: unless-stopped
+    depends_on:
+      # Password is rendered by the Vault Agent sidecar onto tmpfs and read
+      # via POSTGRES_PASSWORD_FILE (stock postgres contract). No shell fetcher.
+      somabrain_standalone_vault_agent_postgres:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -354,16 +454,16 @@ services:
           memory: 256M
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
-      # Password arrives as a mounted file (t=0 material), never as ENV.
-      POSTGRES_PASSWORD_FILE: /run/secrets_t0/postgres_password
       POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
-      # Production-like PostgreSQL tuning for constrained environment
+      # PATH to the Vault-rendered tmpfs secret. The value itself is never in
+      # env, compose YAML, .env, or on disk (operator secrets law).
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
       - "${POSTGRES_HOST_PORT:?set POSTGRES_HOST_PORT}:${POSTGRES_CONTAINER_PORT:?set POSTGRES_CONTAINER_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      - vault_pg_secrets:/run/secrets:ro
     networks:
       - somabrain_standalone_net
     healthcheck:
@@ -371,7 +471,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-    # Production-like PostgreSQL configuration
     command:
       - postgres
       - -c
@@ -432,6 +531,7 @@ services:
     volumes:
       - ./vault.hcl:/vault/config/vault.hcl:ro
       - somabrain_standalone_vault_data:/vault/data
+      - somabrain_standalone_vault_audit:/vault/audit
     ports:
       # Brain-range Vault port: 30200
       - "30200:8200"
@@ -457,11 +557,11 @@ services:
     volumes:
       - ./vault_unseal.py:/work/vault_unseal.py:ro
       # Read-WRITE: first boot writes the generated root token and unseal key
-      # into the t=0 secrets dir. Those two files are the only copy.
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/work/secrets
+      # into the RAM tmpfs custodian (T0_DIR). Not the disk, not the repo.
+      - t0_ram:/run/t0:rw
     environment:
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
-      SECRETS_DIR: /work/secrets
+      T0_DIR: /run/t0
     entrypoint: [ "python3", "/work/vault_unseal.py" ]
     networks:
       - somabrain_standalone_net
@@ -483,16 +583,23 @@ services:
     working_dir: /work
     volumes:
       - ./vault_unseal.py:/work/vault_unseal.py:ro
-      # Read-only is enough: the key file already exists after first init.
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/work/secrets:ro
+      - ./init_vault.py:/work/init_vault.py:ro
+      # Root token / unseal key custodian (chicken-and-egg).
+      - t0_ram:/run/t0:rw
+      # AppRole material for Vault Agent sidecars. Regenerated here only when
+      # missing (tmpfs wiped on Docker VM restart) — never rotated while agents
+      # hold a live token.
+      - approle_bootstrap:/run/approle:rw
     environment:
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
-      SECRETS_DIR: /work/secrets
+      T0_DIR: /run/t0
+      APPROLE_DIR: /run/approle
     entrypoint: [ "sh", "-c" ]
     command:
       - |
         while true; do
           python3 /work/vault_unseal.py || true
+          python3 /work/init_vault.py --approle-only || true
           sleep 20
         done
     networks:
@@ -503,195 +610,62 @@ services:
     restart: unless-stopped
 
   somabrain_standalone_vault_init:
-    image: alpine:latest
+    # SOMA-STD-BOOTSTRAP-001 / R-SEC-01: secrets are GENERATED in process
+    # memory (secrets.token_urlsafe) and written to Vault only. There is no
+    # secret file, no secrets directory, no argv token. First-boot handoff of
+    # postgres_password / MinIO keys goes to the T0_DIR RAM tmpfs — never
+    # the repo, never a disk volume. Idempotent: skip-if-present unless
+    # --force, so hand-rotation survives `compose up`. Fail-closed on any
+    # missing custodian or empty value.
+    image: python:3.11-alpine
     container_name: somabrain_standalone_vault_init
+    working_dir: /work
     depends_on:
       somabrain_standalone_vault_unseal:
         condition: service_completed_successfully
     environment:
-      # Bootstrap topology only. Every credential is a FILE path into the
-      # mounted t=0 secrets dir — never a value in ENV (Rule 164). The Vault
-      # bootstrap token is the same: a path, not a token.
-      SOMABRAIN_VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
-      SOMABRAIN_VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      # Bootstrap topology only. The root token is read from the T0_DIR custodian
+      # written by vault_unseal.py — never a value in ENV (R-SEC-03).
+      VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
+      T0_DIR: /run/t0
+      # Isolated tmpfs for AppRole role_id/secret_id consumed by Vault Agent
+      # sidecars only. Not an application-secret store.
+      APPROLE_DIR: /run/approle
       POSTGRES_USER: "${POSTGRES_USER:?set POSTGRES_USER}"
       POSTGRES_DB: "${POSTGRES_DB:?set POSTGRES_DB}"
       POSTGRES_HOST: "${POSTGRES_HOST:?set POSTGRES_HOST}"
       POSTGRES_PORT: "${POSTGRES_PORT:?set POSTGRES_PORT}"
-      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL:?set SOMABRAIN_REDIS_URL}"
-      # Secret material, each a PATH into /run/secrets_t0 (SOMA_T0_SECRETS_DIR).
-      # Generate once in the agent stack (infra/standalone/secrets/). This job
-      # never invents a substitute and never sees the values in ENV.
-      POSTGRES_PASSWORD_FILE: "${POSTGRES_PASSWORD_FILE:?set POSTGRES_PASSWORD_FILE}"
-      SOMABRAIN_JWT_SECRET_FILE: "${SOMABRAIN_JWT_SECRET_FILE:?set SOMABRAIN_JWT_SECRET_FILE}"
-      SUPERVISOR_HTTP_PASS_FILE: "${SUPERVISOR_HTTP_PASS_FILE:?set SUPERVISOR_HTTP_PASS_FILE}"
-      SOMABRAIN_API_TOKEN_FILE: "${SOMABRAIN_API_TOKEN_FILE:?set SOMABRAIN_API_TOKEN_FILE}"
-      # A PATH, not a secret — the same contract as VAULT_TOKEN_FILE. It points
-      # at the shared t=0 material the agent stack holds once (somaAgent01
-      # infra/standalone/secrets/, one file per secret). The VALUE never travels
-      # through ENV: two stacks each generating their own copy is exactly the
-      # 401 this exists to prevent. Required — no default path to fall back to.
-      SOMABRAIN_MEMORY_HTTP_TOKEN_FILE: "${SOMABRAIN_MEMORY_HTTP_TOKEN_FILE:?set SOMABRAIN_MEMORY_HTTP_TOKEN_FILE}"
     volumes:
-      # Shared t=0 credential material, read-only. This job never writes here.
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      # Custodian: root token in (from vault_unseal). Application secrets are
+      # NOT handed off here — Vault Agent renders them to per-service tmpfs.
+      - t0_ram:/run/t0:rw
+      - approle_bootstrap:/run/approle:rw
+      - ./init_vault.py:/work/init_vault.py:ro
     networks:
       - somabrain_standalone_net
-    entrypoint: [ "sh", "-c" ]
-    command:
-      - |
-        set -eu
-        apk add --no-cache curl jq
-
-        # ---- Read every credential from t=0 files, never from ENV -------
-        # A missing or empty file is a refusal: this job will NOT invent a
-        # substitute (Rule 91 / Rule 164).
-        read_secret() {
-          f="$${1:?read_secret needs a path}"
-          if [ ! -s "$${f}" ]; then
-            echo "FATAL: secret file missing or empty: $${f}" >&2
-            exit 1
-          fi
-          tr -d '\r\n' < "$${f}"
-        }
-        # Optional: a credential that may already live in Vault from an earlier
-        # provision. Absence is not a failure and is NOT a licence to invent a
-        # value — the key is simply left as it is.
-        read_optional_secret() {
-          f="$${1:?read_optional_secret needs a path}"
-          if [ ! -s "$${f}" ]; then
-            echo "  (no t=0 file for $${f}; leaving any existing Vault value untouched)"
-            return 0
-          fi
-          tr -d '\r\n' < "$${f}"
-        }
-
-        VAULT_TOKEN="$$(read_secret "$${SOMABRAIN_VAULT_TOKEN_FILE}")"
-        POSTGRES_PASSWORD="$$(read_secret "$${POSTGRES_PASSWORD_FILE}")"
-        SOMABRAIN_JWT_SECRET="$$(read_secret "$${SOMABRAIN_JWT_SECRET_FILE}")"
-        SUPERVISOR_HTTP_PASS="$$(read_secret "$${SUPERVISOR_HTTP_PASS_FILE}")"
-        SOMABRAIN_API_TOKEN="$$(read_optional_secret "$${SOMABRAIN_API_TOKEN_FILE}")"
-
-        # ---- Shared agent↔brain credential ------------------------------
-        # One trust boundary, one value, one reader path. somabrain's
-        # vault_client.get_runtime_secret("memory_http_token") reads
-        # secret/agent/credentials[somabrain_memory_http_token] — see
-        # SHARED_CREDENTIALS_PATH and MEMORY_HTTP_TOKEN_KEY. Writing it to
-        # somabrain/runtime put it where the reader never looked, and
-        # generating it per stack gave the two sides different values.
-        TOKEN_FILE="$${SOMABRAIN_MEMORY_HTTP_TOKEN_FILE}"
-        if [ ! -s "$${TOKEN_FILE}" ]; then
-          echo "FATAL: shared memory token file missing or empty: $${TOKEN_FILE}" >&2
-          echo "       Generate it once in the agent stack (infra/standalone/secrets/," >&2
-          echo "       see its README.md) and point SOMA_T0_SECRETS_DIR at that" >&2
-          echo "       directory. This job will NOT invent a substitute." >&2
-          exit 1
-        fi
-        # Same trimming init_vault.py applies: every consumer of these values
-        # strips trailing newlines, so store what they will actually see.
-        SHARED_MEMORY_TOKEN="$$(tr -d '\r\n' < "$${TOKEN_FILE}")"
-        if [ -z "$${SHARED_MEMORY_TOKEN}" ]; then
-          echo "FATAL: shared memory token file is blank after trimming" >&2
-          exit 1
-        fi
-
-        # Wait for vault
-        until curl -s "$${SOMABRAIN_VAULT_ADDR}/v1/sys/health"; do sleep 1; done
-
-        # Mount KV v2 — `somabrain` for this service's own secrets, `secret`
-        # for the shared agent/credentials document the reader expects.
-        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST -d '{"type":"kv-v2"}' "$${SOMABRAIN_VAULT_ADDR}/v1/sys/mounts/somabrain"
-        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST -d '{"type":"kv-v2"}' "$${SOMABRAIN_VAULT_ADDR}/v1/sys/mounts/secret"
-
-        # 1. Database Credentials
-        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
-          -d "{\"data\": {\"username\": \"$${POSTGRES_USER}\", \"password\": \"$${POSTGRES_PASSWORD}\", \"host\": \"$${POSTGRES_HOST}\", \"port\": $${POSTGRES_PORT}, \"dbname\": \"$${POSTGRES_DB}\"}}" \
-          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/database"
-
-        # 2. Redis Credentials
-        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
-          -d "{\"data\": {\"url\": \"$${SOMABRAIN_REDIS_URL}\"}}" \
-          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/redis"
-
-        # 3. JWT Secret
-        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
-          -d "{\"data\": {\"jwt_secret\": \"$${SOMABRAIN_JWT_SECRET}\"}}" \
-          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/auth"
-
-        # 4. Runtime service secrets — this service's OWN keys only. The shared
-        #    memory token deliberately does NOT live here.
-        curl -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
-          -d "{\"data\": {\"supervisor_http_pass\": \"$${SUPERVISOR_HTTP_PASS}\", \"api_token\": \"$${SOMABRAIN_API_TOKEN}\"}}" \
-          "$${SOMABRAIN_VAULT_ADDR}/v1/somabrain/data/runtime"
-
-        # 5. SHARED agent↔brain trust boundary. Exactly the document and key
-        #    vault_client reads. The value came from t=0 material — not from
-        #    ENV, and not invented by this job.
-        #
-        #    MERGE, never replace. Vault KV v2 POST replaces the entire `data`
-        #    object at a path — writing one key alone deletes every sibling
-        #    credential in that document. Read it first, merge in memory, write
-        #    the whole object back, then read back and assert the key landed.
-        SHARED_PATH="$${SOMABRAIN_VAULT_ADDR}/v1/secret/data/agent/credentials"
-        # Snapshot the key set BEFORE the merge so we can assert every sibling
-        # survived. KV v2 POST replaces the whole document; a one-key write
-        # deletes every other key. This has already caused real data loss.
-        PRE_KEYS="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
-          | jq -r '((.data.data) // {}) | keys[]' | sort | tr '\n' ' ')"
-        EXISTING="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}" \
-          | jq -c --arg tok "$${SHARED_MEMORY_TOKEN}" \
-            '((.data.data) // {}) + {somabrain_memory_http_token: $$tok}')"
-        if [ -z "$${EXISTING}" ] || [ "$${EXISTING}" = "null" ]; then
-          echo "FATAL: could not read agent/credentials before merging." >&2
-          echo "       Refusing to write blind - a blind write deletes every" >&2
-          echo "       other key in that document." >&2
-          exit 1
-        fi
-        curl -sf -H "X-Vault-Token: $${VAULT_TOKEN}" -X POST \
-          -d "{\"data\": $${EXISTING}}" "$${SHARED_PATH}" >/dev/null
-
-        # Read back the WHOLE document and assert:
-        #   1. the shared token landed and matches byte-for-byte
-        #   2. every pre-existing key is still present
-        POST_JSON="$(curl -s -H "X-Vault-Token: $${VAULT_TOKEN}" "$${SHARED_PATH}")"
-        STORED="$(printf '%s' "$${POST_JSON}" | jq -r '.data.data.somabrain_memory_http_token // empty')"
-        if [ "$${STORED}" != "$${SHARED_MEMORY_TOKEN}" ]; then
-          echo "FATAL: shared memory token read-back mismatch after merge write" >&2
-          exit 1
-        fi
-        POST_KEYS="$(printf '%s' "$${POST_JSON}" | jq -r '((.data.data) // {}) | keys[]' | sort | tr '\n' ' ')"
-        for k in $${PRE_KEYS}; do
-          case " $${POST_KEYS} " in
-            *" $$k "*) ;;
-            *)
-              echo "FATAL: merge write destroyed sibling key '$${k}' in agent/credentials." >&2
-              echo "       KV v2 POST replaces the whole document. The read-modify-" >&2
-              echo "       write must carry every pre-existing key forward." >&2
-              exit 1
-              ;;
-          esac
-        done
-        KEPT="$(printf '%s' "$${POST_JSON}" | jq -r '((.data.data) // {}) | keys | length')"
-        echo "  shared credential merged in; document now holds $${KEPT} key(s): $${POST_KEYS}"
-
-        echo "Vault initialized and secrets populated."
+    entrypoint: [ "python3", "/work/init_vault.py" ]
 
   somabrain_standalone_db_migrate:
     image: somabrain:latest
     depends_on:
-      somabrain_standalone_vault_init:
-        condition: service_completed_successfully
+      somabrain_standalone_vault_agent_app:
+        condition: service_healthy
       somabrain_standalone_postgres:
         condition: service_healthy
     networks:
       - somabrain_standalone_net
     volumes:
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      - vault_app_secrets:/run/vault:ro
+      - ../../somabrain:/app/somabrain:ro
+      - ../../soma_memory_contract:/app/soma_memory_contract:ro
     environment:
       # VAULT BOOTSTRAP ONLY — address + token FILE, never the token value.
+      # Token is the AppRole-scoped service token sunk by Vault Agent to tmpfs.
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
-      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
+      VAULT_TOKEN_FILE: /run/vault/token
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
+      # Host headers this one-shot Django process will accept (Rule 91).
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:?set ALLOWED_HOSTS}"
       # Shared seam dim: agent MEM_EMBED_DIM == SFM SOMA_VECTOR_DIM == this
       EMBED_DIM: "${EMBED_DIM:?set EMBED_DIM}"
       RUNNING_IN_DOCKER: "true"
@@ -709,31 +683,28 @@ services:
           memory: 64M
         reservations:
           memory: 32M
+    depends_on:
+      somabrain_standalone_vault_agent_postgres:
+        condition: service_healthy
+      somabrain_standalone_postgres:
+        condition: service_healthy
     environment:
       POSTGRES_USER: "${POSTGRES_USER:?set POSTGRES_USER}"
       POSTGRES_DB: "${POSTGRES_DB:?set POSTGRES_DB}"
       POSTGRES_HOST: "somabrain_standalone_postgres"
       POSTGRES_PORT: "${POSTGRES_CONTAINER_PORT:?set POSTGRES_CONTAINER_PORT}"
-      # Password is read from the t=0 file at start; DATA_SOURCE_NAME is
-      # assembled in-process and never appears in this file or in .env.
-      POSTGRES_PASSWORD_FILE: /run/secrets_t0/postgres_password
     volumes:
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
-    entrypoint: [ "/bin/sh", "-c" ]
+      # Same Vault Agent-rendered tmpfs secret as postgres itself.
+      - vault_pg_secrets:/run/secrets:ro
     command:
+      - /bin/sh
+      - -c
       - |
         set -eu
-        f="$${POSTGRES_PASSWORD_FILE:?POSTGRES_PASSWORD_FILE is required}"
-        if [ ! -s "$${f}" ]; then
-          echo "FATAL: secret file missing or empty: $${f}" >&2
-          exit 1
-        fi
-        PW="$$(tr -d '\r\n' < "$${f}")"
-        export DATA_SOURCE_NAME="postgresql://$${POSTGRES_USER}:$${PW}@$${POSTGRES_HOST}:$${POSTGRES_PORT}/$${POSTGRES_DB}?sslmode=disable"
+        POSTGRES_PASSWORD="$$(cat /run/secrets/postgres_password)"
+        export DATA_SOURCE_NAME="postgresql://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@$${POSTGRES_HOST}:$${POSTGRES_PORT}/$${POSTGRES_DB}?sslmode=disable"
+        unset POSTGRES_PASSWORD
         exec /bin/postgres_exporter
-    depends_on:
-      somabrain_standalone_postgres:
-        condition: service_healthy
     ports:
       - "${POSTGRES_EXPORTER_HOST_PORT:?set POSTGRES_EXPORTER_HOST_PORT}:${POSTGRES_EXPORTER_CONTAINER_PORT:?set POSTGRES_EXPORTER_CONTAINER_PORT}"
     networks:
@@ -757,8 +728,8 @@ services:
         reservations:
           memory: 1G
     depends_on:
-      somabrain_standalone_vault_init:
-        condition: service_completed_successfully
+      somabrain_standalone_vault_agent_app:
+        condition: service_healthy
       somabrain_standalone_redis:
         condition: service_healthy
       somabrain_standalone_kafka:
@@ -780,8 +751,10 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ../../somabrain:/app/somabrain:ro
+      - ../../soma_memory_contract:/app/soma_memory_contract:ro
       - ../../scripts:/app/scripts:ro
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      # Vault Agent sink + templates. Scoped AppRole token, never root.
+      - vault_app_secrets:/run/vault:ro
     tmpfs:
       - /app/logs:rw,size=64m,mode=1777
       - /tmp:rw,size=64m,mode=1777
@@ -794,9 +767,11 @@ services:
       # Gunicorn writes its control socket to $HOME; tmpfs /tmp keeps it writable.
       HOME: "/tmp"
 
-      # VAULT BOOTSTRAP ONLY
+      # VAULT BOOTSTRAP ONLY — address + token FILE path (topology). The token
+      # is the AppRole-scoped, auto-renewed service token written by the Vault
+      # Agent sidecar onto tmpfs. Never the root token, never an env value.
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
-      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
+      VAULT_TOKEN_FILE: /run/vault/token
 
       # Secrets are NOT environment variables (Rule 164). JWT secret, API token
       # and the shared agent memory token are read from Vault via
@@ -892,8 +867,8 @@ services:
     image: somabrain:latest
     restart: unless-stopped
     depends_on:
-      somabrain_standalone_vault_init:
-        condition: service_completed_successfully
+      somabrain_standalone_vault_agent_app:
+        condition: service_healthy
       somabrain_standalone_postgres:
         condition: service_healthy
       somabrain_standalone_redis:
@@ -914,11 +889,13 @@ services:
     networks:
       - somabrain_standalone_net
     volumes:
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      # Vault Agent sink: scoped AppRole token on tmpfs, never root.
+      - vault_app_secrets:/run/vault:ro
       # Same live-code mount as app/outbox: the image's baked-in vault_client
       # only reads VAULT_TOKEN from ENV (banned, Rule 164). The mounted tree
       # resolves secrets via VAULT_TOKEN_FILE.
       - ../../somabrain:/app/somabrain:ro
+      - ../../soma_memory_contract:/app/soma_memory_contract:ro
     environment:
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
@@ -926,9 +903,9 @@ services:
       # app/outbox). django_core fails closed when the list is empty (Rule 91).
       ALLOWED_HOSTS: "${ALLOWED_HOSTS:?set ALLOWED_HOSTS}"
 
-      # VAULT BOOTSTRAP ONLY — address + token FILE, never the token value.
+      # VAULT BOOTSTRAP ONLY — address + token FILE path (topology).
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
-      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
+      VAULT_TOKEN_FILE: /run/vault/token
 
       # Secrets are NOT environment variables (Rule 164). JWT secret, API token
       # and the shared agent memory token are read from Vault via
@@ -1017,11 +994,28 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
+      # F-06: the password is fetched and used inside one Python process.
+      # Never `curl http://user:$PASS@...` — that puts the credential on argv
+      # (ps / cmdline). Never a shell var. Fail-closed if Vault is unreachable.
       test:
-        - CMD-SHELL
-        - >-
-          PASS="$$(python -c "from somabrain.core.security.vault_client import get_runtime_secret; print(get_runtime_secret('supervisor_http_pass'))")" &&
-          curl -fsS "http://$${SUPERVISOR_HTTP_USER:?set SUPERVISOR_HTTP_USER}:$${PASS}@localhost:9001" >/dev/null
+        - CMD
+        - python
+        - -c
+        - |
+          from somabrain.core.security.vault_client import get_runtime_secret
+          import base64, os, sys, urllib.request
+          user = os.environ["SUPERVISOR_HTTP_USER"]
+          pw = get_runtime_secret("supervisor_http_pass")
+          req = urllib.request.Request("http://127.0.0.1:9001")
+          req.add_header(
+              "Authorization",
+              "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode(),
+          )
+          try:
+              urllib.request.urlopen(req, timeout=5).read()
+          except Exception:
+              sys.exit(1)
+          sys.exit(0)
       interval: 30s
       timeout: 5s
       retries: 5
@@ -1046,8 +1040,8 @@ services:
         reservations:
           memory: 128M
     depends_on:
-      somabrain_standalone_vault_init:
-        condition: service_completed_successfully
+      somabrain_standalone_vault_agent_app:
+        condition: service_healthy
       somabrain_standalone_kafka:
         condition: service_healthy
       somabrain_standalone_postgres:
@@ -1065,9 +1059,9 @@ services:
       # default (django_core raises when the list is empty).
       ALLOWED_HOSTS: "${ALLOWED_HOSTS:?set ALLOWED_HOSTS}"
 
-      # VAULT BOOTSTRAP ONLY
+      # VAULT BOOTSTRAP ONLY — address + token FILE path (topology).
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
-      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
+      VAULT_TOKEN_FILE: /run/vault/token
 
       # Resolved secrets required before Django settings import.
       # Use the internal Postgres service name; the host-bound port is not reachable from the container.
@@ -1093,7 +1087,8 @@ services:
       # resolve secrets from Vault via VAULT_TOKEN_FILE (Rule 164). The image's
       # baked-in vault_client only reads VAULT_TOKEN from ENV, which is banned.
       - ../../somabrain:/app/somabrain:ro
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      - ../../soma_memory_contract:/app/soma_memory_contract:ro
+      - vault_app_secrets:/run/vault:ro
     tmpfs:
       - /app/logs:rw,size=64m,mode=1777
       - /tmp:rw,size=64m,mode=1777
@@ -1125,6 +1120,11 @@ services:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     restart: unless-stopped
     hostname: minio
+    depends_on:
+      # Root keys are rendered by the Vault Agent sidecar onto tmpfs and read
+      # via MINIO_ROOT_*_FILE. Never env, never compose YAML, never disk.
+      somabrain_standalone_vault_agent_minio:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -1132,13 +1132,12 @@ services:
         reservations:
           memory: 256M
     environment:
-      # MinIO accepts the *_FILE form, so the credential is read from t=0
-      # material and never appears in the container environment. ENV carries a
-      # PATH, exactly like VAULT_TOKEN_FILE.
-      MINIO_ROOT_USER_FILE: ${MINIO_ROOT_USER_FILE:?set MINIO_ROOT_USER_FILE}
-      MINIO_ROOT_PASSWORD_FILE: ${MINIO_ROOT_PASSWORD_FILE:?set MINIO_ROOT_PASSWORD_FILE}
+      # PATH to Vault-rendered tmpfs secrets. ENV carries a PATH only.
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_secret_key
     volumes:
       - minio_data:/minio_data
+      - vault_minio_secrets:/run/secrets:ro
     ports:
       - "30109:9000"
       - "30110:9001"
@@ -1164,8 +1163,8 @@ services:
     image: somabrain:latest
     restart: unless-stopped
     depends_on:
-      somabrain_standalone_vault_init:
-        condition: service_completed_successfully
+      somabrain_standalone_vault_agent_app:
+        condition: service_healthy
       somabrain_standalone_kafka:
         condition: service_healthy
       somabrain_standalone_kafka_topics_init:
@@ -1179,9 +1178,9 @@ services:
       DJANGO_SETTINGS_MODULE: "somabrain.settings.standalone"
       RUNNING_IN_DOCKER: "true"
 
-      # VAULT BOOTSTRAP ONLY
+      # VAULT BOOTSTRAP ONLY — address + token FILE path (topology).
       VAULT_ADDR: "${SOMABRAIN_VAULT_ADDR:?set SOMABRAIN_VAULT_ADDR}"
-      VAULT_TOKEN_FILE: "${SOMABRAIN_VAULT_TOKEN_FILE:?set SOMABRAIN_VAULT_TOKEN_FILE}"
+      VAULT_TOKEN_FILE: /run/vault/token
 
       # Resolved secrets required before Django settings import.
       # Use the internal Postgres service name; the host-bound port is not reachable from the container.
@@ -1208,7 +1207,7 @@ services:
         reservations:
           memory: 192M
     volumes:
-      - ${SOMA_T0_SECRETS_DIR:?set SOMA_T0_SECRETS_DIR}:/run/secrets_t0:ro
+      - vault_app_secrets:/run/vault:ro
     healthcheck:
       test: [ "CMD", "curl", "-fsS", "http://localhost:9015/health" ]
       interval: 30s
@@ -1220,8 +1219,53 @@ services:
 volumes:
   kafka_data:
     driver: local
+  # Bootstrap custodian for vault_unseal.py ONLY (unseal key / root token) —
+  # the one credential that cannot live in Vault (chicken-and-egg).
+  # Named volume (Docker Desktop cannot persist tmpfs across host reboot; an
+  # initialized Vault is unrecoverable without its unseal key). Application
+  # secrets NEVER go here: Vault Agent renders them to the per-service tmpfs
+  # volumes below.
+  t0_ram:
+    driver: local
+  # AppRole role_id / secret_id for Vault Agent auto-auth. Isolated tmpfs
+  # mounted only into vault_init (write) and the three vault-agent sidecars
+  # (read). Never mounted into app/postgres/minio.
+  approle_bootstrap:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "mode=0755"
+  # Vault Agent → postgres: POSTGRES_PASSWORD_FILE on RAM tmpfs.
+  vault_pg_secrets:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "mode=0700"
+  # Vault Agent → MinIO: MINIO_ROOT_*_FILE on RAM tmpfs.
+  vault_minio_secrets:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "mode=0700"
+  # Vault Agent → app/cog/outbox/migrate: scoped AppRole token + optional
+  # rendered secrets on RAM tmpfs. uid/gid match Dockerfile USER 1000:1000
+  # so the sink file is readable by the application process.
+  vault_app_secrets:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "mode=0700,uid=1000,gid=1000"
   # Vault file storage — secrets survive container restart.
   somabrain_standalone_vault_data:
+    driver: local
+  # F-16: dedicated audit volume (SOMA-STD-BOOTSTRAP-001 §3.5). Never inside
+  # /vault/data and never in the repo. Contents are HMAC-SHA256 under a
+  # per-device salt — plaintext secrets never enter this file.
+  somabrain_standalone_vault_audit:
     driver: local
   postgres_data:
     driver: local

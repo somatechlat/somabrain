@@ -50,7 +50,9 @@ class LearnerDLQ:
             "reason": reason,
             "event": event,
         }
-        tenant = str(event.get("tenant") or "default")
+        tenant = str(event.get("tenant") or "")
+        if not tenant:
+            raise ValueError("tenant is required (T-5 fail-closed)")
         if self.producer and self.topic:
             try:
                 self.producer.produce(self.topic, json.dumps(payload).encode("utf-8"))

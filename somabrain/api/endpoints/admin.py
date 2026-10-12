@@ -16,7 +16,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from somabrain import metrics as M
-from somabrain.api.auth import api_key_auth
+from somabrain.api.auth import api_key_auth, require_admin_auth
 from somabrain.db import outbox as outbox_db
 from somabrain.schemas import (
     FeatureFlagsResponse,
@@ -57,6 +57,7 @@ def _supervisor() -> ServerProxy:
 @router.get("/services", auth=api_key_auth)
 def list_services(request: HttpRequest):
     """List all supervisor-managed services."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         s = _supervisor()
         info = s.supervisor.getAllProcessInfo()
@@ -70,6 +71,7 @@ def list_services(request: HttpRequest):
 @router.get("/services/{name}", auth=api_key_auth)
 def service_status(request: HttpRequest, name: str):
     """Get status of a specific service."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         s = _supervisor()
         info = s.supervisor.getProcessInfo(name)
@@ -83,6 +85,7 @@ def service_status(request: HttpRequest, name: str):
 @router.post("/services/{name}/start", auth=api_key_auth)
 def service_start(request: HttpRequest, name: str):
     """Start a service."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         s = _supervisor()
         res = s.supervisor.startProcess(name, False)
@@ -96,6 +99,7 @@ def service_start(request: HttpRequest, name: str):
 @router.post("/services/{name}/stop", auth=api_key_auth)
 def service_stop(request: HttpRequest, name: str):
     """Stop a service."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         s = _supervisor()
         res = s.supervisor.stopProcess(name, False)
@@ -109,6 +113,7 @@ def service_stop(request: HttpRequest, name: str):
 @router.post("/services/{name}/restart", auth=api_key_auth)
 def service_restart(request: HttpRequest, name: str):
     """Restart a service."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         s = _supervisor()
         try:
@@ -136,6 +141,7 @@ def admin_list_outbox(
     offset: int = 0,
 ):
     """List outbox events with filtering."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         events = outbox_db.list_events_by_status(
             status=status.lower().strip(),
@@ -166,6 +172,7 @@ def admin_list_outbox(
 @router.post("/outbox/replay", auth=api_key_auth)
 def admin_replay_outbox(request: HttpRequest, body: OutboxReplayRequest):
     """Replay specific outbox events by ID."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         count = outbox_db.mark_events_for_replay(body.event_ids)
     except HttpError:
@@ -193,11 +200,11 @@ def admin_replay_outbox(request: HttpRequest, body: OutboxReplayRequest):
     return OutboxReplayResponse(replayed=count)
 
 
-
 # Feature flags
 @router.get("/features", auth=api_key_auth)
 def admin_features_state(request: HttpRequest) -> FeatureFlagsResponse:
     """Return current feature-flag status."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     return FeatureFlagsResponse(
         status=FeatureFlags.get_status(), overrides=FeatureFlags.get_overrides()
     )
@@ -209,6 +216,7 @@ def admin_features_update(
     body: FeatureFlagsUpdateRequest,
 ) -> FeatureFlagsUpdateResponse:
     """Validate and apply admin feature-flag update."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     unknown = [f for f in body.disabled if f not in FeatureFlags.KEYS]
     if unknown:
         raise HttpError(400, f"unknown flags: {', '.join(unknown)}")
@@ -222,6 +230,7 @@ def admin_features_update(
 @router.get("/diagnostics", auth=api_key_auth)
 def admin_diagnostics(request: HttpRequest):
     """Return a concise diagnostics summary for the standalone deployment."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     from django.utils import timezone
 
     return {

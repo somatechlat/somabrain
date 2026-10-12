@@ -9,7 +9,6 @@ Production imports only: ``somabrain.math.contracts``,
 
 from __future__ import annotations
 
-import runpy
 from pathlib import Path
 
 import pytest
@@ -168,7 +167,6 @@ class TestEntropyDoesNotMoveTau:
 
     def test_check_entropy_cap_passes_tau_through(self) -> None:
         from somabrain.learning.annealing import check_entropy_cap
-        from somabrain.math.contracts import sharpen_mixture_weights
 
         tenant = "w3-entropy"
         from somabrain.learning import annealing as annealing_mod
@@ -210,7 +208,9 @@ class TestEntropyDoesNotMoveTau:
 
     def test_engine_entropy_does_not_move_tau(self) -> None:
         """Source contract: engine entropy path never writes tau from sharpening."""
-        src = (REPO_ROOT / "somabrain" / "learning" / "adaptation" / "engine.py").read_text()
+        src = (
+            REPO_ROOT / "somabrain" / "learning" / "adaptation" / "engine.py"
+        ).read_text()
         assert "sharpen_mixture_weights" in src or "check_entropy_cap" in src
         # τ must be passed through, not reassigned from mixture sharpening
         assert "tau_out" in src or "tau == " in src or "tau," in src

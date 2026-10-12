@@ -62,5 +62,3 @@ async def stop_memory_watchdog(app: Any) -> None:
             task.cancel()
     except Exception:
         pass
-
-

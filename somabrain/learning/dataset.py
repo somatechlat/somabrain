@@ -175,7 +175,10 @@ def export_examples(examples: Iterable[TrainingExample], path: str) -> None:
     """
 
     with open(path, "w", encoding="utf-8") as handle:
-        handle.writelines(json.dumps(asdict(example), ensure_ascii=False) + "\n" for example in examples)
+        handle.writelines(
+            json.dumps(asdict(example), ensure_ascii=False) + "\n"
+            for example in examples
+        )
 
 
 def iter_jsonl(path: str) -> Iterator[dict]:

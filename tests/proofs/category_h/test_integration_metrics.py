@@ -251,19 +251,17 @@ class TestAdditionalMetrics:
         assert SFM_BULK_STORE_LATENCY is not None
         assert SFM_BULK_STORE_ITEMS is not None
 
-    def test_hybrid_recall_metrics_exist(self) -> None:
-        """Hybrid recall metrics exist.
+    def test_hybrid_recall_metrics_removed(self) -> None:
+        """Dead hybrid recall metrics are gone with hybrid.py (no fallback path).
 
         **Feature: deep-memory-integration**
-        **Validates: Requirements H2.1, H2.2**
+        **Validates: fail-closed no-fallback law**
         """
-        from somabrain.metrics.integration import (
-            SFM_HYBRID_RECALL_LATENCY,
-            SFM_HYBRID_RECALL_TOTAL,
-        )
+        import somabrain.metrics.integration as integ
 
-        assert SFM_HYBRID_RECALL_TOTAL is not None
-        assert SFM_HYBRID_RECALL_LATENCY is not None
+        assert not hasattr(integ, "SFM_HYBRID_RECALL_TOTAL")
+        assert not hasattr(integ, "SFM_HYBRID_RECALL_LATENCY")
+        assert not hasattr(integ, "record_hybrid_recall")
 
     def test_all_metrics_exported(self) -> None:
         """All metrics are exported from metrics module.

@@ -21,10 +21,8 @@ import numpy as np
 
 from somabrain.core.rust_bridge import get_rust_module, is_rust_available
 from somabrain.math.contracts import (
-    PRODUCTION_SPARSITY_P,
     compute_wiener_lambda,
     production_sparsity,
-    production_wiener_lambda,
 )
 
 _SeedLike = Union[int, str, None]

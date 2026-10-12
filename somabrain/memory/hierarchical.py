@@ -21,9 +21,7 @@ from .superposed_trace import CleanupIndex, SuperposedTrace, TraceConfig
 class LayerPolicy:
     """Policy parameters for a memory layer."""
 
-    threshold: float | None = (
-        None  # minimum cleanup score required to accept the hit
-    )
+    threshold: float | None = None  # minimum cleanup score required to accept the hit
     promote_margin: float | None = (
         None  # margin requirement to promote into the next tier
     )

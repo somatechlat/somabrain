@@ -22,8 +22,17 @@ from somabrain.memory.graph_metrics import (
     SB_GRAPH_PATH_LATENCY,
     SB_GRAPH_PATH_TOTAL,
 )
+from somabrain.memory.recall_ops import MemoryRecallUnavailable
 
 logger = logging.getLogger(__name__)
+
+
+def _require_tenant(tenant: str | None) -> str:
+    """T-5 fail-closed: tenant is required."""
+    tid = (tenant or "").strip()
+    if not tid:
+        raise ValueError("tenant is required (T-5 fail-closed)")
+    return tid
 
 
 @dataclass
@@ -35,7 +44,7 @@ class GraphLink:
     link_type: str
     strength: float = 1.0
     metadata: dict[str, Any] | None = None
-    tenant: str = "default"
+    tenant: str | None = None
     created_at: float = 0.0
 
 
@@ -111,7 +120,7 @@ class GraphOpsMixin:
         link_type: str = "related",
         strength: float = 1.0,
         metadata: dict[str, Any] | None = None,
-        tenant: str = "default",
+        tenant: str | None = None,
         timeout_ms: float = 100.0,
     ) -> bool:
         """Create a link between two coordinates."""
@@ -222,10 +231,15 @@ class GraphOpsMixin:
         k_hop: int = 1,
         limit: int = 10,
         link_type: str | None = None,
-        tenant: str = "default",
+        tenant: str | None = None,
         timeout_ms: float = 100.0,
     ) -> list[GraphNeighbor]:
-        """Get neighbors of a coordinate."""
+        """Get neighbors of a coordinate.
+
+        Fail-closed (T-5 / D6): a transport outage, HTTP error, or SFM
+        ``degraded=true`` raises :class:`MemoryRecallUnavailable`. A genuine
+        "no neighbors" is the successful empty list.
+        """
         tracer = trace.get_tracer("soma.memory_client")
         with tracer.start_as_current_span("sb_graph_neighbors_query") as span:
             span.set_attribute("tenant", tenant)
@@ -243,7 +257,9 @@ class GraphOpsMixin:
                 SB_GRAPH_NEIGHBORS_TOTAL.labels(
                     tenant=tenant, status="no_transport"
                 ).inc()
-                return []
+                raise MemoryRecallUnavailable(
+                    "graph neighbors refused: memory transport is not available"
+                )
 
             params = {
                 "coord": self._coord_to_str(coord),
@@ -265,6 +281,22 @@ class GraphOpsMixin:
                 duration = time.perf_counter() - start_time
                 if response.status_code == 200:
                     data = response.json()
+                    if isinstance(data, dict) and data.get("degraded"):
+                        SB_GRAPH_NEIGHBORS_TOTAL.labels(
+                            tenant=tenant, status="degraded"
+                        ).inc()
+                        SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=tenant).observe(
+                            duration
+                        )
+                        span.set_attribute("degraded", True)
+                        raise MemoryRecallUnavailable(
+                            "graph neighbors degraded: "
+                            + str(
+                                data.get("degraded_reason")
+                                or data.get("error")
+                                or "sfm degraded"
+                            )
+                        )
                     neighbors = []
                     for n in data.get("neighbors", []):
                         coord_str = n.get("coord", n.get("coordinate", ""))
@@ -293,14 +325,20 @@ class GraphOpsMixin:
                         status=response.status_code,
                         coord=coord,
                     )
-                    return []
+                    raise MemoryRecallUnavailable(
+                        f"graph neighbors failed with status {response.status_code}"
+                    )
+            except MemoryRecallUnavailable:
+                raise
             except Exception as exc:
                 duration = time.perf_counter() - start_time
                 SB_GRAPH_NEIGHBORS_TOTAL.labels(tenant=tenant, status="exception").inc()
                 SB_GRAPH_NEIGHBORS_LATENCY.labels(tenant=tenant).observe(duration)
                 span.record_exception(exc)
-                logger.warning("Graph neighbors exception (degraded)", error=str(exc))
-                return []
+                logger.warning("Graph neighbors exception", error=str(exc))
+                raise MemoryRecallUnavailable(
+                    f"graph neighbors unavailable: {exc}"
+                ) from exc
 
     def find_path(
         self,
@@ -308,10 +346,15 @@ class GraphOpsMixin:
         to_coord: tuple[float, ...],
         max_length: int = 10,
         link_type: str | None = None,
-        tenant: str = "default",
+        tenant: str | None = None,
         timeout_ms: float = 200.0,
     ) -> list[tuple[float, ...]]:
-        """Find shortest path between two coordinates."""
+        """Find shortest path between two coordinates.
+
+        Fail-closed (T-5 / D6): transport loss, HTTP error, or SFM
+        ``degraded=true`` raises :class:`MemoryRecallUnavailable`. A genuine
+        "no path" (``found=false``) is the successful empty list.
+        """
         tracer = trace.get_tracer("soma.memory_client")
         with tracer.start_as_current_span("sb_graph_path_query") as span:
             span.set_attribute("tenant", tenant)
@@ -327,7 +370,9 @@ class GraphOpsMixin:
                 SB_GRAPH_PATH_TOTAL.labels(
                     tenant=tenant, status="no_transport", found="false"
                 ).inc()
-                return []
+                raise MemoryRecallUnavailable(
+                    "graph path refused: memory transport is not available"
+                )
 
             params = {
                 "from_coord": self._coord_to_str(from_coord),
@@ -349,6 +394,20 @@ class GraphOpsMixin:
                 duration = time.perf_counter() - start_time
                 if response.status_code == 200:
                     data = response.json()
+                    if isinstance(data, dict) and data.get("degraded"):
+                        SB_GRAPH_PATH_TOTAL.labels(
+                            tenant=tenant, status="degraded", found="false"
+                        ).inc()
+                        SB_GRAPH_PATH_LATENCY.labels(tenant=tenant).observe(duration)
+                        span.set_attribute("degraded", True)
+                        raise MemoryRecallUnavailable(
+                            "graph path degraded: "
+                            + str(
+                                data.get("degraded_reason")
+                                or data.get("error")
+                                or "sfm degraded"
+                            )
+                        )
                     if data.get("found"):
                         path = []
                         for coord_str in data.get("path", []):
@@ -375,7 +434,11 @@ class GraphOpsMixin:
                         "Graph path query failed",
                         status=response.status_code,
                     )
-                    return []
+                    raise MemoryRecallUnavailable(
+                        f"graph path failed with status {response.status_code}"
+                    )
+            except MemoryRecallUnavailable:
+                raise
             except Exception as exc:
                 duration = time.perf_counter() - start_time
                 SB_GRAPH_PATH_TOTAL.labels(
@@ -384,13 +447,13 @@ class GraphOpsMixin:
                 SB_GRAPH_PATH_LATENCY.labels(tenant=tenant).observe(duration)
                 span.record_exception(exc)
                 logger.warning("Graph path exception", error=str(exc))
-                return []
+                raise MemoryRecallUnavailable(f"graph path unavailable: {exc}") from exc
 
     def create_co_recalled_links(
         self,
         coords: list[tuple[float, ...]],
         strength: float = 0.5,
-        tenant: str = "default",
+        tenant: str | None = None,
         timeout_ms: float = 100.0,
     ) -> int:
         """Create co_recalled links between all pairs of coordinates."""

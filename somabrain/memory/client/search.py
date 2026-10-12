@@ -190,7 +190,9 @@ class SearchMixin:
         request_id: str,
         embedding: list[float] | None = None,
     ) -> list[RecallHit]:
-        return self._memories_search_sync(query, top_k, universe, request_id, embedding=embedding)
+        return self._memories_search_sync(
+            query, top_k, universe, request_id, embedding=embedding
+        )
 
     async def _http_recall_aggregate_async(
         self,
@@ -200,4 +202,6 @@ class SearchMixin:
         request_id: str,
         embedding: list[float] | None = None,
     ) -> list[RecallHit]:
-        return await self._memories_search_async(query, top_k, universe, request_id, embedding=embedding)
+        return await self._memories_search_async(
+            query, top_k, universe, request_id, embedding=embedding
+        )

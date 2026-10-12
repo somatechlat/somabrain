@@ -17,9 +17,35 @@ logger = logging.getLogger(__name__)
 _ENGINE_CACHE: dict[str, object] = {}
 
 
+def _try_shared_engine(tid: str):
+    """Return the context-route AdaptationEngine for this tenant, or None.
+
+    APM-1 requires memory events to train the SAME weights that
+    ``GET /context/adaptation/state`` reports. That surface reads the
+    ContextRouteState engine cache, so prefer it whenever Django is up.
+    """
+    try:
+        from somabrain.api.context_state import get_context_route_state
+        from somabrain.context.factory import get_context_builder, get_context_planner
+
+        eng = get_context_route_state().get_adaptation_engine(
+            get_context_builder(), get_context_planner(), tid
+        )
+        # Lockstep cache so tests/inspection see the same object identity.
+        _ENGINE_CACHE[tid] = eng
+        return eng
+    except Exception:
+        return None
+
+
 def _get_engine(tenant_id: str):
     """Per-tenant engine; each engine owns its own weight objects when possible."""
-    tid = tenant_id or "default"
+    tid = tenant_id or ""
+    if not tid:
+        raise ValueError("tenant is required (T-5 fail-closed)")
+    shared = _try_shared_engine(tid)
+    if shared is not None:
+        return shared
     eng = _ENGINE_CACHE.get(tid)
     if eng is not None:
         return eng
@@ -40,7 +66,9 @@ def _get_engine(tenant_id: str):
             from django.conf import settings as dj_settings
 
             lr = float(getattr(dj_settings, "SOMABRAIN_ADAPT_LR", lr))
-            max_history = int(getattr(dj_settings, "SOMABRAIN_ADAPT_MAX_HISTORY", max_history))
+            max_history = int(
+                getattr(dj_settings, "SOMABRAIN_ADAPT_MAX_HISTORY", max_history)
+            )
         except Exception:
             pass
 
@@ -90,6 +118,8 @@ def apply_memory_event(
         return False
 
 
-def remember_learned(tenant_id: str | None, *, kind: str, utility: float | None = None) -> None:
+def remember_learned(
+    tenant_id: str | None, *, kind: str, utility: float | None = None
+) -> None:
     """Fire-and-forget hook for memory I/O paths."""
     apply_memory_event(kind, tenant_id=tenant_id, utility=utility)

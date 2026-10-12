@@ -45,14 +45,14 @@ def normalize_layer(raw: str | None) -> str:
     """Normalize a recall layer selector to the canonical vocabulary.
 
     Returns one of ``LAYER_WM``, ``LAYER_LTM``, ``LAYER_BOTH``. An omitted or
-    empty selector means both layers. ``"all"`` is accepted as a legacy
-    synonym for ``"both"`` so older callers keep working; any other value is
-    rejected so a typo cannot silently return zero hits.
+    empty selector means both layers. Any other value is rejected so a typo
+    cannot silently return zero hits. There is no legacy alias — the only
+    vocabulary is ``wm | ltm | both``.
     """
     value = (raw or "").strip().lower()
     if not value:
         return LAYER_BOTH
-    if value in ("both", "all"):
+    if value == LAYER_BOTH:
         return LAYER_BOTH
     if value in (LAYER_WM, LAYER_LTM):
         return value

@@ -267,8 +267,8 @@ def make_embedder(cfg, quantum=None):
         _CachedEmbedder: Configured embedder with caching and projection.
 
     Note:
-        Supports providers: 'tiny' (default), 'transformer', 'hrr', 'fde'
-        Falls back to 'tiny' when requested provider is unavailable.
+        Supports providers: 'tiny', 'transformer', 'hrr'.
+        Unknown or unimplemented providers refuse (Rule 2) — never soft-fallback.
         Applies JL projection if embed_dim_target_k is specified.
     """
     provider = (getattr(cfg, "embed_provider", None) or "tiny").lower()
@@ -276,7 +276,12 @@ def make_embedder(cfg, quantum=None):
     target_k = getattr(cfg, "embed_dim_target_k", None)
 
     # base provider
-    if provider == "hrr" and quantum is not None:
+    if provider == "hrr":
+        if quantum is None:
+            raise RuntimeError(
+                "Embed provider 'hrr' requires a quantum layer. "
+                "Set embed_provider=tiny or provide quantum."
+            )
 
         def _hrr_embed(text: str) -> np.ndarray:
             """Execute hrr embed.
@@ -294,27 +299,21 @@ def make_embedder(cfg, quantum=None):
 
         base_dim = int(getattr(cfg, "hrr_dim", 8192) or 8192)
         base_fn = _hrr_embed
-    elif provider == "fde":
-        # FDE must be a real provider; fail fast until implemented.
-        raise RuntimeError(
-            "Embed provider 'fde' is not implemented. "
-            "Set embed_provider to a supported provider or add the real FDE implementation."
-        )
     elif provider == "transformer":
-        try:
-            from .providers.transformer_embed import TransformerEmbedder
+        from .providers.transformer_embed import TransformerEmbedder
 
-            t = TransformerEmbedder(model_name=getattr(cfg, "embed_model", None))
-            base_dim = t.dim
-            base_fn = t.embed
-        except Exception:
-            base = TinyDeterministicEmbedder(dim=resolve_embed_dim())
-            base_dim = base.dim
-            base_fn = base.embed
-    else:
+        t = TransformerEmbedder(model_name=getattr(cfg, "embed_model", None))
+        base_dim = t.dim
+        base_fn = t.embed
+    elif provider == "tiny":
         base = TinyDeterministicEmbedder(dim=resolve_embed_dim())
         base_dim = base.dim
         base_fn = base.embed
+    else:
+        raise RuntimeError(
+            f"Unknown embed provider '{provider}'. "
+            "Set embed_provider to tiny, transformer, or hrr."
+        )
 
     # Optional JL projection wrapper
     jl = _JLProjector(
@@ -323,13 +322,6 @@ def make_embedder(cfg, quantum=None):
         target_k=target_k,
         seed=int(getattr(cfg, "hrr_seed", 42) or 42),
     )
-    # Provider label override for FDE (MUVERA) experiments
-    plabel = provider
-    try:
-        if bool(getattr(cfg, "fde_enabled", False)):
-            plabel = "fde"
-    except Exception:
-        pass
     # Optional cache wrapper
-    cached = _CachedEmbedder(jl.embed, cache_size=cache_size, provider_label=plabel)
+    cached = _CachedEmbedder(jl.embed, cache_size=cache_size, provider_label=provider)
     return cached

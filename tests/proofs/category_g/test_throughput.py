@@ -224,7 +224,7 @@ class TestThroughputCapacity:
             wm.admit(f"normal_{i}", vec, {"phase": "normal"})
             normal_latencies.append(time.perf_counter() - start)
 
-        normal_avg = sum(normal_latencies) / len(normal_latencies)
+        sum(normal_latencies) / len(normal_latencies)
         normal_median = float(np.median(normal_latencies))
 
         # Spike load (burst of operations)
@@ -247,7 +247,7 @@ class TestThroughputCapacity:
             wm.admit(f"recovery_{i}", vec, {"phase": "recovery"})
             recovery_latencies.append(time.perf_counter() - start)
 
-        recovery_avg = sum(recovery_latencies) / len(recovery_latencies)
+        sum(recovery_latencies) / len(recovery_latencies)
         recovery_median = float(np.median(recovery_latencies))
 
         # Recovery latency should be within a reasonable multiple of normal median.

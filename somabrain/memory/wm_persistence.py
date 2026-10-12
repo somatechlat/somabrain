@@ -149,13 +149,14 @@ class WMPersister:
             True if successfully marked.
         """
         try:
-            # Store eviction marker
+            # D1 FIX: eviction is payload metadata (evicted=true), NOT a type.
+            # SFM accepts memory_type in {episodic,semantic,belief,working_memory}.
             eviction_payload = {
                 "item_id": item_id,
                 "tenant_id": self._tenant_id,
                 "evicted": True,
                 "evicted_at": time.time(),
-                "memory_type": "working_memory_eviction",
+                "memory_type": "working_memory",
             }
             coord_key = f"wm_eviction:{item_id}"
             await self._client.aremember(coord_key, eviction_payload)

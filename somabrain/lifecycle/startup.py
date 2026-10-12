@@ -22,9 +22,9 @@ _logger = logging.getLogger("somabrain.lifecycle")
 async def startup_mode_banner(app: Any) -> None:
     """Log mode, derived flags, and deprecation notices on boot.
 
-    This is informational only and does not mutate existing behavior. It helps
-    operators verify that SOMABRAIN_MODE is respected and surfaces any legacy
-    envs slated for removal.
+    Also enforces ``REQUIRE_OPA`` (security review F-06): when the flag is on
+    and no policy engine is configured/reachable, boot REFUSES. An advisory
+    flag that never gates is a lie.
 
     Args:
         app: The Django Ninja application instance (for accessing app.state if needed)
@@ -63,6 +63,35 @@ async def startup_mode_banner(app: Any) -> None:
         if _shared is not None:
             for note in getattr(_shared, "deprecation_notices", []) or []:
                 lg.warning("DEPRECATION: %s", note)
+
+        # F-06: REQUIRE_OPA must actually gate, not decorate.
+        if _shared is not None and getattr(_shared, "REQUIRE_OPA", False):
+            opa_url = getattr(_shared, "SOMABRAIN_OPA_URL", None) or getattr(
+                _shared, "OPA_URL", None
+            )
+            if not opa_url:
+                raise RuntimeError(
+                    "REQUIRE_OPA=True but no OPA URL is configured "
+                    "(SOMABRAIN_OPA_URL). Refusing to boot without a policy engine."
+                )
+            # Best-effort liveness probe. Transport failure is not fatal here —
+            # the middleware still fail-closes every request — but it is loud.
+            try:
+                import httpx
+
+                resp = httpx.get(f"{str(opa_url).rstrip('/')}/health", timeout=2.0)
+                if resp.status_code >= 400:
+                    lg.warning(
+                        "REQUIRE_OPA: OPA health returned %s — requests will 403 until it is healthy",
+                        resp.status_code,
+                    )
+            except Exception as exc:
+                lg.warning(
+                    "REQUIRE_OPA: OPA not reachable at boot (%s) — middleware will fail-closed deny",
+                    exc,
+                )
+    except RuntimeError:
+        raise
     except AttributeError:
         try:
             lg.debug("Failed to emit startup mode banner", exc_info=True)
@@ -184,8 +213,6 @@ async def init_health_watchdog(
         health_watchdog_task_holder["task"] = task
 
 
-
-
 async def start_outbox_sync(logger: logging.Logger | None = None) -> None:
     """Launch the background outbox synchronization worker.
 
@@ -208,37 +235,6 @@ async def start_outbox_sync(logger: logging.Logger | None = None) -> None:
         log.info("Outbox sync background task started (interval=%s s)", interval)
     except (ImportError, AttributeError, ValueError) as exc:  # pragma: no cover
         log.error("Failed to start outbox sync task: %s", exc, exc_info=True)
-
-
-async def start_milvus_reconciliation_task() -> None:
-    """Launch the Milvus reconciliation loop (Requirement 11.5).
-
-    This task periodically reconciles data between the local database and
-    Milvus vector store to ensure consistency.
-    """
-    from django.conf import settings
-
-    from somabrain.jobs.milvus_reconciliation import reconcile as milvus_reconcile
-
-    interval = float(getattr(settings, "SOMABRAIN_MILVUS_RECONCILE_INTERVAL"))
-    if interval <= 0:
-        logging.getLogger("somabrain").info(
-            "Milvus reconciliation disabled (interval=%s)", interval
-        )
-        return
-
-    async def _runner() -> None:
-        """Execute runner."""
-
-        log = logging.getLogger("somabrain")
-        while True:
-            try:
-                await asyncio.to_thread(milvus_reconcile)
-            except (OSError, TimeoutError) as exc:
-                log.error("Milvus reconciliation run failed: %s", exc)
-            await asyncio.sleep(interval)
-
-    asyncio.create_task(_runner())
     logging.getLogger("somabrain").info(
         "Milvus reconciliation task started (interval=%s s)", interval
     )
@@ -257,9 +253,7 @@ async def startup_diagnostics(cfg: Any) -> None:
         # Use shared settings for diagnostics
         from django.conf import settings
 
-        mem_ep = str(
-            getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT") or ""
-        ).strip()
+        mem_ep = str(getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT") or "").strip()
         token_present = bool(getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN"))
 
         # Use centralized Settings flag for Docker detection
@@ -307,7 +301,9 @@ async def startup_diagnostics(cfg: Any) -> None:
             )
         ):
             _log.warning(
-                "Memory endpoint is localhost inside container; use host.docker.internal:10101 for Docker Desktop or a service DNS name."
+                "Memory endpoint is localhost inside container; name a "
+                "routable service DNS name or the host gateway the operator "
+                "configured. There is no code-side host or port (Rule 91)."
             )
     except (ImportError, AttributeError):
         # never fail startup on diagnostics

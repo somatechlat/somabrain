@@ -104,7 +104,16 @@ def resolve_memory_endpoint(default: str | None = None) -> MemoryEndpoint:
     mutate the returned dataclass.
     """
 
-    explicit = _first_non_empty(_from_settings("SOMABRAIN_MEMORY_HTTP_ENDPOINT"))
+    # Operator law: URL is a managed setting (BrainSetting/Django), not ENV.
+    explicit = None
+    try:
+        from somabrain.settings.managed import managed_get
+
+        explicit = managed_get("memory_http_endpoint", None) or None
+    except Exception:
+        explicit = None
+    if not explicit:
+        explicit = _first_non_empty(_from_settings("SOMABRAIN_MEMORY_HTTP_ENDPOINT"))
     if explicit:
         clean = explicit.rstrip("/")
         scheme, host, port = _parse_url(clean)

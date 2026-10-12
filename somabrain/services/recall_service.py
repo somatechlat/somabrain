@@ -34,11 +34,10 @@ from __future__ import annotations
 
 import asyncio
 import re
-import time as _t
 from collections.abc import Callable
 
-from .. import metrics as M
 from ..math import cosine_similarity
+
 # SDR/LSH prefilter removed: no production payload fetch by LSH coordinates.
 
 
@@ -125,9 +124,7 @@ def recall_ltm(
     except Exception as exc:
         import logging
 
-        logging.getLogger(__name__).debug(
-            "Read-your-writes fallback failed: %s", exc
-        )
+        logging.getLogger(__name__).debug("Read-your-writes fallback failed: %s", exc)
     # Lexical/token-aware boost: if the query looks like a short unique token or
     # if any payload contains the exact query string, promote those payloads to
     # the top so users don't need manual tuning to find label-like memories.

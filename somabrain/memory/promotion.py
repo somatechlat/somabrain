@@ -471,7 +471,9 @@ class WMLTMPromoter:
         # This would be called by the recall path when a promoted item is found
         # The actual recency refresh happens in WM, this just tracks the event
         if item_id in self._ltm_references:
-            logger.debug("Refreshing recency for promoted item", extra={"item_id": item_id})
+            logger.debug(
+                "Refreshing recency for promoted item", extra={"item_id": item_id}
+            )
             return True
         return False
 

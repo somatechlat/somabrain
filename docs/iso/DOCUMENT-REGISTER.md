@@ -42,25 +42,30 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 | SOMA-BR-GUIDE-CONTRIB-001 | docs/CONTRIBUTING.md | Contribution Process | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-ONBOARD-001 | docs/ONBOARDING.md | Project Context & Mission | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-OPS-001 | docs/OPS_MANUAL.md | Retrieval Observability Runbook (Strict Real Mode) | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-BR-INDEX-001 | docs/README.md | SomaBrain Documentation Index | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BR-INDEX-001 | docs/README.md | SomaBrain Documentation Index | 1.1.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-ARCH-001 | docs/SOMABRAIN_ARCHITECTURE.md | SomaBrain Architecture — How the Brain Works | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-SRS-001 | docs/SRS_FULL.md | SomaBrain — Master Technical Specification | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-GMD-001 | docs/SomabrainGMD.md | Governing Memory Dynamics (GMD): A Truthful Mathematical Framework for Agentic High‑Dimensional Memory | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-COVENANT-001 | docs/THE-SOMA-COVENANT.md | THE SOMA COVENANT | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-USER-001 | docs/USER_GUIDE.md | Multi-Tenant Usage | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-GUIDE-VIBE-001 | docs/VIBE_RULES.md | 1. NO BULLSHIT | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-BR-ARCH-001 | docs/iso/SOMA-BR-ARCH-001.md | SomaBrain Architecture Document | 2.0.1 | Approved | CTO, SomaTech | 2026-12-28 | Compliant |
-| SOMA-BR-ARCH-TRUTH-001 | docs/iso/SOMA-BR-ARCH-TRUTH-001.md | Architecture Truth Document | 1.0.0 | Draft | — | 2027-01-04 | Compliant |
+| SOMA-BR-ARCH-001 | docs/iso/SOMA-BR-ARCH-001.md | SomaBrain Architecture Document | 2.0.2 | Approved | CTO, SomaTech | 2026-12-28 | Compliant |
+| SOMA-BR-ARCH-MILLION-TXN-001 | docs/iso/SOMA-BR-ARCH-MILLION-TXN-001.md | Full Production Architecture (as built) | 1.1.0 | Draft | Product Owner | 2027-01-09 | Compliant |
+| SOMA-BR-ARCH-TRUTH-001 | docs/iso/SOMA-BR-ARCH-TRUTH-001.md | Architecture Truth Document | 1.0.1 | Draft | — | 2027-01-04 | Compliant |
 | SOMA-BR-AUDIT-001 | docs/iso/SOMA-BR-AUDIT-001.md | SomaBrain Audit Report | 2.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-COMPAT-001 | docs/iso/SOMA-BR-COMPAT-001.md | Soma Cognitive Triad Version Compatibility Matrix | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-BR-CONFIG-API-TEST-001 | docs/iso/SOMA-BR-CONFIG-API-TEST-001.md | Configuration, API, and Test-Map (Truth) | 1.0.1 | Approved | Engineering Lead | 2027-01-08 | Compliant |
-| SOMA-BR-DEBT-001 | docs/iso/SOMA-BR-DEBT-001.md | Defect & Architecture Debt Register | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BR-CONFIG-API-TEST-001 | docs/iso/SOMA-BR-CONFIG-API-TEST-001.md | Configuration, API, and Test-Map (Truth) | 1.0.2 | Approved | Engineering Lead | 2027-01-08 | Compliant |
+| SOMA-BR-DEBT-001 | docs/iso/SOMA-BR-DEBT-001.md | Defect & Architecture Debt Register | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
 | SOMA-BR-DOCS-001 | docs/iso/SOMA-BR-DOCS-001.md | Document Control and Traceability Procedure | 1.0.1 | Draft | — | 2026-12-28 | Compliant |
-| SOMA-BR-MATH-TRUTH-001 | docs/iso/SOMA-BR-MATH-TRUTH-001.md | SomaBrain Mathematical Specification As Implemented | 1.1.1 | Approved | Engineering Lead | 2027-01-05 | Compliant |
-| SOMA-BR-PHASE-A-GATE-001 | docs/iso/SOMA-BR-PHASE-A-GATE-001.md | Phase A Exit Gate Review (DOC-A5) | 1.0.1 | Approved | Engineering Lead | 2027-01-04 | Compliant |
+| SOMA-BR-DOCS-REMEDIATION-001 | docs/iso/SOMA-BR-DOCS-REMEDIATION-001.md | Documentation Remediation Plan — Code as Source of Truth | 1.0.0 | Draft | — | 2027-01-09 | Compliant |
+| SOMA-BR-ISO-CERT-001 | docs/iso/SOMA-BR-ISO-CERT-001.md | ISO Documentation Certification Report | 1.0.0 | Draft | — | 2026-12-28 | Compliant |
+| SOMA-BR-MASTER-REMEDIATION-001 | docs/iso/SOMA-BR-MASTER-REMEDIATION-001.md | Master Remediation Plan — Single-Lane Architecture, Fail-Closed Perfection, Admin UI | 1.0.1 | Draft | Product Owner | 2027-01-09 | Compliant |
+| SOMA-BR-MATH-TRUTH-001 | docs/iso/SOMA-BR-MATH-TRUTH-001.md | SomaBrain Mathematical Specification As Implemented | 1.1.2 | Approved | Engineering Lead | 2027-01-05 | Compliant |
+| SOMA-BR-OPS-RUNBOOK-001 | docs/iso/SOMA-BR-OPS-RUNBOOK-001.md | Agent Operations Runbook | 1.0.1 | Draft | — | 2027-01-09 | Compliant |
+| SOMA-BR-PHASE-A-GATE-001 | docs/iso/SOMA-BR-PHASE-A-GATE-001.md | Phase A Exit Gate Review (DOC-A5) | 1.0.2 | Approved | Engineering Lead | 2027-01-04 | Compliant |
 | SOMA-BR-PLAN-MASTER-001 | docs/iso/SOMA-BR-PLAN-MASTER-001.md | Master TODO, Waves, Rapid Development Methodology | 1.0.1 | Draft | — | 2027-01-04 | Compliant |
 | SOMA-BR-PROD-001 | docs/iso/SOMA-BR-PROD-001.md | SomaBrain Production Readiness Assessment | 2.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
-| SOMA-BR-QMS-001 | docs/iso/SOMA-BR-QMS-001.md | SomaBrain Quality Manual | 1.0.3 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
+| SOMA-BR-QMS-001 | docs/iso/SOMA-BR-QMS-001.md | SomaBrain Quality Manual | 1.0.5 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-RISK-001 | docs/iso/SOMA-BR-RISK-001.md | SomaBrain Risk Register | 2.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-SDP-001 | docs/iso/SOMA-BR-SDP-001.md | SomaBrain Software Development Plan | 1.0.1 | Approved | VP Engineering, SomaTech | 2026-12-28 | Compliant |
 | SOMA-BR-SEC-001 | docs/iso/SOMA-BR-SEC-001.md | SomaBrain Security Assessment | 2.0.2 | Approved | CISO, SomaTech | 2026-12-28 | Compliant |
@@ -86,8 +91,8 @@ a row marked `Non-compliant` is a tracked gap, not a silent exception.
 
 | Metric | Count |
 |---|---|
-| Registered documents | 43 |
-| Compliant | 43 |
+| Registered documents | 48 |
+| Compliant | 48 |
 | Non-compliant (tracked gaps) | 0 |
 | Annexes (design artefacts) | 0 |
 

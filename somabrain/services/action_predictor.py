@@ -115,9 +115,7 @@ class ActionPredictorService:
         except Exception as e:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-    def _extract_action_vector(
-        self, message_data: dict[str, Any]
-    ) -> np.ndarray | None:
+    def _extract_action_vector(self, message_data: dict[str, Any]) -> np.ndarray | None:
         """Extract action vector from next event message."""
         try:
             # Assuming next events contain action-related predictions

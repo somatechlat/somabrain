@@ -2,24 +2,21 @@
 
 # 🧠 SomaBrain
 
-### *Hyperdimensional Cognitive Memory System for Autonomous AI Agents*
+### Hyperdimensional memory runtime for agents
 
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Django 5.0+](https://img.shields.io/badge/Django-5.0+-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
-[![Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
-[![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)]()
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Django 5.1+](https://img.shields.io/badge/Django-5.1+-092E20?style=for-the-badge&logo=django&logoColor=white)](https://djangoproject.com)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
-<br/>
+**Persistent memory for agents**
 
-**Persistent memory for AI agents that need to remember**
-
-[Website](https://www.somatech.dev) · [Features](#-features) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [API](#-api-reference) · [Documentation](#-documentation)
+[Features](#features) · [Architecture](#architecture) · [Quick Start](#quick-start) · [API](#api-reference) · [Documentation](#documentation)
 
 </div>
 
 ---
 
-## 🌌 The Governed Trace Algorithm
+## The Governed Trace Algorithm
 
 At the heart of SomaBrain lies a mathematically elegant memory update mechanism inspired by neuroscience:
 
@@ -50,58 +47,22 @@ This enables high-capacity associative memory with constant-time $O(1)$ retrieva
 
 ---
 
-## ✨ Features
+## Features
 
-<table>
-<tr>
-<td width="50%">
+| Area | Implemented behavior |
+|------|----------------------|
+| Hyperdimensional computing | HRR/BHDC hypervector encode/bind/unbind/cleanup (`QuantumLayer` name is historical — this is hyperdimensional computing, not physics). Dimension `BHDC_D = 8192` (`somabrain/math/contracts.py`). Sparse Distributed Representations in `somabrain/admin/core/sdr.py`. |
+| Memory | Working memory with salience-based promotion (`somabrain/memory/wm/`, `somabrain/memory/promotion.py`), long-term store via SomaFractalMemory HTTP, consolidation (`somabrain/memory/consolidation.py`) |
+| Learning | Online weight adaptation (`somabrain/learning/adaptation/`) driven by recall hit/miss, store, promote, forget, and `/context/feedback`. HRR is additive on the embed path (`SOMABRAIN_USE_HRR` default true; optional disable). |
+| Runtime core | Rust crate `somabrain_rs` is the sole adaptation-math authority (DEBT-008 closed) and also hosts BHDC, Wiener, and neuromod. Missing Rust on the adaptation path refuses (`RuntimeError`) — no Python gain-law twin (`rust_core/`, `cargo test` 17/17 as of 2026-10-09). |
+| Multi-tenancy | Tenant-bound requests and BrainSetting administration (`somabrain/tenant.py`, `somabrain/api/endpoints/brain_settings.py`) |
+| Policy / auth | OPA client, JWT/API-token auth, audit logging (`somabrain/opa/`, `somabrain/core/security/`) |
 
-### 🔮 Hyperdimensional Computing
-
-- **8,192-dimensional HRR vectors** for holographic encoding
-- **Sparse Distributed Representations** with 2% density
-- **HRR/BHDC hypervector superposition** for parallel memory access (the `QuantumLayer` name is historical — this is hyperdimensional computing, not physics quantum)
-- **O(N) similarity search** on a fixed-dimension hypervector (constant in the number of stored traces)
-
-</td>
-<td width="50%">
-
-### 🧬 Biologically-Inspired
-
-- **Working Memory** with salience-based gating
-- **Hippocampal consolidation** during sleep cycles
-- **Neuromodulator simulation** (dopamine, serotonin)
-- **Amygdala** for emotional valence tagging
-
-</td>
-</tr>
-<tr>
-<td>
-
-### 📊 Adaptive Learning
-
-- **Online plasticity** with automatic gain control
-- **Catastrophic forgetting resistance**
-- **Drift detection** and model recalibration
-- **Reward-modulated learning**
-
-</td>
-<td>
-
-### 🔐 Enterprise-Ready
-
-- **Multi-tenant** cryptographic isolation
-- **Audit logging** (GDPR, HIPAA compliant)
-- **Rate limiting** and quota management
-- **OPA policy enforcement**
-
-</td>
-</tr>
-</table>
+**Not claimed:** regulatory certification (see Compliance below). Measured latency/throughput figures are not published in this README; see SLO targets in `docs/iso/SOMA-BR-VV-001.md` and `tests/proofs/category_g/test_latency_slo.py`.
 
 ---
 
-## 🏛️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -136,7 +97,7 @@ This enables high-capacity associative memory with constant-time $O(1)$ retrieva
 │    │                      HIPPOCAMPUS                                      │     │
 │    │                   (Long-term Storage)                                 │     │
 │    │                                                                       │     │
-│    │   📊 12M memories  │  🔍 Vector Index  │  📈 Consolidation Queue    │     │
+│    │   Vector index │ Consolidation queue │ (target ≥12M/tenant, not measured) │     │
 │    │                                                                       │     │
 │    └──────────────────────────────────────────────────────────────────────┘     │
 │                                                                                  │
@@ -159,7 +120,7 @@ This enables high-capacity associative memory with constant-time $O(1)$ retrieva
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -177,54 +138,46 @@ This enables high-capacity associative memory with constant-time $O(1)$ retrieva
 git clone https://github.com/somatechlat/somabrain.git
 cd somabrain
 
-# Create virtual environment
+# Create virtual environment (Python 3.12 required)
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install the package and dependencies (pyproject.toml is the source of truth)
+pip install -e .
+# Development tools (pytest, ruff, black, pyright):
+pip install -r requirements-dev.txt
 
-# Configure settings (non-secret only)
-cp .env.example .env
-# .env holds topology/settings placeholders ONLY. Secrets never go in .env
-# (Covenant Art 26): "Production secrets shall reside exclusively in secure
-# vault systems. Storage in code, configuration files, or environment
-# variables is prohibited." Secrets come from Vault at runtime.
-# Settings are administered via Django + BrainSetting (agent DB).
+# Settings law (binding):
+#   Settings = Django settings modules (somabrain/settings/) + BrainSetting DB
+#              overlay (somabrain/brain_settings/models.py). Administerable.
+#   Secrets  = Vault ONLY (Covenant Art 26): "Production secrets shall reside
+#              exclusively in secure vault systems. Storage in code,
+#              configuration files, or environment variables is prohibited."
+#   Environment variables are NOT a settings or secrets channel.
+#   .env.example exists only as a non-secret local bootstrap sketch.
 
 # Initialize database
 python manage.py migrate
 
-# Start the cognitive engine
+# Start the API (default port for local Django is 9696; Docker Compose uses 30101)
 python manage.py runserver 9696
 ```
 
-### 🐳 Docker Deployment
+### Docker Deployment
+
+The canonical standalone stack is `infra/standalone/docker-compose.yml` (ports 30100–30108). Topology (Redis, Milvus, Kafka, OPA URLs) is administered via **BrainSetting / Django settings**, not by copying environment files. Secrets (DSN, tokens) are injected from **Vault** at runtime.
 
 ```bash
-docker-compose up -d
+# See infra/standalone/DEPLOYMENT_GUIDE.md for the full stack, Vault unseal, and healthchecks.
+cd infra/standalone
+docker compose up -d
 ```
 
-```yaml
-# docker-compose.yml
-services:
-  somabrain:
-    image: somatechlat/somabrain:latest
-    ports:
-      - "9696:9696"
-    environment:
-      # Secrets are NOT environment variables. The DSN embeds the password, so
-      # it is read from Vault at runtime and never set here:
-      #   secret/agent/credentials/postgres_password
-      # Topology only:
-      - SOMABRAIN_REDIS_URL=redis://redis:6379/0
-      - SOMABRAIN_MILVUS_HOST=milvus
-    # VAULT_ADDR + VAULT_TOKEN are injected by the deployer, never committed.
-```
+Do not put secrets in compose `environment:` blocks. Vault address/token for the deployer are supplied out-of-band and never committed.
 
 ---
 
-## 📡 API Reference
+## API Reference
 
 ### Remember (write)
 
@@ -289,42 +242,50 @@ There is no `/api/v1/memory/wm/status`. Working-memory occupancy is on
 
 ---
 
-## 🧪 Core Modules
+## Core Modules
 
-| Module | Description | Key Functions |
+| Module (package path) | Purpose | Key symbols |
 |--------|-------------|---------------|
-| `wm.py` | Working memory with salience gating | `add()`, `evict()`, `recall()` |
-| `hippocampus.py` | Long-term consolidation | `store()`, `retrieve()`, `consolidate()` |
-| `amygdala.py` | Emotional valence tagging | `tag_valence()`, `modulate()` |
-| `prefrontal.py` | Executive planning & control | `plan()`, `inhibit()`, `switch()` |
-| `neuromodulators.py` | Dopamine, serotonin, norepinephrine | `update()`, `get_levels()` |
-| `context_hrr.py` | Holographic Reduced Representations | `encode()`, `bind()`, `unbind()` |
-| `sdr.py` | Sparse Distributed Representations | `encode()`, `overlap()` |
-| `quantum.py` | HRR/BHDC hypervector layer (`QuantumLayer`) — bind/unbind/cleanup, **not** physics quantum | `superpose()`, `bind()`, `unbind()`, `cleanup()` |
-| `consolidation.py` | NREM/REM sleep consolidation | `nrem_cycle()`, `rem_cycle()` |
-| `salience.py` | Importance scoring | `compute()`, `threshold()` |
+| `somabrain/memory/wm/` | Working memory with salience gating | `WorkingMemory`, `WMItem` |
+| `somabrain/memory/promotion.py` | WM→LTM promotion by salience threshold | `PromotionTracker` |
+| `somabrain/admin/cognitive/hippocampus.py` | Long-term consolidation orchestration | `store()`, `retrieve()`, `consolidate()` |
+| `somabrain/admin/cognitive/amygdala.py` | Valence tagging | `tag_valence()`, `modulate()` |
+| `somabrain/admin/cognitive/prefrontal.py` | Executive planning and control | `plan()`, `inhibit()`, `switch()` |
+| `somabrain/runtime/neuromodulators.py` | Neuromodulator levels | `update()`, `get_levels()` |
+| `somabrain/admin/core/context_hrr.py` | Holographic Reduced Representations | `encode()`, `bind()`, `unbind()` |
+| `somabrain/admin/core/sdr.py` | Sparse Distributed Representations | `encode()`, `overlap()` |
+| `somabrain/admin/core/quantum.py` | HRR/BHDC hypervector layer (`QuantumLayer`) — bind/unbind/cleanup, not physics quantum | `superpose()`, `bind()`, `unbind()`, `cleanup()` |
+| `somabrain/memory/consolidation.py` | NREM/REM consolidation cycles | `nrem_cycle()`, `rem_cycle()` |
+| `somabrain/math/contracts.py` | Shared math constants (`BHDC_D`, gains) | `BHDC_D`, `AdaptGains` |
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
-SomaBrain exposes a large set of environment-driven settings. Key examples:
+**Settings law (binding):** Settings come from **Django settings modules** (`somabrain/settings/`) and the **`BrainSetting` DB overlay** (`somabrain/brain_settings/models.py`) — both administerable. **Secrets come from Vault only** (Covenant Art 26). Environment variables are **not** a settings or secrets channel. Topology URLs and runtime knobs are resolved by `somabrain/settings/managed.py` (`managed_get`: BrainSetting first, then Django; never `os.environ`).
 
-| Setting | Default | Description |
+Representative `BrainSetting` keys (registry defaults in `somabrain/brain_settings/models.py`, 75 keys as of 2026-10-09):
+
+| BrainSetting key | Default | Description |
 |---------|---------|-------------|
-| `SOMABRAIN_WM_SIZE` | 64 | Working memory capacity |
-| `SOMABRAIN_HRR_DIM` | 8192 | Hypervector dimensions |
-| `SOMABRAIN_SDR_BITS` | 2048 | SDR active bits |
-| `SOMABRAIN_EMBED_DIM` | 768 | Embedding dimensions (seam contract with SFM/agent) |
-| `SOMABRAIN_ENABLE_SLEEP` | true | Enable consolidation cycles |
-| `SOMABRAIN_NEURO_DOPAMINE_BASE` | 0.4 | Base dopamine level |
-| `SOMABRAIN_RATE_RPS` | 1000 | Rate limit (req/sec) |
+| `embed_dim` | 768 | Embedding dimension (seam contract with SFM/agent) |
+| `hrr_dim` | 8192 | Hypervector dimension (`BHDC_D`) |
+| `use_hrr` | true | HRR/QuantumLayer additive embed path (optional disable) |
+| `memory_decay_rate` | 0.05 | WM/LTM decay per tick (learnable) |
+| `wm_prune_threshold` | 0.15 | WM prune salience threshold (learnable) |
+| `ltm_prune_threshold` | 0.05 | LTM prune threshold (learnable) |
+| `max_wm_items` | 128 | Working-memory capacity |
+| `max_ltm_items_per_tenant` | 100000 | Per-tenant LTM cap |
+| `memory_http_endpoint` | (topology) | SomaFractalMemory HTTP base URL |
+| `active_brain_mode` | ANALYTIC | Active cognitive preset mode |
 
-📖 **Current reference set:** [`docs/README.md`](docs/README.md)
+Runtime API for system-role UI: `GET/PUT /settings` (`somabrain/api/endpoints/brain_settings.py`) — bounded, tenant-bound writes.
+
+📖 **Reference set:** [`docs/README.md`](docs/README.md) · **Config map (truth):** [`docs/iso/SOMA-BR-CONFIG-API-TEST-001.md`](docs/iso/SOMA-BR-CONFIG-API-TEST-001.md)
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 | Document | Description |
 |----------|-------------|
@@ -346,9 +307,9 @@ SomaBrain exposes a large set of environment-driven settings. Key examples:
 
 ---
 
-## 🔬 Research Foundations
+## Research Foundations
 
-SomaBrain synthesizes cutting-edge research from cognitive science and AI:
+The design draws on published work in cognitive science and vector-symbolic computation:
 
 <table>
 <tr>
@@ -379,60 +340,46 @@ SomaBrain synthesizes cutting-edge research from cognitive science and AI:
 
 ---
 
-## 🛡️ Security & Compliance
+## Security and Compliance
 
-| Feature | Description |
-|---------|-------------|
-| 🔐 **JWT Authentication** | Configurable with Keycloak, Auth0, or custom |
-| 🛡️ **OPA Policy Engine** | Fine-grained authorization |
-| 🔒 **Vault Integration** | Secrets management |
-| 📋 **Audit Logging** | Complete operation history |
-| 🔏 **Provenance Tracking** | Cryptographic memory chain |
-| 🚫 **PII Masking** | Automatic in logs |
+| Feature | Implementation |
+|---------|----------------|
+| Authentication | JWT and API-token auth (`somabrain/core/security/`) |
+| Authorization | OPA policy client (`somabrain/opa/`), constitution signing |
+| Secrets | HashiCorp Vault only (Covenant Art 26) — never code, files, `.env`, or environment |
+| Audit logging | Operation history and provenance tracking |
+| Isolation | Per-tenant data separation |
 
-**Compliance:** GDPR, HIPAA, SOC2-ready
+**Compliance status (honest):** SomaBrain provides **control mappings** toward GDPR/HIPAA/SOC2 expectations (see `docs/iso/SOMA-BR-SEC-001.md`). It is **not certified**. No formal audit, BAA, or attestation is claimed by this repository.
 
 ---
 
-## 🤝 SomaStack Ecosystem
+## SomaStack Ecosystem
 
 | Project | Description | Link |
 |---------|-------------|------|
-| 🤖 **SomaAgent01** | Agent orchestration gateway | [GitHub](https://github.com/somatechlat/somaAgent01) |
-| 💾 **SomaFractalMemory** | Distributed long-term storage | [GitHub](https://github.com/somatechlat/somafractalmemory) |
-| 🌐 **SomaStack AAAS** | Admin dashboard UI | [Docs](webui/somastack-aaas) |
+| SomaAgent01 | Agent orchestration gateway | [GitHub](https://github.com/somatechlat/somaAgent01) |
+| SomaFractalMemory | Distributed long-term storage | [GitHub](https://github.com/somatechlat/somafractalmemory) |
+
+SomaStack AAAS admin UI lives in the sibling `somaAgent01` repository (not in this tree).
 
 ---
 
-## 📊 Performance Benchmarks
+## Performance
 
-| Operation | Latency (p95) | Throughput |
-|-----------|:-------------:|:----------:|
-| Memory Store | 8ms | 12,000/sec |
-| Vector Recall | 15ms | 5,000/sec |
-| WM Update | 2ms | 50,000/sec |
-| Consolidation Cycle | 30s | 10,000 memories |
+No published measured latency/throughput table is claimed here. The repository defines **SLO targets** and proof tests:
 
-*Benchmarked on 32-core, 128GB RAM, with Milvus on NVMe*
+| Operation | SLO target (p95) | Evidence |
+|-----------|:-------------:|----------|
+| Memory store | ≤ 8ms | `tests/proofs/category_g/test_latency_slo.py` |
+| Vector recall | ≤ 15ms | `tests/proofs/category_g/test_latency_slo.py` |
+| WM update | ≤ 2ms | `tests/proofs/category_g/test_latency_slo.py` |
+
+These are targets under verification (`docs/iso/SOMA-BR-VV-001.md`), not marketing benchmarks. Hardware-dependent figures are not asserted without a dated measurement report.
 
 ---
 
-<div align="center">
-
-## 📜 License
+## License
 
 Licensed under the [Apache License, Version 2.0](LICENSE)
 
----
-
-<br/>
-
-**Built with 🧠 by the SomaTech team**
-
-*"Teaching machines to remember, so they can truly understand."*
-
-<br/>
-
-[![Star](https://img.shields.io/github/stars/somatechlat/somabrain?style=social)](https://github.com/somatechlat/somabrain)
-
-</div>

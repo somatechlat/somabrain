@@ -77,7 +77,7 @@ This assessment covers the security controls of SomaBrain:
 - Code review of security-critical paths
 - Configuration audit of security-related settings (Django / `BrainSetting`) and Vault secret handling
 - Threat modeling using STRIDE methodology
-- Compliance mapping to GDPR, HIPAA, SOC2 controls
+- Control mapping toward GDPR, HIPAA, SOC2 expectations (mapping only; no certification claimed)
 
 ---
 
@@ -326,8 +326,8 @@ Secrets are **Vault ONLY** (not Vault/env). Settings are administered via Django
 
 | Secret | Storage | Rotation |
 |---|---|---|
-| `SOMABRAIN_POSTGRES_DSN` | Vault | Vault dynamic secrets |
-| `SOMABRAIN_REDIS_URL` | Vault | Manual or Vault |
+| `SOMABRAIN_POSTGRES_DSN` | Vault | Vault only (embeds password) |
+| `SOMABRAIN_REDIS_URL` / `redis_host`+`redis_port` | Topology — Django/BrainSetting | Not a secret |
 | `SOMABRAIN_JWT_SECRET` | Vault | Manual or Vault |
 | `SOMABRAIN_API_TOKEN` | Vault | Manual |
 | `SOMABRAIN_MEMORY_HTTP_TOKEN` | Vault | Manual |
@@ -394,9 +394,9 @@ Secrets are **Vault ONLY** (not Vault/env). Settings are administered via Django
 
 | Standard | Status | Key Controls |
 |---|---|---|
-| **GDPR** | ✅ Ready | PII masking, data deletion capability, audit trail, consent management |
-| **HIPAA** | ✅ Ready | Access controls, audit logging, encryption, BAA available |
-| **SOC2** | ⚠️ In Progress | Security, availability, processing integrity controls in place; formal audit pending |
+| **GDPR** | Control mapping only — **not certified** | PII masking, data deletion capability, audit trail, consent controls implemented. No formal GDPR audit/attestation claimed. |
+| **HIPAA** | Control mapping only — **not certified** | Access controls, audit logging, encryption implemented. **No BAA is claimed by this repository.** |
+| **SOC2** | **Not certified** | Security, availability, processing integrity controls present; formal audit not performed. |
 
 ### 10.3 Provenance Tracking
 

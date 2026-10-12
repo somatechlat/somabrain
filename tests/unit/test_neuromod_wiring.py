@@ -105,11 +105,11 @@ def _configure_settings() -> None:
             "SOMABRAIN_DEFAULT_TENANT": "t-nm",
             "SOMABRAIN_JOURNAL_DIR": "/tmp/somabrain_neuromod_journal",
             "SOMABRAIN_JOURNAL_MAX_FILE_SIZE": 1_048_576,
-            "JOURNAL_MAX_FILES": 1,
-            "JOURNAL_ROTATION_INTERVAL": 3600,
-            "JOURNAL_RETENTION_DAYS": 1,
-            "JOURNAL_COMPRESSION": False,
-            "JOURNAL_SYNC_WRITES": False,
+            "SOMABRAIN_JOURNAL_MAX_FILES": 1,
+            "SOMABRAIN_JOURNAL_ROTATION_INTERVAL": 3600,
+            "SOMABRAIN_JOURNAL_RETENTION_DAYS": 1,
+            "SOMABRAIN_JOURNAL_COMPRESSION": False,
+            "SOMABRAIN_JOURNAL_SYNC_WRITES": False,
             "SOMABRAIN_MEMORY_HTTP_TOKEN": "test-only-token",
             "SOMABRAIN_MEMORY_HTTP_ENDPOINT": "http://127.0.0.1:9",
             "SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD": 3,
@@ -172,7 +172,6 @@ from somabrain.runtime.neuromodulators import (  # noqa: E402
     project,
     serotonin_target,
 )
-
 
 # ---------------------------------------------------------------------------
 # DEBT-001 — one store
@@ -258,15 +257,17 @@ class TestDopamineToLearningRate:
 class TestHomeostaticLaw:
     def test_mean_reverting_formula(self):
         """m ← Π(m + η (δ − m)) exactly."""
-        p = AdaptiveParameter("t", initial_value=0.4, min_value=0.0, max_value=1.0,
-                              learning_rate=0.1)
+        p = AdaptiveParameter(
+            "t", initial_value=0.4, min_value=0.0, max_value=1.0, learning_rate=0.1
+        )
         p.update(PerformanceMetrics(), delta=0.9)
         assert p.current_value == pytest.approx(0.4 + 0.1 * (0.9 - 0.4))
 
     def test_parameter_can_decrease(self):
         """Adverse evidence lowers the parameter (no saturating integrator)."""
-        p = AdaptiveParameter("t", initial_value=0.5, min_value=0.2, max_value=0.8,
-                              learning_rate=0.1)
+        p = AdaptiveParameter(
+            "t", initial_value=0.5, min_value=0.2, max_value=0.8, learning_rate=0.1
+        )
         p.update(PerformanceMetrics(), delta=0.8)  # pull up
         peak = p.current_value
         for _ in range(20):
@@ -276,10 +277,12 @@ class TestHomeostaticLaw:
     def test_dopamine_falls_after_failure(self):
         """DEBT-004 acceptance: success then failure → dopamine falls from peak."""
         adaptive = AdaptiveNeuromodulators()
-        good = PerformanceMetrics(success_rate=1.0, error_rate=0.0, latency=0.01,
-                                  accuracy=1.0)
-        bad = PerformanceMetrics(success_rate=0.0, error_rate=1.0, latency=1.0,
-                                 accuracy=0.0)
+        good = PerformanceMetrics(
+            success_rate=1.0, error_rate=0.0, latency=0.01, accuracy=1.0
+        )
+        bad = PerformanceMetrics(
+            success_rate=0.0, error_rate=1.0, latency=1.0, accuracy=0.0
+        )
         for _ in range(30):
             adaptive.update_from_performance(good, task_type="general")
         peak = adaptive.get_current_state().dopamine
@@ -291,10 +294,12 @@ class TestHomeostaticLaw:
     def test_no_monotone_saturation_over_1000(self):
         """Invariant after 1000 updates: in bounds, not stuck at a bound."""
         adaptive = AdaptiveNeuromodulators()
-        hi = PerformanceMetrics(success_rate=1.0, error_rate=0.0, latency=0.01,
-                                accuracy=1.0)
-        lo = PerformanceMetrics(success_rate=0.0, error_rate=1.0, latency=1.0,
-                                accuracy=0.0)
+        hi = PerformanceMetrics(
+            success_rate=1.0, error_rate=0.0, latency=0.01, accuracy=1.0
+        )
+        lo = PerformanceMetrics(
+            success_rate=0.0, error_rate=1.0, latency=1.0, accuracy=0.0
+        )
         trajectory: list[float] = []
         for i in range(1000):
             perf = hi if (i // 50) % 2 == 0 else lo
@@ -317,8 +322,9 @@ class TestHomeostaticLaw:
         store = PerTenantNeuromodulators()
         store.set_state(
             "t",
-            NeuromodState(dopamine=99.0, serotonin=-3.0, noradrenaline=0.5,
-                          acetylcholine=0.5),
+            NeuromodState(
+                dopamine=99.0, serotonin=-3.0, noradrenaline=0.5, acetylcholine=0.5
+            ),
         )
         s = store.get_state("t")
         assert s.dopamine == NEURO_BOUNDS["dopamine"][1]
@@ -435,7 +441,6 @@ class TestApiBounds:
         production clamp is the safe order ``min(1.0, max(0.0, x))`` and
         boundary validation rejects NaN outright.
         """
-        import math
 
         nan = float("nan")
         # The dangerous pattern maps NaN to 1.0 — document it, never use it.
@@ -471,7 +476,9 @@ class TestAChLaw:
         """δ_ACh = Π(0.5·novelty + 0.3·pred_error + 0.2·memory_load)."""
         lo, hi = NEURO_BOUNDS["acetylcholine"]
         expected = lo + (hi - lo) * (0.5 * 0.8 + 0.3 * 0.4 + 0.2 * 1.0)
-        assert acetylcholine_target(0.8, 0.4, memory_load=1.0) == pytest.approx(expected)
+        assert acetylcholine_target(0.8, 0.4, memory_load=1.0) == pytest.approx(
+            expected
+        )
 
     def test_same_ach_delta_sign_as_supervisor(self):
         """Given the same novelty/pred_error, both paths move ACh the same way."""
@@ -590,8 +597,9 @@ class TestProjection:
         assert project("acetylcholine", 5.0) == 0.1
 
     def test_neuromod_state_clamped(self):
-        s = NeuromodState(dopamine=5.0, serotonin=-1.0, noradrenaline=9.0,
-                          acetylcholine=9.0).clamped()
+        s = NeuromodState(
+            dopamine=5.0, serotonin=-1.0, noradrenaline=9.0, acetylcholine=9.0
+        ).clamped()
         assert (s.dopamine, s.serotonin, s.noradrenaline, s.acetylcholine) == (
             0.8,
             0.0,
@@ -613,7 +621,9 @@ class TestSupervisorWiring:
         assert sup is None or hasattr(sup, "adjust")
 
     def test_act_endpoint_passes_supervisor(self):
-        src = (REPO_ROOT / "somabrain" / "api" / "endpoints" / "cognitive.py").read_text()
+        src = (
+            REPO_ROOT / "somabrain" / "api" / "endpoints" / "cognitive.py"
+        ).read_text()
         assert "get_supervisor" in src
         assert "supervisor=supervisor" in src
 

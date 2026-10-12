@@ -1,7 +1,7 @@
 # SomaBrain - Agent Context
 
 > Purpose: Provide a single, accurate reference for agents working on the SomaBrain repo.
-> Last updated: 2026-10-08
+> Last updated: 2026-10-09
 
 ---
 
@@ -20,6 +20,12 @@ These override convenience. Source of truth: `docs/VIBE_RULES.md` (SOMA-BR-GUIDE
 6. **COMPLETE CONTEXT** — data flow, callers, callees, dependencies, impact before any edit. Missing context → ASK.
 7. **REAL DATA & SERVERS** (Covenant Art 21/24) — verify against real infra. Django ORM + Milvus only (Art 22).
 8. **Math must be correct** and **docs must reflect the math**.
+9. **COGNITION ALWAYS ON — 100% FULL CAPACITY (HARD LAW).**
+   - SomaBrain boots with every cognitive function ACTIVE. No default-OFF cognitive flags.
+   - Hippocampus · amygdala · prefrontal · basal ganglia · neuromodulators · learner · planner · meta-brain · OAK · microcircuits · soft salience · drift monitor · SDR · graph augment · HRR-first · exec controller · memory weighting · entropy cap · dynamic LR · learning loop — ALL ON, and they run on **every** memory cycle (remember/recall/promote), not only `/act`.
+   - Feature flags are **kill-switch / emergency-degrade only**. Never ship a half-thinking brain.
+   - Returning empty results because a cog flag is off is a **DEFECT**. `{"plan": []}` when planner is disabled is a **LIE**.
+   - Enforcement: `settings/cognitive.py` defaults · `runtime/modes.py` ModeConfig · `docs/VIBE_RULES.md` · tests.
 
 ### Multi-persona (always)
 
@@ -123,16 +129,21 @@ settings modules (`somabrain/settings/`) and the `BrainSetting` DB overlay
 
 - `SOMABRAIN_MODE` (dev|staging|production)
 - `SOMABRAIN_REDIS_URL`, `SOMABRAIN_KAFKA_URL`, `SOMABRAIN_OPA_URL` (topology)
-- `SOMABRAIN_MEMORY_HTTP_ENDPOINT`
+- BrainSetting `memory_http_endpoint` (SFM URL) — read via `managed_get`
 - `SOMABRAIN_AUTH_REQUIRED`
+- `SOMABRAIN_USE_HRR` (default true), `SOMABRAIN_MATH_BHDC_MIX` (`none|hadamard`)
+- `SOMABRAIN_MEMORY_FAST_ACK` (default true → accept `durable_outbox`)
 - `SOMABRAIN_JWT_PUBLIC_KEY_PATH`, `SOMABRAIN_JWT_AUDIENCE`, `SOMABRAIN_JWT_ISSUER`
 
 **Secrets** (Vault ONLY — never env, never files):
 
-- `SOMABRAIN_POSTGRES_DSN`
-- `SOMABRAIN_MEMORY_HTTP_TOKEN`
-- `SOMABRAIN_API_TOKEN`
-- `SOMABRAIN_JWT_SECRET`
+- `secret/agent/credentials[somabrain_memory_http_token]` — **shared** agent↔brain↔SFM bearer
+- `somafractalmemory/database[password]`
+- `somabrain/auth[jwt_secret]`
+- `SOMABRAIN_PROVENANCE_SECRET` (required only if `SOMABRAIN_REQUIRE_PROVENANCE`)
+
+**Ops truth (read before grepping code):** `docs/iso/SOMA-BR-OPS-RUNBOOK-001.md`
+(vault root path, topology keys, dual-store roles, remember proofs).
 
 ---
 
@@ -223,25 +234,31 @@ Do not invent parallel "source of truth" documents. If it is not in this table a
 
 ## Configuration Tuning (Meta-Controller)
 
-SomaBrain exposes **Cognitive Presets** to manage its 300+ parameters without manual tuning.
-
-*   **Stable** (Default): Reliable, factual. Low plasticity.
-*   **Plastic**: High learning rate, high dopamine. Best for rapid adaptation.
-*   **Lateral**: High temperature, high entropy. Best for creative tasks.
-
-**Usage:**
+SomaBrain applies named cognitive presets (`stable`, `plastic`, `lateral`) per tenant via `somabrain/services/parameter_supervisor.py` → `somabrain/admin/core/presets.py`. The administerable surface is **BrainSetting** (75 registry keys in `somabrain/brain_settings/models.py` as of 2026-10-09) plus Django settings modules — not "300+ parameters".
 
 ```python
 from somabrain.services.parameter_supervisor import ParameterSupervisor
 await ParameterSupervisor(config_svc).apply_preset(tenant="t1", preset_name="plastic")
 ```
 
-See `docs/technical/configuration_optimization.md` for the full strategy.
+Config map (truth): `docs/iso/SOMA-BR-CONFIG-API-TEST-001.md`.
 
 ## Runtime truth (2026-10-09)
 
-- **Rust core `somabrain_rs` is the fast path** (BHDC, Wiener, adaptation, neuromod). Python is fallback. `cargo test` 17/17.
+**Operator law — zero optional paths (2026-10-09):** `optional_setting()` / `optional_url()` deleted from `settings/resolve.py`. Only `require_setting` / `require_url` / `require_tenant` / `require_namespace` remain. `MemoryClient` is HTTP-only (direct mode deleted). `SOMA_API_TOKEN` is required. Health/URLs use `require_url` for OPA/MinIO/Schema-Registry — no soft "not configured".
+
+**Fail-closed memory:** `memory/hybrid.py` deleted. `utils.fetch_by_coord`, `milvus_ann.search`, `payloads_for_coords` raise on outage. `remember_bulk` partial fallback raises with failed indexes. Client outbox `IntegrityError` is an idempotent replay (H3); `aremember_background` raises (H4); `mark_sent` warns (M5). Ranking: dim mismatch raises; unscorable + `query_vec` refuses inventing 0.0.
+
+**One auth builder (R5):** `somabrain/memory/sfm_auth.py` `build_sfm_request_headers` is the only Brain→SFM header builder (both HTTP surfaces).
+
+**Layer vocabulary:** `wm` | `ltm` | `both` only (`api/memory/helpers.normalize_layer`). No `all` alias. Namespace is not a layer.
+
+**Tenant fail-closed:** SFM store/retrieve/delete/search/graph, learning (`learner_online`/`learner_dlq`/`memory_events`), WM, and `graph_ops` require a tenant — no default. `predictor_gamma` in `BRAIN_DEFAULTS` at `-0.5` (bounds `[-1.0, 1.0]`).
+
+**DEBT-008 CLOSED / DEBT-010 CLOSED:** Rust sole adaptation-math authority; `check_entropy_cap` sharpens (α,β,γ) only.
+
+- **Rust core `somabrain_rs` is the sole adaptation-math authority** (DEBT-008 closed). `learning/adaptation/rust_math.py` delegates to `somabrain_rs`; missing module → `RuntimeError` (no Python gain-law twin). BHDC / Wiener / neuromod also live in `rust_core`. `cargo test` 17/17.
 - **Brain learns from memory/agent interactions** (APM): recall hit/miss, store, promote, forget, `/context/feedback` move weights. Proven unit + live.
-- **HRR/QuantumLayer is additive** on embed path (`SOMABRAIN_USE_HRR`, provider `hrr`, JL→768 seam). Tiny embed is fallback.
+- **HRR/QuantumLayer is additive** on embed path (`SOMABRAIN_USE_HRR` default true via `require_setting`, provider `hrr`, JL→768 seam). Tiny embed is used only when `SOMABRAIN_USE_HRR` is explicitly `False`; init failure raises (no silent Tiny fallback).
 - **Settings law:** Django + BrainSetting/agent DB (administerable). **Secrets: Vault only** (Covenant Art 26). No env secrets. No file presets.
 - **Prune/decay knobs** (BrainSetting): `memory_decay_rate`, `wm_prune_threshold`, `ltm_prune_threshold`, `max_wm_items`, `max_ltm_items_per_tenant`.

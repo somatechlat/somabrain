@@ -80,9 +80,7 @@ class StatePredictorService:
         except Exception as e:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-    def _extract_state_vector(
-        self, message_data: dict[str, Any]
-    ) -> np.ndarray | None:
+    def _extract_state_vector(self, message_data: dict[str, Any]) -> np.ndarray | None:
         """Extract state vector from global frame message."""
         try:
             # Assuming global frame contains a 'state_vector' field

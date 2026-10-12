@@ -272,7 +272,9 @@ Tenant resolution is handled by `somabrain/tenant.py:get_tenant()` / `get_tenant
 
 1. `X-Tenant-ID` header.
 2. First 16 characters of the bearer token.
-3. Default tenant (`standalone` or `public`).
+3. `SOMABRAIN_DEFAULT_TENANT` — only when the credential carries no tenant (`somabrain/tenant.py`). In the standalone profile this is `standalone`; otherwise the setting is empty and `require_tenant` refuses (there is no implicit `public` partition).
+
+SFM store/retrieve/delete/search/graph operations, learning (`learner_online`, `learner_dlq`, `memory_events`), working memory, and `graph_ops` require an explicit tenant — they do not fall back to a default.
 
 ---
 
@@ -590,6 +592,9 @@ This section records the real state observed in the running standalone deploymen
 
 ## 12. Key Configuration Variables
 
+> **Settings law:** names below are Django/BrainSetting keys (administerable). Secrets (DSN, tokens) are Vault-only (Covenant Art 26). Environment variables are not the settings channel.
+
+
 | Variable | Default | Meaning |
 |---|---|---|
 | `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | `http://host.docker.internal:10101` | External memory service URL |
@@ -599,8 +604,8 @@ This section records the real state observed in the running standalone deploymen
 | `SOMABRAIN_REDIS_URL` | `redis://...:6379/0` | Redis connection |
 | `SOMABRAIN_KAFKA_URL` | `kafka://...:9092` | Kafka bootstrap |
 | `SOMABRAIN_OPA_URL` | `http://...:8181` | OPA policy endpoint |
-| `SOMABRAIN_EMBED_DIM` | `256` | Embedding / WM dimension |
-| `SOMABRAIN_WM_SIZE` | `64` | Working-memory capacity |
+| `embed_dim` / `SOMABRAIN_EMBED_DIM` | `768` | Embedding / WM dimension |
+| `max_wm_items` (BrainSetting) | `128` | Working-memory capacity |
 | `SOMABRAIN_WM_ALPHA/BETA/GAMMA` | `0.6/0.3/0.1` | Salience weights |
 | `SOMABRAIN_MODE` / `SOMA_DEPLOY_MODE` | `full-local` | Runtime mode |
 | `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` | `1` | Fail if backends unreachable |

@@ -15,10 +15,13 @@ def _read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
-def test_milvus_tenant_expr_is_validated() -> None:
+def test_milvus_client_is_connectivity_probe_only() -> None:
+    """T-1 / D7: no option write, no fake vectors, no search on the brain client."""
     src = _read("somabrain/memory/milvus_client.py")
-    assert "re.fullmatch" in src
-    assert "unsafe for a Milvus filter" in src
+    assert "def upsert_option" not in src
+    assert "def search_similar" not in src
+    assert "_vector_from_payload" not in src
+    assert "hashlib.sha256" not in src
 
 
 def test_universe_filter_fail_closed() -> None:

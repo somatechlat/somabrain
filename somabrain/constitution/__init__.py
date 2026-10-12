@@ -15,7 +15,7 @@ import json
 import logging
 import os  # noqa: F401
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.conf import settings
 
@@ -35,7 +35,6 @@ LOGGER = logging.getLogger("somabrain.constitution")
 
 class ConstitutionError(Exception):
     """Exception raised for ConstitutionError."""
-
 
 
 def _decode_signature(sig: str) -> bytes:

@@ -140,6 +140,51 @@ try:
 except Exception:
     pass
 
+# Force the test DSN into the live Django DATABASES and the settings bootstrap.
+# django_core.configure_vault_secrets() populates _BOOTSTRAP from Vault; the
+# Vault doc uses in-network hostnames (somabrain_standalone_postgres) that do
+# not resolve from the host test runner. The test runner supplies a
+# host-reachable DSN via TEST_PG_* and it must win.
+try:
+    from somabrain.settings import django_core as _dcore
+
+    _dcore._BOOTSTRAP["SOMABRAIN_POSTGRES_DSN"] = test_pg_dsn
+except Exception:
+    pass
+try:
+    from django.db import connections as _connections
+    from django.conf import settings as _settings
+
+    if test_pg_dsn:
+        import dj_database_url as _dburl
+
+        _settings.DATABASES["default"] = _dburl.parse(test_pg_dsn, conn_max_age=60)
+        _settings.DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+        _connections.close_all()
+except Exception:
+    # Fallback: minimal parse without dj_database_url
+    try:
+        import urllib.parse as _up
+
+        if test_pg_dsn.startswith("postgresql://"):
+            _u = _up.urlparse(test_pg_dsn)
+            from django.conf import settings as _settings
+
+            _settings.DATABASES["default"].update(
+                {
+                    "HOST": _u.hostname or "127.0.0.1",
+                    "PORT": str(_u.port or 5432),
+                    "USER": _u.username or "",
+                    "PASSWORD": _u.password or "",
+                    "NAME": (_u.path or "/somabrain").lstrip("/"),
+                }
+            )
+            from django.db import connections as _connections
+
+            _connections.close_all()
+    except Exception:
+        pass
+
 # pytest configuration to ignore certain scripts that are not intended to be test modules.
 collect_ignore = [
     "tests/smoke/kafka_smoke_test.py",
@@ -178,3 +223,51 @@ def pytest_ignore_collect(path, config):
 # Apply globally: no persistent storage, keep defaults for other settings.
 _hypothesis_settings.register_profile("no_persistent", database=None)
 _hypothesis_settings.load_profile("no_persistent")
+
+
+# ---------------------------------------------------------------------------
+# Force host-reachable test DSN into Django DATABASES before pytest-django
+# reads it for the django_db fixture. configure_vault_secrets() assembles the
+# DSN from Vault using in-network hostnames that do not resolve from the host.
+# ---------------------------------------------------------------------------
+def pytest_configure(config):
+    """Patch DATABASES after settings load, before test collection."""
+    _dsn = os.environ.get("TEST_PG_DSN", "")
+    if not _dsn:
+        return
+    os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+    os.environ.setdefault("SOMABRAIN_NAMESPACE", "test-ns")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
+    try:
+        import django
+        if not django.apps.apps.ready:
+            django.setup()
+    except Exception:
+        pass
+    try:
+        import urllib.parse as _up
+
+        _u = _up.urlparse(_dsn)
+        from django.conf import settings as _settings
+
+        _patch = {
+            "HOST": _u.hostname or "127.0.0.1",
+            "PORT": str(_u.port or 5432),
+            "USER": _u.username or "",
+            "PASSWORD": _u.password or "",
+            "NAME": (_u.path or "/somabrain").lstrip("/"),
+            "ATOMIC_REQUESTS": False,
+            "AUTOCOMMIT": True,
+            "CONN_MAX_AGE": 0,
+            "CONN_HEALTH_CHECKS": False,
+            "OPTIONS": {},
+            "TEST": {"NAME": "test_somabrain", "MIRROR": None},
+            "MIRROR": None,
+        }
+        _settings.DATABASES["default"].update(_patch)
+        # Also patch the live connections registry (pytest-django reads this).
+        from django.db import connections
+
+        connections.databases["default"].update(_patch)
+    except Exception:
+        pass

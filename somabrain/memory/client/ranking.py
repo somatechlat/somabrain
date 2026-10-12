@@ -14,10 +14,6 @@ from somabrain.math.contracts import (
     LEXICAL_BONUS_SUBSTRING,
     LEXICAL_BONUS_TOKEN,
     LEXICAL_BONUS_TOKEN_CAP,
-    RECENCY_CAP,
-    RECENCY_FLOOR,
-    RECENCY_SCALE,
-    RECENCY_SHARPNESS,
 )
 from somabrain.math.recency import recency_features as _shared_recency_features
 
@@ -197,34 +193,59 @@ def lexical_bonus(payload: dict, query: str) -> float:
     return bonus
 
 
+def _require_positive_finite(name: str, raw: Any) -> float:
+    """Fail-closed setting load: missing/invalid is a refusal, never a soft default."""
+    if raw is None:
+        raise RuntimeError(f"SETTING REQUIRED: {name}")
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(f"SETTING INVALID: {name} must be numeric (got {raw!r})") from exc
+    if not math.isfinite(value) or value <= 0:
+        raise RuntimeError(
+            f"SETTING INVALID: {name} must be finite and > 0 (got {raw!r})"
+        )
+    return value
+
+
+def _require_unit_interval(name: str, raw: Any, *, lo: float, hi: float) -> float:
+    if raw is None:
+        raise RuntimeError(f"SETTING REQUIRED: {name}")
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError(f"SETTING INVALID: {name} must be numeric (got {raw!r})") from exc
+    if not math.isfinite(value) or value < lo or value > hi:
+        raise RuntimeError(
+            f"SETTING INVALID: {name} must be in [{lo}, {hi}] (got {raw!r})"
+        )
+    return value
+
+
 def _recency_normalisation(cfg: Any) -> tuple[float, float]:
-    scale = getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", RECENCY_SCALE)
-    if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
-        scale = RECENCY_SCALE
-    cap = getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", RECENCY_CAP)
-    if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
-        cap = RECENCY_CAP
-    return float(scale), float(cap)
+    scale = _require_positive_finite(
+        "SOMABRAIN_WM_RECENCY_TIME_SCALE",
+        getattr(cfg, "SOMABRAIN_WM_RECENCY_TIME_SCALE", None),
+    )
+    cap = _require_positive_finite(
+        "SOMABRAIN_WM_RECENCY_MAX_STEPS",
+        getattr(cfg, "SOMABRAIN_WM_RECENCY_MAX_STEPS", None),
+    )
+    return scale, cap
 
 
 def _recency_profile(cfg: Any) -> tuple[float, float, float, float]:
     scale, cap = _recency_normalisation(cfg)
-    sharpness = getattr(cfg, "SOMABRAIN_RECENCY_SHARPNESS", RECENCY_SHARPNESS)
-    try:
-        sharpness = float(sharpness)
-    except Exception:
-        sharpness = RECENCY_SHARPNESS
-    if not math.isfinite(sharpness) or sharpness <= 0:
-        sharpness = 1.0
-    floor = getattr(cfg, "SOMABRAIN_RECENCY_FLOOR", RECENCY_FLOOR)
-    try:
-        floor = float(floor)
-    except Exception:
-        floor = RECENCY_FLOOR
-    if not math.isfinite(floor) or floor < 0:
-        floor = 0.0
-    if floor >= 1.0:
-        floor = 0.99
+    sharpness = _require_positive_finite(
+        "SOMABRAIN_RECENCY_SHARPNESS",
+        getattr(cfg, "SOMABRAIN_RECENCY_SHARPNESS", None),
+    )
+    floor = _require_unit_interval(
+        "SOMABRAIN_RECENCY_FLOOR",
+        getattr(cfg, "SOMABRAIN_RECENCY_FLOOR", None),
+        lo=0.0,
+        hi=0.99,
+    )
     return scale, cap, sharpness, floor
 
 
@@ -460,6 +481,7 @@ def _rescore_and_rank_hits(
     now_ts = datetime.now(UTC).timestamp()
 
     scored_hits = []
+    unscorable_in_query_space = 0
     for hit in hits:
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         stored_vec = _extract_stored_vector(hit)
@@ -481,13 +503,11 @@ def _rescore_and_rank_hits(
         new_score: float | None
         if query_arr is not None and stored_vec is not None:
             if stored_vec.size != query_arr.size:
-                # Skip, do not abort the batch (ADV H3). Cross-space rows
-                # must not kill every other hit.
-                try:
-                    payload["_unscorable"] = "vector-dim-mismatch"
-                except Exception:
-                    pass
-                continue
+                raise RuntimeError(
+                    "embedding spaces mismatch: stored vector dim "
+                    f"{stored_vec.size} != query_vec dim {query_arr.size} "
+                    "(INVARIANTS §2.1 — refusing to mix spaces)"
+                )
             # Same space, both vectors present: let the scorer compute cosine.
             # The store hint is not passed — it would override the real cosine.
             # Recency is applied once, here inside scorer.score(age_seconds=...).
@@ -515,12 +535,14 @@ def _rescore_and_rank_hits(
         else:
             # Neither stored vector nor store score. Never fake 0.0.
             # Skip this hit (ADV H3) — one unscorable hit must not abort
-            # the whole recall batch.
+            # the whole recall batch. If NOTHING is scorable in the caller's
+            # embedding space, that is a fabrication risk → fail closed below.
             if query_arr is not None:
                 try:
                     payload["_unscorable"] = "no-vector-no-score"
                 except Exception:
                     pass
+                unscorable_in_query_space += 1
                 continue
             new_score = None
 
@@ -541,9 +563,23 @@ def _rescore_and_rank_hits(
                     pass
             new_score = float(new_score)
             # NaN score is broken input — fail closed to 0.0, never 1.0.
-            new_score = 0.0 if not math.isfinite(new_score) else max(0.0, min(1.0, new_score))
+            new_score = (
+                0.0 if not math.isfinite(new_score) else max(0.0, min(1.0, new_score))
+            )
             hit.score = new_score
         scored_hits.append(hit)
 
-    scored_hits.sort(key=lambda h: h.score if h.score is not None else float("-inf"), reverse=True)
+    if query_arr is not None and unscorable_in_query_space > 0 and not scored_hits:
+        # Every hit lacked both a stored vector and a store score while the
+        # caller supplied query_vec. Returning an empty list would look like
+        # "no memories"; inventing 0.0 would be a fabricated judgment.
+        raise RuntimeError(
+            "Refusing to invent 0.0: no hit could be scored in the caller's "
+            f"embedding space ({unscorable_in_query_space} unscorable, "
+            "no stored vector and no store score)"
+        )
+
+    scored_hits.sort(
+        key=lambda h: h.score if h.score is not None else float("-inf"), reverse=True
+    )
     return scored_hits

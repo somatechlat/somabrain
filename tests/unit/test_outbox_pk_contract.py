@@ -62,11 +62,11 @@ def _bootstrap_minimal_django() -> bool:
         _gap = {
             "SOMABRAIN_JOURNAL_DIR": "/tmp/somabrain_outbox_pk_journal",
             "SOMABRAIN_JOURNAL_MAX_FILE_SIZE": 1_048_576,
-            "JOURNAL_MAX_FILES": 1,
-            "JOURNAL_ROTATION_INTERVAL": 3600,
-            "JOURNAL_RETENTION_DAYS": 1,
-            "JOURNAL_COMPRESSION": False,
-            "JOURNAL_SYNC_WRITES": False,
+            "SOMABRAIN_JOURNAL_MAX_FILES": 1,
+            "SOMABRAIN_JOURNAL_ROTATION_INTERVAL": 3600,
+            "SOMABRAIN_JOURNAL_RETENTION_DAYS": 1,
+            "SOMABRAIN_JOURNAL_COMPRESSION": False,
+            "SOMABRAIN_JOURNAL_SYNC_WRITES": False,
             "SOMABRAIN_DEFAULT_TENANT": "t-contract",
             "SOMABRAIN_NAMESPACE": "public",
             "SOMABRAIN_MEMORY_HTTP_TOKEN": "test-only-token",
@@ -105,11 +105,11 @@ def _bootstrap_minimal_django() -> bool:
             },
             SOMABRAIN_JOURNAL_DIR="/tmp/somabrain_outbox_pk_journal",
             SOMABRAIN_JOURNAL_MAX_FILE_SIZE=1_048_576,
-            JOURNAL_MAX_FILES=1,
-            JOURNAL_ROTATION_INTERVAL=3600,
-            JOURNAL_RETENTION_DAYS=1,
-            JOURNAL_COMPRESSION=False,
-            JOURNAL_SYNC_WRITES=False,
+            SOMABRAIN_JOURNAL_MAX_FILES=1,
+            SOMABRAIN_JOURNAL_ROTATION_INTERVAL=3600,
+            SOMABRAIN_JOURNAL_RETENTION_DAYS=1,
+            SOMABRAIN_JOURNAL_COMPRESSION=False,
+            SOMABRAIN_JOURNAL_SYNC_WRITES=False,
             ALLOWED_HOSTS=["*"],
             SOMABRAIN_DEFAULT_TENANT="t-contract",
             SOMABRAIN_NAMESPACE="public",
@@ -571,9 +571,7 @@ def test_record_to_outbox_fail_closed_on_enqueue_error(outbox_env, monkeypatch):
     monkeypatch.setattr(outbox_mod, "enqueue_memory_event", _boom)
 
     with _pytest.raises(RuntimeError, match="db down"):
-        _record_to_outbox(
-            (1.0, 2.0, 3.0), {"text": "hello"}, "t-contract", "r1"
-        )
+        _record_to_outbox((1.0, 2.0, 3.0), {"text": "hello"}, "t-contract", "r1")
 
 
 def test_record_to_outbox_fail_closed_on_backpressure(outbox_env, monkeypatch):
@@ -589,17 +587,13 @@ def test_record_to_outbox_fail_closed_on_backpressure(outbox_env, monkeypatch):
     monkeypatch.setattr(outbox_mod, "enqueue_memory_event", _backpressure)
 
     with _pytest.raises(outbox_mod.OutboxBackpressureError):
-        _record_to_outbox(
-            (1.0, 2.0, 3.0), {"text": "hello"}, "t-contract", "r1"
-        )
+        _record_to_outbox((1.0, 2.0, 3.0), {"text": "hello"}, "t-contract", "r1")
 
 
 def test_record_to_outbox_returns_pk_on_success(outbox_env):
     from somabrain.memory.remember import _record_to_outbox
 
-    event_id = _record_to_outbox(
-        (1.0, 2.0, 3.0), {"text": "hello"}, "t-contract", "r1"
-    )
+    event_id = _record_to_outbox((1.0, 2.0, 3.0), {"text": "hello"}, "t-contract", "r1")
     assert isinstance(event_id, int)
 
 
@@ -794,7 +788,9 @@ async def test_persist_ltm_background_failure_leaves_pending(outbox_env, monkeyp
             call_log.append(("aremember", key))
             raise RuntimeError("store down")
 
-    await _persist_ltm_in_background(_Boom(), "k1", {"text": "x"}, "r1", ev.id, "t-contract")
+    await _persist_ltm_in_background(
+        _Boom(), "k1", {"text": "x"}, "r1", ev.id, "t-contract"
+    )
     assert ("mark_event_sent", ev.id) not in call_log
 
     def _reload():

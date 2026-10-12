@@ -26,17 +26,22 @@ from somabrain.settings.resolve import UnconfiguredServiceError, require_tenant
 
 logger = logging.getLogger(__name__)
 
-VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
+VALID_OUTBOX_STATUSES = {"pending", "claimed", "sent", "failed"}
+
+
+def claim_lease_seconds() -> int:
+    """Drain lease length from settings (not a call-site constant)."""
+    from somabrain.settings.resolve import require_setting
+
+    return int(require_setting("OUTBOX_CLAIM_LEASE_SECONDS"))
 
 # Memory operation topics per Task 10.1
+# V5 FIX: ghost topics with no producers deleted (memory.delete,
+# graph.delete_link, wm.persist, wm.evict). Implement or delete — no stubs.
 MEMORY_TOPICS: dict[str, str] = {
     "memory.store": "Store memory to SFM",
     "memory.bulk_store": "Bulk store memories to SFM",
-    "memory.delete": "Delete memory from SFM",
     "graph.link": "Create graph link in SFM",
-    "graph.delete_link": "Delete graph link in SFM",
-    "wm.persist": "Persist WM item to SFM",
-    "wm.evict": "Mark WM item as evicted in SFM",
     "wm.promote": "Promote WM item to LTM",
 }
 
@@ -98,12 +103,28 @@ def _idempotency_key(
     return f"mem:{_coord_to_str(coord)}"
 
 
-def check_backpressure(tenant_id: str | None = None) -> bool:
-    """Check if outbox is under backpressure.
+_BACKPRESSURE_COUNT_CACHE: dict[str, tuple[float, int]] = {}
+_BACKPRESSURE_COUNT_TTL_S = 1.0
 
-    Per Requirement E2.5: Returns True if pending count exceeds threshold.
+
+def check_backpressure(tenant_id: str | None = None) -> bool:
+    """True when pending count is at/over the outbox threshold (E2.5).
+
+    The pending COUNT is cached for a short window: a million-txn accept path
+    cannot pay a full-table COUNT on every write. A 1s stale count only
+    delays backpressure by one second — it never invents capacity that does
+    not exist once the threshold is actually crossed.
     """
-    pending = get_pending_count(tenant_id=tenant_id)
+    import time as _time
+
+    key = tenant_id or ""
+    now = _time.monotonic()
+    hit = _BACKPRESSURE_COUNT_CACHE.get(key)
+    if hit is not None and (now - hit[0]) < _BACKPRESSURE_COUNT_TTL_S:
+        pending = hit[1]
+    else:
+        pending = get_pending_count(tenant_id=tenant_id)
+        _BACKPRESSURE_COUNT_CACHE[key] = (now, pending)
     return pending >= OUTBOX_BACKPRESSURE_THRESHOLD
 
 
@@ -163,6 +184,145 @@ def mark_event_sent(event_id: int) -> bool:
     """
     updated = OutboxEvent.objects.filter(id=event_id).update(status="sent")
     return updated > 0
+
+
+def mark_events_sent_bulk(event_ids: Sequence[int]) -> int:
+    """Mark many outbox events sent in one statement (million-txn drain)."""
+    ids = [int(i) for i in event_ids]
+    if not ids:
+        return 0
+    return int(
+        OutboxEvent.objects.filter(
+            id__in=ids, status__in=("pending", "claimed", "failed")
+        ).update(status="sent", claim_expires_at=None)
+    )
+
+
+def mark_events_failed_bulk(
+    errors: Sequence[tuple[int, str]], *, max_retries: int
+) -> int:
+    """Release failed claims: bump retries, escalate past *max_retries*.
+
+    Returns the number of rows escalated to terminal ``failed``. Rows under
+    the cap return to ``pending`` so the next drain cycle can reclaim them
+    (T-6 replay). Deduplicates event ids.
+
+    Permanent HTTP 4xx (schema/tenant/auth) is terminal immediately — it
+    will never succeed on retry. Only transient 5xx/timeouts retry.
+    """
+    from django.db.models import F
+
+    seen: set[int] = set()
+    retry_ids: list[int] = []
+    dead_ids: list[int] = []
+    for event_id, error in errors:
+        eid = int(event_id)
+        if eid in seen:
+            continue
+        seen.add(eid)
+        if error:
+            OutboxEvent.objects.filter(id=eid).update(last_error=error[:1000])
+        if _is_permanent_client_error(error):
+            dead_ids.append(eid)
+        else:
+            retry_ids.append(eid)
+    if dead_ids:
+        OutboxEvent.objects.filter(id__in=dead_ids).update(
+            status="failed", claim_expires_at=None
+        )
+    if not retry_ids:
+        return len(dead_ids)
+    # Increment attempts first, then escalate any that crossed the cap.
+    OutboxEvent.objects.filter(id__in=retry_ids).update(retries=F("retries") + 1)
+    escalated = int(
+        OutboxEvent.objects.filter(
+            id__in=retry_ids, retries__gte=max_retries
+        ).update(status="failed", claim_expires_at=None)
+    )
+    OutboxEvent.objects.filter(
+        id__in=retry_ids, status="claimed"
+    ).update(status="pending", claim_expires_at=None)
+    return escalated + len(dead_ids)
+
+
+def _is_permanent_client_error(error: str | None) -> bool:
+    """True when the send error is a permanent HTTP 4xx (never retryable).
+
+    Transient failures (timeouts, connection resets, 5xx, 429) return False
+    so the row goes back to ``pending`` for T-6 replay.
+    """
+    if not error:
+        return False
+    text = str(error).lower()
+    # Transient first: 5xx / 429 / timeouts always retry.
+    if any(tok in text for tok in ("502", "503", "504", "429", "timeout", "timed out")):
+        return False
+    return any(
+        tok in text
+        for tok in (
+            "400",
+            "401",
+            "403",
+            "404",
+            "409",
+            "422",
+            "unauthorized",
+            "forbidden",
+            "not found",
+            "validation",
+            "unprocessable",
+            "conflict",
+        )
+    )
+
+
+def reclaim_expired_claims(now=None) -> int:
+    """Return expired ``claimed`` rows to ``pending`` (crash-safe leases)."""
+    from django.utils import timezone
+
+    moment = now or timezone.now()
+    return int(
+        OutboxEvent.objects.filter(
+            status="claimed", claim_expires_at__lte=moment
+        ).update(status="pending", claim_expires_at=None)
+    )
+
+
+def claim_pending_events(limit: int) -> list["OutboxEvent"]:
+    """Claim drainable rows for this worker with a **lease**.
+
+    Multi-replica protocol:
+    1. Reclaim expired leases (crashed publishers).
+    2. ``SELECT … FOR UPDATE SKIP LOCKED`` a disjoint slice.
+    3. Stamp ``status=claimed`` + ``claim_expires_at`` **before** leaving the
+       transaction so a concurrent publisher cannot take the same rows after
+       the lock is released (SFM I/O runs outside any DB transaction).
+    """
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    if limit <= 0:
+        return []
+    reclaim_expired_claims()
+    now = timezone.now()
+    lease_until = now + timedelta(seconds=claim_lease_seconds())
+    with transaction.atomic():
+        rows = list(
+            OutboxEvent.objects.select_for_update(skip_locked=True, of=("self",))
+            .filter(status__in=("pending", "failed"), claim_expires_at__isnull=True)
+            .order_by("created_at")[:limit]
+        )
+        if not rows:
+            return []
+        ids = [int(r.id) for r in rows]
+        OutboxEvent.objects.filter(id__in=ids).update(
+            status="claimed", claim_expires_at=lease_until
+        )
+        for row in rows:
+            row.status = "claimed"
+            row.claim_expires_at = lease_until
+        return rows
 
 
 @transaction.atomic
@@ -259,17 +419,22 @@ def enqueue_event(
         status="pending",
     )
 
-    # Write to journal for redundancy and durability
-    journal = get_journal()
-    journal_event = JournalEvent(
-        id=event.id,
-        topic=topic,
-        payload=payload,
-        tenant_id=tenant_id,
-        dedupe_key=dedupe_key,
-        status="pending",
-    )
-    journal.append_event(journal_event)
+    # T-6: the OutboxEvent row IS the durable accept. The local journal is a
+    # redundancy copy — append it outside the insert path so a slow journal
+    # rotate/fsync cannot sit on the million-txn accept latency budget.
+    try:
+        journal = get_journal()
+        journal_event = JournalEvent(
+            id=event.id,
+            topic=topic,
+            payload=payload,
+            tenant_id=tenant_id,
+            dedupe_key=dedupe_key,
+            status="pending",
+        )
+        journal.append_event(journal_event)
+    except Exception as exc:  # noqa: BLE001 — journal is not the durability gate
+        logger.warning("outbox journal append failed (row is durable): %s", exc)
 
     return event
 

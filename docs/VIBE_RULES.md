@@ -85,6 +85,14 @@ Say EXACTLY what is true. If something might break → SAY SO.
   • Impact of the change  
 - If any context is missing → YOU MUST ASK FIRST.
 
+# 6B. COGNITION ALWAYS ON — 100% FULL CAPACITY (HARD LAW)
+- SomaBrain **starts with every cognitive function ACTIVE at full capacity**. No default-OFF cognitive flags.
+- ON at boot and on the remember/recall/promote path: hippocampus · amygdala · prefrontal · basal ganglia · neuromodulators · learner · planner · meta-brain · OAK · microcircuits · soft salience · drift monitor · SDR prefilter · graph augment · HRR-first · exec controller · memory weighting · entropy cap · dynamic LR · learning loop.
+- Feature flags exist for **kill-switch / emergency-degrade ONLY**. Never leave the brain half-thinking.
+- Returning empty results because a cog flag is off is a **DEFECT**. `{"plan": []}` when planner is disabled is a **LIE** — return an explicit `planner_disabled` reason.
+- Cognition runs on **every** memory cycle, not only `/act`.
+- Enforcement: `settings/cognitive.py` · `runtime/modes.py` ModeConfig · `CLAUDE.md` · `AGENT.md` · tests.
+
 # 7. REAL DATA & SERVERS ONLY
 - Use real data structures when available.
 - Request real samples if needed.

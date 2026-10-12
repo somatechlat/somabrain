@@ -15,7 +15,6 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 
 if TYPE_CHECKING:
     from somabrain.admin.core.learning.scoring import UnifiedScorer
@@ -132,14 +131,10 @@ def create_amygdala(cfg, fd_sketch: Any = None):
             threshold_act=getattr(settings, "SOMABRAIN_SALIENCE_THRESHOLD_ACT"),
             hysteresis=getattr(settings, "SOMABRAIN_SALIENCE_HYSTERESIS"),
             use_soft=getattr(settings, "SOMABRAIN_USE_SOFT_SALIENCE"),
-            soft_temperature=getattr(
-                settings, "SOMABRAIN_SALIENCE_SOFT_TEMPERATURE"
-            ),
+            soft_temperature=getattr(settings, "SOMABRAIN_SALIENCE_SOFT_TEMPERATURE"),
             method=getattr(settings, "SOMABRAIN_SALIENCE_METHOD"),
             w_fd=getattr(settings, "SOMABRAIN_SALIENCE_FD_WEIGHT"),
-            fd_energy_floor=getattr(
-                settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR"
-            ),
+            fd_energy_floor=getattr(settings, "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR"),
         ),
         fd_backend=fd_sketch,
     )
@@ -316,58 +311,13 @@ def create_fractal_memory(cfg):
     return FractalClientAdapter(client)
 
 
-def create_fnom_memory(cfg, embedder):
-    """Create the PersistentFNOM instance.
+def create_fnom_memory(cfg, embedder=None):
+    """Create FNOM on the single MemoryClient lane (T-1).
 
-    Args:
-        cfg: Application configuration object.
-        embedder: Embedding model instance for retrieval.
-
-    Returns:
-        PersistentFNOM: The persistent FNOM instance.
+    No Milvus, no Postgres KV — SFM is the only store.
     """
-    from somafractalmemory.implementations.milvus_vector import MilvusVectorStore
-    from somafractalmemory.implementations.postgres_kv import PostgresKeyValueStore
-
     from somabrain.admin.brain.fnom import PersistentFNOM
+    from somabrain.memory.client import MemoryClient
 
-    # Reuse valid connection parameters for shared persistence layer
-    # Segregate data via explicit namespacing
-    postgres_dsn = getattr(settings, "SOMABRAIN_POSTGRES_DSN")
-    if not postgres_dsn:
-        raise ImproperlyConfigured(
-            "SOMABRAIN_POSTGRES_DSN must be configured before creating PersistentFNOM"
-        )
-
-    kv_store = PostgresKeyValueStore(
-        dsn=postgres_dsn,
-        table_name="fnom_kv",
-    )
-
-    milvus_host = getattr(settings, "SOMABRAIN_MILVUS_HOST")
-    if not milvus_host:
-        raise RuntimeError(
-            "SOMABRAIN_MILVUS_HOST is not configured — refusing to invent a vector-store host"
-        )
-    milvus_port = getattr(settings, "SOMABRAIN_MILVUS_PORT")
-    if not milvus_port:
-        raise RuntimeError(
-            "SOMABRAIN_MILVUS_PORT is not configured — refusing to invent a vector-store port"
-        )
-    milvus_collection = getattr(settings, "SOMABRAIN_MILVUS_COLLECTION")
-    if not milvus_collection:
-        raise RuntimeError(
-            "SOMABRAIN_MILVUS_COLLECTION is not configured — refusing to invent a collection name"
-        )
-    vector_store = MilvusVectorStore(
-        host=milvus_host,
-        port=milvus_port,
-        collection_name=milvus_collection,
-    )
-
-    return PersistentFNOM(
-        kv_store=kv_store,
-        vector_store=vector_store,
-        namespace="fnom",
-        embedder=embedder,
-    )
+    client = MemoryClient(settings)
+    return PersistentFNOM(client=client, namespace="fnom", embedder=embedder)

@@ -6,7 +6,7 @@
 |---|---|
 | Document Title | Defect & Architecture Debt Register |
 | Document Identifier | SOMA-BR-DEBT-001 |
-| Version | 1.0.0 |
+| Version | 1.0.1 |
 | Date | 2026-09-28 |
 | Status | Draft |
 | Author | SomaTech Engineering |
@@ -22,6 +22,7 @@
 
 | Version | Date | Author | Description |
 |---|---|---|---|
+| 1.0.1 | 2026-10-09 | SomaTech Engineering | DEBT-008 CLOSED: Rust `somabrain_rs` is sole adaptation-math authority (no Python gain-law twin). predictor_gamma BRAIN_DEFAULTS -0.5 bounds [-1,1]. |
 | 1.0.0 | 2026-09-28 | SomaTech Engineering | Initial issue. Every candidate claim was re-verified against the working tree. Unprovable claims were removed; newly discovered defects were added. |
 | 1.1.0 | 2026-10-05 | SomaTech Engineering | W2 closed: DEBT-001…007 **FIXED**. One neuromod store (`runtime/neuromodulators.py`), DA→LR reads the singleton, homeostatic law, clamped API, shared ACh/5-HT laws with real consumers, Rust ODE deleted, Supervisor wired on `/act`. Tests: `tests/unit/test_neuromod_wiring.py`. |
 
@@ -72,9 +73,9 @@ behaviour is observable at the cited `file:line`.
 | DEBT-005 | P1 | Neuromod | W2 | ACh coupling disagrees with its own comment and with Supervisor — **FIXED (W2)** |
 | DEBT-006 | P2 | Neuromod | W2 | Serotonin stored/exported but never consumed for control — **FIXED (W2)** |
 | DEBT-007 | P1 | Neuromod | W2 | Rust neuromod ODE (`update`) is dead outside a migration script — **FIXED (W2)** |
-| DEBT-008 | P0 | Learning | W3 | Python vs Rust adaptation gains differ in sign and magnitude |
+| DEBT-008 | P0 | Learning | W3 | Python vs Rust adaptation gains differ in sign and magnitude — **FIXED (2026-10-09)** — Rust `somabrain_rs` is the sole adaptation-math authority (`learning/adaptation/rust_math.py`); `engine._apply_weight_updates` delegates and has no Python gain-law twin. Missing Rust → `RuntimeError`. Evidence: `tests/unit/test_wave_a_fail_closed.py`, `tests/unit/test_w3_anneal_gains_entropy.py` |
 | DEBT-009 | P1 | Learning | W3 | Three τ mechanisms + four floors (0.4 / 0.1 / 0.05 / 0.01) — **FIXED (W3)** — one `TAU_FLOOR=0.1` in `math/contracts.py`; `SOMABRAIN_TAU_MIN` defaults to it; `apply_tau_annealing` uses `anneal_tau(…, TAU_FLOOR)` |
-| DEBT-010 | P1 | Learning | W3 | Entropy cap rewrites τ (and all retrieval weights) in place |
+| DEBT-010 | P1 | Learning | W3 | Entropy cap rewrites τ (and all retrieval weights) in place — **FIXED (W3)** — `check_entropy_cap` sharpens (α, β, γ) only; τ passed through. Tests: `test_w3_anneal_gains_entropy.py` |
 | DEBT-011 | P0 | Mathcore | W3 | Wiener λ* formula vs hardcoded constant — **FIXED (W4)** |
 | DEBT-012 | P1 | Mathcore | W3 | Theorem 1 `p*` formula ≥ 0.5 vs comment/docs "p ≈ 0.1" — **FIXED (W4)** |
 | DEBT-013 | P0 | Mathcore | W3 | Rust test constructs `BayesianMemory` with wrong arity (does not compile) — **FIXED (W4)** |
@@ -226,10 +227,11 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P0 |
 | **Subsystem** | Learning |
 | **Wave** | W3 |
+| **Status** | **FIXED (2026-10-09) — CLOSED** |
 | **Proof** | Python: `somabrain/settings/cognitive.py:350-360` (`gain_alpha=1.0`, `gain_gamma=-0.5`, `gain_lambda=1.0`, `gain_mu=-0.25`, `gain_nu=-0.25`); `somabrain/learning/config.py:76-90` same defaults. Rust: `rust_core/src/adaptation.rs:118-122` (`gain_alpha=0.1`, `gain_gamma=0.05`, `gain_lambda=0.1`, `gain_mu=0.05`, `gain_nu=0.02`) — all positive. Update formulas are otherwise identical (`engine.py:369-386`; `adaptation.rs:169-179`). |
 | **What code does** | On the same positive feedback, Python **decreases** γ/μ/ν (negative gains) while Rust **increases** them. Magnitudes also differ by ~10× for α/λ. The two engines cannot agree on a single step. |
 | **What docs claim** | `LEARNING_MATHEMATICAL_PROOF.md:33` — "gain = direction and magnitude of update (can be positive or negative)"; the worked example at `:137` shows γ **increasing** on +1.0 reward (`0.1 → 0.1025`), which matches neither the settings default (−0.5 ⇒ decrease) nor Rust (+0.05 ⇒ increase by a different amount). |
-| **REQUIRED FIX** | **FULL IMPLEMENT** one gains source (W1 contract module) consumed by both Python and Rust. Delete the independent Rust hardcodes. Signs and magnitudes must be identical. |
+| **Resolution** | Rust is the sole adaptation-math authority (DEBT-008 closed). `somabrain/learning/adaptation/rust_math.py` calls `somabrain_rs` only and raises if the module is absent. `AdaptationEngine._apply_weight_updates` delegates via `apply_weight_updates_rust`; there is no Python gain-law twin on the engine path. `utils.weight_delta` remains a pure property-test helper and is not an update authority. `predictor_gamma` is seeded in `BRAIN_DEFAULTS` at `-0.5` with bounds `[-1.0, 1.0]` (default inside bounds). |
 | **Acceptance test** | Cross-language parity test: same initial weights, gains, and 100 feedbacks ⇒ Python and Rust `get_retrieval`/`get_utility` match to 1e-12. Sign test: `gain_gamma < 0` and `signal > 0` ⇒ γ decreases in **both** engines. |
 | **Wave** | W3 |
 
@@ -254,11 +256,10 @@ behaviour is observable at the cited `file:line`.
 | **Severity** | P1 |
 | **Subsystem** | Learning |
 | **Wave** | W3 |
-| **Proof** | `somabrain/learning/annealing.py:315-370`, applied at `somabrain/learning/adaptation/engine.py:416-429` |
-| **What code does** | `check_entropy_cap` treats `(α, β, γ, τ)` as a probability vector, sharpens non-dominant components, then rescales all four so they sum to `α+β+γ+τ` (`:363-370`). τ is a temperature, not a mixture weight; folding it into the entropy vector overwrites the annealed value from `apply_tau_annealing`/`apply_tau_decay` in the same call (`engine.py:402-429`). |
-| **What docs claim** | `LEARNING_MATHEMATICAL_PROOF.md:183-207` claims entropy is `H = -Σ p_i log₂ p_i` with **softmax** `p_i = exp(w_i)/Σ exp(w_j)` (`:189`) and that learning reduces it. Code uses **linear** normalisation `probs = [v / s for v in vec]` (`annealing.py:321-322`). |
-| **REQUIRED FIX** | **FULL IMPLEMENT** entropy cap over mixture weights only (α, β, γ — or the true mixture components). τ must not be an input to entropy sharpening. Align the entropy formula with the implementation. |
-| **Acceptance test** | After `apply_tau_and_entropy`, τ equals the value produced by the schedule alone. Entropy property uses the implemented normalisation. |
+| **Status** | **FIXED (W3)** |
+| **Proof** | `somabrain/learning/annealing.py:87-167`, applied at `somabrain/learning/adaptation/engine.py:_apply_tau_and_entropy` |
+| **Resolution** | `check_entropy_cap` sharpens mixture weights `(α, β, γ)` only. τ is passed through untouched (`return sharpened[0], sharpened[1], sharpened[2], float(tau), True`). Source + behavior tests in `tests/unit/test_w3_anneal_gains_entropy.py` (14 passed). |
+| **Acceptance test** | `test_check_entropy_cap_passes_tau_through`, `test_engine_entropy_does_not_move_tau`, `test_builder_entropy_excludes_tau`. |
 | **Wave** | W3 |
 
 ### DEBT-011 — Wiener λ* formula vs default constant

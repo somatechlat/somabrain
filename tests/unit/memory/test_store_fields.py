@@ -74,7 +74,9 @@ def test_embedding_falls_back_to_the_caller_payload() -> None:
 
 def test_missing_embedding_is_omitted_not_invented() -> None:
     """No vector in, no vector out. Never fabricate a hash embedding here."""
-    fields = _seam_store_fields(_Cfg(), {"text": "x"}, {"tenant_id": "t", "namespace": "n"})
+    fields = _seam_store_fields(
+        _Cfg(), {"text": "x"}, {"tenant_id": "t", "namespace": "n"}
+    )
     assert "embedding" not in fields
 
 
@@ -102,7 +104,9 @@ def _body_builders(tree: ast.AST) -> dict[str, list[str]]:
         for child in ast.walk(node):
             if not isinstance(child, ast.AnnAssign | ast.Assign):
                 continue
-            targets = child.target if isinstance(child, ast.AnnAssign) else child.targets
+            targets = (
+                child.target if isinstance(child, ast.AnnAssign) else child.targets
+            )
             value = child.value
             if value is None or not isinstance(value, ast.Dict):
                 continue
@@ -146,7 +150,9 @@ def test_every_body_builder_routes_through_the_helper() -> None:
     )
     # Sanity: the walk must actually have found the known write paths, or the
     # guard is vacuous.
-    assert len(builders) >= 5, f"expected several body builders, found {sorted(builders)}"
+    assert (
+        len(builders) >= 5
+    ), f"expected several body builders, found {sorted(builders)}"
 
 
 def test_helper_is_the_only_place_that_mints_tenant_id() -> None:
@@ -167,4 +173,6 @@ def test_helper_is_the_only_place_that_mints_tenant_id() -> None:
             for key in child.keys:
                 if isinstance(key, ast.Constant) and key.value == "tenant_id":
                     offenders.append(node.name)
-    assert not offenders, f"tenant_id assembled outside the helper in: {sorted(set(offenders))}"
+    assert (
+        not offenders
+    ), f"tenant_id assembled outside the helper in: {sorted(set(offenders))}"

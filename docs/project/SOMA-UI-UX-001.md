@@ -47,7 +47,7 @@
 |---------|-------|
 | Framework | Lit 3.x Web Components (VIBE mandate) |
 | Typography | Inter (body), JetBrains Mono (code) |
-| Colors | Dark: #0a0a0a bg, #ffffff text, #3b82f6 accent |
+| Colors | Dark: #0A0A0A bg, #FFFFFF text, #FF4D00 brand accent (SOMA-UI-SPEC-001 §1.1). No violet brand. |
 | Spacing | 4px grid system (4, 8, 12, 16, 24, 32, 48, 64) |
 | Border radius | 8px (cards), 6px (buttons), 4px (inputs) |
 | Shadows | Subtle: 0 1px 3px rgba(0,0,0,0.3) |

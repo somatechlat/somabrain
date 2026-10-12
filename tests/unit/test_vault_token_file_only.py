@@ -14,7 +14,6 @@ Reference contract: somaAgent01/services/common/vault_secrets.py — token from
 from __future__ import annotations
 
 import ast
-import os
 from pathlib import Path
 
 import pytest
@@ -40,13 +39,17 @@ def _env_lookups(tree: ast.AST) -> list[tuple[str, int, str]]:
                 value = func.value
                 if isinstance(value, ast.Attribute) and value.attr == "environ":
                     if node.args and isinstance(node.args[0], ast.Constant):
-                        found.append((str(node.args[0].value), node.lineno, "environ.get"))
+                        found.append(
+                            (str(node.args[0].value), node.lineno, "environ.get")
+                        )
             # os.getenv("NAME")
             if isinstance(func, ast.Attribute) and func.attr == "getenv":
                 value = func.value
                 if isinstance(value, ast.Name) and value.id == "os":
                     if node.args and isinstance(node.args[0], ast.Constant):
-                        found.append((str(node.args[0].value), node.lineno, "os.getenv"))
+                        found.append(
+                            (str(node.args[0].value), node.lineno, "os.getenv")
+                        )
         if isinstance(node, ast.Subscript):
             value = node.value
             if isinstance(value, ast.Attribute) and value.attr == "environ":
@@ -65,7 +68,9 @@ def test_vault_client_never_reads_token_from_environ():
         for name, lineno, api in _env_lookups(tree)
         if name in _FORBIDDEN_ENV_NAMES
     ]
-    assert offenders == [], f"vault client still reads a token from the environment: {offenders}"
+    assert (
+        offenders == []
+    ), f"vault client still reads a token from the environment: {offenders}"
 
 
 def test_vault_client_error_message_does_not_advertise_env_token():

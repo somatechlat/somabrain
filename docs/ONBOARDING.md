@@ -3113,43 +3113,23 @@ class SecurityManager:
 
 ## Learning Algorithm Diagnostics
 
-SomaBrain’s adaptation engine lives in `somabrain/learning/adaptation.py`. It implements decoupled, per‑parameter updates with configurable gains and constraints, and optional neuromodulated learning rates. Earlier internal notes about “coupled parameters” are outdated.
+SomaBrain’s adaptation engine lives in `somabrain/learning/adaptation/` (package). **Rust is the sole adaptation-math authority (DEBT-008 closed):** every numeric weight update goes through `learning/adaptation/rust_math.py` → `somabrain_rs`. Python owns orchestration (history, persistence, tenant, metrics) only — there is no Python gain-law twin on the engine path. Missing Rust refuses with `RuntimeError`.
 
-### Decoupled Parameter Updates
+### Decoupled Parameter Updates (Rust)
+
+Weight updates are **not** implemented in Python. `AdaptationEngine._apply_weight_updates` delegates to `somabrain/learning/adaptation/rust_math.apply_weight_updates_rust` → `somabrain_rs.AdaptationEngine`. There is no Python gain-law twin (DEBT-008 closed).
 
 ```python
-def apply_feedback(self, utility: float, reward: Optional[float] = None) -> bool:
-    signal = reward if reward is not None else utility
-    # Dynamic or signal‑scaled LR
-    self._lr = (
-        self._base_lr * min(max(0.5 + self._get_dopamine_level(), 0.5), 1.2)
-        if self._enable_dynamic_lr
-        else self._base_lr * (1.0 + float(signal))
-    )
-
-    semantic_signal = float(signal)
-    utility_signal = float(reward) if reward is not None else semantic_signal
-    # Independent deltas via AdaptationGains
-    self._retrieval.alpha = self._constrain(
-        "alpha", self._retrieval.alpha + self._lr * self._gains.alpha * semantic_signal
-    )
-    self._retrieval.gamma = self._constrain(
-        "gamma", self._retrieval.gamma + self._lr * self._gains.gamma * semantic_signal
-    )
-    self._utility.lambda_ = self._constrain(
-        "lambda_", self._utility.lambda_ + self._lr * self._gains.lambda_ * utility_signal
-    )
-    self._utility.mu = self._constrain(
-        "mu", self._utility.mu + self._lr * self._gains.mu * utility_signal
-    )
-    self._utility.nu = self._constrain(
-        "nu", self._utility.nu + self._lr * self._gains.nu * utility_signal
-    )
-    return True
+# somabrain/learning/adaptation/engine.py (orchestration only)
+def _apply_weight_updates(self, semantic_signal: float, utility_signal: float) -> None:
+    from somabrain.learning.adaptation.rust_math import apply_weight_updates_rust
+    # sets retrieval/utility/gains/bounds on the Rust engine and commits one step
 ```
 
+Missing `somabrain_rs` raises `RuntimeError` — the learning loop does not silently fall back.
+
 - Alpha and lambda_ often increase together under positive utility, but they are not coupled or forced to be identical—each has its own gain and may be driven by distinct signals.
-- Gamma has a negative default gain and is bounded in [0, 1], so it typically decreases under positive utility until constrained.
+- Gamma has a negative default gain (`gain_gamma = -0.5`); `predictor_gamma` / gain bounds in `BRAIN_DEFAULTS` are `[-1.0, 1.0]`.
 - The effective learning rate can be driven by the dopamine neuromodulator if enabled.
 
 ### Evidence from Telemetry and Tests

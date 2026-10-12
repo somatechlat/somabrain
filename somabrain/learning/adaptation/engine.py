@@ -54,7 +54,6 @@ from .history import HistoryManager
 from .metrics import update_metrics
 from .types import RetrievalWeights
 from .utils import clamp as _clamp
-from .utils import weight_delta
 
 
 class AdaptationEngine:
@@ -78,7 +77,9 @@ class AdaptationEngine:
             from somabrain.context.builder import RetrievalWeights as RW
 
             # NO MAGIC NUMBERS: use brain_settings DB
-            tid = tenant_id or "default"
+            tid = tenant_id or ""
+            if not tid:
+                raise ValueError("tenant is required (T-5 fail-closed)")
             retrieval = RW(
                 BrainSetting.get("retrieval_alpha", tid),
                 BrainSetting.get("retrieval_beta", tid),
@@ -88,7 +89,9 @@ class AdaptationEngine:
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
 
-        tid = tenant_id or "default"
+        tid = tenant_id or ""
+        if not tid:
+            raise ValueError("tenant is required (T-5 fail-closed)")
         if learning_rate is not None:
             lr = learning_rate
         else:
@@ -109,7 +112,9 @@ class AdaptationEngine:
         self._constraint_bounds = self._init_constraints(constraints)
         self._constraints = self._build_constraints_dict(self._constraint_bounds)
         self._feedback_count = 0
-        self._tenant_id = tenant_id or "default"
+        self._tenant_id = tenant_id or ""
+        if not self._tenant_id:
+            raise ValueError("tenant is required (T-5 fail-closed)")
         self._redis = get_redis()
         self._enable_dynamic_lr = self._init_dynamic_lr(enable_dynamic_lr)
         self._gains = gains or AdaptationGains.from_settings()
@@ -425,36 +430,52 @@ class AdaptationEngine:
     def _apply_weight_updates(
         self, semantic_signal: float, utility_signal: float
     ) -> None:
-        """Execute apply weight updates."""
+        """Apply weight updates via Rust (sole math authority — DEBT-008).
 
-        self._retrieval.alpha = self._constrain(
-            "alpha",
-            self._retrieval.alpha
-            + weight_delta(self._lr, self._gains.alpha, semantic_signal),
+        Python keeps orchestration only. The numeric gain law lives in
+        ``somabrain_rs``; there is no Python twin of this step.
+        """
+        from somabrain.learning.adaptation.rust_math import apply_weight_updates_rust
+
+        gains = self._gains
+        bounds = (
+            self._constraints["alpha"],
+            self._constraints["gamma"],
+            self._constraints["lambda_"],
+            self._constraints["mu"],
+            self._constraints["nu"],
         )
-        self._retrieval.gamma = self._constrain(
-            "gamma",
-            self._retrieval.gamma
-            + weight_delta(self._lr, self._gains.gamma, semantic_signal),
+        new_retrieval, new_utility = apply_weight_updates_rust(
+            learning_rate=self._lr,
+            retrieval=(
+                float(self._retrieval.alpha),
+                float(self._retrieval.beta),
+                float(self._retrieval.gamma),
+                float(self._retrieval.tau),
+            ),
+            utility=(
+                float(self._utility.lambda_),
+                float(self._utility.mu),
+                float(self._utility.nu),
+            ),
+            gains=(
+                float(gains.alpha),
+                float(gains.gamma),
+                float(gains.lambda_),
+                float(gains.mu),
+                float(gains.nu),
+            ),
+            bounds=bounds,
+            semantic_signal=float(semantic_signal),
+            utility_signal=float(utility_signal),
         )
-        self._utility.lambda_ = self._constrain(
-            "lambda_",
-            self._utility.lambda_
-            + weight_delta(self._lr, self._gains.lambda_, utility_signal),
-        )
-        self._utility.mu = self._constrain(
-            "mu",
-            self._utility.mu + weight_delta(self._lr, self._gains.mu, utility_signal),
-        )
-        self._utility.nu = self._constrain(
-            "nu",
-            self._utility.nu + weight_delta(self._lr, self._gains.nu, utility_signal),
-        )
-        self._utility.clamp(
-            lambda_bounds=self._constraints["lambda_"],
-            mu_bounds=self._constraints["mu"],
-            nu_bounds=self._constraints["nu"],
-        )
+        self._retrieval.alpha = new_retrieval[0]
+        self._retrieval.beta = new_retrieval[1]
+        self._retrieval.gamma = new_retrieval[2]
+        self._retrieval.tau = new_retrieval[3]
+        self._utility.lambda_ = new_utility[0]
+        self._utility.mu = new_utility[1]
+        self._utility.nu = new_utility[2]
 
     def _apply_tau_and_entropy(self) -> None:
         """Entropy-cap mixture weights only; τ is never reshaped here.

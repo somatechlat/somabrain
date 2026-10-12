@@ -45,7 +45,6 @@ def _base_profile() -> str:
     return require_tenant(require_setting("SOMABRAIN_DEFAULT_TENANT"))
 
 
-
 class BrainSetting(models.Model):
     """Brain setting stored in database. Multi-tenant, hot-reload."""
 
@@ -174,11 +173,17 @@ class BrainSetting(models.Model):
             # We look up the base setting to check metadata (category, validation)
             s_meta = cls.objects.get(key=base_key, tenant=tenant)
         except cls.DoesNotExist:
-            raise BrainSettingNotFound(
-                f"Unknown base setting '{base_key}' for tenant '{tenant}'. "
-                f"Operator action: `python manage.py init_brain_settings "
-                f"--tenant {tenant}`."
-            )
+            # Inheritance: a tenant may lack its own row for a newly declared
+            # knob while the base profile holds the metadata. Fall back so
+            # ``set`` can create the override instead of refusing.
+            try:
+                s_meta = cls.objects.get(key=base_key, tenant=_base_profile())
+            except cls.DoesNotExist:
+                raise BrainSettingNotFound(
+                    f"Unknown base setting '{base_key}' for tenant '{tenant}'. "
+                    f"Operator action: `python manage.py init_brain_settings "
+                    f"--tenant {tenant}`."
+                )
 
         # SAFETY POLICY: NO TOUCH for SYSTEM_CORE except the base profile
         if s_meta.category == "SYSTEM_CORE" and tenant != _base_profile():
@@ -196,10 +201,13 @@ class BrainSetting(models.Model):
         # Atomic create/update for the actual key (might be a tuned key)
         s, created = cls.objects.get_or_create(key=key, tenant=tenant)
         s.set_value(value)
-        # Copy metadata from base if it's a new tuned key
-        if created and base_key != key:
+        # Copy metadata from the lookup row when this is a new override
+        # (either a tuned key or a tenant row created on first write).
+        if created:
             s.category = s_meta.category
             s.is_learnable = s_meta.is_learnable
+            s.min_value = s_meta.min_value
+            s.max_value = s_meta.max_value
         s.save()
 
         # Zero-Latency: If we update 'active_brain_mode', invalidate the entire tenant cache
@@ -278,19 +286,24 @@ class BrainSetting(models.Model):
         (``_get_raw_value``). A tenant with no rows of its own is then seeded
         from the same declaration so it can hold explicit overrides later.
 
-        *tenant* is required (T-5). Returns True when this call created the
-        profile.
+        Newly declared ``BRAIN_DEFAULTS`` keys are also materialised for
+        tenants that already have a partial profile — otherwise a later-added
+        knob (e.g. prune) is invisible to ``set`` even though ``get``/list
+        would advertise it.
+
+        *tenant* is required (T-5). Returns True when this call created
+        any profile rows.
         """
         from somabrain.settings.resolve import require_tenant
 
         tenant = require_tenant(tenant)
         created = False
         base = _base_profile()
-        if not cls.objects.filter(tenant=base).exists():
-            cls.initialize_defaults(base)
+        # initialize_defaults is get_or_create — idempotent, and it fills
+        # keys declared after the tenant was first seeded.
+        if cls.initialize_defaults(base):
             created = True
-        if tenant != base and not cls.objects.filter(tenant=tenant).exists():
-            cls.initialize_defaults(tenant)
+        if tenant != base and cls.initialize_defaults(tenant):
             created = True
         return created
 
@@ -302,9 +315,9 @@ def _default_wiener_lambda() -> float:
     """λ* = Δ² / (12 p (1−p)) at the production sparsity (GMD Theorem 3).
 
     Computed from the formula — never a hardcoded constant. Same source as
-    `somabrain.math.bhdc_encoder.compute_wiener_lambda`.
+    `somabrain.math.contracts.compute_wiener_lambda`.
     """
-    from somabrain.math.bhdc_encoder import production_wiener_lambda
+    from somabrain.math.contracts import production_wiener_lambda
 
     return production_wiener_lambda()
 
@@ -328,15 +341,53 @@ BRAIN_DEFAULTS = {
         "min": 0.0,
         "max": 1.0,
     },
-    "ltm_prune_threshold": {
-        "v": 0.05,
-        "cat": "prune",
-        "learnable": True,
-        "min": 0.0,
-        "max": 1.0,
-    },
+    # ==================== PRUNE ====================
+    # Live prune knobs only. ``ltm_prune_threshold`` / ``max_ltm_items_per_tenant``
+    # were declared and never consumed (audit 2026-10-09) and are deleted.
     "max_wm_items": {"v": 128, "cat": "prune", "min": 1, "max": 10000},
-    "max_ltm_items_per_tenant": {"v": 100000, "cat": "prune", "min": 1},
+    # ============ BEHAVIOUR TUNABLES (R-BEH-01: never ENV) ============
+    # ONE declaration of every knob (R-VAL-01). Django settings in
+    # settings/django_core.py + settings/infra.py hold the bootstrap values
+    # with the same names; these rows are the administerable override.
+    # ==================== CIRCUIT BREAKER ====================
+    "circuit_failure_threshold": {"v": 3, "cat": "circuit", "min": 1},
+    "circuit_reset_interval": {"v": 60.0, "cat": "circuit", "min": 0.0},
+    "circuit_cooldown_interval": {"v": 0.0, "cat": "circuit", "min": 0.0},
+    # ==================== LOGGING / OPS ====================
+    # Never drives Django DEBUG (F-02): log verbosity != debug behaviour.
+    "log_level": {"v": "INFO", "cat": "ops", "type": "text"},
+    # ==================== OUTBOX ====================
+    "outbox_batch_size": {"v": 512, "cat": "outbox", "min": 1},
+    "outbox_max_delay": {"v": 5.0, "cat": "outbox", "min": 0.0},
+    "outbox_max_retries": {"v": 5, "cat": "outbox", "min": 0},
+    "outbox_poll_interval": {"v": 1.0, "cat": "outbox", "min": 0.0},
+    "outbox_producer_retry_ms": {"v": 1000, "cat": "outbox", "min": 0},
+    # ==================== JOURNAL ====================
+    "journal_replay_interval": {"v": 300, "cat": "journal", "min": 1},
+    "journal_max_file_size": {"v": 104857600, "cat": "journal", "min": 1},
+    "journal_max_files": {"v": 10, "cat": "journal", "min": 1},
+    "journal_rotation_interval": {"v": 86400, "cat": "journal", "min": 1},
+    "journal_retention_days": {"v": 7, "cat": "journal", "min": 1},
+    "journal_compression": {"v": True, "cat": "journal"},
+    "journal_sync_writes": {"v": True, "cat": "journal"},
+    # ==================== HTTP / OPA ====================
+    "http_keepalive": {"v": 32, "cat": "http", "min": 1},
+    "http_retries": {"v": 1, "cat": "http", "min": 0},
+    "opa_timeout": {"v": 2.0, "cat": "opa", "min": 0.0},
+    "opa_allow_on_error": {"v": False, "cat": "opa"},
+    "opa_policy_key": {"v": "soma:opa:policy", "cat": "opa", "type": "text"},
+    "opa_policy_sig_key": {
+        "v": "soma:opa:policy:sig",
+        "cat": "opa",
+        "type": "text",
+    },
+    # ==================== FEATURE FLAGS / LIMITS ====================
+    "require_external_backends": {"v": True, "cat": "ops"},
+    "require_memory": {"v": True, "cat": "ops"},
+    "require_infra": {"v": "1", "cat": "ops", "type": "text"},
+    "workers": {"v": 1, "cat": "ops", "min": 1},
+    "milvus_segment_refresh_interval": {"v": 60.0, "cat": "milvus", "min": 0.0},
+    "milvus_latency_window": {"v": 50, "cat": "milvus", "min": 1},
     # ==================== TOPOLOGY (DB-managed URLs — not env) ====================
     # Operator law: URLs and hosts are administerable settings, never ENV.
     "memory_http_endpoint": {"v": "", "cat": "TOPOLOGY", "type": "text"},
@@ -372,6 +423,16 @@ BRAIN_DEFAULTS = {
         "max": 0.25,
     },
     "gmd_sparsity": {
+        "v": 0.1,
+        "cat": "PLASTICITY",
+        "learnable": True,
+        "min": 0.05,
+        "max": 0.55,
+    },
+    # BHDC active-dimension fraction p. Same engineering value as
+    # math.contracts.BHDC_P / SOMABRAIN_BHDC_SPARSITY (R-VAL-01). Distinct
+    # from ``gmd_sparsity``: this one is the sparse hypervector encoder knob.
+    "bhdc_sparsity": {
         "v": 0.1,
         "cat": "PLASTICITY",
         "learnable": True,
@@ -531,6 +592,13 @@ BRAIN_DEFAULTS = {
     # PREDICTOR
     # DEF-09 FIXED (W3): default is contracts.ADAPT_GAINS["gamma"] = -0.5.
     # Bounds include that value so set() cannot reject the seeded default.
+    "predictor_gamma": {
+        "v": -0.5,
+        "cat": "predictor",
+        "learnable": True,
+        "min": -1.0,
+        "max": 1.0,
+    },
     # HRR
     "quantum_dim": {"v": 2048, "cat": "hrr"},
     # QUOTA
@@ -596,21 +664,21 @@ BRAIN_DEFAULTS = {
     # anneal branches (DEBT-009).
     # Must match contracts.TAU_FLOOR (single floor, W3 / DEF-05).
     # BRAIN
-    "use_drift_monitor": {"v": False, "cat": "brain"},
-    "use_exec_controller": {"v": False, "cat": "brain"},
+    "use_drift_monitor": {"v": True, "cat": "brain"},
+    "use_exec_controller": {"v": True, "cat": "brain"},
     "use_focus_state": {"v": True, "cat": "brain"},
     # GRAPH
-    "use_graph_augment": {"v": False, "cat": "graph"},
+    "use_graph_augment": {"v": True, "cat": "graph"},
     # HRR
     "use_hrr": {"v": True, "cat": "hrr"},
     # BRAIN
-    "use_meta_brain": {"v": False, "cat": "brain"},
+    "use_meta_brain": {"v": True, "cat": "brain"},
     # CIRCUIT
-    "use_microcircuits": {"v": False, "cat": "circuit"},
+    "use_microcircuits": {"v": True, "cat": "circuit"},
     # PLANNER
-    "use_planner": {"v": False, "cat": "planner"},
+    "use_planner": {"v": True, "cat": "planner"},
     # SDR
-    "use_sdr_prefilter": {"v": False, "cat": "sdr"},
+    "use_sdr_prefilter": {"v": True, "cat": "sdr"},
     # SALIENCE
     # UTILITY
     # WM

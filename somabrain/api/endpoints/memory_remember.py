@@ -66,7 +66,9 @@ def _memory_content_equal(existing_payload: dict, stored_payload: dict) -> bool:
 
     try:
         return json.dumps(_content(existing_payload), sort_keys=True, default=str) == (
-            json.dumps(_content({"payload": stored_payload}), sort_keys=True, default=str)
+            json.dumps(
+                _content({"payload": stored_payload}), sort_keys=True, default=str
+            )
         )
     except Exception:
         return _content(existing_payload) == stored_payload
@@ -191,7 +193,9 @@ async def _replay_pending_to_store(memsvc: MemoryService, tenant_id: str) -> int
     return closed
 
 
-def _note_background_ltm_failure(tenant_id: str, key: str, event_id: int, exc: Exception) -> None:
+def _note_background_ltm_failure(
+    tenant_id: str, key: str, event_id: int, exc: Exception
+) -> None:
     """Record a background LTM persist failure for the NEXT response.
 
     Leaves the outbox row pending (T-6). Error log + metric — never a lone warning.
@@ -461,7 +465,9 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     try:
         await _replay_pending_to_store(memsvc, payload.tenant)
     except Exception as exc:
-        logger.warning("Outbox replay pass failed for tenant=%s: %s", payload.tenant, exc)
+        logger.warning(
+            "Outbox replay pass failed for tenant=%s: %s", payload.tenant, exc
+        )
 
     coordinate_list = _serialize_coord(coord)
     if coordinate_list is not None:
@@ -469,7 +475,6 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
 
     promoted_to_wm = False
     warnings: list[str] = []
-    tiered_vector = None
 
     try:
         # Embedder is usually sync or CPU bound
@@ -477,7 +482,6 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         if wm:
             wm.admit(payload.tenant, vec, stored_payload)
             promoted_to_wm = True
-        tiered_vector = vec
     except Exception as exc:
         warnings.append(f"working-memory-admit-failed:{exc}")
 
@@ -512,6 +516,46 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
     # degraded_journal is NOT either of those.
     durable_accept = persisted_to_ltm or durability == MemoryDurability.DURABLE_OUTBOX
 
+    # COGNITION ALWAYS ON: run the shared cog step on every remember cycle.
+    cog_signals: dict = {}
+    try:
+        from somabrain.cognition.memory_cycle import remember_cognition
+
+        cog_signals = remember_cognition(
+            text=str(stored_payload.get("text") or payload.key or ""),
+            tenant_id=payload.tenant,
+            salience=float(signal_feedback.novelty or 0.0),
+        )
+    except Exception as cog_exc:
+        logger.debug("remember cognition hook failed: %s", cog_exc)
+        cog_signals = {"cognition_error": str(cog_exc)}
+    if cog_signals:
+        try:
+            import json as _json
+
+            warnings.append("cognition:" + _json.dumps(cog_signals, default=str)[:500])
+        except Exception:
+            warnings.append("cognition:applied")
+
+    # TRIAD degradation contract: degraded=true ⇒ error_code + degraded_reason.
+    degraded_flag = bool(degraded_warnings) or not durable_accept
+    degraded_reason = (
+        "; ".join(degraded_warnings)
+        if degraded_warnings
+        else (
+            None
+            if durable_accept
+            else "write journaled for replay but not accepted into LTM or the durable outbox"
+        )
+    )
+    error_code = None
+    if degraded_flag:
+        error_code = (
+            "ltm_persist_queued"
+            if not durable_accept
+            else "write_degraded"
+        )
+
     return {
         "ok": durable_accept,
         "tenant": payload.tenant,
@@ -528,9 +572,11 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         # when the caller omitted it and the stored value came from
         # ``value.kind`` or the seam default.
         "kind": stored_payload.get("kind"),
-        "error": None
-        if durable_accept
-        else "write journaled for replay but not accepted into LTM or the durable outbox",
+        "error": (
+            None
+            if durable_accept
+            else "write journaled for replay but not accepted into LTM or the durable outbox"
+        ),
         "durability": durability,
         "outbox_event_id": outbox_event_id,
         "promoted_to_wm": promoted_to_wm,
@@ -544,6 +590,9 @@ async def remember_memory_async(request: HttpRequest, payload: MemoryWriteReques
         "request_id": request_id,
         "warnings": degraded_warnings + warnings,
         "signals": signal_feedback,
+        "degraded": degraded_flag,
+        "error_code": error_code,
+        "degraded_reason": degraded_reason,
     }
 
 
@@ -674,16 +723,12 @@ async def remember_memory_batch(request: HttpRequest, payload: MemoryBatchWriteR
         try:
             marked = await sync_to_async(mark_event_sent)(event_id)
             if not marked:
-                logger.warning(
-                    "outbox mark_event_sent returned False id=%s", event_id
-                )
+                logger.warning("outbox mark_event_sent returned False id=%s", event_id)
                 item_contexts[idx]["queued_for_ltm"] = True
             else:
                 item_contexts[idx]["queued_for_ltm"] = False
         except Exception:
-            logger.exception(
-                "Failed to mark batch outbox event id=%s sent", event_id
-            )
+            logger.exception("Failed to mark batch outbox event id=%s sent", event_id)
             item_contexts[idx]["queued_for_ltm"] = True
 
     results = []

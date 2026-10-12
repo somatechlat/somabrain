@@ -77,9 +77,7 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _parse_global_frame(
-    raw: bytes, serde: AvroSerde | None
-) -> GlobalFrameCtx | None:
+def _parse_global_frame(raw: bytes, serde: AvroSerde | None) -> GlobalFrameCtx | None:
     """Execute parse global frame.
 
     Args:

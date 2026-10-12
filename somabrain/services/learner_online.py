@@ -11,7 +11,6 @@ import json
 import time
 from typing import Any
 
-import yaml
 from django.conf import settings
 
 from common.logging import logger
@@ -21,6 +20,7 @@ from somabrain.metrics import (
     LEARNER_EVENTS_FAILED,
     LEARNER_EVENTS_PRODUCED,
 )
+from somabrain.math.contracts import LEARNER_DEFAULT_LR, LEARNER_DEFAULT_TAU
 from somabrain.services.learner_dlq import LearnerDLQ
 
 __all__ = ["LearnerService"]
@@ -153,7 +153,9 @@ class LearnerService:
     def _process_event(self, event: dict[str, Any]) -> None:
         """Validate and process a ``next_event`` payload; emit metrics."""
         t_start = time.perf_counter()
-        tenant = str(event.get("tenant") or "default")
+        tenant = str(event.get("tenant") or "")
+        if not tenant:
+            raise ValueError("tenant is required (T-5 fail-closed)")
         try:
             confidence = float(event.get("confidence", 0.0))
         except Exception as exc:
@@ -194,8 +196,8 @@ class LearnerService:
         self._last_seen_ts[tenant] = time.time()
         self._emit_cfg(
             tenant,
-            tau=float(event.get("tau", 1.0)),
-            lr=float(event.get("lr", 0.0)),
+            tau=float(event.get("tau", LEARNER_DEFAULT_TAU)),
+            lr=float(event.get("lr", LEARNER_DEFAULT_LR)),
             event_id=event_id or None,
         )
         elapsed = time.perf_counter() - t_start

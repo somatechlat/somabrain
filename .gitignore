@@ -99,8 +99,6 @@ Desktop.ini
 *.code-workspace
 
 # --- Local DBs / Vector Indices ---
-qdrant.db/
-*_qdrant/
 *.index
 *.sqlite
 *.sqlite3

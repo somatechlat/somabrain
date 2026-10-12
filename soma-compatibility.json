@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "updated": "2026-06-15",
   "self": {
-    "name": "somaagent01",
+    "name": "somabrain",
     "version": "2.0.0",
     "standalone_port": 20020,
     "aaas_port": 63900
@@ -17,12 +17,13 @@
       "aaas_port": 63996,
       "protocol": "http",
       "endpoints": {
-        "health": "/health",
-        "recall": "/api/v1/memory/recall",
-        "remember": "/api/v1/memory/store",
-        "context_evaluate": "/v1/context/evaluate",
-        "neuromodulators": "/v1/neuromodulators",
-        "reward": "/v1/learning/reward"
+        "health": "/api/health/health",
+        "recall": "/api/memory/recall",
+        "remember": "/api/memory/remember",
+        "forget": "/api/memory/forget",
+        "context_evaluate": "/api/context/evaluate",
+        "neuromodulators": "/api/neuromod/state",
+        "reward": "/api/learning/reward"
       }
     },
     "somafractalmemory": {

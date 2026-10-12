@@ -138,7 +138,7 @@ Requirements for the working memory subsystem.
 
 | ID | Requirement | Priority | Verification |
 |---|---|---|---|
-| REQ-BR-WM-001 | The system SHALL maintain a working memory buffer with a configurable capacity (default: 64 slots) in `somabrain/wm.py`. | High | `tests/proofs/category_b/test_wm_capacity.py` |
+| REQ-BR-WM-001 | The system SHALL maintain a working memory buffer with a configurable capacity in `somabrain/memory/wm/mt_wm.py`. Default `max_wm_items` is 128 (`brain_settings/models.py`); `SOMABRAIN_WM_SIZE` is a separate Django knob (default 64). Tenant is required (no default partition). | High | `tests/proofs/category_b/test_wm_capacity.py` |
 | REQ-BR-WM-002 | The system SHALL enforce salience-based gating for working memory admission, rejecting items below a configurable salience threshold. | High | `tests/proofs/category_b/test_wm_capacity.py` |
 | REQ-BR-WM-003 | The system SHALL implement LRU-eviction with salience boosting when working memory capacity is reached, evicting the least-recently-used, lowest-salience item. | High | `tests/proofs/category_b/test_wm_capacity.py` |
 | REQ-BR-WM-004 | The system SHALL support direct working memory recall by slot index and by salience-ranked scan, both returning results in < 2ms (p95). | High | `tests/proofs/category_b/test_memory_roundtrip.py` |

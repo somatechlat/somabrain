@@ -11,7 +11,7 @@ from typing import Any
 from django.http import HttpRequest
 from ninja import Router, Schema
 
-from somabrain.api.auth import api_key_auth, bind_credential_tenant
+from somabrain.api.auth import api_key_auth, bind_credential_tenant, require_admin_auth
 from somabrain.brain_settings.models import BrainSetting
 from somabrain.brain_settings.modes import BRAIN_MODES
 
@@ -58,6 +58,7 @@ def set_brain_mode(request: HttpRequest, data: SetModeSchema):
     Atomic cognitive shift. Immediate cache invalidation.
     Persona: Django Architect / Security Auditor
     """
+    require_admin_auth(request, getattr(request, "cfg", None))
     tenant_id = bind_credential_tenant(request)
     mode = data.mode.upper()
 
@@ -97,9 +98,12 @@ def get_brain_status(request: HttpRequest):
 @router.get("/settings", auth=api_key_auth)
 def list_settings(request: HttpRequest) -> dict[str, Any]:
     """List all administerable BrainSetting knobs (system-role UI)."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     from somabrain.brain_settings.models import BRAIN_DEFAULTS
 
     tenant_id = bind_credential_tenant(request)
+    # Materialise the declared schema so GET/PUT see real rows, not fallbacks.
+    BrainSetting.ensure_seeded(tenant_id)
     items = []
     for key, meta in BRAIN_DEFAULTS.items():
         try:
@@ -123,11 +127,15 @@ def list_settings(request: HttpRequest) -> dict[str, Any]:
 @router.put("/settings", auth=api_key_auth)
 def put_setting(request: HttpRequest, data: SettingPutSchema) -> dict[str, Any]:
     """Administer one BrainSetting knob. Validates bounds. Tenant from credential."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     from ninja.errors import HttpError
 
     from somabrain.brain_settings.models import BRAIN_DEFAULTS
 
     tenant_id = bind_credential_tenant(request)
+    # Fail-closed bootstrap: without rows BrainSetting.set refuses. Same
+    # contract as /context/feedback (Rule 6 / 91).
+    BrainSetting.ensure_seeded(tenant_id)
     key = data.key
     if key not in BRAIN_DEFAULTS:
         raise HttpError(404, f"Unknown setting key '{key}'")

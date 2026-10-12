@@ -10,7 +10,9 @@ pytestmark = pytest.mark.no_django
 
 
 def test_promotion_wraps_orm_in_sync_to_async() -> None:
-    src = (Path(__file__).resolve().parents[2] / "somabrain" / "memory" / "promotion.py").read_text()
+    src = (
+        Path(__file__).resolve().parents[2] / "somabrain" / "memory" / "promotion.py"
+    ).read_text()
     assert "sync_to_async" in src
     assert "thread_sensitive=True" in src
     # create_link and _queue_to_outbox must be called under sync_to_async

@@ -8,8 +8,8 @@
 |---|---|
 | Document Title | Phase A Exit Gate Review (DOC-A5) |
 | Document Identifier | SOMA-BR-PHASE-A-GATE-001 |
-| Version | 1.0.1 |
-| Date | 2026-10-08 |
+| Version | 1.0.2 |
+| Date | 2026-10-09 |
 | Status | Approved |
 | Author | SomaTech Engineering (DOC-A5 coordinator) |
 | Approver | Engineering Lead |
@@ -24,6 +24,7 @@
 
 | Version | Date | Author | Description |
 |---|---|---|---|
+| 1.0.2 | 2026-10-09 | SomaTech Engineering | DEBT-008 and DEBT-010 marked CLOSED. |
 | 1.0.0 | 2026-10-04 | Engineering | Initial gate review. A1–A4 cross-check, exit criteria evidence, residual risks. |
 | 1.0.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2: `## Document Control` heading added, Status closed-set value `Approved` (gate PASS recorded above control table), house field names only. |
 
@@ -72,9 +73,9 @@
 | DEBT-005 | — | X6 | W2 | ACh coupling inverted |
 | DEBT-006 | — | — | W2 | Serotonin write-only |
 | DEBT-007 | — | — | W2 | Rust ODE dead |
-| DEBT-008 | — | X5 | W3 | Python/Rust gains drift |
+| DEBT-008 | — | X5 | W3 | Python/Rust gains drift — **CLOSED** (Rust sole adaptation authority) |
 | DEBT-009 | DEF-05, DEF-06 | X10-adj | W3 | τ floors / schedules |
-| DEBT-010 | — | — | W3 | Entropy cap rewrites τ |
+| DEBT-010 | — | — | W3 | Entropy cap rewrites τ — **CLOSED** (sharpens α,β,γ only; τ passed through) |
 | DEBT-011 | DEF-07 | X2 | W3 | Wiener λ* |
 | DEBT-012 | DEF-07 (related) | X1 | W3 | p* formula |
 | DEBT-013 | — | X11 | W3 | Rust test arity |

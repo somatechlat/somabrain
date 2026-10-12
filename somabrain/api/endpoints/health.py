@@ -13,6 +13,8 @@ from django.conf import settings
 from django.http import HttpRequest, HttpResponse
 from ninja import Router
 
+from somabrain.api.auth import api_key_auth
+
 from somabrain.runtime.healthchecks import check_kafka, check_postgres
 from somabrain.schemas import HealthResponse
 from somabrain.tenant import get_tenant_sync as get_tenant
@@ -53,7 +55,7 @@ def _ping() -> float | None:
     return (time.perf_counter() - start) * 1000.0
 
 
-@router.get("/health", response=HealthResponse)
+@router.get("/health", response=HealthResponse, auth=api_key_auth)
 def health(request: HttpRequest) -> dict[str, Any]:
     """Public health endpoint with CB + sleep degradation semantics.
 
@@ -143,13 +145,18 @@ def health(request: HttpRequest) -> dict[str, Any]:
         resp["opa_ok"] = None
         resp["opa_required"] = None
 
-    # Memory degradation config
+    # Memory degradation config (D10). Real keys only: SOMABRAIN_MEMORY_DEGRADE_*
+    # (settings/cognitive.py). The queue flag is derived — never hardcoded.
     try:
-        resp["memory_degrade_queue"] = True
-        resp["memory_degrade_readonly"] = getattr(
-            settings, "MEMORY_DEGRADE_READONLY", False
+        degrade_queue = bool(getattr(settings, "SOMABRAIN_MEMORY_DEGRADE_QUEUE"))
+        degrade_readonly = bool(
+            getattr(settings, "SOMABRAIN_MEMORY_DEGRADE_READONLY", False)
         )
-        resp["memory_degrade_topic"] = getattr(settings, "MEMORY_DEGRADE_TOPIC", None)
+        degrade_topic = getattr(settings, "SOMABRAIN_MEMORY_DEGRADE_TOPIC", None)
+        # Queueing only applies when degrade-mode is not readonly.
+        resp["memory_degrade_queue"] = degrade_queue and not degrade_readonly
+        resp["memory_degrade_readonly"] = degrade_readonly
+        resp["memory_degrade_topic"] = degrade_topic
     except Exception:
         resp["memory_degrade_queue"] = None
         resp["memory_degrade_readonly"] = None
@@ -202,7 +209,7 @@ def health(request: HttpRequest) -> dict[str, Any]:
     return resp
 
 
-@router.get("/")
+@router.get("/", auth=api_key_auth)
 def health_check(request: HttpRequest) -> dict[str, Any]:
     """Main health endpoint with detailed component status.
 
@@ -264,7 +271,7 @@ def healthz(request: HttpRequest) -> dict[str, str]:
     return {"status": "alive", "probe": "liveness"}
 
 
-@router.get("/diagnostics", response=dict[str, Any])
+@router.get("/diagnostics", response=dict[str, Any], auth=api_key_auth)
 def diagnostics(request: HttpRequest) -> dict[str, Any]:
     """Detailed diagnostics endpoint."""
     cfg = get_app_config()
@@ -290,7 +297,7 @@ def diagnostics(request: HttpRequest) -> dict[str, Any]:
     return diag
 
 
-@router.get("/metrics", include_in_schema=False)
+@router.get("/metrics", include_in_schema=False, auth=api_key_auth)
 def metrics_endpoint(request: HttpRequest) -> HttpResponse:
     """Prometheus metrics endpoint."""
     from prometheus_client import CONTENT_TYPE_LATEST, generate_latest

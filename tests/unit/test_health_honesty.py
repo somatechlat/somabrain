@@ -9,9 +9,7 @@ fake True is not.
 
 from __future__ import annotations
 
-import time
 from types import SimpleNamespace
-from unittest import mock
 
 import pytest
 
@@ -39,8 +37,9 @@ if not django_settings.configured:
         KAFKA_BOOTSTRAP_SERVERS="",
         SOMABRAIN_POSTGRES_DSN="",
         REQUIRE_OPA=False,
-        MEMORY_DEGRADE_READONLY=False,
-        MEMORY_DEGRADE_TOPIC=None,
+        SOMABRAIN_MEMORY_DEGRADE_QUEUE=True,
+        SOMABRAIN_MEMORY_DEGRADE_READONLY=False,
+        SOMABRAIN_MEMORY_DEGRADE_TOPIC="memory.degraded",
         MODE="test",
         REQUIRE_EXTERNAL_BACKENDS=False,
         HEALTH_PING_TIMEOUT=0.2,
@@ -68,7 +67,6 @@ if not django_settings.configured:
     django.setup()
 
 from somabrain.api.endpoints import health as health_mod  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -167,6 +165,12 @@ def test_ping_returns_latency_when_memory_endpoint_reachable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """_ping measures a real probe and returns milliseconds on success."""
+    monkeypatch.setattr(
+        django_settings,
+        "SOMABRAIN_MEMORY_HTTP_ENDPOINT",
+        "http://memory.invalid:10101",
+        raising=False,
+    )
     monkeypatch.setattr(health_mod, "ping", lambda url: True)
     ms = health_mod._ping()
     assert ms is not None
@@ -175,6 +179,12 @@ def test_ping_returns_latency_when_memory_endpoint_reachable(
 
 def test_ping_fail_closed_when_probe_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     """_ping returns None (not fake True) when the memory endpoint is down."""
+    monkeypatch.setattr(
+        django_settings,
+        "SOMABRAIN_MEMORY_HTTP_ENDPOINT",
+        "http://memory.invalid:10101",
+        raising=False,
+    )
     monkeypatch.setattr(health_mod, "ping", lambda url: False)
     assert health_mod._ping() is None
 
@@ -185,7 +195,9 @@ def test_ping_fail_closed_when_no_endpoint(monkeypatch: pytest.MonkeyPatch) -> N
         django_settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "", raising=False
     )
     monkeypatch.setattr(
-        health_mod, "ping", lambda url: (_ for _ in ()).throw(AssertionError("must not probe"))
+        health_mod,
+        "ping",
+        lambda url: (_ for _ in ()).throw(AssertionError("must not probe")),
     )
     assert health_mod._ping() is None
 

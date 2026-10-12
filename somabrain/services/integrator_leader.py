@@ -14,7 +14,6 @@ Key features:
 
 from __future__ import annotations
 
-import os
 import socket
 import threading
 import time

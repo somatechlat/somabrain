@@ -39,13 +39,15 @@ Soma Muted       #666666    Secondary text, labels
 Soma Text        #E5E5E5    Primary text
 Soma White       #FFFFFF    Headings, emphasis
 
-ACCENT COLORS (from Yachaq gradient)
+ACCENT COLORS (SOMA-UI-SPEC-001 §1.1 — locked brand)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Soma Blue        #3B82F6    Primary action, links, focus
-Soma Indigo      #6366F1    Secondary accent, gradients
-Soma Violet      #8B5CF6    Tertiary accent, badges
-Soma Gradient    linear-gradient(135deg, #3B82F6, #8B5CF6)
+Soma Orange      #FF4D00    Primary accent. CTAs, focus, brand
+Soma Orange Soft #FF7A3D    Hover / gradient end
+Soma Orange Deep #E64500    Pressed / danger-adjacent brand
+Soma Gradient    linear-gradient(135deg, #FF4D00, #FF7A3D)
+
+Brand chrome is black + #FF4D00. Do not paint primary UI violet.
 
 STATUS COLORS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -53,7 +55,7 @@ STATUS COLORS
 Success          #10B981    Online, healthy, confirmed
 Warning          #F59E0B    Degraded, attention needed
 Error            #EF4444    Failed, critical, danger
-Info             #3B82F6    Informational
+Info             #FF7A3D    Informational
 
 TYPOGRAPHY (from SomaTech + Yachaq)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -619,7 +621,7 @@ User types: "Search for latest AI news and summarize"
 | Keyboard navigation | Tab through all interactive elements, Enter to activate |
 | Screen reader | ARIA labels, roles, live regions on chat messages |
 | Color contrast | WCAG AA (4.5:1 text, 3:1 large text) |
-| Focus indicators | Soma Blue outline, 2px offset |
+| Focus indicators | Soma Orange outline, 2px offset |
 | Reduced motion | `prefers-reduced-motion` disables animations |
 | Font scaling | rem units, no fixed pixel fonts |
 | High contrast | Optional high-contrast mode |

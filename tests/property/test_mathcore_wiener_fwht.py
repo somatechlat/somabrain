@@ -31,7 +31,9 @@ pytestmark = pytest.mark.no_django
 
 dim_strategy = st.sampled_from([64, 128, 256, 512])
 seed_strategy = st.integers(min_value=1, max_value=2**31 - 1)
-p_strategy = st.floats(min_value=0.01, max_value=0.99, allow_nan=False, allow_infinity=False)
+p_strategy = st.floats(
+    min_value=0.01, max_value=0.99, allow_nan=False, allow_infinity=False
+)
 
 
 def _pm1_codes(dim: int, seed_a: int, seed_b: int) -> tuple[np.ndarray, np.ndarray]:
@@ -75,7 +77,10 @@ class TestWienerLambdaFormula:
     def test_python_and_rust_lambda_agree(self) -> None:
         rs = pytest.importorskip("somabrain_rs")
         for p in (0.05, 0.1, 0.25, 0.5):
-            assert abs(compute_wiener_lambda(p, 8) - rs.compute_wiener_lambda(p, 8)) < 1e-15
+            assert (
+                abs(compute_wiener_lambda(p, 8) - rs.compute_wiener_lambda(p, 8))
+                < 1e-15
+            )
 
 
 class TestBindUnbindRoundTrip:
@@ -96,7 +101,9 @@ class TestBindUnbindRoundTrip:
 
     @given(dim_strategy, seed_strategy, seed_strategy)
     @hyp_settings(max_examples=50, deadline=2000)
-    def test_rust_backend_roundtrip_pm1(self, dim: int, seed_a: int, seed_b: int) -> None:
+    def test_rust_backend_roundtrip_pm1(
+        self, dim: int, seed_a: int, seed_b: int
+    ) -> None:
         pytest.importorskip("somabrain_rs")
         a, b = _pm1_codes(dim, seed_a, seed_b)
         for mix in ("none", "hadamard"):
@@ -122,7 +129,11 @@ class TestBindUnbindRoundTrip:
 class TestFwhtGuard:
     """W4.4: non-2^r input raises ValueError — never a silent no-op."""
 
-    @given(st.lists(st.floats(allow_nan=False, allow_infinity=False), min_size=0, max_size=20))
+    @given(
+        st.lists(
+            st.floats(allow_nan=False, allow_infinity=False), min_size=0, max_size=20
+        )
+    )
     @hyp_settings(max_examples=100, deadline=None)
     def test_python_fwht_rejects_non_power_of_two(self, values: list[float]) -> None:
         n = len(values)

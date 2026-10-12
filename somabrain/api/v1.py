@@ -1,7 +1,7 @@
 """SomaBrain API v1 - Django Ninja
 
 Central API instance for all SomaBrain endpoints.
-100% Django Ninja - VIBE Coding Rules compliant.
+Django Ninja API router.
 
 Every router here is core brain surface and is always loaded: cognitive,
 memory, health, configuration, and the cognitive mode control plane. The

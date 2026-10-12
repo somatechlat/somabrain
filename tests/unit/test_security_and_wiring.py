@@ -191,7 +191,9 @@ def test_compose_allowed_hosts_avoids_underscore_hostname():
 def test_memory_recall_mounts_perform_recall():
     mem_src = _read(ENDPOINTS / "memory.py")
     recall_src = _read(MEMORY_API / "recall.py")
-    assert "async def perform_recall" in recall_src or "def perform_recall" in recall_src
+    assert (
+        "async def perform_recall" in recall_src or "def perform_recall" in recall_src
+    )
     # Either memory.py imports perform_recall, or it accepts the advanced fields.
     advanced = (
         "min_score",
@@ -205,9 +207,9 @@ def test_memory_recall_mounts_perform_recall():
     )
     imported = "perform_recall" in mem_src
     fields_present = all(f in mem_src for f in advanced)
-    assert imported or fields_present, (
-        "memory recall neither mounts perform_recall nor accepts its advanced fields"
-    )
+    assert (
+        imported or fields_present
+    ), "memory recall neither mounts perform_recall nor accepts its advanced fields"
 
 
 # ---------------------------------------------------------------------------
@@ -234,13 +236,7 @@ def test_consolidation_runs_on_sleep():
 # 11. gRPC brain service has a production start path.
 # ---------------------------------------------------------------------------
 def test_grpc_serve_command_exists():
-    cmd = (
-        BRAIN_ROOT
-        / "somabrain"
-        / "management"
-        / "commands"
-        / "serve_brain_grpc.py"
-    )
+    cmd = BRAIN_ROOT / "somabrain" / "management" / "commands" / "serve_brain_grpc.py"
     assert cmd.is_file(), "serve_brain_grpc management command is missing"
     src = cmd.read_text()
     assert "add_brain_service" in src

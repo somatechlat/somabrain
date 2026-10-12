@@ -162,35 +162,34 @@ SOMABRAIN_REDIS_DB = env.int("SOMABRAIN_REDIS_DB", default=0)
 SOMABRAIN_MILVUS_HOST = env.str(
     "MILVUS_HOST", default=env.str("SOMABRAIN_MILVUS_HOST", default=None)
 )
-SOMABRAIN_MILVUS_PORT = env.int("MILVUS_PORT", default=env.int("SOMABRAIN_MILVUS_PORT", default=None) or 0)
+SOMABRAIN_MILVUS_PORT = env.int(
+    "MILVUS_PORT", default=env.int("SOMABRAIN_MILVUS_PORT", default=None) or 0
+)
 SOMABRAIN_MILVUS_COLLECTION = env.str("MILVUS_COLLECTION", default="oak_options")
-MILVUS_SEGMENT_REFRESH_INTERVAL = env.float(
-    "MILVUS_SEGMENT_REFRESH_INTERVAL", default=60.0
-)
-MILVUS_LATENCY_WINDOW = env.int("MILVUS_LATENCY_WINDOW", default=50)
+# Milvus tunables (R-BEH-01). Host/port/collection above are topology (R-TOP).
+# SOMABRAIN_MILVUS_SEGMENT_REFRESH_INTERVAL is imported from here by
+# settings/cognitive.py. The former bare MILVUS_LATENCY_WINDOW twin of
+# SOMABRAIN_MILVUS_LATENCY_WINDOW (cognitive.py) was a second declaration
+# with no reader and is deleted (audit 2026-10-09).
+MILVUS_SEGMENT_REFRESH_INTERVAL = 60.0
 
-# Fail-closed OPA is enforced in somabrain/opa/client.py. The legacy allow-on-error
-# flag is intentionally unsupported; keep the variable only for backwards-compatible
-# settings attribute migration. The OPA URL itself is declared once, below.
-SOMABRAIN_OPA_ALLOW_ON_ERROR = env.bool("SOMABRAIN_OPA_ALLOW_ON_ERROR", default=False)
+# Fail-closed OPA is enforced in somabrain/opa/client.py. The former
+# SOMABRAIN_OPA_ALLOW_ON_ERROR compatibility flag was declared and never
+# consulted (the allow-on-error path is intentionally unsupported) and is
+# deleted (audit 2026-10-09).
 
-# Circuit breaker
-SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD = env.int(
-    "SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD", default=3
-)
-SOMABRAIN_CIRCUIT_RESET_INTERVAL = env.float(
-    "SOMABRAIN_CIRCUIT_RESET_INTERVAL", default=60.0
-)
-SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL = env.float(
-    "SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL", default=0.0
-)
+# Circuit breaker knobs are declared once, in settings/django_core.py
+# (R-VAL-01). This module must not re-declare them: star-import order would
+# silently overwrite one of the two default sets (DEF-01 class of bug —
+# django_core had 5/30/60 here while infra had 3/60/0).
 
-# Feature flags for infrastructure
-SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS = env.bool(
-    "SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", default=True
-)
-REQUIRE_MEMORY = env.bool("REQUIRE_MEMORY", default=True)
-REQUIRE_INFRA = env.str("REQUIRE_INFRA", default="1")
+# Feature flags for infrastructure (R-BEH-01: BrainSetting / Django, never
+# ENV). ONE declaration of the defaults; administerable override via
+# BrainSetting ``require_*`` keys. ``RUNNING_IN_DOCKER`` is deployment
+# topology (where am I running), not a behaviour knob — ENV is allowed (R-TOP).
+SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS = True
+REQUIRE_MEMORY = True
+REQUIRE_INFRA = "1"
 RUNNING_IN_DOCKER = env.bool("RUNNING_IN_DOCKER", default=False)
 
 # ============================================================================
@@ -200,7 +199,7 @@ RUNNING_IN_DOCKER = env.bool("RUNNING_IN_DOCKER", default=False)
 # block: a silent 127.0.0.1 or host.docker.internal is a URL an operator cannot
 # change and a reviewer cannot see (Rule 91). The operator names each endpoint
 # in deployment env / Compose / Helm. Readers use
-# somabrain.settings.resolve.require_url / optional_url, which fail closed.
+# somabrain.settings.resolve.require_url / require_url, which fail closed.
 
 # Kafka
 # ----------------------------------------------------------------------------
@@ -220,7 +219,9 @@ SOMABRAIN_KAFKA_SCHEME = env.str(
     "SOMABRAIN_KAFKA_SCHEME", default=env.str("KAFKA_SCHEME", default="kafka")
 )
 # Alias for consistency
-SOMA_KAFKA_BOOTSTRAP = env.str("SOMA_KAFKA_BOOTSTRAP", default=SOMABRAIN_KAFKA_URL or "")
+SOMA_KAFKA_BOOTSTRAP = env.str(
+    "SOMA_KAFKA_BOOTSTRAP", default=SOMABRAIN_KAFKA_URL or ""
+)
 
 KAFKA_GROUP_ID = env.str("KAFKA_GROUP_ID", default=None)
 SOMABRAIN_CONSUMER_GROUP = env.str(
@@ -240,14 +241,13 @@ SOMABRAIN_OPA_PORT = env.int(
 SOMABRAIN_OPA_SCHEME = env.str(
     "SOMABRAIN_OPA_SCHEME", default=env.str("OPA_SCHEME", default="http")
 )
-SOMABRAIN_OPA_TIMEOUT = env.float("SOMABRAIN_OPA_TIMEOUT", default=2.0)
+# OPA timeout is a tunable (R-BEH-01). The bundle path is a filesystem
+# location (topology) and stays on ENV.
+SOMABRAIN_OPA_TIMEOUT = 2.0
 OPA_BUNDLE_PATH = env.str("OPA_BUNDLE_PATH", default="./opa")
-SOMABRAIN_OPA_POLICY_KEY = env.str(
-    "SOMABRAIN_OPA_POLICY_KEY", default="soma:opa:policy"
-)
-SOMABRAIN_OPA_POLICY_SIG_KEY = env.str(
-    "SOMABRAIN_OPA_POLICY_SIG_KEY", default="soma:opa:policy:sig"
-)
+# Policy cache keys (behaviour). BrainSetting keys ``opa_policy_*``.
+SOMABRAIN_OPA_POLICY_KEY = "soma:opa:policy"
+SOMABRAIN_OPA_POLICY_SIG_KEY = "soma:opa:policy:sig"
 
 # URLs used by the legacy /health aggregator in somabrain/config/urls.py.
 # These are intentionally separate from the canonical SOMABRAIN_*_URL settings
@@ -260,7 +260,9 @@ SOMABRAIN_AUTH_URL = env.str("SOMABRAIN_AUTH_URL", default="")
 
 # External Memory (SFM)
 # ----------------------------------------------------------------------------
-SOMABRAIN_MEMORY_HTTP_ENDPOINT = ""  # managed: BrainSetting memory_http_endpoint (no ENV)
+SOMABRAIN_MEMORY_HTTP_ENDPOINT = (
+    ""  # managed: BrainSetting memory_http_endpoint (no ENV)
+)
 
 # Legacy alias used by somabrain/config/urls.py and system_health.py health checks.
 SOMA_FRACTAL_MEMORY_URL = env.str(
@@ -276,15 +278,18 @@ if REQUIRE_MEMORY and not SOMABRAIN_MEMORY_HTTP_TOKEN:
         "(secret/agent/credentials[somabrain_memory_http_token]). It is never "
         "read from the environment and there is no default (Rule 164 / Rule 91)."
     )
-SOMABRAIN_HTTP_KEEPALIVE = env.int("SOMABRAIN_HTTP_KEEPALIVE", default=32)
-SOMABRAIN_HTTP_RETRIES = env.int("SOMABRAIN_HTTP_RETRIES", default=1)
+# HTTP transport tunables live under their reader names in settings/cognitive.py
+# (HTTP_MAX_CONNECTIONS / HTTP_KEEPALIVE_CONNECTIONS / HTTP_RETRIES). The former
+# SOMABRAIN_HTTP_KEEPALIVE / SOMABRAIN_HTTP_RETRIES pair here was declared and
+# never read (ghost, audit 2026-10-09) and is deleted.
 
 # Service configuration
 HOME_DIR = env.str("HOME", default="")
 SOMABRAIN_HOST = env.str("SOMABRAIN_HOST", default="")
 SOMABRAIN_PORT = env.str("SOMABRAIN_PORT", default="")
 SOMABRAIN_HOST_PORT = _parse_port(env.str("SOMABRAIN_HOST_PORT", default=None), 0)
-SOMABRAIN_WORKERS = env.int("SOMABRAIN_WORKERS", default=1)
+# Worker count is a behaviour tunable (R-BEH-01), not topology.
+SOMABRAIN_WORKERS = 1
 SOMABRAIN_SERVICE_NAME = env.str("SOMABRAIN_SERVICE_NAME", default="somabrain")
 SOMABRAIN_NAMESPACE = env.str("SOMABRAIN_NAMESPACE", default="")
 SOMABRAIN_DEFAULT_TENANT = env.str("SOMABRAIN_DEFAULT_TENANT", default="")
@@ -293,10 +298,11 @@ SOMABRAIN_DEFAULT_TENANT = env.str("SOMABRAIN_DEFAULT_TENANT", default="")
 SOMABRAIN_TENANT_ID = env.str("SOMABRAIN_TENANT_ID", default="")
 
 # URLs. A missing URL is left missing: the resolver
-# (somabrain.settings.resolve.require_url / optional_url) is the only reader
+# (somabrain.settings.resolve.require_url / require_url) is the only reader
 # and it fails closed. No localhost and no cluster DNS at the declaration site
 # outside the Docker-vs-local block above.
-SOMABRAIN_API_URL = env.str("SOMABRAIN_API_URL", default="")
+# Deployment URL. BrainSetting key ``api_url`` (TOPOLOGY). Declared once in
+# settings/django_core.py as managed (no ENV). This module must not re-read it.
 SOMABRAIN_DEFAULT_BASE_URL = env.str("SOMABRAIN_DEFAULT_BASE_URL", default="")
 BASE_URL = env.str("BASE_URL", default="")
 SUPERVISOR_URL = env.str("SUPERVISOR_URL", default=None)
@@ -325,11 +331,15 @@ SOMABRAIN_SEGMENTATION_HEALTH_URL = env.str(
 )
 
 # Outbox
-OUTBOX_BATCH_SIZE = env.int("OUTBOX_BATCH_SIZE", default=100)
-OUTBOX_MAX_DELAY = env.float("OUTBOX_MAX_DELAY", default=5.0)
-OUTBOX_MAX_RETRIES = env.int("OUTBOX_MAX_RETRIES", default=5)
-OUTBOX_POLL_INTERVAL = env.float("OUTBOX_POLL_INTERVAL", default=1.0)
-OUTBOX_PRODUCER_RETRY_MS = env.int("OUTBOX_PRODUCER_RETRY_MS", default=1000)
+# Million-txn drain: claim slices large enough to amortise round-trips while
+# staying under statement timeouts. SKIP LOCKED lets replicas share the queue.
+# Outbox tunables (R-BEH-01: BrainSetting / Django, never ENV).
+# BrainSetting keys ``outbox_*``. Defaults are the ONE declaration (R-VAL-01).
+OUTBOX_BATCH_SIZE = 512
+OUTBOX_MAX_DELAY = 5.0
+OUTBOX_MAX_RETRIES = 5
+OUTBOX_POLL_INTERVAL = 1.0
+OUTBOX_PRODUCER_RETRY_MS = 1000
 # Secret: Vault only (somabrain/runtime[api_token]). No ENV, no "".
 # ONE canonical name for the brain API token: SOMA_API_TOKEN. The former
 # OUTBOX_API_TOKEN / SOMABRAIN_API_TOKEN aliases are deleted (no dual keys).
@@ -340,19 +350,15 @@ SOMABRAIN_SPECTRAL_CACHE_DIR = env.str("SOMABRAIN_SPECTRAL_CACHE_DIR", default="
 SOMABRAIN_JOURNAL_DIR = env.str(
     "SOMABRAIN_JOURNAL_DIR", default="/tmp/somabrain_journal"
 )
-JOURNAL_REPLAY_INTERVAL = env.int("JOURNAL_REPLAY_INTERVAL", default=300)
-SOMABRAIN_JOURNAL_MAX_FILE_SIZE = env.int(
-    "SOMABRAIN_JOURNAL_MAX_FILE_SIZE", default=104857600
-)
-SOMABRAIN_JOURNAL_MAX_FILES = env.int("SOMABRAIN_JOURNAL_MAX_FILES", default=10)
-SOMABRAIN_JOURNAL_ROTATION_INTERVAL = env.int(
-    "SOMABRAIN_JOURNAL_ROTATION_INTERVAL", default=86400
-)
-SOMABRAIN_JOURNAL_RETENTION_DAYS = env.int(
-    "SOMABRAIN_JOURNAL_RETENTION_DAYS", default=7
-)
-SOMABRAIN_JOURNAL_COMPRESSION = env.bool("SOMABRAIN_JOURNAL_COMPRESSION", default=True)
-SOMABRAIN_JOURNAL_SYNC_WRITES = env.bool("SOMABRAIN_JOURNAL_SYNC_WRITES", default=True)
+# Journal tunables (R-BEH-01: BrainSetting / Django, never ENV).
+# BrainSetting keys ``journal_*``. Defaults are the ONE declaration (R-VAL-01).
+JOURNAL_REPLAY_INTERVAL = 300
+SOMABRAIN_JOURNAL_MAX_FILE_SIZE = 104857600
+SOMABRAIN_JOURNAL_MAX_FILES = 10
+SOMABRAIN_JOURNAL_ROTATION_INTERVAL = 86400
+SOMABRAIN_JOURNAL_RETENTION_DAYS = 7
+SOMABRAIN_JOURNAL_COMPRESSION = True
+SOMABRAIN_JOURNAL_SYNC_WRITES = True
 
 # Test environment
 PYTEST_CURRENT_TEST = env.str("PYTEST_CURRENT_TEST", default=None)

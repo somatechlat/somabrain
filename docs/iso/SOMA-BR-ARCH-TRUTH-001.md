@@ -13,8 +13,8 @@
 |---|---|
 | Document Title | Architecture Truth Document |
 | Document Identifier | SOMA-BR-ARCH-TRUTH-001 |
-| Version | 1.0.0 |
-| Date | 2026-10-04 |
+| Version | 1.0.1 |
+| Date | 2026-10-09 |
 | Status | Draft |
 | Author | SomaTech Engineering |
 | Approver | — |
@@ -27,6 +27,7 @@
 
 | Version | Date | Author | Description |
 |---|---|---|---|
+| 1.0.1 | 2026-10-09 | SomaTech Engineering | Dual-store Milvus required (not optional). Rust adaptation path required (not optional with Python fallback). |
 | 1.0.0 | 2026-10-04 | SomaTech Engineering | Initial issue. Code-derived architecture truth: live/dead map, integrations, dual-implementation register, claims-vs-code table. |
 
 ---
@@ -39,7 +40,7 @@ HTTP service (SomaFractalMemory or compatible), runs a synchronous per-request "
 (prediction error → neuromodulator state → salience → store/act gates) on `POST /cognitive/act`,
 optionally plans via a graph engine, adapts retrieval/utility weights from feedback endpoints,
 and runs a separate Kafka-based tripartite predictor/integrator pipeline as sidecar processes.
-It depends on external PostgreSQL, Redis, Kafka, OPA, and (optionally) Milvus; a PyO3 Rust
+It depends on external PostgreSQL, Redis, Kafka, OPA, and **Milvus (dual-store required: Postgres=durable rows/graph, Milvus=ANN vectors — neither is optional)**; a PyO3 Rust
 extension (`somabrain_rs`) accelerates some math when present, with Python fallbacks.
 
 Evidence: API surface `somabrain/api/v1.py:18-155`, URL mount `somabrain/config/urls.py:461-475`,
@@ -83,7 +84,7 @@ adaptation `somabrain/learning/adaptation/engine.py:53-348`, Rust module `rust_c
 | `somabrain/learning/adaptation/engine.py` | Online weight adaptation (retrieval αβγτ, utility λμν) | IMPLEMENTED (live via `/context/*`, `api/endpoints/context.py:73-217`) |
 | `somabrain/lifecycle/startup.py` | Startup handlers (Kafka/OPA enforce, outbox sync, Milvus reconcile, …) | DEAD (never registered; `admin/core/apps.py:26-33` `ready()` is side-effect free) |
 | `somabrain/settings/` (`infra.py`, `cognitive.py`, `django_core.py`, …) | Env-backed configuration | IMPLEMENTED |
-| `rust_core/src/{lib,neuro,mathcore,adaptation,prediction,bhdc}.rs` | PyO3 `somabrain_rs` math/neuro/prediction/adaptation | IMPLEMENTED (optional; Python fallbacks exist) |
+| `rust_core/src/{lib,neuro,mathcore,adaptation,prediction,bhdc}.rs` | PyO3 `somabrain_rs` math/neuro/prediction/adaptation | IMPLEMENTED — **adaptation math is Rust-only** (DEBT-008 closed; `rust_math.py` refuses if missing). Other surfaces may still expose documented Python defaults via `core/rust_bridge.py`. |
 | `somabrain/math/bhdc_encoder.py` | BHDC encoder + permutation binder with Rust/Python dual backends | IMPLEMENTED (dual; see §6) |
 | `somabrain/admin/core/quantum.py` | `QuantumLayer` BHDC operations (bind/unbind/cleanup) | IMPLEMENTED |
 | `somabrain/admin/core/integrator_hub.py` | Claims to re-export triplet hub | BROKEN (`admin/core/integrator_hub.py:20` imports `.services.integrator_hub_triplet`; `somabrain/admin/core/services/` does not exist) |
@@ -132,7 +133,7 @@ Legend:
 | `services/entry.py:_run_integrator` | Orchestrator | `entry.py:45` calls `hub.run_forever()`; `IntegratorHub` exposes `run()` only (`integrator_hub_triplet.py:384`) | BROKEN if launched |
 | Rust `MahalanobisPredictor` | Rust predictor | `rust_core/src/prediction.rs:66-94`; never constructed from Python (Python uses `admin/core/learning/prediction.py`) | DEAD (from Python) |
 | Rust TD API (`compute_td_error`, `compute_td_return`, `compute_n_step_return`, `decay_eligibility`) | Sutton TD | Registered `rust_core/src/lib.rs:90-93`; no Python importers of these symbols | DEAD (from Python) |
-| Rust `Neuromodulators` sync | Rust neurochem mirror | Used by both Python trees via `rust_bridge` (`runtime/neuromodulators.py:126-155`) | LIVE (optional) |
+| Rust `Neuromodulators` sync | Rust neurochem mirror | Used by both Python trees via `rust_bridge` (`runtime/neuromodulators.py`) | LIVE |
 | `lib.rs` unit tests `test_bayesian_memory_snr`, `test_capacity_estimation` | Rust tests | Rewritten in W4 against the live API (`BayesianMemory::new(dimension, eta, lambda_reg)`, `compute_snr_at_lag`, `estimate_horizon`) | GREEN (W4) |
 
 ---
@@ -199,7 +200,7 @@ Background (not on the HTTP request path): Kafka domain predictors
 | **Redis** | `SOMABRAIN_REDIS_URL` / `SOMABRAIN_REDIS_HOST/PORT` | Django cache (health/readyz), adaptation state persistence, integrator global-frame cache | `settings/infra.py:153-157`, `config/urls.py:53-60,143-157`, `learning/adaptation/engine.py:105,465-491`, `integrator_hub_triplet.py:152-160,324-327` |
 | **Kafka** | `KAFKA_BOOTSTRAP_SERVERS` / `SOMABRAIN_KAFKA_URL` | Domain predictor workers + IntegratorHub consume/produce; BeliefUpdate publisher; outbox sync | `settings/infra.py:209-227`, `integrator_hub_triplet.py:117-148`, `supervisord.conf:25,38,51`, `cognitive_loop_service.py:46-54` |
 | **OPA** | `SOMABRAIN_OPA_URL` / `OPA_URL` | Health check `GET {url}/health`; integrator leader veto `POST .../v1/data/soma/policy/integrator`; strict fail-closed policy flag | `settings/infra.py:234-258`, `config/urls.py:198-213`, `integrator_hub_triplet.py:336-351,355-382`, `lifecycle/startup.py:49` (comment: always fail-closed) |
-| **Milvus** | `SOMABRAIN_MILVUS_HOST/PORT/COLLECTION` | Optional OAK path (`ENABLE_OAK`); FNOM vector store factory; reconciliation job (if wired) | `settings/infra.py:164-168`, `config/urls.py:176-195`, `core_singletons.py:353-372`, `lifecycle/startup.py:219-250` (handler itself DEAD) |
+| **Milvus** | `SOMABRAIN_MILVUS_HOST/PORT/COLLECTION` | **Dual-store required** (Postgres=durable rows/graph, Milvus=ANN vectors — neither optional). Missing Milvus host refuses by setting name. | `settings/infra.py`, `services/milvus_ann.py` |
 | **Memory HTTP (SFM)** | `SOMABRAIN_MEMORY_HTTP_ENDPOINT`, `SOMABRAIN_MEMORY_HTTP_TOKEN` | All LTM remember/recall via `MemoryClient` → HTTP transport | `settings/infra.py:265-277`, `settings/cognitive.py:61-81`, `core_singletons.py:297-322`, `api/endpoints/memory.py:235-269` |
 | **SomaFractalMemory health** | `SOMA_FRACTAL_MEMORY_URL` (alias of memory endpoint) | `/health` aggregator probe `GET {url}/healthz` | `settings/infra.py:269`, `config/urls.py:270-283` |
 | **MinIO / Schema Registry / Keycloak** | `MINIO_ENDPOINT`, `SCHEMA_REGISTRY_URL`, `KEYCLOAK_URL` | Health-only probes in `/health` aggregator | `config/urls.py:215-267` |
@@ -256,7 +257,7 @@ Background (not on the HTTP request path): Kafka domain predictors
 | AdaptationEngine (Python, `/context/*`) | IMPLEMENTED |
 | Kafka predictors + IntegratorHub sidecar | IMPLEMENTED (separate processes) |
 | BHDC QuantumLayer + dual binder backend | IMPLEMENTED |
-| Rust `somabrain_rs` math core (FWHT, quantize, Wiener, BayesianMemory) | IMPLEMENTED (optional; partial live use) |
+| Rust `somabrain_rs` math core (FWHT, quantize, Wiener, BayesianMemory) | IMPLEMENTED (partial live use; adaptation path is required Rust) |
 | `retrieval_pipeline.run_retrieval_pipeline` | DEAD |
 | `memory/scoring.py` ranking helpers | DEAD |
 | `somabrain/predictors/*` heat-diffusion stack | DEAD |

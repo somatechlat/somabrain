@@ -175,7 +175,7 @@ def _validate_api_or_memory_token(token: str) -> bool:
     # a separate brain→SFM token happened to be configured too — two trust
     # boundaries, two credentials, one validator that must accept either.
     configured = False
-    for setting_name in ("SOMABRAIN_API_TOKEN", "SOMABRAIN_MEMORY_HTTP_TOKEN"):
+    for setting_name in ("SOMA_API_TOKEN", "SOMABRAIN_MEMORY_HTTP_TOKEN"):
         expected = getattr(settings, setting_name, None)
         if not expected:
             continue

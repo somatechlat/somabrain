@@ -69,7 +69,9 @@ def _resolve_tenant(request: HttpRequest, asserted: str | None = None) -> str:
     require_auth(request, settings)
     ctx = get_tenant_sync(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     if asserted is not None and asserted != ctx.tenant_id:
-        raise HttpError(403, "tenant mismatch: asserted tenant does not match authenticated tenant")
+        raise HttpError(
+            403, "tenant mismatch: asserted tenant does not match authenticated tenant"
+        )
     return ctx.tenant_id
 
 

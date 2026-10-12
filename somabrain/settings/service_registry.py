@@ -6,19 +6,21 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class ServiceEndpoint:
-    """Service endpoint configuration."""
+    """Service endpoint configuration.
+
+    Topology is named by the operator (``env_var``). There is no code-side
+    port: a port the registry invents is a port the operator cannot change
+    and a reviewer cannot see (Rule 91).
+    """
 
     name: str
     env_var: str
     description: str
-    default_port: int
     path: str = ""
     required: bool = True
     health_check: str | None = None
 
-    def get_url(
-        self, environment: str = "development", host: str | None = None
-    ) -> str:
+    def get_url(self, environment: str = "development", host: str | None = None) -> str:
         """Resolve service URL from the environment.
 
         There is no invented ``localhost`` or cluster-DNS fallback (Rule 91).
@@ -45,7 +47,6 @@ class ServiceRegistry:
         name="somafractalmemory",
         env_var="SOMABRAIN_MEMORY_HTTP_ENDPOINT",
         description="Memory system",
-        default_port=10101,
         required=True,
         health_check="/health",
     )
@@ -54,7 +55,6 @@ class ServiceRegistry:
         name="postgres",
         env_var="SOMABRAIN_POSTGRES_DSN",
         description="Database",
-        default_port=5432,
         required=True,
     )
 
@@ -62,7 +62,6 @@ class ServiceRegistry:
         name="redis",
         env_var="SOMABRAIN_REDIS_URL",
         description="Cache",
-        default_port=6379,
         required=True,
     )
 
@@ -70,7 +69,6 @@ class ServiceRegistry:
         name="kafka",
         env_var="SOMABRAIN_KAFKA_URL",
         description="Event streaming",
-        default_port=9092,
         required=True,
     )
 
@@ -78,7 +76,6 @@ class ServiceRegistry:
         name="opa",
         env_var="SOMABRAIN_OPA_URL",
         description="Policy engine",
-        default_port=8181,
         required=True,
         health_check="/health",
     )
@@ -87,11 +84,9 @@ class ServiceRegistry:
         name="keycloak",
         env_var="KEYCLOAK_URL",
         description="Identity provider",
-        default_port=8080,
         required=False,
         health_check="/health",
     )
-
 
     @classmethod
     def get_all_services(cls) -> dict[str, ServiceEndpoint]:

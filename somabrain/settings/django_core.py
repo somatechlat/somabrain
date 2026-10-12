@@ -5,7 +5,6 @@ standalone, and production-style deployments. Deployment-specific modules
 import this file first, then layer infrastructure and feature settings on top.
 """
 
-import os
 from pathlib import Path
 
 import environ  # type: ignore[import-untyped]
@@ -19,44 +18,40 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # DJANGO CORE APPLICATION SETTINGS
 # ============================================================================
 
-# Initialize django-environ
+# Initialize django-environ.
+# R-TOP: ENV is topology only. Behaviour knobs and secrets are NOT declared
+# here — they are BrainSetting / Django settings (R-BEH-01) or Vault (R-SEC-01).
 env = environ.Env(
-    # Django core settings
-    DEBUG=(bool, False),
-    # No default secrets per VIBE rules. Vault bootstrap or env must supply them.
+    # No default secrets per VIBE rules. Vault bootstrap must supply them.
     SECRET_KEY=(str, ""),
     ALLOWED_HOSTS=(list, []),
-    # SomaBrain core settings with defaults
-    SOMABRAIN_LOG_LEVEL=(str, "INFO"),
-    # No default DSN per VIBE rules. Vault bootstrap or env must supply it.
+    # No default DSN per VIBE rules. Vault bootstrap must supply it.
     SOMABRAIN_POSTGRES_DSN=(str, ""),
-    # No localhost default: an invented 127.0.0.1 is a URL an operator cannot
-    # change and a reviewer cannot see. Empty means unset; require_url raises.
-    SOMABRAIN_API_URL=(str, ""),
-    # Deployment Mode Standardization
+    # Deployment Mode Standardization (deployment topology, not a tunable)
     SOMA_DEPLOY_MODE=(str, "FULL_LOCAL"),
     SOMABRAIN_MODE=(str, "full-local"),  # Legacy fallback
-    # Memory endpoint moved to infra.py
-    # SOMABRAIN_MEMORY_HTTP_ENDPOINT=(str, "http://127.0.0.1:10101"),
-    # SOMABRAIN_MEMORY_HTTP_TOKEN=(str, "<runtime supplied>"),
-    SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD=(int, 5),
-    SOMABRAIN_CIRCUIT_RESET_INTERVAL=(float, 30.0),
-    SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL=(float, 60.0),
-    SOMABRAIN_BHDC_SPARSITY=(float, 0.1),
 )
 
-SOMABRAIN_API_URL = env("SOMABRAIN_API_URL")
 SOMA_DEPLOY_MODE = env("SOMA_DEPLOY_MODE", default=env("SOMABRAIN_MODE"))
 SOMABRAIN_MODE = SOMA_DEPLOY_MODE  # Backward compatibility alias
-# Memory endpoint moved to infra.py for centralized connection management
-# SOMABRAIN_MEMORY_HTTP_ENDPOINT = env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
-# SOMABRAIN_MEMORY_HTTP_TOKEN = env("SOMABRAIN_MEMORY_HTTP_TOKEN")
-SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD = env("SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD")
-SOMABRAIN_CIRCUIT_RESET_INTERVAL = env("SOMABRAIN_CIRCUIT_RESET_INTERVAL")
-SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL = env(
-    "SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL", default=60.0
-)
-SOMABRAIN_BHDC_SPARSITY = env("SOMABRAIN_BHDC_SPARSITY", default=0.1)
+
+# --- Managed behaviour knobs (R-BEH-01: BrainSetting / Django, never ENV) ---
+# Deployment URL. BrainSetting key ``api_url`` (TOPOLOGY). There is no ENV
+# read and no invented host: runtime readers use managed_get("api_url") /
+# require_url, which fail closed when the operator has not set it.
+SOMABRAIN_API_URL = ""  # managed: BrainSetting api_url (no ENV)
+
+# Circuit breaker. ONE declaration of the defaults (R-VAL-01). The
+# administerable source is BrainSetting ``circuit_*`` (see BRAIN_DEFAULTS);
+# these are the bootstrap values used before the DB is reachable. Read at the
+# call site through require_setting / resolve_tunable / managed_get.
+SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD = 3
+SOMABRAIN_CIRCUIT_RESET_INTERVAL = 60.0
+SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL = 0.0
+
+# BHDC sparsity is declared once in settings/cognitive.py (contracts.BHDC_P).
+# DEF-01: django_core must not re-declare it — a star-import order would
+# silently overwrite one of the two values.
 
 # WM weight defaults (SOMABRAIN_WM_ALPHA/BETA/GAMMA/SALIENCE_THRESHOLD) are
 # declared once in settings/cognitive.py.  DEF-01: django_core no longer
@@ -153,7 +148,6 @@ def configure_vault_secrets() -> None:
 
     if api_token:
         _boot_secret("SOMA_API_TOKEN", api_token)
-        _boot_secret("SOMABRAIN_API_TOKEN", api_token)
 
 
 # Resolve bootstrap secrets from Vault BEFORE the assignments below read them.
@@ -164,7 +158,7 @@ configure_vault_secrets()
 # Hold the Vault-resolved API token in module state. get_api_token() reads
 # these names (never ENV, never a silent default). SOMA_API_TOKEN is the
 # inline credential; SOMA_API_TOKEN_FILE is the optional credential-file slot.
-SOMA_API_TOKEN = _BOOTSTRAP.get("SOMA_API_TOKEN") or _BOOTSTRAP.get("SOMABRAIN_API_TOKEN") or None
+SOMA_API_TOKEN = _BOOTSTRAP.get("SOMA_API_TOKEN") or None
 
 # Secret: Vault only (somabrain/auth[jwt_secret]). ENV never carries it.
 SECRET_KEY = _BOOTSTRAP.get("SECRET_KEY", "")
@@ -175,7 +169,12 @@ if not SECRET_KEY:
         "(Rule 164 / Rule 91)."
     )
 
-DEBUG = env("SOMABRAIN_LOG_LEVEL") == "DEBUG"
+# F-02 CRITICAL: DEBUG is its own switch. It is NEVER derived from
+# SOMABRAIN_LOG_LEVEL — log verbosity and Django debug behaviour are
+# different concerns and coupling them turns "INFO logs" into "debug mode".
+# Django settings are the source (R-BEH-01); deployment profiles pin it
+# (production.py sets DEBUG = False). Not an ENV read.
+DEBUG = False
 # Required host allow-list. A defaulted list (or an empty one that Django treats
 # as "allow the test client only") is a gate, not a convenience: the operator
 # names the hosts this service is addressed by. RFC 1035 alias `somabrain`.
@@ -186,6 +185,31 @@ if not ALLOWED_HOSTS:
         "service is addressed by (for standalone: somabrain). There is no "
         "default list (Rule 91)."
     )
+
+# Production security posture, gated on the existing DEBUG flag above (whose
+# computation is owned elsewhere and is not changed here). Mirrors
+# somaAgent01/services/gateway/settings.py and the SFM twin in
+# somafractalmemory/settings/django_core.py. Every switch below is the Django
+# setting whose absence is the vulnerability: cookie theft over plain HTTP,
+# MIME sniffing, clickjacking, and HSTS not being pinned. They are
+# unconditional once DEBUG is off — an operator does not opt into them one by
+# one.
+if not DEBUG:
+    # Cookie/header posture mirrors somaAgent01/services/gateway/settings.py.
+    # SECURE_SSL_REDIRECT is intentionally NOT set: standalone and many
+    # deployments terminate TLS at a proxy; forcing Django-level redirect
+    # breaks plain-HTTP health checks and local compose. HSTS below still
+    # pins browsers to TLS once a request has arrived over it.
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    # One year, includeSubDomains, preload — the same posture the gateway sets.
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = "DENY"
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -201,11 +225,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
+    # Slim* skip session/CSRF/messages/session-auth **only** on /memory/* (Ninja
+    # bearer API). OPA + Controls remain on every request. Browser routes keep
+    # the full Django stack — see somabrain/controls/api_slim.py.
+    "somabrain.controls.api_slim.SlimSessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
+    "somabrain.controls.api_slim.SlimCsrfMiddleware",
+    "somabrain.controls.api_slim.SlimAuthenticationMiddleware",
+    "somabrain.controls.api_slim.SlimMessagesMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # OPA policy enforcement on every route (fail-closed in OpaMiddleware).
     "somabrain.controls.opa_middleware.OpaMiddleware",
@@ -245,6 +272,13 @@ if not _dsn:
         "from the environment (Rule 164 / Rule 91)."
     )
 DATABASES = {"default": env.db_url_config(_dsn)}
+# Connection pooling. Without CONN_MAX_AGE every request opens and closes a
+# TCP connection to Postgres; CONN_HEALTH_CHECKS drops a connection that went
+# stale while pooled so the first query after an idle window does not fail on
+# a dead socket. Same values as somaAgent01/services/gateway/settings.py and
+# somafractalmemory/settings/django_core.py.
+DATABASES["default"]["CONN_MAX_AGE"] = 60
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -312,13 +346,17 @@ def get_api_token() -> str | None:
     return None
 
 
-SOMABRAIN_API_TOKEN = get_api_token()
-SOMA_API_TOKEN = SOMABRAIN_API_TOKEN
+# ONE canonical name (no dual keys): SOMA_API_TOKEN.
+SOMA_API_TOKEN = get_api_token()
 
 # ============================================================================
 # DJANGO LOGGING CONFIGURATION
 # ============================================================================
-SOMABRAIN_LOG_LEVEL = env.str("SOMABRAIN_LOG_LEVEL", default="INFO")
+# Log level. BrainSetting key ``log_level`` (ops). NOT an ENV read, and it
+# never drives DEBUG (F-02). One declaration here; LOGGING below consumes it.
+# Runtime override: managed_get("log_level") / resolve_tunable("log_level").
+SOMABRAIN_LOG_LEVEL = "INFO"
+# Log file path is topology (a filesystem location), not a behaviour knob.
 SOMABRAIN_LOG_PATH = env.str("SOMABRAIN_LOG_PATH", default="/app/logs/somabrain.log")
 
 # Check if log path is writable (Docker containers are read-only)

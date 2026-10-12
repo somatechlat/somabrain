@@ -1,5 +1,15 @@
 # SomaBrain Learning: Mathematical Proof
 
+> **Evidence honesty (2026-10-09, code = source of truth).** This document is a
+> mathematical narrative. Where it says "100%", "zero failures", or "Proof by
+> Exhaustive Testing", read **the cited tests passed at the time of writing** —
+> not a guarantee and not a claim about production defaults. Adaptation math is
+> computed in Rust (`somabrain_rs`, DEBT-008 closed); Python gain formulas here
+> are illustrative unless they match `learning/adaptation/rust_math.py`.
+> Worked numeric examples may disagree with live defaults; see
+> `docs/iso/SOMA-BR-DEBT-001.md` (DEBT-008) and `docs/iso/SOMA-BR-MATH-TRUTH-001.md`.
+
+
 > ## ⚠️ NON-AUTHORITATIVE — SUPERSEDED BY CODE (DOC-A6)
 > **This document is ARCHIVED as a historical claim, not as truth.**
 > It overclaims learning/annealing behavior relative to the implementation.
@@ -76,7 +86,7 @@ This makes the brain **explore less and exploit more** over time.
 delta = lr × g × s
 ```
 
-**Proof by Exhaustive Testing**:
+**Evidence: test suite at time of writing**:
 - Tested with **100 random examples**
 - Learning rates: [0.001, 0.5]
 - Gains: [-2, 2]
@@ -335,7 +345,7 @@ From benchmarks:
 ```
 delta = lr × gain × signal
 ```
-Verified across **1500+ random test cases** with **zero failures**.
+Evidence: 1500+ random test cases passed at time of writing (`tests/property/`).
 
 ### 2. Weights Converge Over Time ✅
 ```
@@ -354,7 +364,7 @@ Verified with **entropy computation** on **real weight distributions**.
 ```
 ∀ updates: min <= weight <= max
 ```
-Verified across **400 random examples** with **100% success rate**.
+Evidence: 400 random examples passed at time of writing (`tests/property/`).
 
 ### 5. Learning is Fast ✅
 ```
@@ -392,7 +402,7 @@ Verified with **performance benchmarks** on **real hardware**.
 - **Property-based tests**: 1500+ random examples
 - **Integration tests**: 50-100 iteration scenarios
 - **Performance tests**: 7,600 cycles/second verified
-- **Success rate**: 100% (19/19 tests passed)
+- **Result at time of writing**: 19/19 tests passed (`tests/`)
 
 ---
 
@@ -419,4 +429,4 @@ The brain learns by adjusting how much it trusts different types of information 
 **Report Generated**: 2026-02-04 13:05:00 UTC  
 **Test Framework**: pytest 8.3.3 + Hypothesis 6.151.5  
 **Verification Method**: Property-Based Testing + Integration Testing  
-**Success Rate**: 100% (19/19 tests passed)
+**Result at time of writing**: 19/19 tests passed (`tests/`)

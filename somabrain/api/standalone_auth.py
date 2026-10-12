@@ -12,6 +12,7 @@ presenting nothing is rejected too.
 
 from __future__ import annotations
 
+import hmac
 from typing import Any
 
 from django.conf import settings
@@ -28,11 +29,9 @@ class StandaloneAPIKeyAuth(HttpBearer):
     keeping the in-cluster trust boundary simple and consistent.
     """
 
-    def authenticate(
-        self, request: HttpRequest, token: str
-    ) -> dict[str, Any] | None:
+    def authenticate(self, request: HttpRequest, token: str) -> dict[str, Any] | None:
         expected = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN")
-        if not expected or token != expected:
+        if not expected or not hmac.compare_digest(token.encode("utf-8"), expected.encode("utf-8")):
             return None
         tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
         if not tenant_id:

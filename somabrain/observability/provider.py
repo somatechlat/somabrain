@@ -19,7 +19,6 @@ except Exception as exc:  # pragma: no cover - intentionally strict
     ) from exc
 
 
-
 from django.conf import settings
 
 

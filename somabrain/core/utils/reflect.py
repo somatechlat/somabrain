@@ -29,7 +29,44 @@ import numpy as np
 from somabrain.math import cosine_similarity
 
 STOP = set(
-    ["the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "at", "from", "by", "as", "is", "are", "was", "were", "be", "been", "it", "this", "that", "these", "those", "i", "you", "he", "she", "we", "they", "do", "did", "does", "not"]
+    [
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "of",
+        "to",
+        "in",
+        "on",
+        "for",
+        "with",
+        "at",
+        "from",
+        "by",
+        "as",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "it",
+        "this",
+        "that",
+        "these",
+        "those",
+        "i",
+        "you",
+        "he",
+        "she",
+        "we",
+        "they",
+        "do",
+        "did",
+        "does",
+        "not",
+    ]
 )
 """
 Set of common English stop words to filter out during text analysis.

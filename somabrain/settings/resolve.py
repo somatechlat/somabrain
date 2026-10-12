@@ -1,30 +1,20 @@
 """Single resolution helper for administrable values (SomaBrain).
 
 This is the **only** way call sites may obtain a deployment URL, a service
-host, or a tunable that an operator can override. Mirrors the somaAgent01
-Capsule/AgentSetting resolver: every value is declared once on a settings
-module (``settings/`` for infra topology, ``brain_settings`` for brain
-knobs) and read through one resolver.
+host, or a tunable that an operator can override.
+
+ZERO OPTIONAL PATHS (operator law, 2026-10-09). Missing values are a refusal
+naming the setting. Every path is required and official.
 
 Resolution order for tunables
 -----------------------------
-1. ``BrainSetting`` (tenant-scoped DB row, hot-reload via cache) — brain knobs
-   only, never infrastructure URLs.
+1. ``BrainSetting`` (tenant-scoped DB row) — brain knobs only.
 2. Django settings — infra authority, declared in ``settings/*.py``.
-3. Schema default **only** when the key is optional.
 
 Deployment URLs
 ---------------
-A URL is never named in logic. Call sites use ``require_url`` /
-``optional_url``. A missing required URL raises
-``ImproperlyConfigured`` (Rule 91, fail-closed). There is no localhost
-fallback: a silent ``127.0.0.1`` is a URL an operator cannot change and a
-reviewer cannot see.
-
-Identity (tenant / namespace)
------------------------------
-``require_tenant`` / ``require_namespace`` **raise** on empty. There is no
-``"default"`` partition on an auth, memory or namespace path.
+``require_url`` only. A missing URL raises ``UnconfiguredServiceError``.
+There is no localhost fallback and no "not configured" soft path.
 """
 
 from __future__ import annotations
@@ -36,9 +26,7 @@ from django.core.exceptions import ImproperlyConfigured
 __all__ = [
     "UnconfiguredServiceError",
     "require_setting",
-    "optional_setting",
     "require_url",
-    "optional_url",
     "require_tenant",
     "require_namespace",
     "resolve_tunable",
@@ -74,16 +62,6 @@ def require_setting(name: str) -> Any:
     return value
 
 
-def optional_setting(name: str, default: Any = None) -> Any:
-    """Return a settings attribute when present, else *default*.
-
-    Use only for keys whose schema default is declared on a settings module
-    or documented as optional. Never pass a host or URL as *default*.
-    """
-    value = _django_value(name)
-    return default if value is None else value
-
-
 def require_url(name: str) -> str:
     """Return a configured deployment URL or raise.
 
@@ -99,14 +77,6 @@ def require_url(name: str) -> str:
             "the effective base is this setting."
         )
     return text.rstrip("/")
-
-
-def optional_url(name: str) -> str | None:
-    """Return a configured URL when present, else ``None`` (no invented host)."""
-    value = _django_value(name)
-    if value is None:
-        return None
-    return require_url(name)
 
 
 def require_tenant(tenant: str | None) -> str:
@@ -132,19 +102,11 @@ def require_namespace(namespace: str | None) -> str:
     return namespace.strip()
 
 
-def resolve_tunable(
-    key: str,
-    *,
-    tenant: str | None = None,
-    default: Any = None,
-    require: bool = False,
-) -> Any:
+def resolve_tunable(key: str, *, tenant: str | None = None) -> Any:
     """Resolve one brain tunable: BrainSetting (tenant) → Django settings.
 
-    *key* is the canonical settings / ``BrainSetting`` key. When *tenant* is
-    given, a tenant-scoped ``BrainSetting`` row wins over Django settings so
-    Capsule-level brain knobs stay administrable. Infrastructure URLs are
-    **not** resolved here — use ``require_url``.
+    Required. Missing → ``require_setting`` refusal naming the key.
+    Infrastructure URLs are **not** resolved here — use ``require_url``.
     """
     if tenant:
         tenant = require_tenant(tenant)
@@ -157,13 +119,5 @@ def resolve_tunable(
             return BrainSetting.get(key, tenant=tenant)
         except BrainSettingNotFound:
             pass
-        except ImproperlyConfigured:
-            # DB unavailable: fall through to Django settings.
-            pass
 
-    value = _django_value(key)
-    if value is not None:
-        return value
-    if require:
-        return require_setting(key)
-    return default
+    return require_setting(key)

@@ -125,7 +125,11 @@ class PersonalityStore:
 
         if traits is None:
             return base
-        raw = traits.traits if isinstance(traits, PersonalityState) else dict(traits or {})
+        raw = (
+            traits.traits
+            if isinstance(traits, PersonalityState)
+            else dict(traits or {})
+        )
         w = float(PERSONALITY_BLEND)
         if not math.isfinite(w) or not (0.0 <= w <= 1.0):
             w = 0.3

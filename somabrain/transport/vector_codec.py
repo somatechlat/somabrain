@@ -102,7 +102,9 @@ def pack_vector(
     try:
         data = b"".join(struct.pack(fmt, float(x)) for row in rows for x in row)
     except (struct.error, OverflowError, TypeError, ValueError) as exc:
-        raise VectorCodecError(f"vector values cannot be packed as {dtype}: {exc}") from exc
+        raise VectorCodecError(
+            f"vector values cannot be packed as {dtype}: {exc}"
+        ) from exc
 
     return PackedVector(data=data, dtype=dtype, dim=dim, count=len(rows))
 
@@ -147,7 +149,9 @@ def unpack_vector(packed: PackedVector) -> list[list[float]]:
     for i in range(packed.count):
         start = i * packed.dim * width
         chunk = packed.data[start : start + packed.dim * width]
-        out.append([struct.unpack_from(fmt, chunk, j * width)[0] for j in range(packed.dim)])
+        out.append(
+            [struct.unpack_from(fmt, chunk, j * width)[0] for j in range(packed.dim)]
+        )
     return out
 
 

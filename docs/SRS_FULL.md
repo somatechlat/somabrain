@@ -1691,7 +1691,7 @@ Secrets are **Vault only** (Covenant Art 26).
 | `SOMABRAIN_MILVUS_HOST` | str | - | Milvus vector DB host | ✗ |
 | `SOMABRAIN_MILVUS_PORT` | int | `19530` | Milvus port | ✗ |
 | `SOMABRAIN_NAMESPACE` | str | `default` | Default memory namespace | ✓ |
-| `SOMABRAIN_HRR_DIM` | int | `1024` | Vector dimension | ✗ |
+| `SOMABRAIN_HRR_DIM` / `hrr_dim` | int | `8192` (`BHDC_D`) | Vector dimension | ✓ |
 | `SOMABRAIN_WM_CAPACITY` | int | `100` | Working memory capacity | ✓ |
 | `SOMABRAIN_LTM_BATCH_SIZE` | int | `50` | LTM batch write size | ✓ |
 | `SOMABRAIN_SALIENCE_THRESHOLD` | float | `0.5` | Minimum salience to store | ✓ |
@@ -2134,7 +2134,7 @@ sequenceDiagram
         alt Token-based Tenant Exists
             TM-->>API: token_hash_tenant_id
         else No Token Tenant
-            TM->>TM: Use Default Tenant
+            TM->>TM: resolve SOMABRAIN_DEFAULT_TENANT (only if credential has none)
         end
     else No Credentials
         alt Anonymous Allowed
@@ -2316,7 +2316,7 @@ Secrets in this category are **Vault only** (Covenant Art 26) — never environm
 | `SOMABRAIN_WORKERS` | int | 1 | Number of workers |
 | `SOMABRAIN_SERVICE_NAME` | str | somabrain | Service name |
 | `SOMABRAIN_NAMESPACE` | str | public | Default namespace |
-| `SOMABRAIN_DEFAULT_TENANT` | str | public | Default tenant |
+| `SOMABRAIN_DEFAULT_TENANT` | str | empty (standalone profile: `standalone`) | Fallback tenant only when credential carries none; empty + `require_tenant` refuses (fail-closed) |
 | `SOMABRAIN_MODE` | str | full-local | Operation mode |
 | `SOMABRAIN_LOG_LEVEL` | str | INFO | Log level |
 
@@ -2328,7 +2328,7 @@ Secrets in this category are **Vault only** (Covenant Art 26) — never environm
 |---------|------|---------|-------------|
 | `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | str | http://localhost:10101 | SomaFractalMemory URL |
 | `SOMABRAIN_MEMORY_MAX` | str | 10GB | Max memory usage |
-| `SOMABRAIN_EMBED_DIM` | int | 256 | Embedding dimension |
+| `SOMABRAIN_EMBED_DIM` / `embed_dim` | int | 768 | Embedding dimension (seam) |
 | `SOMABRAIN_WM_SIZE` | int | 64 | Working memory size |
 | `SOMABRAIN_WM_SALIENCE_THRESHOLD` | float | 0.4 | Salience threshold |
 | `SOMABRAIN_WM_PER_TENANT_CAPACITY` | int | 128 | Per-tenant WM capacity |
@@ -2415,7 +2415,7 @@ Secrets in this category are **Vault only** (Covenant Art 26) — never environm
 | `SOMABRAIN_MINIMAL_PUBLIC_API` | bool | False | Minimal API mode |
 | `SOMABRAIN_ALLOW_ANONYMOUS_TENANTS` | bool | False | Allow anonymous |
 | `SOMABRAIN_KILL_SWITCH` | bool | False | Emergency kill switch |
-| `SOMABRAIN_USE_HRR` | bool | False | Use HRR encoding |
+| `SOMABRAIN_USE_HRR` | bool | True | Use HRR encoding (default on; optional disable only via explicit False — `bootstrap/singletons.py`) |
 | `SOMABRAIN_USE_META_BRAIN` | bool | False | Use meta-brain |
 | `SOMABRAIN_USE_EXEC_CONTROLLER` | bool | False | Use exec controller |
 | `SOMABRAIN_USE_PLANNER` | bool | False | Use planner |
@@ -3670,7 +3670,7 @@ This document defines security classifications for SomaBrain documentation accor
 ### PUBLIC Documents
 
 - All files in `docs/user/`
-- All files in `docs/technical/` (except security/)
+- Config/API truth map `docs/iso/SOMA-BR-CONFIG-API-TEST-001.md` (the former `docs/technical/` tree does not exist)
 - All files in `docs/development/`
 - All files in `docs/onboarding/`
 - `README.md`
@@ -3678,7 +3678,7 @@ This document defines security classifications for SomaBrain documentation accor
 
 ### INTERNAL Documents
 
-- `docs/technical/security/` (operational security procedures)
+- `docs/iso/SOMA-BR-SEC-001.md` (security assessment and settings/secrets law)
 - `docs/operations/` (deployment checklists, runbooks)
 
 ### CONFIDENTIAL Documents
@@ -3991,7 +3991,7 @@ flowchart TD
     F --> M[Store Tokens in Session]
     M --> N{User Exists in DB?}
     N -->|No| O[Create User Record]
-    O --> P[Assign to Default Tenant]
+    O --> P[require_tenant refuses if no tenant]
     N -->|Yes| Q[Load User Profile]
     P --> Q
     Q --> R[Redirect to /dashboard]
@@ -5334,7 +5334,7 @@ flowchart TB
 | `features/*.md` (8 files) | Feature docs |
 | `faq.md` | FAQ |
 
-### 5.3 Technical Manual (docs/technical/)
+### 5.3 Technical Manual (obsolete path `docs/technical/`) — use `docs/iso/` suite instead
 
 | Directory | Files | Purpose |
 |-----------|-------|---------|

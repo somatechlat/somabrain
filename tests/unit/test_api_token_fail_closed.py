@@ -51,15 +51,13 @@ def test_get_api_token_source_never_swallows_errors():
             # `except Exception: pass` or `except: pass` is the defect.
             body = child.body
             swallowed = all(
-                isinstance(stmt, ast.Pass) or (
-                    isinstance(stmt, ast.Expr)
-                    and isinstance(stmt.value, ast.Constant)
-                )
+                isinstance(stmt, ast.Pass)
+                or (isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant))
                 for stmt in body
             )
-            assert not swallowed, (
-                f"get_api_token swallows a read failure at line {child.lineno}"
-            )
+            assert (
+                not swallowed
+            ), f"get_api_token swallows a read failure at line {child.lineno}"
     # Stronger: the function must contain at least one Raise.
     raises = [n for n in ast.walk(node) if isinstance(n, ast.Raise)]
     assert raises, "get_api_token must raise on a failed credential load"
@@ -110,7 +108,10 @@ def test_inline_token_wins_over_file(tmp_path):
     """A token already held in module state is returned as-is."""
     token_file = tmp_path / "api_token"
     token_file.write_text("from-file", encoding="utf-8")
-    ns: dict = {"SOMA_API_TOKEN": "from-module-state", "SOMA_API_TOKEN_FILE": str(token_file)}
+    ns: dict = {
+        "SOMA_API_TOKEN": "from-module-state",
+        "SOMA_API_TOKEN_FILE": str(token_file),
+    }
     _install_get_api_token(ns)
     assert ns["get_api_token"]() == "from-module-state"
 

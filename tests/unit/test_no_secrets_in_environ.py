@@ -47,12 +47,16 @@ def test_settings_never_assign_secrets_to_environ():
                     if not isinstance(target, ast.Subscript):
                         continue
                     value = target.value
-                    if not (isinstance(value, ast.Attribute) and value.attr == "environ"):
+                    if not (
+                        isinstance(value, ast.Attribute) and value.attr == "environ"
+                    ):
                         continue
                     key = target.slice
                     if isinstance(key, ast.Constant) and isinstance(key.value, str):
                         if key.value in _SECRET_SHAPED:
-                            offenders.append(f"{path.name}:{node.lineno} -> {key.value}")
+                            offenders.append(
+                                f"{path.name}:{node.lineno} -> {key.value}"
+                            )
             if isinstance(node, ast.Call):
                 func = node.func
                 if isinstance(func, ast.Attribute) and func.attr == "__setitem__":

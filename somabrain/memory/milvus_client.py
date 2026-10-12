@@ -1,6 +1,8 @@
 """Milvus client wrapper enforcing the VIBE rules.
 
-The implementation is intentionally small:
+This class is a **connectivity probe only** (T-1 / D7). Vector writes go
+through SFM via ``MemoryClient`` — SomaBrain never writes Milvus itself.
+There is no option upsert, no search, and no hash-fabricated vector here.
 
 * Connection parameters are sourced exclusively from ``common.config.settings``.
 * Schema/index creation and verification live in this module so callers remain
@@ -11,23 +13,15 @@ The implementation is intentionally small:
 
 from __future__ import annotations
 
-import hashlib
 import logging
-import math
-import re
 import threading
 import time
-from collections import defaultdict, deque
 from typing import Any
 
 from django.conf import settings
 
 from somabrain.metrics import (
-    MILVUS_INGEST_LAT_P95,
-    MILVUS_SEARCH_LAT_P95,
     MILVUS_SEGMENT_LOAD,
-    MILVUS_UPSERT_FAILURE_TOTAL,
-    MILVUS_UPSERT_RETRY_TOTAL,
 )
 
 try:
@@ -44,15 +38,15 @@ try:
         from pymilvus import exceptions as _milvus_exceptions
 
         MilvusException = getattr(_milvus_exceptions, "MilvusException", Exception)
-    except Exception:  # pragma: no cover - compatibility shim
+    except Exception:  # pragma: no cover - pymilvus API drift
         try:
-            # Type ignore: pymilvus API varies across versions; this fallback handles older APIs
             from pymilvus.exceptions import (
                 MilvusException,  # type: ignore[import-not-found]
             )
-        except Exception:  # Final guard: keep import successful even on API drift
-            # Type ignore: Exception assignment is intentional fallback for missing pymilvus
-            MilvusException = Exception  # type: ignore[misc]
+        except Exception:  # pragma: no cover
+
+            class MilvusException(Exception):
+                """Raised when pymilvus exception types are unavailable."""
 
     _PYMILVUS_AVAILABLE = True
 except Exception:  # pragma: no cover - exercised only when pymilvus missing
@@ -70,49 +64,6 @@ except Exception:  # pragma: no cover - exercised only when pymilvus missing
 
 logger = logging.getLogger(__name__)
 
-_LATENCY_WINDOW_SIZE = max(
-    1, int(getattr(settings, "SOMABRAIN_MILVUS_LATENCY_WINDOW"))
-)
-_LATENCY_WINDOWS: dict[str, dict[str, deque[float]]] = {
-    "ingest": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
-    "search": defaultdict(lambda: deque(maxlen=_LATENCY_WINDOW_SIZE)),
-}
-
-
-def _record_latency(kind: str, tenant_id: str, value: float) -> float:
-    """Append ``value`` to the latency window and return the p95."""
-
-    window = _LATENCY_WINDOWS[kind][tenant_id]
-    window.append(float(value))
-    data = sorted(window)
-    if not data:
-        return 0.0
-    if len(data) == 1:
-        return data[0]
-    pos = (len(data) - 1) * 0.95
-    lower = math.floor(pos)
-    upper = math.ceil(pos)
-    if lower == upper:
-        return data[int(pos)]
-    lower_val = data[lower]
-    upper_val = data[upper]
-    return lower_val + (upper_val - lower_val) * (pos - lower)
-
-
-def _set_latency_gauge(gauge, tenant_id: str, seconds: float) -> None:
-    """Execute set latency gauge.
-
-    Args:
-        gauge: The gauge.
-        tenant_id: The tenant_id.
-        seconds: The seconds.
-    """
-
-    try:
-        gauge.labels(tenant_id=tenant_id).set(seconds)
-    except Exception:
-        pass
-
 
 def _set_segment_load(collection: str, value: float) -> None:
     """Execute set segment load.
@@ -126,21 +77,6 @@ def _set_segment_load(collection: str, value: float) -> None:
         MILVUS_SEGMENT_LOAD.labels(collection=collection).set(value)
     except Exception:
         pass
-
-
-def _vector_from_payload(payload: bytes, dim: int) -> list[float]:
-    """Convert a payload blob into a deterministic float vector."""
-
-    digest = hashlib.sha256(payload).digest()
-    floats: list[float] = []
-    for i in range(0, len(digest), 4):
-        chunk = int.from_bytes(digest[i : i + 4], "big", signed=False)
-        floats.append(chunk / 2**32)
-        if len(floats) >= dim:
-            break
-    if len(floats) < dim:
-        floats.extend([0.0] * (dim - len(floats)))
-    return floats
 
 
 class MilvusClient:
@@ -379,111 +315,3 @@ class MilvusClient:
             _set_segment_load(self.collection_name, loaded)
             self._segment_last_refresh = now
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-    def upsert_option(self, tenant_id: str, option_id: str, payload: bytes) -> None:
-        """Execute upsert option.
-
-        Args:
-            tenant_id: The tenant_id.
-            option_id: The option_id.
-            payload: The payload.
-        """
-
-        if self.collection is None:
-            raise RuntimeError("Milvus collection unavailable – cannot upsert option")
-
-        max_retries = int(getattr(settings, "SOMABRAIN_MILVUS_UPSERT_RETRIES"))
-        backoff_base = float(
-            getattr(settings, "SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE")
-        )
-        attempt = 0
-        while True:
-            attempt += 1
-            start = time.perf_counter()
-            try:
-                vector = _vector_from_payload(payload, dim=self.dim)
-                entities = [[option_id], [tenant_id], [vector]]
-                self.collection.insert(entities)
-                self.collection.flush()
-                elapsed = max(0.0, time.perf_counter() - start)
-                p95 = _record_latency("ingest", tenant_id, elapsed)
-                _set_latency_gauge(MILVUS_INGEST_LAT_P95, tenant_id, p95)
-                self._refresh_segment_load_metric()
-                return
-            except Exception as exc:
-                logger.error(
-                    "Milvus upsert attempt %d failed for tenant %s (%s)",
-                    attempt,
-                    tenant_id,
-                    exc,
-                )
-                try:
-                    MILVUS_UPSERT_RETRY_TOTAL.labels(tenant_id=tenant_id).inc()
-                except Exception:
-                    pass
-                if attempt >= max_retries:
-                    try:
-                        MILVUS_UPSERT_FAILURE_TOTAL.labels(tenant_id=tenant_id).inc()
-                    except Exception:
-                        pass
-                    raise
-                time.sleep(backoff_base * (2 ** (attempt - 1)))
-
-    def search_similar(
-        self,
-        tenant_id: str,
-        payload: bytes,
-        top_k: int | None = None,
-        similarity_threshold: float | None = None,
-    ) -> list[tuple[str, float]]:
-        """Execute search similar.
-
-        Args:
-            tenant_id: The tenant_id.
-            payload: The payload.
-            top_k: The top_k.
-            similarity_threshold: The similarity_threshold.
-        """
-
-        if self.collection is None:
-            raise RuntimeError("Milvus collection unavailable – cannot search")
-
-        top_k = (
-            top_k
-            if top_k is not None
-            else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS"))
-        )
-        similarity_threshold = (
-            similarity_threshold
-            if similarity_threshold is not None
-            else float(getattr(settings, "OAK_SIMILARITY_THRESHOLD"))
-        )
-
-        start = time.perf_counter()
-        # Reject tenant ids that could break out of the Milvus boolean expression.
-        if not tenant_id or not re.fullmatch(r"[A-Za-z0-9._-]+", str(tenant_id)):
-            raise ValueError("tenant_id contains characters unsafe for a Milvus filter")
-        vector = _vector_from_payload(payload, dim=self.dim)
-        search_params = {"metric_type": "HAMMING", "params": {"nprobe": 10}}
-        results = self.collection.search(
-            data=[vector],
-            anns_field="embedding",
-            param=search_params,
-            limit=top_k,
-            expr=f"tenant_id == '{tenant_id}'",
-            output_fields=["option_id"],
-        )
-        hits: list[tuple[str, float]] = []
-        for hit in results[0]:
-            # Rank key only: 1/(1+hamming_distance) is a monotone transform of
-            # integer bit-distance, NOT a cosine similarity. It is compared to
-            # OAK_SIMILARITY_THRESHOLD as a relative rank cut, not a metric.
-            score = 1.0 / (1.0 + hit.distance)
-            if score >= similarity_threshold:
-                hits.append((hit.entity.get("option_id"), score))
-        elapsed = max(0.0, time.perf_counter() - start)
-        p95 = _record_latency("search", tenant_id, elapsed)
-        _set_latency_gauge(MILVUS_SEARCH_LAT_P95, tenant_id, p95)
-        return hits

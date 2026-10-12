@@ -24,7 +24,11 @@ def test_transports_use_resolver() -> None:
     ):
         src = (ROOT / rel).read_text()
         assert "resolve_sfm_api_token" in src
-        assert "fail closed" in src.lower() or "fail-closed" in src.lower() or "not provisioned" in src
+        assert (
+            "fail closed" in src.lower()
+            or "fail-closed" in src.lower()
+            or "not provisioned" in src
+        )
 
 
 def test_client_has_no_ports_json_hijack() -> None:

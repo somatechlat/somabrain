@@ -539,7 +539,7 @@ Per VIBE Coding Rules, the degradation system:
 | `MemoryService` | `somabrain/services/memory_service.py` | High-level memory facade with degradation logic |
 | `CircuitBreaker` | `somabrain/infrastructure/circuit_breaker.py` | Per-tenant failure detection and recovery |
 | `LocalJournal` | `somabrain/journal/local_journal.py` | Durable event storage for degraded writes |
-| `MemoryClient` | `somabrain/memory_client.py` | HTTP transport to external memory service |
+| `MemoryClient` | `somabrain/controls/memory_client.py` | HTTP-only client to SomaFractalMemory. No direct mode, no alternate transport. `SOMABRAIN_MEMORY_HTTP_ENDPOINT` and `SOMA_API_TOKEN` are required (`require_url` / `require_setting`). |
 
 ---
 

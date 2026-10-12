@@ -35,8 +35,6 @@ Models:
 
 from __future__ import annotations
 
-import time
-from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
@@ -45,6 +43,7 @@ from pydantic import BaseModel, Field, model_validator
 
 class MemoryDurability(StrEnum):
     """Where a write is durably accepted (T-6). Named vocabulary (AP-06)."""
+
     PERSISTED_LTM = "persisted_ltm"
     DURABLE_OUTBOX = "durable_outbox"
     DEGRADED_JOURNAL = "degraded_journal"
@@ -55,12 +54,8 @@ class MemoryAttachment(BaseModel):
 
     kind: str = Field(..., description="Attachment type identifier")
     uri: str | None = Field(None, description="External location reference")
-    content_type: str | None = Field(
-        None, description="MIME type for the attachment"
-    )
-    checksum: str | None = Field(
-        None, description="Integrity checksum for validation"
-    )
+    content_type: str | None = Field(None, description="MIME type for the attachment")
+    checksum: str | None = Field(None, description="Integrity checksum for validation")
     data: str | None = Field(
         None,
         description="Inline base64-encoded payload; use sparingly for small blobs",
@@ -85,9 +80,7 @@ class MemorySignalPayload(BaseModel):
     importance: float | None = Field(
         None, ge=0.0, description="Relative importance weight"
     )
-    novelty: float | None = Field(
-        None, ge=0.0, description="Novelty score from agent"
-    )
+    novelty: float | None = Field(None, ge=0.0, description="Novelty score from agent")
     ttl_seconds: int | None = Field(
         None, ge=0, description="Soft time-to-live for cleanup"
     )
@@ -178,7 +171,11 @@ class MemoryWriteRequest(BaseModel):
         "X-Tenant-ID header; the handler resolves and requires one of the two.",
     )
     namespace: str = Field(
-        ..., min_length=1, description="Logical namespace (e.g. wm, ltm). No default (Rule 91)."
+        ...,
+        min_length=1,
+        description="Logical namespace (memory scope). Layer vocabulary "
+        "(wm/ltm/both) lives on the layer field / normalize_layer — not here. "
+        "No default (Rule 91).",
     )
     key: str = Field(
         ...,
@@ -353,8 +350,13 @@ class MemoryWriteResponse(BaseModel):
     store: str = Field("somafractalmemory", description="Store that acked the write")
     kind: str | None = None
     error: str | None = None
-    durability: MemoryDurability = Field(..., description="persisted_ltm=LTM acked; durable_outbox=outbox until LTM acks; degraded_journal=journal only")
-    outbox_event_id: int | None = Field(None, description="OutboxEvent PK when durable_outbox")
+    durability: MemoryDurability = Field(
+        ...,
+        description="persisted_ltm=LTM acked; durable_outbox=outbox until LTM acks; degraded_journal=journal only",
+    )
+    outbox_event_id: int | None = Field(
+        None, description="OutboxEvent PK when durable_outbox"
+    )
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
     queued_for_ltm: bool = False
@@ -366,6 +368,11 @@ class MemoryWriteResponse(BaseModel):
     request_id: str | None = None
     warnings: list[str] = Field(default_factory=list)
     signals: MemorySignalFeedback | None = None
+    # TRIAD degradation contract (flag, never silent):
+    # degraded=true ⇒ error_code and degraded_reason are REQUIRED.
+    degraded: bool = False
+    error_code: str | None = None
+    degraded_reason: str | None = None
 
 
 class MemoryRecallRequest(BaseModel):
@@ -387,7 +394,7 @@ class MemoryRecallRequest(BaseModel):
     layer: str | None = Field(
         None,
         description=(
-            "wm, ltm, or both (omit for both). 'all' is a synonym for 'both'. "
+            "wm, ltm, or both (omit for both)."
             "Unknown values are rejected with 400 (never a silent empty)."
         ),
     )
@@ -490,6 +497,9 @@ class MemoryRecallResponse(BaseModel):
     chunk_size: int | None = None
     conversation_id: str | None = None
     degraded: bool = False
+    # TRIAD degradation contract: degraded=true ⇒ error_code + degraded_reason.
+    error_code: str | None = None
+    degraded_reason: str | None = None
 
 
 class ForgetRequest(BaseModel):
@@ -510,6 +520,10 @@ class ForgetResponse(BaseModel):
     store: str = "somafractalmemory"
     tenant: str = ""
     error: str | None = None
+    # TRIAD degradation contract
+    degraded: bool = False
+    error_code: str | None = None
+    degraded_reason: str | None = None
 
 
 class MemoryMetricsResponse(BaseModel):
@@ -519,6 +533,10 @@ class MemoryMetricsResponse(BaseModel):
     namespace: str
     wm_items: int
     circuit_open: bool
+    # TRIAD degradation contract
+    degraded: bool = False
+    error_code: str | None = None
+    degraded_reason: str | None = None
 
 
 class MemoryBatchWriteItem(BaseModel):

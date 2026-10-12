@@ -21,7 +21,10 @@ def test_admin_auth_is_not_agent_auth() -> None:
     # Admin must not accept the shared agent token path
     assert "_validate_api_or_memory_token" not in admin_fn.split("def ")[0]
     assert "SOMABRAIN_ADMIN_TOKEN" in admin_fn
-    assert "admin claim required" in admin_fn or "admin authentication required" in admin_fn
+    assert (
+        "admin claim required" in admin_fn
+        or "admin authentication required" in admin_fn
+    )
 
 
 def test_jwt_validate_returns_claims() -> None:

@@ -37,9 +37,7 @@ class SleepParameters:
     )
     B: float = dataclasses.field(default_factory=lambda: float(settings.SLEEP_B0))
     # Bounds for validation
-    K_min: int = dataclasses.field(
-        default_factory=lambda: int(settings.SLEEP_K_MIN)
-    )
+    K_min: int = dataclasses.field(default_factory=lambda: int(settings.SLEEP_K_MIN))
     t_min: float = dataclasses.field(
         default_factory=lambda: float(settings.SLEEP_T_MIN)
     )
@@ -143,9 +141,7 @@ class SleepStateManager:
 
         return to_state in valid_transitions.get(from_state, [])
 
-    def transition(
-        self, tenant_id: str, trigger: str = "manual"
-    ) -> SleepState:
+    def transition(self, tenant_id: str, trigger: str = "manual") -> SleepState:
         """Apply a trigger and return the resulting sleep state.
 
         The state itself lives in ``TenantSleepState``; this method computes

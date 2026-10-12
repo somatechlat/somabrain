@@ -55,7 +55,9 @@ def resolve_embed_dim(settings: Any = None) -> int:
     return dim
 
 
-def ensure_embedding_dim(embedding: Any, *, dim: int | None = None, settings: Any = None) -> Any:
+def ensure_embedding_dim(
+    embedding: Any, *, dim: int | None = None, settings: Any = None
+) -> Any:
     """Validate an embedding against the configured seam dim; pass None through."""
     if embedding is None:
         return None
@@ -63,9 +65,7 @@ def ensure_embedding_dim(embedding: Any, *, dim: int | None = None, settings: An
     try:
         size = len(embedding)
     except TypeError as exc:
-        raise EmbeddingDimensionError(
-            "embedding must be a sequence of floats"
-        ) from exc
+        raise EmbeddingDimensionError("embedding must be a sequence of floats") from exc
     if size != expected:
         raise EmbeddingDimensionError(
             f"embedding dim {size} violates seam contract {expected}; refusing to continue"

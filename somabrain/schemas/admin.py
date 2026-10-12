@@ -29,9 +29,7 @@ class FeatureFlagsUpdateResponse(BaseModel):
     """Response model after attempting to update feature-flag overrides."""
 
     overrides: list[str]
-    started_at_ms: int | None = Field(
-        None, description="Epoch ms when the run started"
-    )
+    started_at_ms: int | None = Field(None, description="Epoch ms when the run started")
     mode: str | None = Field(
         None, description="Sleep mode executed, e.g. 'nrem' or 'rem'"
     )
@@ -80,9 +78,7 @@ class OutboxTenantReplayRequest(BaseModel):
 
     tenant_id: str = Field(..., description="Tenant ID to replay events for")
     status: str = Field("failed", description="Status to filter: pending|failed|sent")
-    topic_filter: str | None = Field(
-        None, description="Optional topic pattern filter"
-    )
+    topic_filter: str | None = Field(None, description="Optional topic pattern filter")
     before_timestamp: datetime | None = Field(
         None, description="Only replay events before this time"
     )
@@ -126,5 +122,3 @@ class OutboxSummaryResponse(BaseModel):
     total_pending: int
     total_failed: int
     total_sent: int
-
-

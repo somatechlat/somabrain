@@ -156,9 +156,7 @@ class BrainService(brain_pb2_grpc.BrainServicer):
             await svc.aremember(key, payload)
         except Exception as exc:  # noqa: BLE001 - every backend error becomes a status
             logger.warning("Remember failed: %s", exc)
-            self._abort(
-                context, grpc.StatusCode.UNAVAILABLE, f"remember failed: {exc}"
-            )
+            self._abort(context, grpc.StatusCode.UNAVAILABLE, f"remember failed: {exc}")
             return RememberResponse()
 
         ack = MemoryAck(
@@ -250,7 +248,9 @@ class BrainService(brain_pb2_grpc.BrainServicer):
         """Shared recall body. Returns None when the RPC has already aborted."""
         tenant = (request.tenant_id or "").strip()
         if not tenant:
-            self._abort(context, grpc.StatusCode.INVALID_ARGUMENT, "tenant_id is required")
+            self._abort(
+                context, grpc.StatusCode.INVALID_ARGUMENT, "tenant_id is required"
+            )
             return None
         if request.k <= 0:
             self._abort(context, grpc.StatusCode.INVALID_ARGUMENT, "k must be > 0")
@@ -262,9 +262,7 @@ class BrainService(brain_pb2_grpc.BrainServicer):
         except Exception as exc:  # noqa: BLE001
             logger.warning("Recall failed: %s", exc)
             # An outage must not read as "you have no memories" (R-05 / F-10).
-            self._abort(
-                context, grpc.StatusCode.UNAVAILABLE, f"recall failed: {exc}"
-            )
+            self._abort(context, grpc.StatusCode.UNAVAILABLE, f"recall failed: {exc}")
             return None
 
         out: list[MemoryHit] = []
@@ -302,9 +300,7 @@ class BrainService(brain_pb2_grpc.BrainServicer):
             deleted = await svc.adelete(tuple(coord_list))
         except Exception as exc:  # noqa: BLE001
             logger.warning("Forget failed: %s", exc)
-            self._abort(
-                context, grpc.StatusCode.UNAVAILABLE, f"forget failed: {exc}"
-            )
+            self._abort(context, grpc.StatusCode.UNAVAILABLE, f"forget failed: {exc}")
             return ForgetResponse()
 
         return ForgetResponse(ok=bool(deleted))
@@ -318,9 +314,7 @@ class BrainService(brain_pb2_grpc.BrainServicer):
         """
         tenant = (request.tenant_id or "").strip()
         if not tenant:
-            yield ContextEvent(
-                error=ContextError(message="tenant_id is required")
-            )
+            yield ContextEvent(error=ContextError(message="tenant_id is required"))
             return
         if request.k <= 0:
             yield ContextEvent(error=ContextError(message="k must be > 0"))
@@ -355,9 +349,7 @@ class BrainService(brain_pb2_grpc.BrainServicer):
         says ``ok: false``.
         """
         try:
-            svc = self._service_for_namespace(
-                self._resolve_namespace("health", "")
-            )
+            svc = self._service_for_namespace(self._resolve_namespace("health", ""))
             state = svc.health()
         except Exception as exc:  # noqa: BLE001
             logger.warning("Health check could not run: %s", exc)
@@ -367,8 +359,10 @@ class BrainService(brain_pb2_grpc.BrainServicer):
                 f"health check unavailable: {exc}",
             )
             return HealthResponse()
-        ok = bool(state) if isinstance(state, bool) else bool(
-            (state or {}).get("ok", False)
+        ok = (
+            bool(state)
+            if isinstance(state, bool)
+            else bool((state or {}).get("ok", False))
         )
         return HealthResponse(ok=ok, store=STORE_NAME_SOMAFRACTALMEMORY)
 

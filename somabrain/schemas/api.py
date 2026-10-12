@@ -144,9 +144,15 @@ class PlanSuggestRequest(BaseModel):
 
 
 class PlanSuggestResponse(BaseModel):
-    """Plan suggestion response."""
+    """Plan suggestion response.
+
+    Never a silent empty plan: a disabled or failed planner must carry an
+    explicit ``error_code`` / ``error_detail`` (COGNITION ALWAYS ON law).
+    """
 
     plan: list[str]
+    error_code: str | None = None
+    error_detail: str | None = None
 
 
 class ReflectResponse(BaseModel):

@@ -82,19 +82,13 @@ class JournalConfig:
         for consistent environment variable handling.
         """
         return cls(
-            journal_dir=str(
-                getattr(settings, "SOMABRAIN_JOURNAL_DIR")
-            ),
-            max_file_size=int(
-                getattr(settings, "SOMABRAIN_JOURNAL_MAX_FILE_SIZE")
-            ),
-            max_files=int(getattr(settings, "JOURNAL_MAX_FILES")),
-            rotation_interval=int(
-                getattr(settings, "JOURNAL_ROTATION_INTERVAL")
-            ),
-            retention_days=int(getattr(settings, "JOURNAL_RETENTION_DAYS")),
-            compression=bool(getattr(settings, "JOURNAL_COMPRESSION")),
-            sync_writes=bool(getattr(settings, "JOURNAL_SYNC_WRITES")),
+            journal_dir=str(getattr(settings, "SOMABRAIN_JOURNAL_DIR")),
+            max_file_size=int(getattr(settings, "SOMABRAIN_JOURNAL_MAX_FILE_SIZE")),
+            max_files=int(getattr(settings, "SOMABRAIN_JOURNAL_MAX_FILES")),
+            rotation_interval=int(getattr(settings, "SOMABRAIN_JOURNAL_ROTATION_INTERVAL")),
+            retention_days=int(getattr(settings, "SOMABRAIN_JOURNAL_RETENTION_DAYS")),
+            compression=bool(getattr(settings, "SOMABRAIN_JOURNAL_COMPRESSION")),
+            sync_writes=bool(getattr(settings, "SOMABRAIN_JOURNAL_SYNC_WRITES")),
         )
 
 

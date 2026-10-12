@@ -15,6 +15,15 @@ from typing import Any
 import httpx
 from django.conf import settings
 
+from somabrain.math.contracts import (
+    HTTP_BACKOFF_BASE_S,
+    HTTP_BACKOFF_ERROR_BASE_S,
+    HTTP_BACKOFF_ERROR_JITTER_S,
+    HTTP_BACKOFF_JITTER_S,
+    HTTP_MAX_RETRIES,
+    HTTP_TIMEOUT_S,
+)
+
 # Module-level logger
 logger = logging.getLogger(__name__)
 
@@ -119,7 +128,7 @@ class MemoryHTTPTransport:
         client_kwargs: dict[str, Any] = {
             "base_url": self.base_url,
             "headers": dict(self._headers),
-            "timeout": 10.0,
+            "timeout": HTTP_TIMEOUT_S,
         }
         if self._limits is not None:
             client_kwargs["limits"] = self._limits
@@ -158,7 +167,7 @@ class MemoryHTTPTransport:
         client_kwargs: dict[str, Any] = {
             "base_url": self.base_url,
             "headers": dict(self._headers),
-            "timeout": 10.0,
+            "timeout": HTTP_TIMEOUT_S,
         }
         if self._limits is not None:
             client_kwargs["limits"] = self._limits
@@ -181,7 +190,7 @@ class MemoryHTTPTransport:
         body: dict,
         headers: dict,
         *,
-        max_retries: int = 2,
+        max_retries: int = HTTP_MAX_RETRIES,
     ) -> tuple[bool, int, Any]:
         """POST request with retry logic (synchronous).
 
@@ -203,14 +212,21 @@ class MemoryHTTPTransport:
                 resp = self._client.post(endpoint, json=body, headers=headers)
             except Exception:
                 if attempt < max_retries:
-                    time.sleep(0.01 + random.random() * 0.02)
+                    time.sleep(
+                        HTTP_BACKOFF_BASE_S + random.random() * HTTP_BACKOFF_JITTER_S
+                    )
                 continue
             status = int(getattr(resp, "status_code", 0) or 0)
             if status in (429, 503) and attempt < max_retries:
-                time.sleep(0.01 + random.random() * 0.02)
+                time.sleep(
+                    HTTP_BACKOFF_BASE_S + random.random() * HTTP_BACKOFF_JITTER_S
+                )
                 continue
             if status >= 500 and attempt < max_retries:
-                time.sleep(0.05 + random.random() * 0.05)
+                time.sleep(
+                    HTTP_BACKOFF_ERROR_BASE_S
+                    + random.random() * HTTP_BACKOFF_ERROR_JITTER_S
+                )
                 continue
             data = _response_json(resp)
             return status < 300, status, data
@@ -222,7 +238,7 @@ class MemoryHTTPTransport:
         body: dict,
         headers: dict,
         *,
-        max_retries: int = 2,
+        max_retries: int = HTTP_MAX_RETRIES,
     ) -> tuple[bool, int, Any]:
         """POST request with retry logic (asynchronous).
 
@@ -246,14 +262,21 @@ class MemoryHTTPTransport:
                 )
             except Exception:
                 if attempt < max_retries:
-                    await asyncio.sleep(0.01 + random.random() * 0.02)
+                    await asyncio.sleep(
+                        HTTP_BACKOFF_BASE_S + random.random() * HTTP_BACKOFF_JITTER_S
+                    )
                 continue
             status = int(getattr(resp, "status_code", 0) or 0)
             if status in (429, 503) and attempt < max_retries:
-                await asyncio.sleep(0.01 + random.random() * 0.02)
+                await asyncio.sleep(
+                    HTTP_BACKOFF_BASE_S + random.random() * HTTP_BACKOFF_JITTER_S
+                )
                 continue
             if status >= 500 and attempt < max_retries:
-                await asyncio.sleep(0.05 + random.random() * 0.05)
+                await asyncio.sleep(
+                    HTTP_BACKOFF_ERROR_BASE_S
+                    + random.random() * HTTP_BACKOFF_ERROR_JITTER_S
+                )
                 continue
             data = _response_json(resp)
             return status < 300, status, data
@@ -286,38 +309,12 @@ def create_memory_transport(
         get_memory_http_endpoint,
         resolve_memory_endpoint,
     )
-    from somabrain.memory.utils import get_tenant_namespace
 
     headers = {}
-    # Brain→SFM bearer is SOMA_API_TOKEN (SFM's own credential). The
-    # agent↔brain somabrain_memory_http_token is a different trust boundary
-    # and must not be presented to SFM.
-    from somabrain.memory.sfm_auth import resolve_sfm_api_token
+    # Single auth-header authority (R5) — somabrain.memory.sfm_auth.
+    from somabrain.memory.sfm_auth import build_sfm_request_headers
 
-    token_value = resolve_sfm_api_token(cfg)
-    if not token_value:
-        raise RuntimeError(
-            "memory transport: SOMA_API_TOKEN is not provisioned "
-            "(Brain→SFM credential missing — fail closed, never anonymous)"
-        )
-    headers["Authorization"] = f"Bearer {token_value}"
-    headers["X-API-Key"] = token_value
-
-    # TENANT ISOLATION (D1.3): Always set tenant headers for isolation
-    tenant, namespace = get_tenant_namespace(cfg)
-
-    # T-5 fail-closed: never silently map a missing tenant/namespace to
-    # "default" — that is cross-tenant mixing by omission (F-06 / R-05).
-    if not tenant:
-        raise RuntimeError(
-            "memory transport: tenant is not configured (T-5 fail-closed)"
-        )
-    if not namespace:
-        raise RuntimeError(
-            "memory transport: namespace is not configured (T-5 fail-closed)"
-        )
-    headers["X-Soma-Namespace"] = namespace
-    headers["X-Soma-Tenant"] = tenant
+    headers.update(build_sfm_request_headers(cfg))
 
     max_conns = int(getattr(settings, "HTTP_MAX_CONNECTIONS"))
     keepalive = int(getattr(settings, "HTTP_KEEPALIVE_CONNECTIONS"))
@@ -348,6 +345,7 @@ def create_memory_transport(
         raise RuntimeError("Memory HTTP endpoint required but not configured")
     base_url = base_url.removesuffix("/openapi.json")
     base_url = base_url.rstrip("/")
+    logger_instance.info("Memory HTTP transport base_url=%s", base_url)
 
     transport = MemoryHTTPTransport(
         base_url=base_url,
@@ -360,8 +358,5 @@ def create_memory_transport(
         raise RuntimeError(
             "MEMORY SERVICE REQUIRED but not reachable. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT."
         )
-    if not token_value:
-        logger_instance.warning(
-            "Memory HTTP client initialized without token; proceeding without auth."
-        )
+    # Token presence is already fail-closed in build_sfm_request_headers (R5).
     return transport

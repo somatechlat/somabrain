@@ -61,6 +61,9 @@ def apply_tau_annealing(current_tau: float) -> float:
 def get_entropy_cap(tenant_id: str) -> float:
     """Get entropy cap configuration.
 
+    B22 FIX: use SOMABRAIN_ENTROPY_CAP only (settings/cognitive.py:387).
+    The ghost ``entropy_cap`` runtime_config key is deleted — one authority.
+
     Args:
         tenant_id: Tenant identifier
 
@@ -68,12 +71,8 @@ def get_entropy_cap(tenant_id: str) -> float:
         Entropy cap value (0.0 means disabled)
     """
     try:
-        from somabrain import runtime_config as _rt
-
         env_cap = getattr(settings, "SOMABRAIN_ENTROPY_CAP", None) if settings else None
-        entropy_cap = (
-            float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
-        )
+        entropy_cap = float(env_cap) if env_cap is not None else 0.0
     except Exception:
         entropy_cap = 0.0
 
@@ -124,7 +123,9 @@ def check_entropy_cap(
             from django.conf import settings as dj_settings
 
             sharpen_rate = float(
-                getattr(dj_settings, "SOMABRAIN_ENTROPY_SHARPEN_RATE", ENTROPY_SHARPEN_RATE)
+                getattr(
+                    dj_settings, "SOMABRAIN_ENTROPY_SHARPEN_RATE", ENTROPY_SHARPEN_RATE
+                )
             )
             final_sharpen = float(
                 getattr(

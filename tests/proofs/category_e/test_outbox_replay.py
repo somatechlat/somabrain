@@ -166,7 +166,9 @@ class TestOutboxReplay:
         event = OutboxEvent.objects.get(id=event_id)
         assert event.topic == "memory.store"
         assert event.tenant_id == tenant_id
-        assert len(event.dedupe_key) == 32, "Dedupe key should be 32 chars (SHA256 truncated)"
+        assert (
+            len(event.dedupe_key) == 32
+        ), "Dedupe key should be 32 chars (SHA256 truncated)"
         assert get_event_by_dedupe_key(event.dedupe_key, tenant_id) is not None
 
     def test_mark_event_sent_on_success(self) -> None:
@@ -177,7 +179,6 @@ class TestOutboxReplay:
         """
         from somabrain.db.outbox import (
             enqueue_memory_event,
-            get_event_by_dedupe_key,
             mark_event_sent,
         )
 
@@ -212,7 +213,6 @@ class TestOutboxReplay:
         """
         from somabrain.db.outbox import (
             enqueue_memory_event,
-            get_event_by_dedupe_key,
             mark_event_failed,
         )
 
@@ -293,7 +293,6 @@ class TestOutboxReplay:
         from somabrain.db.outbox import (
             _idempotency_key,
             enqueue_memory_event,
-            get_event_by_dedupe_key,
             is_duplicate_event,
             mark_event_sent,
         )

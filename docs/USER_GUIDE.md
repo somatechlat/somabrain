@@ -59,7 +59,7 @@ Output:
 
 | Layer | Mechanism | Notes |
 |-------|-----------|-------|
-| Working memory | `MultiTenantWM` maintains a per-tenant dictionary keyed by tenant ID. | Redis is optional; the in-process buffer respects namespace separation. |
+| Working memory | `MultiTenantWM` maintains a per-tenant dictionary keyed by tenant ID. | Tenant is required (no default partition). The in-process buffer respects tenant separation. |
 | Long-term memory | HTTP memory service receives the tenant namespace (client libraries should propagate it). | Configure your backend to honour the namespace; the SomaBrain API does not multiplex responses. |
 | Adaptation state | Redis keys prefixed with `adaptation:state:{tenant}`. | Retrieval/utility weights never mix between tenants. |
 | Metrics | Prometheus metrics expose `tenant_id` labels (e.g., `somabrain_tau_gauge{tenant_id="org_acme"}`). | Use label filters to derive per-tenant dashboards. |
@@ -69,19 +69,17 @@ Output:
 
 ## 3. Quotas and Rate Limiting
 
-- **Rate limiting** (`somabrain.ratelimit.RateLimiter`): simple leaky bucket enforced per tenant. Violation returns HTTP 429 with `{"detail": "rate limit exceeded"}` and increments the `somabrain_rate_limited_total` metric.
-- **Daily write quota** (`somabrain.quotas.QuotaManager`): defaults to 10 000 writes per tenant per day. Configure via `SOMABRAIN_QUOTA_DAILY_WRITES` or by extending `QuotaConfig` in `somabrain.config.Config`. Tenants containing `AGENT_ZERO` are exempt by design.
-
-Check remaining quota programmatically:
+- **Rate limiting** (`somabrain.ratelimit.RateLimiter`): leaky bucket per tenant. Violation returns HTTP 429 with `{"detail": "rate limit exceeded"}` and increments the `somabrain_rate_limited_total` metric.
+- **Per-tenant processing quota** (`somabrain.workers.quota_manager.TenantQuotaManager`): windowed quota for outbox processing. Limits come from Django/BrainSetting keys `OUTBOX_TENANT_QUOTA_LIMIT` and `OUTBOX_TENANT_QUOTA_WINDOW` (declaration site `somabrain/settings/cognitive.py`; resolved via `require_setting`). There is no `somabrain.quotas.QuotaManager` and no `QuotaConfig` class.
 
 ```python
-from somabrain.quotas import QuotaManager, QuotaConfig
+from somabrain.workers.quota_manager import get_quota_manager
 
-manager = QuotaManager(QuotaConfig(daily_writes=5000))
-remaining = manager.remaining("org_acme")
+mgr = get_quota_manager()
+allowed = mgr.can_process("org_acme", count=1)
 ```
 
-In the API, quota enforcement occurs in `somabrain.app.remember` before writes reach the memory service.
+Missing tenant identifiers raise (`require_tenant`); they do not share one bucket.
 
 ---
 
@@ -109,7 +107,7 @@ If you omit the header, the request falls back to the token hash or `"public"`. 
 SomaBrain does not ship a tenant registry in this repository. If you need per-tenant limits or feature flags:
 
 1. Extend `common/config/settings.py` (if present in your deployment) to expose tenant metadata.
-2. Inject tenant-specific settings via environment variables or a wrapper service before requests hit the API.
+2. Administer tenant-specific settings via BrainSetting / Django settings (never environment secrets) before requests hit the API.
 3. Use namespaces (e.g., `somabrain_ns:customer_a`) to map tenants to dedicated resources in external systems (memory service, dashboards, storage).
 
 Remember that quota and rate-limiter state is in-memory on each API instance. In horizontally scaled environments back these managers with Redis or another shared store so every replica enforces the same counters.
@@ -734,11 +732,11 @@ score = w_cosine * cosine_sim + w_fd * fd_projection + w_recency * exp(-age/τ)
 
 | Parameter | Django setting / BrainSetting key | Default | Description |
 |-----------|---------------------|---------|-------------|
-| Embed Provider | `SOMABRAIN_EMBED_PROVIDER` | `tiny` | Embedding model |
-| Embed Dimension | `SOMABRAIN_EMBED_DIM` | `256` | Vector dimensionality |
-| WM Size | `SOMABRAIN_WM_SIZE` | `64` | Working memory capacity |
-| Circuit Breaker Threshold | `SOMABRAIN_FAILURE_THRESHOLD` | `3` | Consecutive failures before open |
-| Recall Full Power | `SOMABRAIN_RECALL_FULL_POWER` | `1` | Enable all retrievers |
+| Embed dimension | `embed_dim` / `SOMABRAIN_EMBED_DIM` | **768** | Vector dimensionality (seam with SFM/agent) |
+| HRR dimension | `hrr_dim` / `SOMABRAIN_HRR_DIM` | **8192** | Hypervector dimension (`BHDC_D`) |
+| HRR additive path | `use_hrr` / `SOMABRAIN_USE_HRR` | **true** | Optional disable only |
+| WM capacity | `max_wm_items` | 128 | Working-memory item cap |
+| Outbox tenant quota | `OUTBOX_TENANT_QUOTA_LIMIT` (Django) | see `settings/cognitive.py` | Per-tenant outbox processing limit |
 
 ---
 
@@ -959,9 +957,9 @@ The `score` is computed by `somabrain.scoring.UnifiedScorer` using weights drawn
 
 ## 5. Controlling Namespaces and Universes
 
-- Tenants are identified via `Authorization` + (optional) `X-Tenant-ID`. The default tenant is a Django setting / BrainSetting key (`SOMABRAIN_DEFAULT_TENANT`).
+- Tenants are identified via `Authorization` + `X-Tenant-ID`. Resolution order (`somabrain/tenant.py`): header → bearer-derived → `SOMABRAIN_DEFAULT_TENANT` only when the credential carries no tenant. If that setting is empty, `require_tenant` refuses — there is no implicit default partition. SFM store/retrieve/search/graph, learning, and WM paths require an explicit tenant.
 - Universes provide finer segmentation and can be supplied via the payload (`"universe": "support"`) or via `X-Universe`.
-- Quotas are enforced per tenant (`somabrain.quotas.QuotaManager`). Exceeding quotas yields HTTP 429.
+- Quotas are enforced per tenant (`somabrain.workers.quota_manager.TenantQuotaManager`). Exceeding quotas yields HTTP 429.
 
 ---
 
@@ -1104,7 +1102,7 @@ Consult `somabrain/schemas.py` for the exact response model (`PlanSuggestRespons
 | Condition | HTTP code | Response field | Notes |
 |-----------|-----------|----------------|-------|
 | Missing/invalid token | 401 / 403 | `{"detail": "..."} ` | Implement retry/backoff only after reacquiring credentials. |
-| Tenant quota exceeded | 429 | `{"detail": "daily write quota exceeded"}` | `somabrain.quotas.QuotaManager` enforces per-tenant caps. |
+| Tenant quota exceeded | 429 | `{"detail": "daily write quota exceeded"}` | `somabrain.workers.quota_manager.TenantQuotaManager` enforces per-tenant caps. |
 | Memory backend offline | 503 | `{"detail": {"message": "...", "breaker_open": true}}` | Writes are queued; check `somabrain.services.memory_service.MemoryService`. |
 | Input validation | 400 | `{"detail": "Invalid payload: ..."}` | Raised by Pydantic models such as `MemoryPayload` and `FeedbackRequest`. |
 
@@ -1211,13 +1209,13 @@ Use the same approach for feedback and planning—serialise the Pydantic models 
 
 1. Issue each tenant a unique bearer token and pass `X-Tenant-ID` on every request.
 2. Monitor per-tenant metrics using the `tenant_id` label in Prometheus (e.g., `somabrain_feedback_total{tenant_id="org_acme"}`).
-3. Enforce daily write caps via `SOMABRAIN_QUOTA_DAILY_WRITES` or by extending `QuotaConfig`.
+3. Enforce processing caps via `OUTBOX_TENANT_QUOTA_LIMIT` / `OUTBOX_TENANT_QUOTA_WINDOW` (Django/BrainSetting).
 
 **Code Points**
 
 - Tenant resolution: `somabrain/tenant.py`
 - Rate limiting: `somabrain/ratelimit.py`
-- Quotas: `somabrain/quotas.py`
+- Quotas: `somabrain/workers/quota_manager.py`
 
 ---
 
@@ -1342,7 +1340,7 @@ Every request uses `X-Tenant-ID` or, if absent, the first 16 characters of the b
 
 ### Q11. What happens when the daily write quota is exceeded?
 
-`QuotaManager.allow_write` returns `False`, causing `/remember` to raise HTTP 429 (`"daily write quota exceeded"`). Counters reset at midnight UTC. Adjust `SOMABRAIN_QUOTA_DAILY_WRITES` or modify `QuotaConfig` if you need a higher limit.
+Quota rejection uses `TenantQuotaManager.can_process` (window quota from Django/BrainSetting `OUTBOX_TENANT_QUOTA_LIMIT` / `OUTBOX_TENANT_QUOTA_WINDOW`). Adjust those keys to change limits. Missing tenant raises rather than sharing a bucket.
 
 ---
 

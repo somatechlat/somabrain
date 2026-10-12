@@ -50,14 +50,9 @@ def make_predictor(cfg) -> BudgetedPredictor:
         SlowPredictor,
     )
 
-    provider_override = settings.SOMABRAIN_PREDICTOR_PROVIDER
-    provider = str(
-        
-            provider_override
-            or getattr(settings, "SOMABRAIN_PREDICTOR_PROVIDER")
-            or "mahal"
-        
-    ).lower()
+    from somabrain.settings.resolve import require_setting
+
+    provider = str(require_setting("SOMABRAIN_PREDICTOR_PROVIDER")).lower()
 
     if provider in ("stub", "baseline"):
         # Always reject synthetic providers — this enforces the real-backend policy.
@@ -79,13 +74,12 @@ def make_predictor(cfg) -> BudgetedPredictor:
             timeout_ms=getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS"),
         )
     else:
-        # If an unknown provider is requested, fall back to Mahalanobis so we
-        # keep behaviour deterministic and production-ready.
-        logger.warning(
-            "Unknown predictor provider '%s', falling back to mahalanobis",
-            provider,
+        # Fail-closed: an unknown provider is a configuration error. Never
+        # soft-fallback (Rule 2) — name the setting so the operator can fix it.
+        raise RuntimeError(
+            f"Unknown predictor provider '{provider}'. "
+            "Set SOMABRAIN_PREDICTOR_PROVIDER=mahal, llm, or slow."
         )
-        base = MahalanobisPredictor()
 
     return BudgetedPredictor(
         base, timeout_ms=getattr(settings, "SOMABRAIN_PREDICTOR_TIMEOUT_MS")
@@ -100,40 +94,39 @@ def make_predictor(cfg) -> BudgetedPredictor:
 def make_quantum_layer(cfg) -> QuantumLayer | None:
     """Create the QuantumLayer for HRR-based operations.
 
-    DEFAULT: always on. Optional disable only via SOMABRAIN_USE_HRR=False.
+    DEFAULT: always on. Optional disable only via ``SOMABRAIN_USE_HRR=False``.
 
-    Args:
-        cfg: Application configuration object with HRR settings.
+    Values are read with ``require_setting`` — never
+    call-site ``or`` defaults (R-VAL-04). A missing key names itself. An init
+    failure raises; it must not quietly disable HRR.
 
     Returns:
-        QuantumLayer if HRR is enabled (default) and init succeeds, else None.
+        QuantumLayer, or None **only** when the operator explicitly disabled HRR.
     """
+    from somabrain.settings.resolve import require_setting
+
     # Operator law: HRR is the default brain path — disable is the exception.
-    if not getattr(settings, "SOMABRAIN_USE_HRR", True):
+    # HRR is ALWAYS ON (operator law). Only an explicit False disables.
+    # Required setting — no optional path.
+    # declared on settings/cognitive.py (True), it does not invent a value here.
+    if require_setting("SOMABRAIN_USE_HRR") is False:
         return None
 
-    try:
-        from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
-        from somabrain.math.contracts import BHDC_D, BHDC_P
+    from somabrain.admin.core.quantum import HRRConfig, QuantumLayer
 
-        hrr_cfg = HRRConfig(
-            dim=int(getattr(settings, "SOMABRAIN_HRR_DIM", BHDC_D) or BHDC_D),
-            seed=int(getattr(settings, "SOMABRAIN_HRR_SEED", 42) or 42),
-            binding_method=str(
-                getattr(settings, "SOMABRAIN_MATH_BINDING_METHOD", None) or "bhdc"
-            ),
-            sparsity=float(getattr(settings, "SOMABRAIN_BHDC_SPARSITY", BHDC_P) or BHDC_P),
-            binary_mode=bool(getattr(settings, "SOMABRAIN_MATH_BHDC_BINARY_MODE", False)),
-            mix=str(getattr(settings, "SOMABRAIN_MATH_BHDC_MIX", None) or "none"),
-            binding_seed=int(getattr(settings, "SOMABRAIN_MATH_BINDING_SEED", 42) or 42),
-            binding_model_version=str(
-                getattr(settings, "SOMABRAIN_MATH_BINDING_MODEL_VERSION", None) or "v1"
-            ),
-        )
-        return QuantumLayer(hrr_cfg)
-    except Exception:
-        logger.exception("Failed to initialize quantum layer; HRR disabled.")
-        return None
+    hrr_cfg = HRRConfig(
+        dim=int(require_setting("SOMABRAIN_HRR_DIM")),
+        seed=int(require_setting("SOMABRAIN_HRR_SEED")),
+        binding_method=str(require_setting("SOMABRAIN_MATH_BINDING_METHOD")),
+        sparsity=float(require_setting("SOMABRAIN_BHDC_SPARSITY")),
+        binary_mode=str(require_setting("SOMABRAIN_MATH_BHDC_BINARY_MODE")),
+        mix=str(require_setting("SOMABRAIN_MATH_BHDC_MIX")),
+        binding_seed=int(require_setting("SOMABRAIN_MATH_BINDING_SEED")),
+        binding_model_version=str(
+            require_setting("SOMABRAIN_MATH_BINDING_MODEL_VERSION")
+        ),
+    )
+    return QuantumLayer(hrr_cfg)
 
 
 # ---------------------------------------------------------------------------
@@ -207,9 +200,7 @@ def make_fd_sketch(cfg):
         dim=int(embed_dim),
         rank=max(
             1,
-            min(
-                int(getattr(settings, "SOMABRAIN_SALIENCE_FD_RANK")), int(embed_dim)
-            ),
+            min(int(getattr(settings, "SOMABRAIN_SALIENCE_FD_RANK")), int(embed_dim)),
         ),
         decay=float(getattr(settings, "SOMABRAIN_SALIENCE_FD_DECAY")),
     )

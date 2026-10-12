@@ -105,8 +105,19 @@ def process_search_response(
     Every ``return []`` here is a **successful empty**: the store answered and
     nothing matched. An outage never reaches this function — the HTTP layer
     raises :class:`MemoryRecallUnavailable` instead (T-5).
+
+    B17: SFM's ``MemorySearchResponse.degraded`` is honoured. A degraded
+    answer with no hits raises (never a silent ``[]``); a degraded answer
+    with partial hits returns them with ``hit.degraded is True``.
     """
+    degraded = bool(isinstance(data, dict) and data.get("degraded"))
     hits = normalize_recall_hits(data)
+    if degraded and not hits:
+        reason = None
+        if isinstance(data, dict):
+            reason = data.get("degraded_reason") or data.get("error")
+        detail = f"recall degraded: {reason}" if reason else "recall degraded"
+        raise MemoryRecallUnavailable(detail)
     if not hits:
         return []
 
@@ -134,7 +145,27 @@ def process_search_response(
 
     ranked = rescore_fn(deduped, query_text)
     limit = max(1, int(top_k))
-    return ranked[:limit]
+    return _flag_degraded_and_return(ranked[:limit], degraded)
+
+
+def _flag_degraded_and_return(
+    hits: list[RecallHit], degraded: bool
+) -> list[RecallHit]:
+    """Mark every hit with the degraded flag (B17) and return a new list."""
+    if not degraded:
+        return hits
+    flagged: list[RecallHit] = []
+    for hit in hits:
+        flagged.append(
+            RecallHit(
+                payload=hit.payload,
+                score=hit.score,
+                coordinate=hit.coordinate,
+                raw=hit.raw,
+                degraded=True,
+            )
+        )
+    return flagged
 
 
 def memories_search_sync(

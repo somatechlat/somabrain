@@ -14,9 +14,7 @@ in ``prod`` they are ignored (fail‑closed semantics).
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
-from pathlib import Path
 
 # Import central settings to respect runtime feature flag overrides
 from django.conf import settings
@@ -89,9 +87,7 @@ def _resolve_mode() -> str:
         raw = (settings.SOMABRAIN_MODE or "").strip().upper()
 
     if not raw:
-        home_dir = getattr(settings, "HOME_DIR") or getattr(
-            settings, "home_dir", ""
-        )
+        home_dir = getattr(settings, "HOME_DIR") or getattr(settings, "home_dir", "")
         return "full-local" if home_dir else "prod"
 
     # Map to internal canonical names

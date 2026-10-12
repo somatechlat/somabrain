@@ -140,9 +140,9 @@ class TestPredictorMathematicalCorrectness:
 
         expected = float(np.sqrt(np.sum((x - mean) ** 2 / var)))
         actual = float(pred.distance(x.tolist()))
-        assert abs(actual - expected) < 1e-10, (
-            f"diagonal Mahalanobis mismatch: {actual} != {expected}"
-        )
+        assert (
+            abs(actual - expected) < 1e-10
+        ), f"diagonal Mahalanobis mismatch: {actual} != {expected}"
         # Name equals math: low-variance axis dominates (Euclidean would not).
         d_axis0 = float(pred.distance((mean + np.array([1.0, 0.0, 0.0])).tolist()))
         d_axis1 = float(pred.distance((mean + np.array([0.0, 1.0, 0.0])).tolist()))

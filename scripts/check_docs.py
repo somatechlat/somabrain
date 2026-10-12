@@ -42,7 +42,13 @@ REQUIRED_FIELDS = [
 ]
 
 OPTIONAL_FIELDS = ["Related", "Source of truth", "Audience", "Scope"]
-FORBIDDEN_FIELDS = ["Effective Date", "Distribution", "Doc ID", "Document ID", "Confidentiality"]
+FORBIDDEN_FIELDS = [
+    "Effective Date",
+    "Distribution",
+    "Doc ID",
+    "Document ID",
+    "Confidentiality",
+]
 
 STATUS_VALUES = {"Draft", "In Review", "Approved", "Obsolete"}
 CLASSIFICATION_VALUES = {"Internal", "Confidential"}
@@ -89,6 +95,7 @@ ANNEX_ID_RE = re.compile(r"^UI-[SX]-\d{2}-[a-z0-9-]+$")
 def is_annex(rel_path: str) -> bool:
     """True for annexed design artefacts (see SOMA-BR-DOCS-001 §3.3.3)."""
     return rel_path.startswith(ANNEX_PREFIX)
+
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
@@ -222,7 +229,11 @@ def parse_qms_iso_ids() -> set[str]:
     if not QMS_PATH.exists():
         raise FileNotFoundError(f"QMS not found: {rel(QMS_PATH)}")
     text = QMS_PATH.read_text(encoding="utf-8")
-    m = re.search(r"^#{2,4}\s*(?:Section\s+)?(?:\d+[.:]\s*)?Document Reference Matrix\s*$", text, re.M)
+    m = re.search(
+        r"^#{2,4}\s*(?:Section\s+)?(?:\d+[.:]\s*)?Document Reference Matrix\s*$",
+        text,
+        re.M,
+    )
     if not m:
         return set()
     section = text[m.end() :]
@@ -242,7 +253,9 @@ def id_pattern_for(path: Path) -> re.Pattern[str] | None:
 
 def content_finding(rule: str, path: str, message: str, claim: str) -> Finding:
     """A content-rule finding. Fails only if the register claims 'Compliant'."""
-    return Finding(rule, path, message, integrity=True, warn_only=(claim != "Compliant"))
+    return Finding(
+        rule, path, message, integrity=True, warn_only=(claim != "Compliant")
+    )
 
 
 def check(strict: bool) -> int:
@@ -266,12 +279,16 @@ def check(strict: bool) -> int:
     for path in docs:
         r = rel(path)
         if r not in register:
-            findings.append(Finding("C-01", r, "file is not listed in DOCUMENT-REGISTER.md"))
+            findings.append(
+                Finding("C-01", r, "file is not listed in DOCUMENT-REGISTER.md")
+            )
 
     # C-02 registered but missing
     for r in sorted(register):
         if not (REPO_ROOT / r).exists():
-            findings.append(Finding("C-02", r, "listed in register but does not exist on disk"))
+            findings.append(
+                Finding("C-02", r, "listed in register but does not exist on disk")
+            )
 
     register_ids: set[str] = set()
     # QMS-tier identifiers live under docs/iso/ (see the procedure §5.2 C-10).
@@ -305,7 +322,9 @@ def check(strict: bool) -> int:
             continue
 
         # C-11 identifier format
-        ident = fields.get("Document Identifier", row.get("Document Identifier", "")).strip()
+        ident = fields.get(
+            "Document Identifier", row.get("Document Identifier", "")
+        ).strip()
         if ident:
             register_ids.add(ident)
             if r.startswith("docs/iso/"):
@@ -341,7 +360,9 @@ def check(strict: bool) -> int:
             continue
 
         if not fields:
-            findings.append(content_finding("C-03", r, "no '## Document Control' table", claim))
+            findings.append(
+                content_finding("C-03", r, "no '## Document Control' table", claim)
+            )
             noncompliant.append((r, "no Document Control"))
             continue
 
@@ -349,7 +370,9 @@ def check(strict: bool) -> int:
         for name in REQUIRED_FIELDS:
             if name not in fields or not fields[name].strip():
                 findings.append(
-                    content_finding("C-04", r, f"missing or empty required field '{name}'", claim)
+                    content_finding(
+                        "C-04", r, f"missing or empty required field '{name}'", claim
+                    )
                 )
 
         # forbidden fields — always a content warning, never an integrity failure
@@ -369,7 +392,10 @@ def check(strict: bool) -> int:
         if status and status not in STATUS_VALUES:
             findings.append(
                 content_finding(
-                    "C-05", r, f"Status '{status}' is outside {sorted(STATUS_VALUES)}", claim
+                    "C-05",
+                    r,
+                    f"Status '{status}' is outside {sorted(STATUS_VALUES)}",
+                    claim,
                 )
             )
         classification = fields.get("Classification", "").strip()
@@ -386,7 +412,9 @@ def check(strict: bool) -> int:
         # C-07 approver
         if "Approver" in fields and not fields["Approver"].strip():
             findings.append(
-                content_finding("C-07", r, "Approver is blank (use '—' if unsigned)", claim)
+                content_finding(
+                    "C-07", r, "Approver is blank (use '—' if unsigned)", claim
+                )
             )
 
         # C-08 next review
@@ -395,24 +423,33 @@ def check(strict: bool) -> int:
             findings.append(content_finding("C-08", r, "Next Review is missing", claim))
         elif not DATE_RE.match(nr):
             findings.append(
-                content_finding("C-08", r, f"Next Review '{nr}' is not YYYY-MM-DD", claim)
+                content_finding(
+                    "C-08", r, f"Next Review '{nr}' is not YYYY-MM-DD", claim
+                )
             )
         else:
             try:
                 if dt.date.fromisoformat(nr) < dt.date.today():
                     findings.append(
                         content_finding(
-                            "C-08", r, f"Next Review '{nr}' is in the past", "Non-compliant"
+                            "C-08",
+                            r,
+                            f"Next Review '{nr}' is in the past",
+                            "Non-compliant",
                         )
                     )
             except ValueError:
                 findings.append(
-                    content_finding("C-08", r, f"Next Review '{nr}' is not a valid date", claim)
+                    content_finding(
+                        "C-08", r, f"Next Review '{nr}' is not a valid date", claim
+                    )
                 )
 
         # C-09 revision history
         if not has_rh:
-            findings.append(content_finding("C-09", r, "no '## Revision History' table", claim))
+            findings.append(
+                content_finding("C-09", r, "no '## Revision History' table", claim)
+            )
         else:
             expected = ["Version", "Date", "Author", "Description"]
             if rh_cols != expected:
@@ -433,7 +470,11 @@ def check(strict: bool) -> int:
     register_only_iso = iso_ids - qms_ids
     for ident in sorted(qms_only):
         findings.append(
-            Finding("C-10", rel(QMS_PATH), f"QMS §7 lists '{ident}' but it is not in the register")
+            Finding(
+                "C-10",
+                rel(QMS_PATH),
+                f"QMS §7 lists '{ident}' but it is not in the register",
+            )
         )
     for ident in sorted(register_only_iso):
         findings.append(
@@ -482,7 +523,9 @@ def check(strict: bool) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--strict", action="store_true", help="also fail on non-compliant registered docs"
+        "--strict",
+        action="store_true",
+        help="also fail on non-compliant registered docs",
     )
     args = parser.parse_args()
     return check(strict=args.strict)

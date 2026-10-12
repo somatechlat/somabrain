@@ -1,5 +1,15 @@
 # SomaBrain Mathematical Proof & Test Verification Report
 
+> **Evidence honesty (2026-10-09, code = source of truth).** This document is a
+> mathematical narrative. Where it says "100%", "zero failures", or "Proof by
+> Exhaustive Testing", read **the cited tests passed at the time of writing** —
+> not a guarantee and not a claim about production defaults. Adaptation math is
+> computed in Rust (`somabrain_rs`, DEBT-008 closed); Python gain formulas here
+> are illustrative unless they match `learning/adaptation/rust_math.py`.
+> Worked numeric examples may disagree with live defaults; see
+> `docs/iso/SOMA-BR-DEBT-001.md` (DEBT-008) and `docs/iso/SOMA-BR-MATH-TRUTH-001.md`.
+
+
 > ## ⚠️ NON-AUTHORITATIVE — SUPERSEDED BY CODE (DOC-A6)
 > **This document is ARCHIVED as a historical claim, not as truth.**
 > Status line "BRAIN WORKING FLAWLESSLY" is **FALSE** as of Phase A exit.
@@ -24,7 +34,7 @@
 **SomaBrain is mathematically proven to work correctly.**
 
 - **19/19 Core Tests PASSED** ✅
-- **100% Property-Based Tests PASSED** (Mathematical Proofs) ✅
+- **Property-based tests passed at time of writing** (see `tests/property/` for current evidence)
 - **Cognition Workbench VERIFIED** ✅
 - **Memory System VERIFIED** (Testing REAL SFM API) ✅
 - **Learning Adaptation MATHEMATICALLY PROVEN** ✅

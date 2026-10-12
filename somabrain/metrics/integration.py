@@ -108,23 +108,6 @@ SFM_BULK_STORE_LATENCY = Histogram(
     registry=registry,
 )
 
-# Hybrid recall metrics
-SFM_HYBRID_RECALL_TOTAL = Counter(
-    "sb_sfm_hybrid_recall_total",
-    "Total hybrid recall operations",
-    ["tenant", "status", "fallback"],
-    registry=registry,
-)
-
-SFM_HYBRID_RECALL_LATENCY = Histogram(
-    "sb_sfm_hybrid_recall_latency_seconds",
-    "Hybrid recall operation latency",
-    ["tenant"],
-    buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5],
-    registry=registry,
-)
-
-
 def record_sfm_request(
     operation: str,
     tenant: str,
@@ -235,27 +218,6 @@ def record_bulk_store(
     SFM_BULK_STORE_LATENCY.labels(tenant=tenant).observe(duration_seconds)
 
 
-def record_hybrid_recall(
-    tenant: str,
-    status: str,
-    fallback: bool,
-    duration_seconds: float,
-) -> None:
-    """Record a hybrid recall operation with metrics.
-
-    Args:
-        tenant: Tenant identifier
-        status: Operation status ('success', 'error')
-        fallback: Whether vector-only fallback was used
-        duration_seconds: Operation duration in seconds
-    """
-    fallback_label = "true" if fallback else "false"
-    SFM_HYBRID_RECALL_TOTAL.labels(
-        tenant=tenant, status=status, fallback=fallback_label
-    ).inc()
-    SFM_HYBRID_RECALL_LATENCY.labels(tenant=tenant).observe(duration_seconds)
-
-
 __all__ = [
     # Counters
     "SFM_REQUEST_TOTAL",
@@ -264,7 +226,6 @@ __all__ = [
     "SFM_GRAPH_OPERATIONS",
     "SFM_BULK_STORE_TOTAL",
     "SFM_BULK_STORE_ITEMS",
-    "SFM_HYBRID_RECALL_TOTAL",
     # Gauges
     "SFM_CIRCUIT_BREAKER_STATE",
     "SFM_OUTBOX_PENDING",
@@ -272,7 +233,6 @@ __all__ = [
     "SFM_REQUEST_DURATION",
     "SFM_GRAPH_LATENCY",
     "SFM_BULK_STORE_LATENCY",
-    "SFM_HYBRID_RECALL_LATENCY",
     # Helper functions
     "record_sfm_request",
     "update_circuit_breaker_state",
@@ -281,5 +241,4 @@ __all__ = [
     "record_degradation_event",
     "record_graph_operation",
     "record_bulk_store",
-    "record_hybrid_recall",
 ]

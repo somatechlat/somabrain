@@ -388,7 +388,7 @@ Impact
 |---|---|---|---|---|---|---|
 | R-006 | PostgreSQL single point of failure | 2 | 4 | 8 | Medium | Mitigated by replication in production |
 | R-007 | Redis cache stampede on cold start | 3 | 2 | 6 | Medium | Mitigated by warm-up scripts |
-| R-008 | Rust core compilation failures | 2 | 2 | 4 | Low | Pure Python fallback exists |
+| R-008 | Rust core compilation failures | 2 | 2 | 4 | Low | Adaptation math **refuses** if `somabrain_rs` is missing (DEBT-008 closed — no Python gain-law twin). Other Rust surfaces may still use documented `core/rust_bridge.py` defaults. |
 | R-009 | Configuration sprawl (300+ params) | 4 | 2 | 8 | Medium | Mitigated by cognitive presets |
 | R-010 | Supply chain vulnerability | 3 | 3 | 9 | Medium | No automated scanning in CI yet |
 | R-011 | Key staff dependency | 3 | 3 | 9 | Medium | 116K LOC + cognitive science expertise |

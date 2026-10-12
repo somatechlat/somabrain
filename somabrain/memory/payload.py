@@ -161,3 +161,128 @@ def prepare_memory_payload(
     normalized = normalize_metadata(p)
     # G1: Serialize for SFM compatibility (tuples→lists, numpy→lists, epoch→ISO8601)
     return serialize_for_sfm(normalized)
+
+
+# ---------------------------------------------------------------------------
+# ONE store-body builder (WAVE-SFM-INT).
+#
+# Every write path that talks to SFM must mint its POST /memories body here.
+# Duplicating the dict literal is how ``embedding`` and ``tenant_id`` got
+# stripped from the outbox paths once already; duplicating it again is how
+# ``importance`` / ``belief_confidence`` / ``belief_polarity`` would get
+# stripped next. One function, every path, no drift.
+# ---------------------------------------------------------------------------
+
+# The ``MemoryStoreRequest`` scalars that must ride TOP-LEVEL on the store
+# body (SFM contract). They are never "payload only".
+_SFM_SCALAR_FIELDS = ("importance", "belief_confidence", "belief_polarity")
+
+
+def _resolve_sfm_scalars(
+    enriched: dict[str, Any] | None, payload: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Lift the SFM scalar fields to top-level presence.
+
+    Read order: the enriched payload (what we are about to store), then the
+    caller payload. ``importance`` may also arrive nested under
+    ``signals.importance`` — that is the API dialect — so it is promoted out
+    of ``signals`` rather than dropped. Absent values stay absent: no default
+    is invented here.
+    """
+    out: dict[str, Any] = {}
+    sources = [s for s in (enriched, payload) if isinstance(s, dict)]
+    for key in _SFM_SCALAR_FIELDS:
+        for src in sources:
+            val = src.get(key)
+            if val is not None:
+                out[key] = val
+                break
+        else:
+            if key == "importance":
+                for src in sources:
+                    signals = src.get("signals")
+                    if isinstance(signals, dict) and signals.get("importance") is not None:
+                        out[key] = signals["importance"]
+                        break
+    return out
+
+
+def seam_store_fields(
+    cfg: Any, enriched: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
+    """Return the first-class ``MemoryStoreRequest`` fields for a store body.
+
+    ARCHITECTURE-INVARIANTS §5: ``embedding`` and ``tenant_id`` are first-class
+    top-level fields on ``MemoryStoreRequest`` — never only inside ``payload``.
+    WAVE-SFM-INT extends the same rule to ``importance``,
+    ``belief_confidence`` and ``belief_polarity``.
+
+    One helper, used by every write path, so the paths cannot drift apart.
+    """
+    from somabrain.memory.remember import _get_tenant_namespace
+
+    tenant, _ns = _get_tenant_namespace(cfg, payload)
+    embedding = None
+    if isinstance(enriched, dict):
+        embedding = enriched.get("embedding")
+    if embedding is None and isinstance(payload, dict):
+        embedding = payload.get("embedding")
+
+    fields: dict[str, Any] = {"tenant_id": tenant or None}
+    if embedding is not None:
+        fields["embedding"] = embedding
+    fields.update(_resolve_sfm_scalars(enriched, payload))
+    return fields
+
+
+def build_store_body(
+    *,
+    coord: str,
+    payload: dict[str, Any],
+    memory_type: str,
+    seam_fields: dict[str, Any] | None = None,
+    embedding: list[float] | None = None,
+    tenant_id: str | None = None,
+    importance: float | None = None,
+    belief_confidence: float | None = None,
+    belief_polarity: str | None = None,
+) -> dict[str, Any]:
+    """Build the one POST /memories body shape.
+
+    Top-level keys always present: ``coord``, ``payload``, ``memory_type``.
+    Top-level keys present when known: ``embedding``, ``tenant_id``,
+    ``importance``, ``belief_confidence``, ``belief_polarity``.
+
+    ``seam_fields`` is the output of :func:`seam_store_fields` and is merged
+    first; explicit keyword arguments win so a caller that already resolved a
+    value does not have it overwritten by a stale dict.
+    """
+    body: dict[str, Any] = {
+        "coord": coord,
+        "payload": payload,
+        "memory_type": memory_type,
+    }
+    merged: dict[str, Any] = {}
+    if seam_fields:
+        merged.update(seam_fields)
+    if embedding is not None:
+        merged["embedding"] = embedding
+    if tenant_id:
+        merged["tenant_id"] = str(tenant_id)
+    if importance is not None:
+        merged["importance"] = float(importance)
+    if belief_confidence is not None:
+        merged["belief_confidence"] = float(belief_confidence)
+    if belief_polarity is not None:
+        merged["belief_polarity"] = str(belief_polarity)
+
+    # tenant_id is a presence key: only forward when truthy (T-5).
+    if merged.get("tenant_id"):
+        body["tenant_id"] = str(merged["tenant_id"])
+    emb = merged.get("embedding")
+    if emb is not None:
+        body["embedding"] = list(emb)
+    for key in _SFM_SCALAR_FIELDS:
+        if key in merged and merged[key] is not None:
+            body[key] = merged[key]
+    return body

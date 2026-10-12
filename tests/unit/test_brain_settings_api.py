@@ -1,13 +1,17 @@
 """BrainSetting admin API surface — registry + bounds (behavioural)."""
+
 from __future__ import annotations
 import sys
 from pathlib import Path
 import pytest
+
 pytestmark = pytest.mark.no_django
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _unit_settings import configure_unit_settings
+
 configure_unit_settings()
 import django
+
 if not django.apps.apps.ready:
     django.setup()
 

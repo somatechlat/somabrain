@@ -5,7 +5,6 @@ cost matrices. It returns a transport matrix P that approximately minimizes
 <P, C> - eps * H(P) subject to marginals a,b.
 """
 
-
 import numpy as np
 
 

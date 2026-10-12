@@ -1,4 +1,3 @@
-
 """Standalone settings profile.
 
 Reuses the shared Django, infrastructure, and cognitive settings modules and
@@ -8,10 +7,10 @@ is HTTP + containers only, and ``tenant_id`` is a data-partition key.
 
 import environ  # type: ignore[import-untyped]
 
-from .cognitive import *
-from .django_core import *
-from .infra import *
-from .neuro import *
+from .cognitive import *  # noqa: F403,F405  (Django settings composition)
+from .django_core import *  # noqa: F403,F405  (Django settings composition)
+from .infra import *  # noqa: F403,F405  (Django settings composition)
+from .neuro import *  # noqa: F403,F405  (Django settings composition)
 
 env = environ.Env()
 
@@ -23,8 +22,7 @@ env = environ.Env()
 # partition's key into a standalone deployment.
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS = env.bool(
     "SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS",
-    default=SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS,
+    default=globals().get("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", False),  # noqa: F405
 )
 SOMABRAIN_DEFAULT_TENANT = "standalone"
 SOMABRAIN_TENANT_ID = "standalone"
-

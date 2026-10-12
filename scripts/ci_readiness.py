@@ -213,9 +213,7 @@ def check_outbox_pending() -> CheckResult:
 
     base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or settings.api_url
     # Art 26: secrets from Vault/settings module state, never os.getenv
-    token = getattr(settings, "SOMABRAIN_API_TOKEN", None) or getattr(
-        settings, "SOMA_API_TOKEN", None
-    )
+    token = getattr(settings, "SOMA_API_TOKEN", None)
     if not token:
         return CheckResult("outbox", False, "API token not in Vault/settings")
     try:

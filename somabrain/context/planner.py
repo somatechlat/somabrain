@@ -42,8 +42,12 @@ class ContextPlanner:
 
         self._utility = utility_weights or UtilityWeights()
         # Load configuration from centralized Settings
-        self._length_penalty_scale = float(settings.SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE)
-        self._memory_penalty_scale = float(settings.SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE)
+        self._length_penalty_scale = float(
+            settings.SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE
+        )
+        self._memory_penalty_scale = float(
+            settings.SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE
+        )
 
     @property
     def utility_weights(self) -> UtilityWeights:

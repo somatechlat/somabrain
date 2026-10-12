@@ -109,7 +109,9 @@ def _get_graph_client(mem_client):
     return None
 
 
-def _recall_focus_hits(mem_client, query_text: str, embedding, top_k: int) -> list[tuple]:
+def _recall_focus_hits(
+    mem_client, query_text: str, embedding, top_k: int
+) -> list[tuple]:
     """Live recall for FocusState admission (id, vector) pairs.
 
     Fail-closed (T-5): a store outage raises rather than silently feeding
@@ -184,7 +186,12 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
     universe = getattr(body, "universe", None) or header_u
 
     if not getattr(settings, "SOMABRAIN_USE_PLANNER"):
-        return {"plan": []}
+        return {
+            "plan": [],
+            "error_code": "planner_disabled",
+            "error_detail": "SOMABRAIN_USE_PLANNER is off (kill-switch). "
+            "Empty plan is not a result.",
+        }
 
     try:
         memsvc = MemoryService(mt_memory, ctx.namespace)
@@ -192,7 +199,9 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
         graph_client = _get_graph_client(mem_client)
         engine = PlanEngine(settings, mem_client=mem_client, graph_client=graph_client)
 
-        task_vec = embedder.embed(task_key) if embedder else np.zeros(resolve_embed_dim())
+        task_vec = (
+            embedder.embed(task_key) if embedder else np.zeros(resolve_embed_dim())
+        )
         plan_ctx = PlanRequestContext(
             tenant_id=ctx.tenant_id,
             task_key=task_key,
@@ -205,9 +214,13 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
         )
         composite_plan = engine.plan(plan_ctx)
         plan_result = composite_plan.to_legacy_steps()
+        plan_error_code = None
+        plan_error_detail = None
     except Exception as exc:
         logger.warning(f"PlanEngine failed: {exc}")
         plan_result = []
+        plan_error_code = "plan_engine_failed"
+        plan_error_detail = str(exc)
 
     logger.debug(
         "%s Plan suggested | %s | task_key=%s | steps=%d",
@@ -217,7 +230,11 @@ def plan_suggest(request: HttpRequest, body: PlanSuggestRequest):
         len(plan_result),
     )
 
-    return {"plan": plan_result}
+    return {
+        "plan": plan_result,
+        "error_code": plan_error_code,
+        "error_detail": plan_error_detail,
+    }
 
 
 @router.post("/act", response=ActResponse, auth=api_key_auth)
@@ -293,7 +310,11 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
             from somabrain.learning.memory_events import remember_learned
 
             kind = "recall_hit" if recall_hits else "recall_miss"
-            utility = float(recall_hits[0][1]) if recall_hits and len(recall_hits[0]) > 1 else None
+            utility = (
+                float(recall_hits[0][1])
+                if recall_hits and len(recall_hits[0]) > 1
+                else None
+            )
             remember_learned(body.tenant_id or "", kind=kind, utility=utility)
         except Exception:
             logger.debug("cognitive recall learning hook failed", exc_info=True)
@@ -330,7 +351,9 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
                 engine = PlanEngine(
                     settings, mem_client=mem_client, graph_client=graph_client
                 )
-                task_vec = wm_vec if wm_vec is not None else np.zeros(resolve_embed_dim())
+                task_vec = (
+                    wm_vec if wm_vec is not None else np.zeros(resolve_embed_dim())
+                )
                 plan_ctx = PlanRequestContext(
                     tenant_id=ctx.tenant_id,
                     task_key=body.task,
@@ -340,9 +363,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
                     time_budget_ms=int(
                         getattr(settings, "SOMABRAIN_PLAN_TIME_BUDGET_MS") or 50
                     ),
-                    max_steps=int(
-                        getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS") or 5
-                    ),
+                    max_steps=int(getattr(settings, "SOMABRAIN_PLAN_MAX_STEPS") or 5),
                     rel_types=[],
                     universe=getattr(body, "universe", None),
                 )
@@ -351,9 +372,7 @@ def act_endpoint(request: HttpRequest, body: ActRequest):
         except Exception as exc:
             logger.warning(f"PlanEngine failed in /act: {exc}")
 
-    log_truncate_len = int(
-        getattr(settings, "SOMABRAIN_LOG_TASK_TRUNCATE_LEN") or 50
-    )
+    log_truncate_len = int(getattr(settings, "SOMABRAIN_LOG_TASK_TRUNCATE_LEN") or 50)
     task_preview = body.task[:log_truncate_len] if body.task else ""
 
     logger.debug(

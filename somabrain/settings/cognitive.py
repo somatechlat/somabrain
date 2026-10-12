@@ -5,7 +5,6 @@ from somabrain.math.contracts import (
     ADAPT_GAINS,
     BHDC_D,
     BHDC_P,
-    PROMOTE_THETA,
     RECENCY_CAP,
     RECENCY_FLOOR,
     RECENCY_SCALE,
@@ -13,9 +12,7 @@ from somabrain.math.contracts import (
     SCORER_WEIGHT_MAX,
     SCORER_WEIGHT_MIN,
     SCORER_WEIGHTS,
-    TAU_DECAY_FACTOR,
     TAU_FLOOR,
-    TAU_INTERVAL,
 )
 
 from .infra import KAFKA_BOOTSTRAP_SERVERS as _INFRA_KAFKA_BOOTSTRAP_SERVERS
@@ -115,11 +112,15 @@ if SOMABRAIN_MEMORY_MODE not in ("http", "direct"):
     )
 SOMABRAIN_MEMORY_ENABLE_WEIGHTING = env.bool(
     "SOMABRAIN_FF_MEMORY_WEIGHTING",
-    default=env.bool("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", default=False),
+    default=env.bool("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", default=True),
 )
 SOMABRAIN_MEMORY_PHASE_PRIORS = env.str("SOMABRAIN_MEMORY_PHASE_PRIORS", default="")
 SOMABRAIN_MEMORY_QUALITY_EXP = env.float("SOMABRAIN_MEMORY_QUALITY_EXP", default=1.0)
-SOMABRAIN_MEMORY_FAST_ACK = env.bool("SOMABRAIN_MEMORY_FAST_ACK", default=False)
+# Million-txn accept path: T-6 is the verified outbox row. Returning after
+# that row (and hopping to SFM in the background / outbox publisher) keeps
+# accept latency at DB-write scale instead of SFM RTT. Disable only when an
+# operator needs a synchronous store ack on the request thread.
+SOMABRAIN_MEMORY_FAST_ACK = env.bool("SOMABRAIN_MEMORY_FAST_ACK", default=True)
 
 # Memory degradation
 SOMABRAIN_MEMORY_DEGRADE_QUEUE = env.bool(
@@ -153,7 +154,9 @@ SOMABRAIN_WM_SIZE = env.int("SOMABRAIN_WM_SIZE", default=64)
 SOMABRAIN_WM_RECENCY_TIME_SCALE = env.float(
     "SOMABRAIN_WM_RECENCY_TIME_SCALE", default=RECENCY_SCALE
 )
-SOMABRAIN_WM_RECENCY_MAX_STEPS = env.int("SOMABRAIN_WM_RECENCY_MAX_STEPS", default=int(RECENCY_CAP))
+SOMABRAIN_WM_RECENCY_MAX_STEPS = env.int(
+    "SOMABRAIN_WM_RECENCY_MAX_STEPS", default=int(RECENCY_CAP)
+)
 SOMABRAIN_WM_ALPHA = env.float("SOMABRAIN_WM_ALPHA", default=0.6)
 SOMABRAIN_WM_BETA = env.float("SOMABRAIN_WM_BETA", default=0.3)
 SOMABRAIN_WM_GAMMA = env.float("SOMABRAIN_WM_GAMMA", default=0.1)
@@ -177,11 +180,11 @@ SOMABRAIN_MICRO_CIRCUITS = env.int("SOMABRAIN_MICRO_CIRCUITS", default=1)
 SOMABRAIN_MICRO_VOTE_TEMPERATURE = env.float(
     "SOMABRAIN_MICRO_VOTE_TEMPERATURE", default=0.25
 )
-SOMABRAIN_USE_MICROCIRCUITS = env.bool("SOMABRAIN_USE_MICROCIRCUITS", default=False)
+SOMABRAIN_USE_MICROCIRCUITS = env.bool("SOMABRAIN_USE_MICROCIRCUITS", default=True)
 SOMABRAIN_MICRO_MAX_TENANTS = env.int("SOMABRAIN_MICRO_MAX_TENANTS", default=1000)
 
 # Tiered memory cleanup
-SOMABRAIN_CLEANUP_BACKEND = env.str("SOMABRAIN_CLEANUP_BACKEND", default="milvus")
+SOMABRAIN_CLEANUP_BACKEND = env.str("SOMABRAIN_CLEANUP_BACKEND", default="simple")
 SOMABRAIN_CLEANUP_TOPK = env.int("SOMABRAIN_CLEANUP_TOPK", default=64)
 SOMABRAIN_CLEANUP_HNSW_M = env.int("SOMABRAIN_CLEANUP_HNSW_M", default=32)
 SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION = env.int(
@@ -192,11 +195,19 @@ SOMABRAIN_CLEANUP_HNSW_EF_SEARCH = env.int(
 )
 
 # Scorer weights — defaults from contracts.SCORER_WEIGHTS (single source)
-SOMABRAIN_SCORER_W_COSINE = env.float("SOMABRAIN_SCORER_W_COSINE", default=SCORER_WEIGHTS[0])
+SOMABRAIN_SCORER_W_COSINE = env.float(
+    "SOMABRAIN_SCORER_W_COSINE", default=SCORER_WEIGHTS[0]
+)
 SOMABRAIN_SCORER_W_FD = env.float("SOMABRAIN_SCORER_W_FD", default=SCORER_WEIGHTS[1])
-SOMABRAIN_SCORER_W_RECENCY = env.float("SOMABRAIN_SCORER_W_RECENCY", default=SCORER_WEIGHTS[2])
-SOMABRAIN_SCORER_WEIGHT_MIN = env.float("SOMABRAIN_SCORER_WEIGHT_MIN", default=SCORER_WEIGHT_MIN)
-SOMABRAIN_SCORER_WEIGHT_MAX = env.float("SOMABRAIN_SCORER_WEIGHT_MAX", default=SCORER_WEIGHT_MAX)
+SOMABRAIN_SCORER_W_RECENCY = env.float(
+    "SOMABRAIN_SCORER_W_RECENCY", default=SCORER_WEIGHTS[2]
+)
+SOMABRAIN_SCORER_WEIGHT_MIN = env.float(
+    "SOMABRAIN_SCORER_WEIGHT_MIN", default=SCORER_WEIGHT_MIN
+)
+SOMABRAIN_SCORER_WEIGHT_MAX = env.float(
+    "SOMABRAIN_SCORER_WEIGHT_MAX", default=SCORER_WEIGHT_MAX
+)
 
 # Retrieval weights
 SOMABRAIN_RETRIEVAL_ALPHA = env.float("SOMABRAIN_RETRIEVAL_ALPHA", default=1.0)
@@ -204,7 +215,9 @@ SOMABRAIN_RETRIEVAL_BETA = env.float("SOMABRAIN_RETRIEVAL_BETA", default=0.2)
 SOMABRAIN_RETRIEVAL_GAMMA = env.float("SOMABRAIN_RETRIEVAL_GAMMA", default=0.1)
 SOMABRAIN_RETRIEVAL_TAU = env.float("SOMABRAIN_RETRIEVAL_TAU", default=0.7)
 # Kernel shape for the single recency family (scale is SOMABRAIN_WM_RECENCY_TIME_SCALE).
-SOMABRAIN_RECENCY_SHARPNESS = env.float("SOMABRAIN_RECENCY_SHARPNESS", default=RECENCY_SHARPNESS)
+SOMABRAIN_RECENCY_SHARPNESS = env.float(
+    "SOMABRAIN_RECENCY_SHARPNESS", default=RECENCY_SHARPNESS
+)
 SOMABRAIN_RECENCY_FLOOR = env.float("SOMABRAIN_RECENCY_FLOOR", default=RECENCY_FLOOR)
 SOMABRAIN_DENSITY_TARGET = env.float("SOMABRAIN_DENSITY_TARGET", default=0.2)
 SOMABRAIN_DENSITY_FLOOR = env.float("SOMABRAIN_DENSITY_FLOOR", default=0.6)
@@ -250,18 +263,18 @@ SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR = env.float(
 SOMABRAIN_SALIENCE_SOFT_TEMPERATURE = env.float(
     "SOMABRAIN_SALIENCE_SOFT_TEMPERATURE", default=0.1
 )
-SOMABRAIN_USE_SOFT_SALIENCE = env.bool("SOMABRAIN_USE_SOFT_SALIENCE", default=False)
+SOMABRAIN_USE_SOFT_SALIENCE = env.bool("SOMABRAIN_USE_SOFT_SALIENCE", default=True)
 
 # Feature toggles
 # HRR/QuantumLayer is ALWAYS ON by default (Operator law). Optional disable only.
 SOMABRAIN_USE_HRR = env.bool("SOMABRAIN_USE_HRR", default=True)
 SOMABRAIN_EMBED_PROVIDER = env.str("SOMABRAIN_EMBED_PROVIDER", default="hrr")
-SOMABRAIN_USE_META_BRAIN = env.bool("SOMABRAIN_USE_META_BRAIN", default=False)
-SOMABRAIN_USE_EXEC_CONTROLLER = env.bool("SOMABRAIN_USE_EXEC_CONTROLLER", default=False)
-SOMABRAIN_USE_DRIFT_MONITOR = env.bool("SOMABRAIN_USE_DRIFT_MONITOR", default=False)
-SOMABRAIN_USE_SDR_PREFILTER = env.bool("SOMABRAIN_USE_SDR_PREFILTER", default=False)
-SOMABRAIN_USE_GRAPH_AUGMENT = env.bool("SOMABRAIN_USE_GRAPH_AUGMENT", default=False)
-SOMABRAIN_USE_HRR_FIRST = env.bool("SOMABRAIN_USE_HRR_FIRST", default=False)
+SOMABRAIN_USE_META_BRAIN = env.bool("SOMABRAIN_USE_META_BRAIN", default=True)
+SOMABRAIN_USE_EXEC_CONTROLLER = env.bool("SOMABRAIN_USE_EXEC_CONTROLLER", default=True)
+SOMABRAIN_USE_DRIFT_MONITOR = env.bool("SOMABRAIN_USE_DRIFT_MONITOR", default=True)
+SOMABRAIN_USE_SDR_PREFILTER = env.bool("SOMABRAIN_USE_SDR_PREFILTER", default=True)
+SOMABRAIN_USE_GRAPH_AUGMENT = env.bool("SOMABRAIN_USE_GRAPH_AUGMENT", default=True)
+SOMABRAIN_USE_HRR_FIRST = env.bool("SOMABRAIN_USE_HRR_FIRST", default=True)
 
 # Graph configuration
 SOMABRAIN_GRAPH_HOPS = env.int("SOMABRAIN_GRAPH_HOPS", default=2)
@@ -294,7 +307,10 @@ SOMABRAIN_HRR_DIM = env.int("SOMABRAIN_HRR_DIM", default=BHDC_D)
 SOMABRAIN_HRR_DTYPE = env.str("SOMABRAIN_HRR_DTYPE", default="float32")
 SOMABRAIN_HRR_RENORM = env.bool("SOMABRAIN_HRR_RENORM", default=True)
 SOMABRAIN_HRR_VECTOR_FAMILY = env.str("SOMABRAIN_HRR_VECTOR_FAMILY", default="bhdc")
-SOMABRAIN_BHDC_SPARSITY = env.float("SOMABRAIN_BHDC_SPARSITY", default=BHDC_P)
+# BHDC active-dimension fraction. ONE declaration (R-VAL-01): contracts.BHDC_P
+# is the value, BrainSetting ``bhdc_sparsity`` is the administerable override.
+# R-BEH-01: never an ENV read.
+SOMABRAIN_BHDC_SPARSITY = BHDC_P
 
 # SDR configuration
 SOMABRAIN_SDR_BITS = env.int("SOMABRAIN_SDR_BITS", default=2048)
@@ -323,7 +339,7 @@ SOMABRAIN_QUANTUM_DIM = env.int("SOMABRAIN_QUANTUM_DIM", default=2048)
 SOMABRAIN_QUANTUM_SPARSITY = env.float("SOMABRAIN_QUANTUM_SPARSITY", default=0.1)
 
 # Planning configuration
-SOMABRAIN_USE_PLANNER = env.bool("SOMABRAIN_USE_PLANNER", default=False)
+SOMABRAIN_USE_PLANNER = env.bool("SOMABRAIN_USE_PLANNER", default=True)
 SOMABRAIN_USE_FOCUS_STATE = env.bool("SOMABRAIN_USE_FOCUS_STATE", default=True)
 SOMABRAIN_PLAN_MAX_STEPS = env.int("SOMABRAIN_PLAN_MAX_STEPS", default=5)
 SOMABRAIN_PLANNER_BACKEND = env.str("SOMABRAIN_PLANNER_BACKEND", default="bfs")
@@ -367,15 +383,15 @@ SOMABRAIN_WRITE_DAILY_LIMIT = env.int("SOMABRAIN_WRITE_DAILY_LIMIT", default=100
 # Learning & Adaptation Settings
 # ONE tau schedule lives in somabrain.math.contracts (TAU_FLOOR /
 # TAU_DECAY_FACTOR / TAU_INTERVAL). Mode/rate twins are deleted (W3).
-SOMABRAIN_ENTROPY_CAP_ENABLED = env.bool("SOMABRAIN_ENTROPY_CAP_ENABLED", default=False)
+SOMABRAIN_ENTROPY_CAP_ENABLED = env.bool("SOMABRAIN_ENTROPY_CAP_ENABLED", default=True)
 SOMABRAIN_ENTROPY_CAP = env.float("SOMABRAIN_ENTROPY_CAP", default=0.0)
 SOMABRAIN_LEARNING_RATE_DYNAMIC = env.bool(
-    "SOMABRAIN_LEARNING_RATE_DYNAMIC", default=False
+    "SOMABRAIN_LEARNING_RATE_DYNAMIC", default=True
 )
 # Master switch for the online learning loop (LearnerService). Declared here
 # so the compose-required key has a real reader (was hollow).
 SOMABRAIN_LEARNING_LOOP_ENABLED = env.bool(
-    "SOMABRAIN_LEARNING_LOOP_ENABLED", default=False
+    "SOMABRAIN_LEARNING_LOOP_ENABLED", default=True
 )
 
 SOMABRAIN_UTILITY_LAMBDA = env.float("SOMABRAIN_UTILITY_LAMBDA", default=1.0)
@@ -392,8 +408,12 @@ SOMABRAIN_ADAPTATION_GAIN_GAMMA = env.float(
 SOMABRAIN_ADAPTATION_GAIN_LAMBDA = env.float(
     "SOMABRAIN_ADAPTATION_GAIN_LAMBDA", default=ADAPT_GAINS["lambda_"]
 )
-SOMABRAIN_ADAPTATION_GAIN_MU = env.float("SOMABRAIN_ADAPTATION_GAIN_MU", default=ADAPT_GAINS["mu"])
-SOMABRAIN_ADAPTATION_GAIN_NU = env.float("SOMABRAIN_ADAPTATION_GAIN_NU", default=ADAPT_GAINS["nu"])
+SOMABRAIN_ADAPTATION_GAIN_MU = env.float(
+    "SOMABRAIN_ADAPTATION_GAIN_MU", default=ADAPT_GAINS["mu"]
+)
+SOMABRAIN_ADAPTATION_GAIN_NU = env.float(
+    "SOMABRAIN_ADAPTATION_GAIN_NU", default=ADAPT_GAINS["nu"]
+)
 
 SOMABRAIN_ADAPTATION_ALPHA_MIN = env.float(
     "SOMABRAIN_ADAPTATION_ALPHA_MIN", default=ADAPT_BOUNDS["alpha"][0]
@@ -413,10 +433,18 @@ SOMABRAIN_ADAPTATION_LAMBDA_MIN = env.float(
 SOMABRAIN_ADAPTATION_LAMBDA_MAX = env.float(
     "SOMABRAIN_ADAPTATION_LAMBDA_MAX", default=ADAPT_BOUNDS["lambda_"][1]
 )
-SOMABRAIN_ADAPTATION_MU_MIN = env.float("SOMABRAIN_ADAPTATION_MU_MIN", default=ADAPT_BOUNDS["mu"][0])
-SOMABRAIN_ADAPTATION_MU_MAX = env.float("SOMABRAIN_ADAPTATION_MU_MAX", default=ADAPT_BOUNDS["mu"][1])
-SOMABRAIN_ADAPTATION_NU_MIN = env.float("SOMABRAIN_ADAPTATION_NU_MIN", default=ADAPT_BOUNDS["nu"][0])
-SOMABRAIN_ADAPTATION_NU_MAX = env.float("SOMABRAIN_ADAPTATION_NU_MAX", default=ADAPT_BOUNDS["nu"][1])
+SOMABRAIN_ADAPTATION_MU_MIN = env.float(
+    "SOMABRAIN_ADAPTATION_MU_MIN", default=ADAPT_BOUNDS["mu"][0]
+)
+SOMABRAIN_ADAPTATION_MU_MAX = env.float(
+    "SOMABRAIN_ADAPTATION_MU_MAX", default=ADAPT_BOUNDS["mu"][1]
+)
+SOMABRAIN_ADAPTATION_NU_MIN = env.float(
+    "SOMABRAIN_ADAPTATION_NU_MIN", default=ADAPT_BOUNDS["nu"][0]
+)
+SOMABRAIN_ADAPTATION_NU_MAX = env.float(
+    "SOMABRAIN_ADAPTATION_NU_MAX", default=ADAPT_BOUNDS["nu"][1]
+)
 
 # Predictor configuration
 SOMABRAIN_PREDICTOR_PROVIDER = env.str("SOMABRAIN_PREDICTOR_PROVIDER", default="mahal")
@@ -442,7 +470,7 @@ SOMABRAIN_LEARNER_DLQ_TOPIC = env.str(
 SOMABRAIN_LLM_ENDPOINT = env.str("SOMABRAIN_LLM_ENDPOINT", default=None)
 
 # --- OAK (ROAMDP) SETTINGS ---
-ENABLE_OAK = env.bool("ENABLE_OAK", default=False)
+ENABLE_OAK = env.bool("ENABLE_OAK", default=True)
 OAK_BASE_UTILITY = env.float("OAK_BASE_UTILITY", default=1.0)
 OAK_UTILITY_FACTOR = env.float("OAK_UTILITY_FACTOR", default=0.1)
 OAK_TAU_MIN = env.float("OAK_TAU_MIN", default=30.0)
@@ -457,11 +485,11 @@ OAK_KAPPA = env.float("OAK_KAPPA", default=1.0)
 
 # ============================================================================
 # ADMINISTRABLE KNOBS — declared once (schema default lives HERE only).
-# Call sites read these through somabrain.settings.resolve.optional_setting /
+# Call sites read these through somabrain.settings.resolve.require_setting /
 # require_setting. There is no call-site default: the number appears once.
 # (R-VAL-01: declared exactly once; promoted from former call-site literals.)
 # ============================================================================
-CALIBRATION_ENABLED = env.bool("CALIBRATION_ENABLED", default=False)
+CALIBRATION_ENABLED = env.bool("CALIBRATION_ENABLED", default=True)
 FOCUS_ADMIT_TOP_N = env.int("FOCUS_ADMIT_TOP_N", default=4)
 HEALTH_PING_TIMEOUT = env.float("HEALTH_PING_TIMEOUT", default=0.5)
 # DEF-10 fixed: HRR_DIM unified to BHDC_D (same as SOMABRAIN_HRR_DIM).
@@ -476,26 +504,45 @@ KEYCLOAK_REALM = env.str("KEYCLOAK_REALM", default="unknown")
 MEMORY_HEALTH_POLL_INTERVAL = env.float("MEMORY_HEALTH_POLL_INTERVAL", default=5.0)
 OAK_OPTION_MODEL_MANAGED = env.bool("OAK_OPTION_MODEL_MANAGED", default=False)
 OUTBOX_BACKPRESSURE_ENABLED = env.str("OUTBOX_BACKPRESSURE_ENABLED", default="true")
-OUTBOX_TENANT_BATCH_LIMIT = env.int("OUTBOX_TENANT_BATCH_LIMIT", default=50)
+OUTBOX_TENANT_BATCH_LIMIT = env.int("OUTBOX_TENANT_BATCH_LIMIT", default=256)
+# Drain lease: how long status=claimed stays invisible to other publishers
+# before reclaim. Declaration-site only (R-VAL-04).
+OUTBOX_CLAIM_LEASE_SECONDS = env.int("OUTBOX_CLAIM_LEASE_SECONDS", default=120)
+# Concurrent SFM writes per tenant batch in the outbox publisher.
+OUTBOX_SFM_WRITE_WORKERS = env.int("OUTBOX_SFM_WRITE_WORKERS", default=32)
+# How long a positive OPA decision for (method, path) may be reused.
+OPA_ALLOW_TTL_S = env.float("OPA_ALLOW_TTL_S", default=2.0)
+# managed_get ORM hop timeout (ASGI worker thread).
+MANAGED_GET_DB_TIMEOUT_S = env.float("MANAGED_GET_DB_TIMEOUT_S", default=5.0)
+# Hot Ninja memory API prefixes that skip browser session middleware.
+HOT_API_PREFIXES = env.list("HOT_API_PREFIXES", default=["/memory/", "/api/memory/"])
 PLAN_TIME_BUDGET_MS = env.int("PLAN_TIME_BUDGET_MS", default=50)
-REQUIRE_OPA = env.bool("REQUIRE_OPA", default=False)
+REQUIRE_OPA = env.bool("REQUIRE_OPA", default=True)
 SLEEP_MAX_SECONDS = env.int("SLEEP_MAX_SECONDS", default=3600)
 SOMABRAIN_AUDIT_TOPIC = env.str("SOMABRAIN_AUDIT_TOPIC", default="soma.audit")
 SOMABRAIN_BLOCK_UA_REGEX = env.str("SOMABRAIN_BLOCK_UA_REGEX", default="")
 SOMABRAIN_CHEB_K = env.int("SOMABRAIN_CHEB_K", default=30)
 SOMABRAIN_CONF_ALPHA = env.float("SOMABRAIN_CONF_ALPHA", default=2.0)
-SOMABRAIN_CONSTITUTION_SIGNER_ID = env.str("SOMABRAIN_CONSTITUTION_SIGNER_ID", default="default")
-SOMABRAIN_CONSTITUTION_THRESHOLD = env.int("SOMABRAIN_CONSTITUTION_THRESHOLD", default=1)
+SOMABRAIN_CONSTITUTION_SIGNER_ID = env.str(
+    "SOMABRAIN_CONSTITUTION_SIGNER_ID", default="default"
+)
+SOMABRAIN_CONSTITUTION_THRESHOLD = env.int(
+    "SOMABRAIN_CONSTITUTION_THRESHOLD", default=1
+)
 SOMABRAIN_DEFAULT_NOVELTY = env.float("SOMABRAIN_DEFAULT_NOVELTY", default=0.0)
 SOMABRAIN_DEFAULT_SALIENCE = env.float("SOMABRAIN_DEFAULT_SALIENCE", default=0.0)
-SOMABRAIN_DEGRADATION_KAFKA_TOPIC = env.str("SOMABRAIN_DEGRADATION_KAFKA_TOPIC", default="")
+SOMABRAIN_DEGRADATION_KAFKA_TOPIC = env.str(
+    "SOMABRAIN_DEGRADATION_KAFKA_TOPIC", default=""
+)
 SOMABRAIN_DIFFUSION_T = env.float("SOMABRAIN_DIFFUSION_T", default=0.5)
 SOMABRAIN_DRIFT_STORE_PATH = env.str("SOMABRAIN_DRIFT_STORE_PATH", default="")
 SOMABRAIN_DRIFT_THRESHOLD = env.float("SOMABRAIN_DRIFT_THRESHOLD", default=0.3)
 SOMABRAIN_DRIFT_WINDOW = env.int("SOMABRAIN_DRIFT_WINDOW", default=256)
 SOMABRAIN_EXEC_BANDIT_EPS = env.float("SOMABRAIN_EXEC_BANDIT_EPS", default=0.1)
-SOMABRAIN_EXEC_EXPLORE_BOOST_K = env.float("SOMABRAIN_EXEC_EXPLORE_BOOST_K", default=1.2)
-SOMABRAIN_EXEC_USE_BANDITS = env.bool("SOMABRAIN_EXEC_USE_BANDITS", default=False)
+SOMABRAIN_EXEC_EXPLORE_BOOST_K = env.float(
+    "SOMABRAIN_EXEC_EXPLORE_BOOST_K", default=1.2
+)
+SOMABRAIN_EXEC_USE_BANDITS = env.bool("SOMABRAIN_EXEC_USE_BANDITS", default=True)
 SOMABRAIN_EXEC_WINDOW = env.int("SOMABRAIN_EXEC_WINDOW", default=64)
 SOMABRAIN_HRR_ANCHORS_MAX = env.int("SOMABRAIN_HRR_ANCHORS_MAX", default=256)
 SOMABRAIN_HRR_DECAY_LAMBDA = env.float("SOMABRAIN_HRR_DECAY_LAMBDA", default=0.05)
@@ -503,37 +550,68 @@ SOMABRAIN_HRR_SEED = env.int("SOMABRAIN_HRR_SEED", default=42)
 SOMABRAIN_KILL_SWITCH = env.bool("SOMABRAIN_KILL_SWITCH", default=False)
 SOMABRAIN_LANCZOS_M = env.int("SOMABRAIN_LANCZOS_M", default=20)
 SOMABRAIN_LOG_TASK_TRUNCATE_LEN = env.int("SOMABRAIN_LOG_TASK_TRUNCATE_LEN", default=50)
-SOMABRAIN_MATH_BHDC_BINARY_MODE = env.bool("SOMABRAIN_MATH_BHDC_BINARY_MODE", default=False)
-SOMABRAIN_MATH_BHDC_MIX = env.float("SOMABRAIN_MATH_BHDC_MIX", default=0.5)
+# BHDC binder modes are vocabularies, not numbers. Declaration-site only
+# (R-VAL-04). mix: "none" | "hadamard". binary_mode: "pm_one" | "zero_one".
+SOMABRAIN_MATH_BHDC_BINARY_MODE = env.str(
+    "SOMABRAIN_MATH_BHDC_BINARY_MODE", default="pm_one"
+)
+SOMABRAIN_MATH_BHDC_MIX = env.str("SOMABRAIN_MATH_BHDC_MIX", default="none")
 SOMABRAIN_MATH_BINDING_SEED = env.int("SOMABRAIN_MATH_BINDING_SEED", default=42)
+# BHDC binder identity — declaration-site only (R-VAL-04). Call sites must not
+# invent method/model versions. method is the only supported binder.
+SOMABRAIN_MATH_BINDING_METHOD = env.str(
+    "SOMABRAIN_MATH_BINDING_METHOD", default="bhdc"
+)
+SOMABRAIN_MATH_BINDING_MODEL_VERSION = env.str(
+    "SOMABRAIN_MATH_BINDING_MODEL_VERSION", default="v1"
+)
 SOMABRAIN_META_GAIN = env.float("SOMABRAIN_META_GAIN", default=0.1)
 SOMABRAIN_META_LIMIT = env.float("SOMABRAIN_META_LIMIT", default=1.0)
-SOMABRAIN_MILVUS_CONNECT_TIMEOUT = env.int("SOMABRAIN_MILVUS_CONNECT_TIMEOUT", default=5)
-SOMABRAIN_MILVUS_LATENCY_WINDOW = env.int("SOMABRAIN_MILVUS_LATENCY_WINDOW", default=50)
-SOMABRAIN_MILVUS_RECONCILE_INTERVAL = env.float("SOMABRAIN_MILVUS_RECONCILE_INTERVAL", default=3600.0)
+SOMABRAIN_MILVUS_CONNECT_TIMEOUT = env.int(
+    "SOMABRAIN_MILVUS_CONNECT_TIMEOUT", default=5
+)
 SOMABRAIN_MILVUS_SECURE = env.bool("SOMABRAIN_MILVUS_SECURE", default=False)
-SOMABRAIN_MILVUS_SEGMENT_REFRESH_INTERVAL = env.float("SOMABRAIN_MILVUS_SEGMENT_REFRESH_INTERVAL", default=60.0)
-SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE = env.float("SOMABRAIN_MILVUS_UPSERT_BACKOFF_BASE", default=0.5)
-SOMABRAIN_MILVUS_UPSERT_RETRIES = env.int("SOMABRAIN_MILVUS_UPSERT_RETRIES", default=3)
-SOMABRAIN_OUTBOX_SYNC_INTERVAL = env.float("SOMABRAIN_OUTBOX_SYNC_INTERVAL", default=10.0)
+# Declared once in settings/infra.py (R-VAL-01). Import and reuse — do not
+# re-read ENV here (R-BEH-01).
+from .infra import (
+    MILVUS_SEGMENT_REFRESH_INTERVAL as SOMABRAIN_MILVUS_SEGMENT_REFRESH_INTERVAL,
+)
+SOMABRAIN_OUTBOX_SYNC_INTERVAL = env.float(
+    "SOMABRAIN_OUTBOX_SYNC_INTERVAL", default=10.0
+)
 SOMABRAIN_PLAN_TIME_BUDGET_MS = env.int("SOMABRAIN_PLAN_TIME_BUDGET_MS", default=50)
 SOMABRAIN_PREDICTOR_TIMEOUT_MS = env.int("SOMABRAIN_PREDICTOR_TIMEOUT_MS", default=1000)
-SOMABRAIN_PROVENANCE_STRICT_DENY = env.bool("SOMABRAIN_PROVENANCE_STRICT_DENY", default=False)
+SOMABRAIN_PROVENANCE_STRICT_DENY = env.bool(
+    "SOMABRAIN_PROVENANCE_STRICT_DENY", default=False
+)
 SOMABRAIN_REQUIRE_PROVENANCE = env.bool("SOMABRAIN_REQUIRE_PROVENANCE", default=False)
-SOMABRAIN_SLOW_PREDICTOR_DELAY_MS = env.int("SOMABRAIN_SLOW_PREDICTOR_DELAY_MS", default=1000)
+# Fail-honest: enforcing provenance without a Vault secret is a brick, not a
+# policy. Refuse at boot naming the secret instead of 503 "policy deny" on
+# every write (2026-10-09 live incident).
+if SOMABRAIN_REQUIRE_PROVENANCE and not SOMABRAIN_PROVENANCE_SECRET:
+    raise environ.ImproperlyConfigured(
+        "SOMABRAIN_REQUIRE_PROVENANCE is enabled but "
+        "SOMABRAIN_PROVENANCE_SECRET is not provisioned (Vault). "
+        "Either provision the secret or disable require_provenance."
+    )
+SOMABRAIN_SLOW_PREDICTOR_DELAY_MS = env.int(
+    "SOMABRAIN_SLOW_PREDICTOR_DELAY_MS", default=1000
+)
 ALLOW_TINY_EMBEDDER = env.bool("ALLOW_TINY_EMBEDDER", default=False)
 CONSUMER_GROUP = env.str("CONSUMER_GROUP", default="wm-updates-cache")
-ENABLE_LEARNING_STATE_PERSISTENCE = env.str("ENABLE_LEARNING_STATE_PERSISTENCE", default="")
+ENABLE_LEARNING_STATE_PERSISTENCE = env.str(
+    "ENABLE_LEARNING_STATE_PERSISTENCE", default=""
+)
 FEEDBACK_RATE_LIMIT_PER_MINUTE = env.int("FEEDBACK_RATE_LIMIT_PER_MINUTE", default=0)
 HEAT_METHOD = env.str("HEAT_METHOD", default="chebyshev")
 HTTP_KEEPALIVE_CONNECTIONS = env.int("HTTP_KEEPALIVE_CONNECTIONS", default=32)
 HTTP_MAX_CONNECTIONS = env.int("HTTP_MAX_CONNECTIONS", default=64)
 HTTP_RETRIES = env.int("HTTP_RETRIES", default=1)
-JOURNAL_COMPRESSION = env.bool("JOURNAL_COMPRESSION", default=True)
-JOURNAL_MAX_FILES = env.int("JOURNAL_MAX_FILES", default=10)
-JOURNAL_RETENTION_DAYS = env.int("JOURNAL_RETENTION_DAYS", default=7)
-JOURNAL_ROTATION_INTERVAL = env.int("JOURNAL_ROTATION_INTERVAL", default=86400)
-JOURNAL_SYNC_WRITES = env.bool("JOURNAL_SYNC_WRITES", default=True)
+# Journal knobs are declared once in settings/infra.py (SOMABRAIN_JOURNAL_*,
+# R-VAL-01). The former JOURNAL_COMPRESSION / JOURNAL_MAX_FILES /
+# JOURNAL_RETENTION_DAYS / JOURNAL_ROTATION_INTERVAL / JOURNAL_SYNC_WRITES
+# ENV twins here were a second declaration of one concept (DEF-01 class) and
+# are deleted; readers use the SOMABRAIN_JOURNAL_* names.
 LEARNING_TENANTS_OVERRIDES = env.str("LEARNING_TENANTS_OVERRIDES", default="")
 MODE_OPA_POLICY_BUNDLE = env.str("MODE_OPA_POLICY_BUNDLE", default="")
 # One OPA timeout name: mirror the canonical SOMABRAIN_OPA_TIMEOUT (infra.py).

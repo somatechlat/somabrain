@@ -307,9 +307,7 @@ class CircuitBreaker:
             }
         )
 
-    def call(
-        self, func: Callable, *args, tenant: str | None = None, **kwargs
-    ) -> Any:
+    def call(self, func: Callable, *args, tenant: str | None = None, **kwargs) -> Any:
         """Execute a function with circuit breaker protection.
 
         Args:

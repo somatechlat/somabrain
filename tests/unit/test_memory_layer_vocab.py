@@ -6,8 +6,8 @@ other to ``"all"``, and a synonym that missed the other handler's accepted set
 returned zero hits with 200. Both now share ``normalize_layer``.
 
 Contract:
-- ``wm`` / ``ltm`` / ``both`` are canonical.
-- ``all`` is a synonym for ``both`` (legacy callers keep working).
+- ``wm`` / ``ltm`` / ``both`` are the only vocabulary.
+- There is no legacy synonym (``all`` is rejected).
 - omitted / empty / ``None`` means both layers.
 - any other value raises so the handler can 400 — a typo must never be a
   silent empty result set.
@@ -44,11 +44,11 @@ class TestNormalizeLayer:
         assert normalize_layer("ltm") == LAYER_LTM
         assert normalize_layer("both") == LAYER_BOTH
 
-    def test_all_is_synonym_for_both(self):
-        normalize_layer, _WM, _LTM, LAYER_BOTH = _load_normalize_layer()
-        assert normalize_layer("all") == LAYER_BOTH
-        assert normalize_layer("ALL") == LAYER_BOTH
-        assert normalize_layer(" All ") == LAYER_BOTH
+    def test_all_legacy_synonym_rejected(self):
+        normalize_layer, _WM, _LTM, _BOTH = _load_normalize_layer()
+        for raw in ("all", "ALL", " All "):
+            with pytest.raises(ValueError, match="wm, ltm, or both"):
+                normalize_layer(raw)
 
     def test_case_and_whitespace_insensitive(self):
         normalize_layer, LAYER_WM, LAYER_LTM, _BOTH = _load_normalize_layer()
@@ -81,7 +81,7 @@ class TestBothHandlersShareOneVocabulary:
         assert "HttpError(400" in src
         # The old private vocabulary is gone.
         assert 'layer in ("ltm", "both")' not in src
-        assert "layer == \"both\"" not in src
+        assert 'layer == "both"' not in src
 
     def test_api_memory_recall_uses_shared_helper(self):
         src = self._read("api/memory/recall.py")

@@ -34,20 +34,23 @@ class AdaptationEngineBridge:
     def __init__(
         self,
         learning_rate: float | None = None,
-        tenant_id: str = "default",
+        tenant_id: str | None = None,
     ) -> None:
         """Initialize bridge with required Rust backend."""
         from somabrain.brain_settings.models import BrainSetting
 
+        tid = tenant_id or ""
+        if not tid:
+            raise ValueError("tenant is required (T-5 fail-closed)")
         if learning_rate is None:
-            learning_rate = BrainSetting.get("adapt_lr", tenant_id)
+            learning_rate = BrainSetting.get("adapt_lr", tid)
 
         if not RUST_ADAPTATION_AVAILABLE:
             raise RuntimeError(
                 "Rust AdaptationEngine is required and must be installed."
             )
 
-        self._tenant_id = tenant_id
+        self._tenant_id = tid
         self._rust_engine = RustAdaptationEngine(learning_rate)
         logger.debug("Using Rust AdaptationEngine")
 

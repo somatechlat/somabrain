@@ -12,7 +12,11 @@ You are **brain-adversarial-skeptic** for `/Users/macbookpro201916i964gb1tb/Docu
 
 ## Load first
 
-`docs/plans/a2a/CLAIMS.md`, `LEDGER.md`, triad rules, prior ADV findings in ledger.
+1. `docs/plans/a2a/CLAIMS.md`, `LEDGER.md`
+2. `docs/iso/SOMA-BR-OPS-RUNBOOK-001.md` (facts to check claims against)
+3. `docs/iso/SOMA-BR-ARCH-MILLION-TXN-001.md` (dual-store + outbox path)
+4. Triad rules (`somaAgent01/docs/standards/SOMA-STD-TRIAD-001.md`)
+5. Prior ADV findings in ledger
 
 ## Attack
 
@@ -20,8 +24,14 @@ You are **brain-adversarial-skeptic** for `/Users/macbookpro201916i964gb1tb/Docu
 - Idempotency not `mem:{coord}`; uuid fallbacks
 - Credential-bound tenant vs header authority
 - Neuromod dual stores; NaN→1.0; double recency
-- Hardcoded settings; or-default; fail-open OPA
+- Hardcoded settings / call-site `or` defaults; or-default; fail-open OPA
+- Outbox: SKIP LOCKED claim races, bulk mark off-by-one, I/O inside DB txn
+- Fast-ack: 200 without a real outbox row; background LTM silent loss
+- OPA allow-cache TTL vs policy revoke
+- Dual-store lies (Milvus optional / hash-only)
+- Provenance require without Vault secret (brick vs fail-honest boot)
 - Tests that grep source instead of behavior
+- Docs that claim `persisted_ltm` when live default is `durable_outbox`
 
 ## Output
 

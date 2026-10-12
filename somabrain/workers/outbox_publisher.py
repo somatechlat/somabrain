@@ -37,13 +37,15 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
 django.setup()
 
 from django.conf import settings
-from django.db import transaction
 
 from common.infra_utils import assert_ready
 from somabrain.db.outbox import (
+    claim_pending_events,
     get_pending_counts_by_tenant,
-    get_pending_events_by_tenant_batch,
+    mark_events_failed_bulk,
+    mark_events_sent_bulk,
 )
+from somabrain.settings.resolve import UnconfiguredServiceError, require_tenant
 from somabrain.db.outbox_journal import replay_journal_events
 from somabrain.journal import get_journal
 from somabrain.metrics import (
@@ -66,16 +68,20 @@ _BACKPRESSURE_ENABLED = (
 
 
 def _bootstrap() -> str | None:
-    # Prefer explicit SOMA_KAFKA_BOOTSTRAP if present (plain host:port)
+    # Prefer explicit KAFKA_BOOTSTRAP if present (plain host:port).
+    # confluent-kafka rejects schemes like ``kafka://`` — always strip.
     """Execute bootstrap."""
 
-    direct = (getattr(settings, "KAFKA_BOOTSTRAP") or "").strip()
-    if direct:
-        return direct
-    url = getattr(settings, "KAFKA_BOOTSTRAP_SERVERS")
-    if not url:
+    raw = (getattr(settings, "KAFKA_BOOTSTRAP") or "").strip()
+    if not raw:
+        raw = (getattr(settings, "KAFKA_BOOTSTRAP_SERVERS") or "").strip()
+    if not raw:
         return None
-    return url.replace("kafka://", "").strip()
+    text = raw
+    for scheme in ("kafka://", "kafka+ssl://", "ssl://", "plaintext://"):
+        if text.startswith(scheme):
+            text = text[len(scheme) :]
+    return text.strip().strip("/")
 
 
 def _make_producer():  # pragma: no cover - optional at runtime
@@ -202,6 +208,23 @@ def _update_outbox_pending_metrics() -> None:
     _known_pending_tenants.update(current_tenants)
 
 
+def _event_store_key(ev) -> str:
+    """Store key for a ``memory.store`` row (coord identity, never a UUID)."""
+    payload = dict(ev.payload or {})
+    key = payload.get("key")
+    if key is not None:
+        return str(key)
+    coord = payload.get("coord")
+    if coord is not None:
+        if isinstance(coord, str):
+            return coord.strip()
+        return f"{coord[0]},{coord[1]},{coord[2]}"
+    raise ValueError(
+        f"memory.store outbox event id={ev.id} has neither key nor coord "
+        "in its payload; cannot write to the store"
+    )
+
+
 def _write_memory_to_store(tenant_label: str, ev) -> bool:
     """Write one ``memory.store`` event to the STORE via ``memsvc.aremember``.
 
@@ -210,154 +233,212 @@ def _write_memory_to_store(tenant_label: str, ev) -> bool:
     failure so the caller leaves the row pending for replay — the same
     terminal condition as ``api/endpoints/memory_remember._replay_pending_to_store``.
     """
+    from django.db import close_old_connections
+
     from asgiref.sync import async_to_sync
 
     from somabrain.api.memory.helpers import _get_memory_pool, _resolve_namespace
     from somabrain.services.memory_service import MemoryService
 
-    payload = dict(ev.payload or {})
-    key = payload.get("key")
-    if key is None:
-        # Agent-path rows (memory/remember.py::_record_to_outbox) carry
-        # ``coord`` rather than ``key``. Derive the store key from the same
-        # coordinate identity used for the ``mem:{coord}`` dedupe key so the
-        # drain writes both agent and brain paths to the STORE.
-        coord = payload.get("coord")
-        if coord is not None:
-            if isinstance(coord, str):
-                key = coord.strip()
-            else:
-                key = f"{coord[0]},{coord[1]},{coord[2]}"
-    if key is None:
-        raise ValueError(
-            f"memory.store outbox event id={ev.id} has neither key nor coord "
-            "in its payload; cannot write to the store"
-        )
-    stored = payload.get("payload") or payload
-    ns = stored.get("namespace") or ""
-    pool = _get_memory_pool()
-    if pool is None:
-        raise RuntimeError("memory pool unavailable")
-    memsvc = MemoryService(pool, _resolve_namespace(tenant_label, ns))
-    async_to_sync(memsvc.aremember)(key, stored)
-    return True
+    # Thread-pool workers must not inherit a parent connection or leak them.
+    close_old_connections()
+    try:
+        key = _event_store_key(ev)
+        payload = dict(ev.payload or {})
+        stored = payload.get("payload") or payload
+        ns = stored.get("namespace") or ""
+        pool = _get_memory_pool()
+        if pool is None:
+            raise RuntimeError("memory pool unavailable")
+        memsvc = MemoryService(pool, _resolve_namespace(tenant_label, ns))
+        async_to_sync(memsvc.aremember)(key, stored)
+        return True
+    finally:
+        close_old_connections()
 
 
-@transaction.atomic
+def _write_memory_batch_to_store(tenant_label: str, events: list) -> dict[int, Exception | None]:
+    """Drain a tenant's ``memory.store`` batch concurrently to SFM.
+
+    Returns ``{event_id: None | exception}``. T-6 is unchanged: a row is only
+    marked sent when its own store ack succeeded. Failures stay claimable for
+    replay. Concurrency uses a bounded thread pool over the shared HTTP
+    transport (httpx connection pool) so one slow SFM RTT cannot serialize the
+    whole drain — the million-txn / ms-latency requirement.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    results: dict[int, Exception | None] = {}
+    if not events:
+        return results
+
+    # Single-item path is the common small-batch case.
+    if len(events) == 1:
+        ev = events[0]
+        try:
+            _write_memory_to_store(tenant_label, ev)
+            results[int(ev.id)] = None
+        except Exception as exc:  # noqa: BLE001 — per-row isolation
+            results[int(ev.id)] = exc
+        return results
+
+    from somabrain.settings.resolve import require_setting
+
+    workers = min(len(events), int(require_setting("OUTBOX_SFM_WRITE_WORKERS")))
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="outbox-sfm") as pool:
+        futures = {
+            pool.submit(_write_memory_to_store, tenant_label, ev): ev for ev in events
+        }
+        for fut in as_completed(futures):
+            ev = futures[fut]
+            try:
+                fut.result()
+                results[int(ev.id)] = None
+            except Exception as exc:  # noqa: BLE001
+                results[int(ev.id)] = exc
+    return results
+
+
 def _process_batch(producer, batch_size: int, max_retries: int) -> int:
-    """Process a batch of outbox events using Django ORM."""
-    # Get quota manager for tenant rate limiting
+    """Drain a claimed slice of the outbox to SFM (and Kafka secondary).
+
+    Million-txn / ms-latency design:
+    1. ``claim_pending_events`` — short ``FOR UPDATE SKIP LOCKED`` transaction
+       so publisher replicas take disjoint slices.
+    2. **No** DB transaction spans SFM/network I/O (the previous
+       ``@transaction.atomic`` held row locks across every RTT).
+    3. Per-tenant concurrent ``memory.store`` writes via the HTTP pool.
+    4. Bulk ``mark_events_sent_bulk`` / failure accounting after acks.
+
+    T-6 unchanged: a row is ``sent`` only after its store ack.
+    """
     quota_manager = get_quota_manager()
 
-    # Use tenant-aware batch processing to prevent any single tenant from dominating
-    tenant_batches = get_pending_events_by_tenant_batch(
-        limit_per_tenant=_PER_TENANT_BATCH_LIMIT,
-        max_tenants=max(1, batch_size // _PER_TENANT_BATCH_LIMIT),
-    )
-
-    if not tenant_batches:
+    claimed = claim_pending_events(batch_size)
+    if not claimed:
         _update_outbox_pending_metrics()
         return 0
 
-    sent = 0
-    processed_counts: dict[tuple[str, str], int] = {}
-    skipped_tenants = set()
+    by_tenant: dict[str, list] = {}
+    for ev in claimed:
+        tenant_id = ev.tenant_id
+        if tenant_id is None or not str(tenant_id).strip():
+            raise UnconfiguredServiceError(
+                f"outbox event id={ev.id} has a missing tenant_id; refusing to "
+                "publish into a default tenant (T-5)."
+            )
+        label = require_tenant(tenant_id)
+        by_tenant.setdefault(label, []).append(ev)
 
-    # Process events tenant by tenant with quota enforcement
-    for tenant_label, tenant_events in tenant_batches.items():
-        # Check quota before processing tenant events
+    sent_ids: list[int] = []
+    failures: list[tuple[int, str]] = []
+    processed_counts: dict[tuple[str, str], int] = {}
+    skipped_tenants: set[str] = set()
+    journal_keys: list[str] = []
+
+    for tenant_label, tenant_events in by_tenant.items():
         if _BACKPRESSURE_ENABLED and not quota_manager.can_process(
             tenant_label, len(tenant_events)
         ):
             skipped_tenants.add(tenant_label)
+            # Leave rows claimed-as-pending: next cycle re-reads them.
             continue
 
-        tenant_processed = 0
-        for ev in tenant_events:
-            topic = ev.topic
+        store_events = [ev for ev in tenant_events if ev.topic == "memory.store"]
+        other_events = [ev for ev in tenant_events if ev.topic != "memory.store"]
+
+        # --- memory.store: concurrent SFM, T-6 per row ---
+        store_results = _write_memory_batch_to_store(tenant_label, store_events)
+        for ev in store_events:
+            err = store_results.get(int(ev.id), RuntimeError("missing store result"))
+            if err is None:
+                sent_ids.append(int(ev.id))
+                journal_keys.append(ev.dedupe_key or str(ev.id))
+                k = (str(tenant_label), str(ev.topic))
+                processed_counts[k] = processed_counts.get(k, 0) + 1
+                try:
+                    key = (
+                        f"{tenant_label}:{ev.dedupe_key}"
+                        if ev.dedupe_key
+                        else f"{tenant_label}:{ev.id}"
+                    )
+                    _publish_record(
+                        producer,
+                        ev.topic,
+                        ev.payload,
+                        key=key,
+                        headers={
+                            "tenant-id": tenant_label,
+                            "dedupe-key": ev.dedupe_key or "",
+                            "event-id": str(ev.id),
+                            "event-topic": ev.topic,
+                        },
+                    )
+                except Exception as kafka_exc:
+                    logging.debug(
+                        "outbox_publisher: secondary Kafka publish failed "
+                        "for event id=%s (store already acked): %s",
+                        ev.id,
+                        kafka_exc,
+                    )
+            else:
+                failures.append((int(ev.id), str(err)))
+
+        # --- other topics: Kafka is terminal ---
+        for ev in other_events:
             try:
-                # Generate stable key for idempotency: tenant:dedupe_key
                 key = (
                     f"{tenant_label}:{ev.dedupe_key}"
                     if ev.dedupe_key
                     else f"{tenant_label}:{ev.id}"
                 )
+                _publish_record(
+                    producer,
+                    ev.topic,
+                    ev.payload,
+                    key=key,
+                    headers={
+                        "tenant-id": tenant_label,
+                        "dedupe-key": ev.dedupe_key or "",
+                        "event-id": str(ev.id),
+                        "event-topic": ev.topic,
+                    },
+                )
+                sent_ids.append(int(ev.id))
+                journal_keys.append(ev.dedupe_key or str(ev.id))
+                k = (str(tenant_label), str(ev.topic))
+                processed_counts[k] = processed_counts.get(k, 0) + 1
+            except Exception as exc:  # noqa: BLE001
+                failures.append((int(ev.id), str(exc)))
 
-                # Build comprehensive headers for tracing and context
-                headers = {
-                    "tenant-id": tenant_label,
-                    "dedupe-key": ev.dedupe_key or "",
-                    "event-id": str(ev.id),
-                    "event-topic": ev.topic,
-                    "event-created-at": (
-                        ev.created_at.isoformat() if ev.created_at else ""
-                    ),
-                    "retry-count": str(ev.retries or 0),
-                    "processing-attempt": str(ev.retries + 1),
-                }
+        tenant_sent = sum(
+            1
+            for ev in tenant_events
+            if int(ev.id) in set(sent_ids)
+        )
+        if tenant_sent:
+            quota_manager.record_usage(tenant_label, tenant_sent)
 
-                if ev.topic == "memory.store":
-                    # T-6: the STORE ack is the terminal condition. Write to
-                    # the store first; only then mark the row done. Kafka (if
-                    # any) is secondary and best-effort.
-                    _write_memory_to_store(tenant_label, ev)
-                    ev.status = "sent"
-                    ev.save()
-                    try:
-                        _publish_record(
-                            producer,
-                            topic,
-                            ev.payload,
-                            key=key,
-                            headers=headers,
-                        )
-                    except Exception as kafka_exc:
-                        logging.debug(
-                            "outbox_publisher: secondary Kafka publish failed "
-                            "for event id=%s (store already acked): %s",
-                            ev.id,
-                            kafka_exc,
-                        )
-                else:
-                    _publish_record(
-                        producer,
-                        topic,
-                        ev.payload,
-                        key=key,
-                        headers=headers,
-                    )
-                    ev.status = "sent"
-                    ev.save()
-                sent += 1
-                tenant_processed += 1
-                k = (str(tenant_label), str(topic))  # type: ignore
-                processed_counts[k] = processed_counts.get(k, 0) + 1  # type: ignore
+    if sent_ids:
+        mark_events_sent_bulk(sent_ids)
+    if failures:
+        mark_events_failed_bulk(failures, max_retries=max_retries)
 
-                # Update journal event status
-                journal = get_journal()
-                journal.mark_events_sent([ev.dedupe_key])
-            except Exception as e:
-                ev.retries = int(ev.retries) + 1 if ev.retries is not None else 1
-                ev.last_error = str(e)
-                if ev.retries >= max_retries:
-                    ev.status = "failed"
-                ev.save()
+    if journal_keys:
+        try:
+            get_journal().mark_events_sent(journal_keys)
+        except Exception as exc:
+            logging.debug("outbox_publisher: journal mark sent failed: %s", exc)
 
-        # Record usage for successfully processed tenant
-        if tenant_processed > 0:
-            quota_manager.record_usage(tenant_label, tenant_processed)
-
-    # Best-effort flush to push deliveries
     try:
         if producer is not None:
             producer.flush(5)
     except Exception as exc:
         logging.debug("Failed to flush Kafka producer: %s", exc)
 
-    # Report processed events
     if report_outbox_processed is not None:
-        for tenant_label, topic in processed_counts:  # type: ignore
-            count = processed_counts.get((str(tenant_label), str(topic)), 0)  # type: ignore
+        for tenant_label, topic in processed_counts:
+            count = processed_counts.get((str(tenant_label), str(topic)), 0)
             try:
                 report_outbox_processed(str(tenant_label), str(topic), count)
             except Exception as exc:
@@ -367,9 +448,7 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
                     str(topic),
                     exc,
                 )
-                continue
 
-    # Log skipped tenants due to quota limits
     if skipped_tenants:
         logging.info(
             "outbox_publisher: Skipped processing for %d tenants due to quota limits: %s",
@@ -377,12 +456,11 @@ def _process_batch(producer, batch_size: int, max_retries: int) -> int:
             ", ".join(sorted(skipped_tenants)),
         )
 
-    # Periodic cleanup of old tenant data
-    if sent == 0:  # Only cleanup on idle cycles
+    if not sent_ids:
         quota_manager.cleanup_old_tenants()
 
     _update_outbox_pending_metrics()
-    return sent
+    return len(sent_ids)
 
 
 def run_forever() -> None:  # pragma: no cover - integration loop

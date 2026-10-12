@@ -366,16 +366,17 @@ somabrain:
 
 ## 8. Capacity Planning
 
-### 8.1 Current Benchmarks
+### 8.1 Performance targets (SLO — not published measurements)
 
-| Operation | Latency (p95) | Throughput |
+No measured benchmark report is claimed in this document. The figures below are **SLO targets** exercised by proof tests; they are not attested throughput on named hardware.
+
+| Operation | SLO target (p95) | Evidence |
 |---|---|---|
-| Memory Store | 8ms | 12,000/sec |
-| Vector Recall | 15ms | 5,000/sec |
-| WM Update | 2ms | 50,000/sec |
-| Consolidation Cycle | 30s | 10,000 memories |
+| Memory store | ≤ 8ms | `tests/proofs/category_g/test_latency_slo.py` |
+| Vector recall | ≤ 15ms | `tests/proofs/category_g/test_latency_slo.py` |
+| WM update | ≤ 2ms | `tests/proofs/category_g/test_latency_slo.py` |
 
-*Benchmarked on 32-core, 128GB RAM, Milvus on NVMe.*
+See `docs/iso/SOMA-BR-VV-001.md` for verification status. Do not cite these numbers as measured capacity without a dated measurement report.
 
 ### 8.2 Scaling Estimates
 

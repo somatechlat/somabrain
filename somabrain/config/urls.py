@@ -1,10 +1,9 @@
 """SomaBrain URL Configuration
 
-100% Django - VIBE Coding Rules compliant.
+Django URL configuration.
 All API routers are registered in somabrain/api/v1.py
 """
 
-from django.apps import apps as _django_apps
 from django.contrib import admin
 from django.db import DatabaseError, OperationalError
 from django.http import JsonResponse
@@ -209,9 +208,9 @@ def health_view(request):
     def check_opa():
         """Execute check opa."""
 
-        from somabrain.settings.resolve import optional_url
+        from somabrain.settings.resolve import require_url
 
-        url = optional_url("OPA_URL") or optional_url("SOMABRAIN_OPA_URL")
+        url = require_url("SOMABRAIN_OPA_URL")
         if not url:
             raise RuntimeError(
                 "OPA_URL / SOMABRAIN_OPA_URL is not configured; there is no "
@@ -227,9 +226,9 @@ def health_view(request):
     def check_minio():
         """Execute check minio."""
 
-        from somabrain.settings.resolve import optional_url
+        from somabrain.settings.resolve import require_url
 
-        url = optional_url("MINIO_ENDPOINT")
+        url = require_url("MINIO_ENDPOINT")
         if not url:
             raise RuntimeError(
                 "MINIO_ENDPOINT is not configured; there is no default "
@@ -245,9 +244,9 @@ def health_view(request):
     def check_schema_registry():
         """Execute check schema registry."""
 
-        from somabrain.settings.resolve import optional_url
+        from somabrain.settings.resolve import require_url
 
-        url = optional_url("SCHEMA_REGISTRY_URL")
+        url = require_url("SCHEMA_REGISTRY_URL")
         if not url:
             raise RuntimeError(
                 "SCHEMA_REGISTRY_URL is not configured; there is no default "
@@ -276,7 +275,6 @@ def health_view(request):
             return {"healthy": r.status_code == 200}
 
     health["infrastructure"]["keycloak"] = timed_check("Keycloak", check_keycloak)
-
 
     # SomaFractalMemory
     def check_sfm():

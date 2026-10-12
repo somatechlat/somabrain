@@ -100,20 +100,19 @@ class ReadMixin:
     def payloads_for_coords(
         self, coords: list[tuple[float, float, float]], universe: str | None = None
     ) -> list[dict]:
-        """Bulk retrieval of payloads for the given coordinates."""
+        """Bulk retrieval of payloads for the given coordinates.
+
+        Fail-closed: raises when the transport is missing or the backend
+        errors. Returns ``[]`` only for a successful empty answer.
+        """
         if not coords:
             return []
 
         if self._http is None:
-            # Check strict mode setting if needed, but for now just return empty if no HTTP
-            try:
-                if getattr(self.cfg, "require_memory", False):
-                    raise RuntimeError(
-                        "MEMORY SERVICE UNAVAILABLE: payloads_for_coords requires an HTTP memory backend."
-                    )
-            except Exception:
-                pass
-            return []
+            raise RuntimeError(
+                "MEMORY SERVICE REQUIRED: HTTP memory backend not available "
+                "(payloads_for_coords)."
+            )
 
         coord_strs = [f"{c[0]},{c[1]},{c[2]}" for c in coords]
         body: dict[str, Any] = {"coords": coord_strs}
@@ -123,8 +122,14 @@ class ReadMixin:
         try:
             resp = self._http.post("/payloads", json=body)
             data = _response_json(resp)
-        except Exception:
-            return []
+        except Exception as exc:
+            raise RuntimeError(
+                f"memory service unreachable (payloads_for_coords): {exc}"
+            ) from exc
+        if data is None:
+            raise RuntimeError(
+                "memory service payloads_for_coords returned unparseable body"
+            )
 
         out: list[dict] = []
         if isinstance(data, dict):

@@ -107,9 +107,7 @@ class AgentPredictorService:
         except Exception as e:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-    def _extract_agent_vector(
-        self, message_data: dict[str, Any]
-    ) -> np.ndarray | None:
+    def _extract_agent_vector(self, message_data: dict[str, Any]) -> np.ndarray | None:
         """Extract agent behavior vector from integrator context message."""
         try:
             # Assuming integrator context contains agent-related vectors

@@ -127,7 +127,9 @@ class BasalGangliaPolicy:
         return e
 
     @staticmethod
-    def softmax_probs(values: Mapping[str, float], temperature: float) -> dict[str, float]:
+    def softmax_probs(
+        values: Mapping[str, float], temperature: float
+    ) -> dict[str, float]:
         """Max-shifted Boltzmann probabilities p(a) ∝ exp((v_a − v_max) / T)."""
         if not values:
             raise ValueError("values must be non-empty")

@@ -136,7 +136,9 @@ def main() -> int:
             continue
 
         fields = parse_control_table(text)
-        ident = fields.get("Document Identifier", "").strip() or FALLBACK_IDS.get(r, "—")
+        ident = fields.get("Document Identifier", "").strip() or FALLBACK_IDS.get(
+            r, "—"
+        )
         problems = content_problems(path, fields, ident)
         rows.append(
             {
@@ -226,7 +228,9 @@ def main() -> int:
     lines.append(
         "`scripts/check_docs.py` then verifies the claim. A row marked `Compliant` has no content gaps;"
     )
-    lines.append("a row marked `Non-compliant` is a tracked gap, not a silent exception.")
+    lines.append(
+        "a row marked `Non-compliant` is a tracked gap, not a silent exception."
+    )
     lines.append("")
     lines.append("## 2. Register")
     lines.append("")
@@ -268,7 +272,10 @@ def main() -> int:
         for r in rows:
             if r["compliance"] != "Non-compliant":
                 continue
-            gaps = "; ".join(r.get("problems") or ["see check_docs.py"]) or "see check_docs.py"
+            gaps = (
+                "; ".join(r.get("problems") or ["see check_docs.py"])
+                or "see check_docs.py"
+            )
             lines.append(f"| {r['file']} | {gaps} |")
     lines.append(
         "This section is not decorative. When a document falls out of compliance it is listed "

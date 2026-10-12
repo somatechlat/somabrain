@@ -60,6 +60,8 @@ dependencies = [
   # Optional
   "hvac>=2.0",
   "fastavro>=1.9",
+  # T-2 coordinate contract — one _stable_coord for the whole triad. Pure stdlib.
+  # Path install: pip install ../soma-memory-contract  (see infra/standalone/Dockerfile)
 ]
 
 [project.optional-dependencies]
@@ -99,7 +101,7 @@ skip-string-normalization = false
 profile = "black"
 line_length = 88
 combine_as_imports = true
-known_first_party = ["somabrain"]
+known_first_party = ["somabrain", "soma_memory_contract"]
 default_section = "THIRDPARTY"
 
 [tool.ruff]
@@ -127,6 +129,7 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = [".", "../soma-memory-contract"]
 norecursedirs = [".git", ".venv", "venv", "node_modules", "build", "dist"]
 filterwarnings = [
     "ignore::pytest.PytestRemovedIn9Warning",

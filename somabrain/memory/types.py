@@ -40,9 +40,13 @@ class RecallHit:
         score: Optional similarity/relevance score from the recall operation.
         coordinate: Optional 3D coordinate tuple (x, y, z) in [-1, 1]^3.
         raw: Optional raw response data from the memory service.
+        degraded: True when SFM answered ``degraded=true`` (vector path
+            unavailable / ORM fallback). A caller must not treat a degraded
+            hit as a fully healthy recall (B17 / T-5 honesty).
     """
 
     payload: dict[str, Any]
     score: float | None = None
     coordinate: tuple[float, float, float] | None = None
     raw: dict[str, Any] | None = None
+    degraded: bool = False

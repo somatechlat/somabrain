@@ -52,9 +52,7 @@ class DriftDetector:
     def __init__(self) -> None:
         """Initialize the instance."""
 
-        self.enabled: bool = bool(
-            getattr(settings, "SOMABRAIN_USE_DRIFT_MONITOR")
-        )
+        self.enabled: bool = bool(getattr(settings, "SOMABRAIN_USE_DRIFT_MONITOR"))
         # Internal mutable state – protected by a lock for thread safety.
         self._state: dict[str, Any] = {}
         self._lock = Lock()

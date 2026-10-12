@@ -334,7 +334,9 @@ def _decode_vector(vec: Vector) -> list[float]:
     """Unpack a wire ``Vector`` into one ``list[float]``."""
     try:
         return unpack_single(
-            PackedVector(data=bytes(vec.data), dtype=vec.dtype, dim=vec.dim, count=vec.count)
+            PackedVector(
+                data=bytes(vec.data), dtype=vec.dtype, dim=vec.dim, count=vec.count
+            )
         )
     except VectorCodecError as exc:
         raise CodecError(f"MemoryWrite.embedding is malformed: {exc}") from exc

@@ -30,9 +30,7 @@ require_admin_auth = _legacy_auth.require_admin_auth
 api_key_auth = StandaloneAPIKeyAuth()
 
 
-def bind_credential_tenant(
-    request: HttpRequest, asserted: str | None = None
-) -> str:
+def bind_credential_tenant(request: HttpRequest, asserted: str | None = None) -> str:
     """Return the credential-tenant partition, refusing asserted mismatches.
 
     The authenticated credential (``request.auth["tenant_id"]``) is the sole
@@ -56,9 +54,7 @@ def bind_credential_tenant(
     from somabrain.tenant import get_tenant_sync
 
     try:
-        ctx = get_tenant_sync(
-            request, getattr(django_settings, "SOMABRAIN_NAMESPACE")
-        )
+        ctx = get_tenant_sync(request, getattr(django_settings, "SOMABRAIN_NAMESPACE"))
     except PermissionDenied as exc:
         # Header assertion contradicted the credential (get_tenant_sync).
         raise HttpError(403, str(exc)) from exc

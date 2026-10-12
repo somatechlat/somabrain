@@ -15,7 +15,10 @@ import numpy as np
 
 from somabrain.admin.cognitive.personality import PersonalityStore
 from somabrain.admin.core.learning.scoring import UnifiedScorer
-from somabrain.math.graph_heat import SPECTRAL_INTERVAL_EPSILON, expand_spectral_interval
+from somabrain.math.graph_heat import (
+    SPECTRAL_INTERVAL_EPSILON,
+    expand_spectral_interval,
+)
 from somabrain.math.recency import (
     recency_features,
     stretched_exponential_recency,
@@ -45,9 +48,7 @@ class TestOneRecencyKernel:
             _AGE, scale=_SCALE, sharpness=_SHARPNESS, floor=_FLOOR, cap=_CAP
         )
         assert abs(boost - _EXPECTED) < 1e-12
-        assert steps == pytest.approx(
-            math.log1p(_AGE / _SCALE) * _SHARPNESS, rel=1e-12
-        )
+        assert steps == pytest.approx(math.log1p(_AGE / _SCALE) * _SHARPNESS, rel=1e-12)
 
     def test_age_zero_is_one(self) -> None:
         assert (

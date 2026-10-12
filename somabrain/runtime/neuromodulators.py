@@ -117,9 +117,7 @@ def checked_value(name: str, value: float) -> float:
         raise NeuromodValueError(f"{name}: not finite: {v!r}")
     lo, hi = NEURO_BOUNDS[name]
     if v < lo or v > hi:
-        raise NeuromodValueError(
-            f"{name}={v} outside documented bounds [{lo}, {hi}]"
-        )
+        raise NeuromodValueError(f"{name}={v} outside documented bounds [{lo}, {hi}]")
     return v
 
 
@@ -136,7 +134,9 @@ def acetylcholine_target(
     from somabrain.math.contracts import ACH_DEMAND_WEIGHTS
 
     w_nov, w_err, w_load = ACH_DEMAND_WEIGHTS
-    demand = w_nov * _unit(novelty) + w_err * _unit(pred_error) + w_load * _unit(memory_load)
+    demand = (
+        w_nov * _unit(novelty) + w_err * _unit(pred_error) + w_load * _unit(memory_load)
+    )
     lo, hi = NEURO_BOUNDS["acetylcholine"]
     return lo + (hi - lo) * demand
 
@@ -196,14 +196,10 @@ class NeuromodState:
         )
     )
     noradrenaline: float = field(
-        default_factory=lambda: float(
-            getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE")
-        )
+        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_NORAD_BASE"))
     )
     acetylcholine: float = field(
-        default_factory=lambda: float(
-            getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE")
-        )
+        default_factory=lambda: float(getattr(settings, "SOMABRAIN_NEURO_ACETYL_BASE"))
     )
     timestamp: float = field(default_factory=lambda: time.time())
 

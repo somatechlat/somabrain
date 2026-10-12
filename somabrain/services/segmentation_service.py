@@ -124,12 +124,8 @@ class SegmentationService:
         else:
             self._health_thread = None
         # Runtime refresh of thresholds from settings/runtime_config
-        self._grad_thresh = float(
-            getattr(settings, "SEGMENT_GRAD_THRESHOLD")
-        )
-        self._hmm_thresh = float(
-            getattr(settings, "SEGMENT_HMM_THRESHOLD")
-        )
+        self._grad_thresh = float(getattr(settings, "SEGMENT_GRAD_THRESHOLD"))
+        self._hmm_thresh = float(getattr(settings, "SEGMENT_HMM_THRESHOLD"))
 
     def _create_consumer(self) -> CKConsumer:
         """Create the Kafka consumer bound to the global-frame topic."""

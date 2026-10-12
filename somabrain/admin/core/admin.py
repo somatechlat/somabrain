@@ -6,7 +6,6 @@ from django.contrib import admin
 
 from .models import (
     CognitiveThread,
-    EpisodicSnapshot,
     FeedbackRecord,
     OutboxEvent,
     SleepState,
@@ -61,17 +60,6 @@ class OutboxEventAdmin(admin.ModelAdmin):
         queryset.filter(status="failed").update(status="pending", retries=0)
 
     retry_failed.short_description = "Retry failed events"
-
-
-@admin.register(EpisodicSnapshot)
-class EpisodicSnapshotAdmin(admin.ModelAdmin):
-    """Episodicsnapshotadmin class implementation."""
-
-    list_display = ("id", "tenant_id", "namespace", "key", "created_at")
-    list_filter = ("namespace", "created_at", "tenant_id")
-    search_fields = ("key", "tenant_id", "namespace")
-    readonly_fields = ("id", "created_at")
-    date_hierarchy = "created_at"
 
 
 @admin.register(SleepState)

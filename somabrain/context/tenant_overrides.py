@@ -6,7 +6,6 @@ Provides tenant-specific learning parameter overrides.
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from django.conf import settings

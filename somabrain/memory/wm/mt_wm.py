@@ -109,6 +109,7 @@ class MultiTenantWM:
                     scorer=self._scorer,
                     recency_time_scale=self.cfg.recency_time_scale,
                     recency_max_steps=self.cfg.recency_max_steps,
+                    tenant_id=tenant_id,
                 )
                 if self._promoter_factory is not None:
                     promoter = self._promoter_factory(tenant_id)

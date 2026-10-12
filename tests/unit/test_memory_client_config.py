@@ -62,7 +62,9 @@ def test_store_and_search_have_no_default_tenant():
                 if idx >= offset and args.defaults:
                     default = args.defaults[idx - offset]
             if default is not None:
-                offenders.append(f"{node.name}:{node.lineno} has default {ast.dump(default)}")
+                offenders.append(
+                    f"{node.name}:{node.lineno} has default {ast.dump(default)}"
+                )
     assert offenders == [], f"tenant must be required, found defaults: {offenders}"
 
 

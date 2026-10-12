@@ -237,9 +237,9 @@ class TestProximityDecay:
             embedding=[1.0, 0.0, 0.0],
         )
         weights = builder._compute_weights([1.0, 0.0, 0.0], [recent, old])
-        assert weights[0] > weights[1], (
-            f"recent must outrank old under equal content: {weights}"
-        )
+        assert (
+            weights[0] > weights[1]
+        ), f"recent must outrank old under equal content: {weights}"
 
     def test_temporal_decay_matches_recency_floor_at_infinity(self) -> None:
         from somabrain.context.builder import ContextBuilder

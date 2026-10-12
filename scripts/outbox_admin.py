@@ -47,7 +47,7 @@ def _default_token() -> str | None:
     # Use the centralized Settings field for the outbox API token.
     """Execute default token."""
 
-    return getattr(settings, "SOMABRAIN_OUTBOX_API_TOKEN", None)
+    return getattr(settings, "SOMA_API_TOKEN", None)
 
 
 def _auth_headers(token: str | None) -> dict[str, str]:
@@ -59,7 +59,7 @@ def _auth_headers(token: str | None) -> dict[str, str]:
 
     if not token:
         raise SystemExit(
-            "Admin token required. Pass --token or provision Vault/settings SOMABRAIN_API_TOKEN."
+            "Admin token required. Pass --token or provision Vault/settings SOMA_API_TOKEN."
         )
     return {"Authorization": f"Bearer {token}"}
 

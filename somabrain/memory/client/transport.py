@@ -21,6 +21,9 @@ def build_store_payload(
     memory_type: str,
     embedding: list[float] | None = None,
     tenant_id: str | None = None,
+    importance: float | None = None,
+    belief_confidence: float | None = None,
+    belief_polarity: str | None = None,
     settings: Any = None,
 ) -> dict:
     """Build the POST /memories body, forwarding the seam fields.
@@ -32,17 +35,20 @@ def build_store_payload(
     ``settings`` is forwarded to the seam-dim gate so Django-free callers can
     inject the configuration the same way ``resolve_embed_dim`` accepts it.
     """
-    body: dict = {
-        "coord": coord,
-        "payload": payload,
-        "memory_type": memory_type,
-    }
+    from somabrain.memory.payload import build_store_body
+
     if embedding is not None:
         ensure_embedding_dim(embedding, settings=settings)
-        body["embedding"] = list(embedding)
-    if tenant_id:
-        body["tenant_id"] = str(tenant_id)
-    return body
+    return build_store_body(
+        coord=coord,
+        payload=payload,
+        memory_type=memory_type,
+        embedding=embedding,
+        tenant_id=tenant_id,
+        importance=importance,
+        belief_confidence=belief_confidence,
+        belief_polarity=belief_polarity,
+    )
 
 
 def build_search_payload(
@@ -91,39 +97,14 @@ class TransportMixin:
     def _init_http(self) -> None:
         import httpx  # type: ignore
 
-        # Default headers applied to all requests; per-request we add X-Request-ID
-        headers = {}
-        # Brain→SFM bearer is SOMA_API_TOKEN (SFM's own credential). The
-        # agent↔brain somabrain_memory_http_token is a different trust
-        # boundary and must not be presented to SFM.
-        from somabrain.math.contracts import HTTP_MAX_RETRIES
-        from somabrain.memory.sfm_auth import resolve_sfm_api_token
+        # Single auth-header authority (R5) — same builder as MemoryHTTPTransport.
+        from somabrain.memory.sfm_auth import build_sfm_request_headers
 
-        token_value = resolve_sfm_api_token(self.cfg)
-        if not token_value:
-            raise RuntimeError(
-                "memory transport: SOMA_API_TOKEN is not provisioned "
-                "(Brain→SFM credential missing — fail closed)"
-            )
-        headers["Authorization"] = f"Bearer {token_value}"
-        headers.setdefault("X-API-Key", token_value)
-        headers.setdefault("X-Auth-Token", token_value)
-
-        # Propagate tenancy via standardized headers (best-effort)
-        ns = str(getattr(self.cfg, "namespace", ""))
-        if ns:
-            headers["X-Soma-Namespace"] = ns
-            try:
-                # Namespace is ``base:tenant:namespace`` (api/memory/helpers
-                # _resolve_namespace). Tenant is the MIDDLE segment — the tail
-                # is the namespace, not the tenant (ADV C1).
-                parts = ns.split(":")
-                if len(parts) >= 2:
-                    headers["X-Soma-Tenant"] = parts[1]
-                else:
-                    headers["X-Soma-Tenant"] = ns
-            except Exception:
-                pass
+        headers = build_sfm_request_headers(
+            self.cfg,
+            namespace=getattr(self, "namespace", None),
+            tenant=getattr(self, "tenant", None),
+        )
 
         # EXISTING keys (settings/cognitive.py HTTP_*); numeric declaration defaults.
         max_conns = int(getattr(settings, "HTTP_MAX_CONNECTIONS"))
@@ -190,14 +171,7 @@ class TransportMixin:
             raise RuntimeError(
                 "MEMORY SERVICE REQUIRED but not reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
             )
-        # Enforce token presence by mode policy
-        if self._http is not None and not token_value:
-            try:
-                logger.warning(
-                    "Memory HTTP client initialized without token; proceeding without auth."
-                )
-            except Exception:
-                pass
+        # Token presence is already fail-closed in build_sfm_request_headers (R5).
 
     def health(self) -> dict:
         """Best-effort backend health signal for local or http mode."""
@@ -270,6 +244,9 @@ class TransportMixin:
             memory_type=memory_type,
             embedding=body.get("embedding"),
             tenant_id=body.get("tenant_id"),
+            importance=body.get("importance"),
+            belief_confidence=body.get("belief_confidence"),
+            belief_polarity=body.get("belief_polarity"),
         )
 
         success, _, data = self._http_post_with_retries_sync(
@@ -294,6 +271,9 @@ class TransportMixin:
             memory_type=memory_type,
             embedding=body.get("embedding"),
             tenant_id=body.get("tenant_id"),
+            importance=body.get("importance"),
+            belief_confidence=body.get("belief_confidence"),
+            belief_polarity=body.get("belief_polarity"),
         )
 
         success, _, data = await self._http_post_with_retries_async(

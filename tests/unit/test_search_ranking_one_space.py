@@ -71,7 +71,9 @@ class TestNoTextKeyIsNotZero:
 
     def test_store_score_passes_through_without_text_key(self):
         now = datetime.now(UTC).timestamp()
-        hit = RecallHit(payload={"marker": "no-text-key-here", "timestamp": now}, score=0.85)
+        hit = RecallHit(
+            payload={"marker": "no-text-key-here", "timestamp": now}, score=0.85
+        )
         scorer = _CosineEchoScorer()
         ranked = _rescore_and_rank_hits(
             _Cfg(),
@@ -87,7 +89,9 @@ class TestNoTextKeyIsNotZero:
     def test_store_score_without_text_key_still_applies_recency_once(self):
         age = 3600.0
         now = datetime.now(UTC).timestamp()
-        hit = RecallHit(payload={"marker": "no-text", "timestamp": now - age}, score=1.0)
+        hit = RecallHit(
+            payload={"marker": "no-text", "timestamp": now - age}, score=1.0
+        )
         scorer = _CosineEchoScorer()
         ranked = _rescore_and_rank_hits(
             _Cfg(), scorer, _ExplodingEmbedder(), [hit], "q", query_vec=[1.0, 0.0, 0.0]
@@ -166,7 +170,9 @@ class TestNoForeignEmbedder:
     def test_scores_stay_finite_unit_interval(self):
         now = datetime.now(UTC).timestamp()
         hits = [
-            RecallHit(payload={"embedding": [1.0, 0.0, 0.0], "timestamp": now}, score=0.5),
+            RecallHit(
+                payload={"embedding": [1.0, 0.0, 0.0], "timestamp": now}, score=0.5
+            ),
             RecallHit(payload={"marker": "n", "timestamp": now}, score=1.7),
         ]
         ranked = _rescore_and_rank_hits(

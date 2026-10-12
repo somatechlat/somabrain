@@ -25,7 +25,6 @@ class VaultNotConfigured(ImproperlyConfigured):
     """Vault not configured - secrets cannot be fetched."""
 
 
-
 class SecretNotFound(ImproperlyConfigured):
     """Secret not found in Vault."""
 
@@ -79,7 +78,6 @@ def _read_vault_token() -> str:
             f"'no secrets'."
         )
     return resolved
-
 
 
 def _split_secret_path(path: str) -> tuple[str, str]:
@@ -227,7 +225,11 @@ def get_runtime_secret(key: str) -> Any:
     exactly the 401 this caused. Everything else stays on this service's own
     path.
     """
-    if key == "memory_http_token":
+    if key in ("memory_http_token", "api_token", "soma_api_token"):
+        # ONE authority (vault_client docstring): the agent and SFM share
+        # ``somabrain_memory_http_token``. A second ``somabrain/runtime``
+        # ``api_token`` is exactly the 401 caused by two independently seeded
+        # credentials — never invent a second key.
         return get_secret(SHARED_CREDENTIALS_PATH, MEMORY_HTTP_TOKEN_KEY)
     return get_secret("somabrain/runtime", key)
 

@@ -1,6 +1,5 @@
 """Module constitution."""
 
-
 from somabrain.constitution import ConstitutionEngine
 
 _engine: ConstitutionEngine | None = None

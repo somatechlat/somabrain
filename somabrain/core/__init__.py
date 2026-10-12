@@ -1,11 +1,10 @@
-"""SomaBrain Core Modules - Validation, error handling, logging, and scoring.
+"""SomaBrain Core Modules - Validation, error handling, and scoring.
 
 This module provides foundational components for the SomaBrain system:
     - container: Dependency injection container for runtime singletons
     - exceptions: Custom exception hierarchy
     - types: Shared type definitions and protocols
     - validation: Input validation utilities
-    - logging_setup: Logging configuration
 """
 
 from .container import Container, container

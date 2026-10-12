@@ -129,9 +129,7 @@ class BrainPort(Protocol):
         """Delete one memory by canonical coordinate."""
         ...
 
-    def stream_context(
-        self, query: str, k: int, tenant_id: str
-    ) -> AsyncIterator:
+    def stream_context(self, query: str, k: int, tenant_id: str) -> AsyncIterator:
         """Server-stream context events as each layer answers."""
         ...
 

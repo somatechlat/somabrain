@@ -44,7 +44,9 @@ def _engine(tenant: str = "agent-sim") -> AdaptationEngine:
     )
 
 
-def _score(weights: RetrievalWeights, *, cosine: float, recency: float, density: float = 1.0) -> float:
+def _score(
+    weights: RetrievalWeights, *, cosine: float, recency: float, density: float = 1.0
+) -> float:
     """APM-style memory score the brain uses for ranking."""
     num = weights.alpha * cosine + weights.beta * 0.1 + weights.gamma * recency
     den = abs(weights.alpha) + abs(weights.beta) + abs(weights.gamma) + 1e-9
@@ -113,9 +115,9 @@ class TestAgentInteractionSimulation:
         late = [self._episode(eng, good_tool_path=True) for _ in range(20)]
         early_avg = sum(early) / len(early)
         late_avg = sum(late[-10:]) / 10
-        assert late_avg > early_avg, (
-            f"memory quality did not improve: early={early_avg:.4f} late={late_avg:.4f}"
-        )
+        assert (
+            late_avg > early_avg
+        ), f"memory quality did not improve: early={early_avg:.4f} late={late_avg:.4f}"
         # gaps must not permanently destroy learning
         assert sum(mid_gap) / len(mid_gap) < late_avg or eng.alpha > 1.0
 

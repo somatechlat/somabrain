@@ -12,8 +12,8 @@
 |---|---|
 | Document Title | SomaBrain Mathematical Specification As Implemented |
 | Document Identifier | SOMA-BR-MATH-TRUTH-001 |
-| Version | 1.1.1 |
-| Date | 2026-10-08 |
+| Version | 1.1.2 |
+| Date | 2026-10-09 |
 | Status | Approved |
 | Author | SomaTech Engineering (DOC-A2 extraction) |
 | Approver | Engineering Lead |
@@ -28,6 +28,7 @@
 
 | Version | Date | Author | Description |
 |---|---|---|---|
+| 1.1.2 | 2026-10-09 | SomaTech Engineering | DEBT-008 conflict row resolved: Rust sole adaptation-math authority; no dual Python/Rust gains. |
 | 1.0.0 | 2026-09-28 | Engineering | Initial extraction of equations, symbols, constants, and invariants from production code only. False-claims appendix for legacy proof docs. |
 | 1.1.0 | 2026-10-05 | Engineering | W2 neuromodulation: one store (`runtime/neuromodulators.py`; admin tree deleted), homeostatic law `m ← Π(m+η(δ−m))`, shared ACh/5-HT target laws, 5-HT gate consumer, Supervisor wired on `/act`, Rust ODE deleted. T32 DELETED, T33/T35 rewritten, T35b added. |
 | 1.1.1 | 2026-10-08 | SomaTech Engineering | Document control normalised to SOMA-BR-DOCS-001 §3.1/§3.2: heading `## Document Control` (was `## 0.`), `## Revision History` (was `###`), Status `Released`→`Approved`, Next Review set to `YYYY-MM-DD`, forbidden/non-house fields moved to `Related`/`Scope`. |
@@ -1130,7 +1131,7 @@ Values are the coded defaults. "Appears in" lists every site found in the scope 
 | HRR dim | `8192` | `D` | `somabrain/math/contracts.py` (`BHDC_D`); `settings/cognitive.py` (`SOMABRAIN_HRR_DIM`, `HRR_DIM`) | **No** — `contracts.BHDC_D` (W1b DEF-10 FIXED) |
 | Adaptation gains (Python) | `1.0, −0.5, 1.0, −0.25, −0.25` | `gain_*` | `somabrain/math/contracts.py` (`ADAPT_GAINS`); `learning/config.py`; `settings/cognitive.py` | **No** — `contracts.ADAPT_GAINS` (W1b DEF-13 FIXED) |
 | Adaptation bounds (Python) | α∈[0.1,5], γ∈[0,1], λ∈[0.1,5], μ∈[0.01,5], ν∈[0.01,5] | — | `somabrain/math/contracts.py` (`ADAPT_BOUNDS`); `learning/config.py` | **No** — `contracts.ADAPT_BOUNDS` (W1b) |
-| Adaptation gains (Rust) | `0.1, 0.05, 0.1, 0.05, 0.02` | `gain_*` | `rust_core/src/adaptation.rs:118-122` | **CONFLICT with Python** (DEBT-008, W3) |
+| Adaptation gains | single source via `somabrain_rs` `AdaptationEngine` | `gain_*` | `somabrain/learning/adaptation/rust_math.py` → `somabrain_rs` | **DEBT-008 CLOSED** — Rust is the sole adaptation-math authority; Python has no gain-law twin (`engine._apply_weight_updates` delegates). |
 | tau floor | `0.1` | `τ_min` | `somabrain/math/contracts.py` (`TAU_FLOOR`); `settings/cognitive.py` (`SOMABRAIN_TAU_MIN`); `learning/annealing.py`; `tasks/temperature_anneal.py` | **No** — `contracts.TAU_FLOOR` (W1b DEF-05 FIXED) |
 | tau decay factor | `0.95` | — | `somabrain/math/contracts.py` (`TAU_DECAY_FACTOR`); `tasks/temperature_anneal.py` | **No** — `contracts.TAU_DECAY_FACTOR` (W1b DEF-06 FIXED) |
 | tau anneal interval | `60.0` | — | `somabrain/math/contracts.py` (`TAU_INTERVAL`); `tasks/temperature_anneal.py` | **No** — `contracts.TAU_INTERVAL` (W1b) |

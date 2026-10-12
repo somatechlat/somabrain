@@ -196,9 +196,7 @@ class RecallRequest(BaseModel):
     max_age_seconds: int | None = Field(
         None, ge=0, description="Exclude hits older than this age"
     )
-    scoring_mode: str | None = Field(
-        None, description="Preferred scoring strategy"
-    )
+    scoring_mode: str | None = Field(None, description="Preferred scoring strategy")
     session_id: str | None = Field(
         None, description="Attach to an existing recall session"
     )
@@ -424,7 +422,9 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
     from somabrain.api.memory.recall import _match_tags, _within_age
 
     def _keep(rec: dict) -> bool:
-        payload_dict = rec.get("payload") if isinstance(rec.get("payload"), dict) else rec
+        payload_dict = (
+            rec.get("payload") if isinstance(rec.get("payload"), dict) else rec
+        )
         if payload.min_score is not None:
             score = rec.get("score")
             if isinstance(score, (int, float)) and score < payload.min_score:
@@ -477,6 +477,19 @@ async def recall_memory(request: HttpRequest, payload: RecallRequest):
 
     dt_ms = round((time.perf_counter() - t0) * 1000.0, 3)
 
+    # APM-1: every recall is a learning event (hit vs miss) for the brain.
+    # Must drive the same AdaptationEngine that /context/adaptation/state
+    # reports — otherwise memory interactions never train the live weights.
+    try:
+        from somabrain.learning.memory_events import remember_learned
+
+        kind = "recall_hit" if results else "recall_miss"
+        top_score = page[0].get("score") if page else None
+        utility = float(top_score) if isinstance(top_score, (int, float)) else None
+        remember_learned(tenant, kind=kind, utility=utility)
+    except Exception as exc:
+        logger.debug("recall learning hook failed: %s", exc)
+
     return {
         "tenant": tenant,
         "namespace": namespace,
@@ -504,9 +517,7 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
     silent success. ``ok: false`` with an ``error`` is returned only when the
     coordinate is not present.
     """
-    ctx = await get_tenant(
-        request, getattr(settings, "SOMABRAIN_NAMESPACE")
-    )
+    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
     require_auth(request, settings)
 
     claimed = (payload.tenant or payload.tenant_id or "").strip()

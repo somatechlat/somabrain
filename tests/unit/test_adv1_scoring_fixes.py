@@ -43,8 +43,7 @@ def _configure_settings() -> None:
             "SOMABRAIN_SALIENCE_FD_WEIGHT": 0.0,
             "SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR": 0.9,
             "SOMABRAIN_NEURO_DOPAMINE_BASE": NEURO_BOUNDS["dopamine"][0]
-            + 0.2
-            * (NEURO_BOUNDS["dopamine"][1] - NEURO_BOUNDS["dopamine"][0]),
+            + 0.2 * (NEURO_BOUNDS["dopamine"][1] - NEURO_BOUNDS["dopamine"][0]),
             "SOMABRAIN_NEURO_SEROTONIN_BASE": 0.5,
             "SOMABRAIN_NEURO_NORAD_BASE": 0.0,
             "SOMABRAIN_NEURO_ACETYL_BASE": 0.0,

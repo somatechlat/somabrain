@@ -1,7 +1,7 @@
 """
 Django models for somabrain.
 
-Migrated from SQLAlchemy models - 100% Django ORM.
+Django ORM models (migrated from SQLAlchemy).
 """
 
 from typing import Any
@@ -50,11 +50,14 @@ class OutboxEvent(models.Model):
     payload = models.JSONField()
     status = models.CharField(
         max_length=50, default="pending", db_index=True
-    )  # pending, sent, failed
+    )  # pending, claimed, sent, failed
     retries = models.IntegerField(default=0)
     dedupe_key = models.CharField(max_length=255)
     tenant_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
     last_error = models.TextField(null=True, blank=True)
+    # Drain lease: when status='claimed', this is when the claim expires and
+    # another publisher may reclaim. NULL = not claimed.
+    claim_expires_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         """Meta class implementation."""
@@ -79,42 +82,6 @@ class OutboxEvent(models.Model):
         return (
             f"OutboxEvent(id={self.id}, topic='{self.topic}', status='{self.status}')"
         )
-
-    def __repr__(self) -> str:
-        """Return object representation."""
-
-        return self.__str__()
-
-
-class EpisodicSnapshot(models.Model):
-    """
-    Episodic memory snapshots for long-term storage.
-    """
-
-    id = models.BigAutoField(primary_key=True)
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-    tenant_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
-    namespace = models.CharField(max_length=255, null=True, blank=True)
-    key = models.CharField(max_length=500)
-    value = models.JSONField()
-    tags = models.JSONField(null=True, blank=True)
-    policy_tags = models.JSONField(null=True, blank=True)
-
-    class Meta:
-        """Meta class implementation."""
-
-        db_table = "episodic_snapshots"
-        indexes = [
-            models.Index(fields=["tenant_id", "namespace", "key"]),
-            models.Index(fields=["tenant_id", "created_at"]),
-            models.Index(fields=["key"]),
-        ]
-        ordering = ["-created_at"]
-
-    def __str__(self) -> str:
-        """Return string representation."""
-
-        return f"EpisodicSnapshot(id={self.id}, tenant_id={self.tenant_id}, key='{self.key}')"
 
     def __repr__(self) -> str:
         """Return object representation."""

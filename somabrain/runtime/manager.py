@@ -29,7 +29,6 @@ class _SettingsAdapter:
         "use_hrr": "SOMABRAIN_USE_HRR",
         "hrr_dim": "SOMABRAIN_HRR_DIM",
         "hrr_seed": "SOMABRAIN_HRR_SEED",
-        "fde_enabled": "SOMABRAIN_FDE_ENABLED",
     }
 
     def __init__(self, settings_obj: Any):

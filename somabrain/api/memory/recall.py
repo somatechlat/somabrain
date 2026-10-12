@@ -12,7 +12,6 @@ Functions:
 
 from __future__ import annotations
 
-import copy
 import logging
 import math
 import time
@@ -42,7 +41,7 @@ from somabrain.core.runtime.config_runtime import (
     ensure_supervisor_worker,
 )
 from somabrain.embed_dim import EmbeddingDimensionError, ensure_embedding_dim
-from somabrain.metrics import observe_recall_latency, record_memory_snapshot
+from somabrain.metrics import observe_recall_latency
 from ninja.errors import HttpError
 from somabrain.services.memory_service import MemoryService
 
@@ -250,6 +249,7 @@ async def perform_recall(
     # against a different vector space than the write path (INVARIANTS §2.1).
     embedder = None
     query_vec: np.ndarray | None = None
+    degraded = False
     if query_vec_list is not None:
         query_vec = np.asarray(query_vec_list, dtype=np.float32)
     else:
@@ -300,6 +300,7 @@ async def perform_recall(
             raise
         except Exception as e:
             logger.warning("WM recall failed: %s", e)
+            degraded = True
 
     # LTM recall
     if layer in (LAYER_LTM, LAYER_BOTH):
@@ -319,6 +320,8 @@ async def perform_recall(
             raise HttpError(503, str(exc)) from exc
         except Exception as exc:
             raise HttpError(502, f"recall failed: {exc}") from exc
+        if getattr(hits, "degraded", False):
+            degraded = True
         stage_dur = time.perf_counter() - stage_start
         try:
             from somabrain import metrics as M
@@ -392,7 +395,11 @@ async def perform_recall(
         from somabrain.learning.memory_events import remember_learned
 
         kind = "recall_hit" if all_results else "recall_miss"
-        utility = float(all_results[0].score) if all_results and all_results[0].score is not None else None
+        utility = (
+            float(all_results[0].score)
+            if all_results and all_results[0].score is not None
+            else None
+        )
         remember_learned(payload.tenant, kind=kind, utility=utility)
     except Exception as e:
         logger.debug("recall learning hook failed: %s", e)
@@ -424,6 +431,7 @@ async def perform_recall(
         total_results=total_results,
         chunk_size=chunk_size,
         conversation_id=payload.conversation_id,
+        degraded=degraded,
     )
 
 

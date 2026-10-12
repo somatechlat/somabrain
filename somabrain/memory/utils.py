@@ -88,38 +88,41 @@ def fetch_by_coord(
 ) -> list[dict[str, Any]]:
     """Fetch memory payloads by coordinate using GET /memories/{coord}.
 
-    Returns a list of payload dicts for the given coordinate. Returns an
-    empty list if no memory exists at that coordinate or if the request fails.
+    Fail-closed (T-5): raises when the transport is missing or the backend
+    errors. Returns an empty list only when the coordinate is not present
+    (HTTP 404) or the store answered with a successful empty body.
     """
     if client is None:
-        return []
+        raise RuntimeError(
+            "MEMORY SERVICE REQUIRED: HTTP memory backend not available (fetch_by_coord)."
+        )
     try:
         coord_str = f"{coord[0]},{coord[1]},{coord[2]}"
         endpoint = f"/memories/{coord_str}"
         r = client.get(endpoint)
-        status = int(getattr(r, "status_code", 0) or 0)
-        if status == 404:
-            return []
-        if status != 200:
-            return []
-        data = _response_json(r)
-        if data is None:
-            return []
-        # Handle various response formats
-        if isinstance(data, dict):
-            payload = data.get("payload")
-            if isinstance(payload, dict):
-                return [payload]
-            memory = data.get("memory")
-            if isinstance(memory, dict):
-                return [memory.get("payload") or memory]
-            if "task" in data or "fact" in data or "text" in data:
-                return [data]
-        if isinstance(data, list):
-            return [p for p in data if isinstance(p, dict)]
+    except Exception as exc:
+        raise RuntimeError(f"memory service unreachable (fetch_by_coord): {exc}") from exc
+    status = int(getattr(r, "status_code", 0) or 0)
+    if status == 404:
         return []
-    except Exception:
-        return []
+    if status != 200:
+        raise RuntimeError(f"memory service fetch_by_coord failed: HTTP {status}")
+    data = _response_json(r)
+    if data is None:
+        raise RuntimeError("memory service fetch_by_coord returned unparseable body")
+    # Handle various response formats
+    if isinstance(data, dict):
+        payload = data.get("payload")
+        if isinstance(payload, dict):
+            return [payload]
+        memory = data.get("memory")
+        if isinstance(memory, dict):
+            return [memory.get("payload") or memory]
+        if "task" in data or "fact" in data or "text" in data:
+            return [data]
+    if isinstance(data, list):
+        return [p for p in data if isinstance(p, dict)]
+    return []
 
 
 def store_from_payload(

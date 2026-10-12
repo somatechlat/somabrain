@@ -13,8 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from somabrain.math.contracts import ADAPT_BOUNDS, ADAPT_GAINS
-
 try:
     from django.conf import settings
 except Exception:  # pragma: no cover - optional dependency

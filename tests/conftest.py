@@ -73,41 +73,86 @@ def pytest_configure(config):
         "markers",
         "no_django: test covers a Django-free package and must not boot settings",
     )
-    # Pre-seed somabrain.settings.infra._RESOLVED with test-only secret state
-    # so the Django settings chain can import without a live Vault.  The infra
-    # module is loaded from its file (bypassing the package __init__ chain that
-    # runs credential gates) and registered under its real dotted name so the
-    # subsequent normal import reuses this module object and its state.
+    # Seed test-only secret state so the Django settings chain can import
+    # without a live Vault. Credential gates run at import time
+    # (settings/infra.py, settings/django_core.py) and refuse empty secrets.
+    # A stand-in vault_client answers those lookups with test-only values for
+    # the duration of the boot only; real Vault readers are restored after.
+    # Production secrets never land in os.environ (Rule 164).
+    #
+    # REAL-INFRA MODE: when live Vault topology is present (VAULT_ADDR +
+    # VAULT_TOKEN_FILE), do NOT install the stub. The production vault_client
+    # resolves real credentials from Vault, so tests exercise the real path.
+    # Topology (hosts / allow-list) stays on ENV — that is the lawful channel.
+    # Always set, even in real-Vault mode: settings refuse empty ALLOWED_HOSTS.
+    os.environ.setdefault("ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+    os.environ.setdefault("SOMABRAIN_NAMESPACE", "test-ns")
+    os.environ.setdefault("SOMABRAIN_HOST", "127.0.0.1")
+    os.environ.setdefault("SOMABRAIN_PORT", "30101")
+    _real_vault = bool(
+        os.environ.get("VAULT_ADDR")
+        and os.environ.get("VAULT_TOKEN_FILE")
+        and os.path.isfile(os.environ.get("VAULT_TOKEN_FILE", ""))
+    )
+    if _real_vault:
+        # Real Vault: production vault_client resolves credentials. Still boot
+        # Django so models/apps are ready for django_db tests.
+        try:
+            _ensure_django()
+        except Exception:
+            pass
+        return
     try:
-        import importlib.util as _ilu
         import sys as _sys
-        from pathlib import Path as _Path
+        import types as _types
 
-        _infra_key = "somabrain.settings.infra"
-        if _infra_key not in _sys.modules:
-            _infra_path = (
-                _Path(__file__).resolve().parent.parent
-                / "somabrain"
-                / "settings"
-                / "infra.py"
-            )
-            _spec = _ilu.spec_from_file_location(_infra_key, str(_infra_path))
-            if _spec and _spec.loader:
-                _mod = _ilu.module_from_spec(_spec)
-                _sys.modules[_infra_key] = _mod
-                _spec.loader.exec_module(_mod)
-                # Seed test-only secrets before any credential gate reads them.
-                _mod._RESOLVED.setdefault(
-                    "SOMABRAIN_MEMORY_HTTP_TOKEN", "test-only-token"
-                )
-                _mod._RESOLVED.setdefault("POSTGRES_PASSWORD", "test-only-password")
-                _mod._RESOLVED.setdefault(
-                    "SOMABRAIN_PROVENANCE_SECRET", "test-only-provenance"
-                )
-                # The module-level constants were computed from the empty
-                # _RESOLVED dict during exec_module.  Refresh them now.
-                _mod.SOMABRAIN_MEMORY_HTTP_TOKEN = "test-only-token"
-                _mod.SOMABRAIN_PROVENANCE_SECRET = "test-only-provenance"
+        _vc_key = "somabrain.core.security.vault_client"
+        _real_vc = _sys.modules.get(_vc_key)
+        _vc = _types.ModuleType(_vc_key)
+
+        class _SecretNotFound(Exception):
+            pass
+
+        class _VaultNotConfigured(Exception):
+            pass
+
+        class _VaultAuthError(Exception):
+            pass
+
+        _vc.SecretNotFound = _SecretNotFound
+        _vc.VaultNotConfigured = _VaultNotConfigured
+        _vc.VaultAuthError = _VaultAuthError
+        _vc.get_db_credentials = lambda: {
+            "username": "test",
+            "password": "test-only-password",
+            "host": "127.0.0.1",
+            "port": "5432",
+            "dbname": "somabrain",
+        }
+        _vc.get_secret = lambda path, key=None: (
+            "test-only-token" if key else {"k": "test-only-token"}
+        )
+        _vc.get_jwt_secret = lambda: "test-only-jwt-secret"
+        _vc.get_runtime_secrets = lambda: {
+            "memory_http_token": "test-only-token",
+            "provenance_secret": "test-only-provenance",
+            "api_token": "test-only-token",
+            "supervisor_http_pass": "test-only-supervisor",
+        }
+        _vc.get_runtime_secret = lambda key: "test-only-token"
+        _vc.get_api_key = lambda service: "test-only-token"
+        _sys.modules[_vc_key] = _vc
+        try:
+            # Boot the full somabrain.settings chain once, before any test
+            # module import. A later ``dj_settings.configure(minimal_dict)``
+            # from a ``no_django`` file would replace this and break SLEEP_K0
+            # / neuro attributes for every subsequent suite.
+            _ensure_django()
+        finally:
+            if _real_vc is not None:
+                _sys.modules[_vc_key] = _real_vc
+            else:
+                _sys.modules.pop(_vc_key, None)
     except Exception:
         pass
 
@@ -134,6 +179,40 @@ def _ensure_django() -> None:
 
     django.setup()
     _DJANGO_READY = True
+    # Override DATABASES with the host-reachable test DSN. The Vault doc uses
+    # in-network hostnames (somabrain_standalone_postgres) that do not resolve
+    # from the host test runner. This must run AFTER django.setup() so it wins
+    # over configure_vault_secrets().
+    _dsn = os.environ.get("TEST_PG_DSN", "")
+    if _dsn:
+        try:
+            import urllib.parse as _up
+
+            if _dsn.startswith("postgresql://") or _dsn.startswith("postgres://"):
+                _u = _up.urlparse(_dsn)
+                from django.conf import settings as _settings
+
+                _settings.DATABASES["default"].update(
+                    {
+                        "HOST": _u.hostname or "127.0.0.1",
+                        "PORT": str(_u.port or 5432),
+                        "USER": _u.username or "",
+                        "PASSWORD": _u.password or "",
+                        "NAME": (_u.path or "/somabrain").lstrip("/"),
+                        "ATOMIC_REQUESTS": False,
+                        "AUTOCOMMIT": True,
+                        "CONN_MAX_AGE": 0,
+                        "CONN_HEALTH_CHECKS": False,
+                        "OPTIONS": {},
+                        "TEST": {"NAME": "test_somabrain"},
+                        "MIRROR": None,
+                    }
+                )
+                from django.db import connections as _connections
+
+                _connections.close_all()
+        except Exception:
+            pass
 
 
 @pytest.fixture(autouse=True)
@@ -160,6 +239,7 @@ def init_brain_settings(request):
     from somabrain.brain_settings.models import BrainSetting
 
     from somabrain.brain_settings.models import _base_profile
+
     BrainSetting.initialize_defaults(_base_profile())
 
 

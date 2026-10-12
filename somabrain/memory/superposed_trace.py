@@ -245,9 +245,7 @@ class SuperposedTrace:
             except Exception as exc:
                 logger.exception("Failed to configure cleanup index: %s", exc)
 
-    def rebuild_cleanup_index(
-        self, cleanup_index: CleanupIndex | None = None
-    ) -> int:
+    def rebuild_cleanup_index(self, cleanup_index: CleanupIndex | None = None) -> int:
         """Rebuild the cleanup index from current anchors."""
 
         if cleanup_index is not None:

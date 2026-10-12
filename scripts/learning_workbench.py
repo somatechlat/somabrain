@@ -29,7 +29,7 @@ configure_unit_settings()
 from somabrain.learning.adaptation.engine import AdaptationEngine
 from somabrain.learning.adaptation.types import RetrievalWeights
 from somabrain.learning.config import UtilityWeights
-from somabrain.learning.memory_events import apply_memory_event, signal_for_event
+from somabrain.learning.memory_events import signal_for_event
 from somabrain.math.contracts import ADAPT_BOUNDS, MEMORY_EVENT_SIGNALS
 
 
@@ -68,7 +68,9 @@ def run_curriculum(tenant: str = "workbench") -> dict:
         if not ok:
             raise RuntimeError(f"recall_hit rejected at step {i}")
         hit_alpha.append(eng.alpha)
-        trajectory.append({"step": len(trajectory), "event": "recall_hit", **snapshot(eng)})
+        trajectory.append(
+            {"step": len(trajectory), "event": "recall_hit", **snapshot(eng)}
+        )
     after_hits = snapshot(eng)
 
     # Phase B: misses → alpha should fall from peak
@@ -76,19 +78,23 @@ def run_curriculum(tenant: str = "workbench") -> dict:
         ok = eng.apply_memory_event("recall_miss")
         if not ok:
             raise RuntimeError(f"recall_miss rejected at step {i}")
-        trajectory.append({"step": len(trajectory), "event": "recall_miss", **snapshot(eng)})
+        trajectory.append(
+            {"step": len(trajectory), "event": "recall_miss", **snapshot(eng)}
+        )
     after_miss = snapshot(eng)
 
     # Phase C: promote + feedback
     eng.apply_memory_event("promote_success")
-    trajectory.append({"step": len(trajectory), "event": "promote_success", **snapshot(eng)})
+    trajectory.append(
+        {"step": len(trajectory), "event": "promote_success", **snapshot(eng)}
+    )
     eng.apply_memory_event("feedback", utility=0.5)
     trajectory.append({"step": len(trajectory), "event": "feedback", **snapshot(eng)})
     final = snapshot(eng)
 
     # Phase D: NaN immunity
     nan_ok = eng.apply_memory_event("recall_hit", utility=float("nan"))
-    after_nan = snapshot(eng)
+    snapshot(eng)
 
     # Assertions — the PROOF
     proofs = {

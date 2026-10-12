@@ -81,9 +81,9 @@ def test_infra_still_owns_the_single_definition():
     """Static: infra.py keeps exactly one assignment of the memory token."""
     tree = ast.parse(INFRA.read_text(encoding="utf-8"))
     assigns = _assignments_of(tree, TOKEN_NAME)
-    assert len(assigns) == 1, (
-        f"infra.py must define {TOKEN_NAME} exactly once, found at {assigns}"
-    )
+    assert (
+        len(assigns) == 1
+    ), f"infra.py must define {TOKEN_NAME} exactly once, found at {assigns}"
 
 
 def test_cognitive_rejects_empty_memory_token():
@@ -98,9 +98,9 @@ def test_cognitive_rejects_empty_memory_token():
     # No empty-string default anywhere the token name is mentioned.
     for line in source.splitlines():
         if TOKEN_NAME in line:
-            assert 'default=""' not in line, (
-                f"cognitive.py must not default {TOKEN_NAME} to empty: {line.strip()}"
-            )
+            assert (
+                'default=""' not in line
+            ), f"cognitive.py must not default {TOKEN_NAME} to empty: {line.strip()}"
 
     tree = ast.parse(source)
     raises_on_empty = False
@@ -167,14 +167,14 @@ def test_cognitive_token_is_the_infra_token():
     """Behavioural: cognitive exports exactly the value infra resolved."""
     token = os.environ.get(TOKEN_NAME)
     if not token:
-        pytest.skip(
-            f"{TOKEN_NAME} not provisioned; cannot import settings to compare"
-        )
+        pytest.skip(f"{TOKEN_NAME} not provisioned; cannot import settings to compare")
     saved_req = os.environ.get("REQUIRE_MEMORY")
     os.environ["REQUIRE_MEMORY"] = "1"
     try:
         infra_mod, cog_mod = _load_cognitive_modules()
-        assert cog_mod.SOMABRAIN_MEMORY_HTTP_TOKEN == infra_mod.SOMABRAIN_MEMORY_HTTP_TOKEN
+        assert (
+            cog_mod.SOMABRAIN_MEMORY_HTTP_TOKEN == infra_mod.SOMABRAIN_MEMORY_HTTP_TOKEN
+        )
         assert cog_mod.SOMABRAIN_MEMORY_HTTP_TOKEN != ""
     finally:
         _purge_somabrain_settings()
@@ -197,9 +197,9 @@ def test_cognitive_refuses_when_token_absent():
         with pytest.raises(Exception) as excinfo:
             _load_cognitive_modules()
         message = str(excinfo.value)
-        assert TOKEN_NAME in message, (
-            f"refusal must name the missing credential, got: {message}"
-        )
+        assert (
+            TOKEN_NAME in message
+        ), f"refusal must name the missing credential, got: {message}"
     finally:
         _purge_somabrain_settings()
         os.environ.update(saved)

@@ -226,6 +226,7 @@ def remember_bulk_sync(
         return process_bulk_response_fn(response, prepared, coords, rid)
 
     if status in (404, 405):
+        failed: list[int] = []
         for idx, entry in enumerate(prepared):
             single_headers = dict(headers)
             single_headers["X-Request-ID"] = f"{rid}:{idx}"
@@ -236,6 +237,13 @@ def remember_bulk_sync(
                 )
                 if server_coord:
                     coords[idx] = server_coord
+                    continue
+            failed.append(idx)
+        if failed:
+            raise RuntimeError(
+                f"Memory service bulk fallback failed for indexes {failed} "
+                f"({len(failed)}/{len(prepared)} items). No partial silent success."
+            )
         return coords
 
     raise RuntimeError("Memory service unavailable (bulk remember failed)")

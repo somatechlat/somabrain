@@ -85,9 +85,7 @@ class BrainClient:
         """Store N memories in one round trip; results parallel ``writes``."""
         req = RememberBatchRequest(writes=list(writes))
         resp = await self._unary(self._stub.RememberBatch, req)
-        return [
-            [codec.decode_memory_ack(a) for a in r.acks] for r in resp.results
-        ]
+        return [[codec.decode_memory_ack(a) for a in r.acks] for r in resp.results]
 
     async def recall(self, query: str, k: int, tenant_id: str) -> list[dict]:
         """Recall top-``k`` memories for one query, ranked by score."""
@@ -95,9 +93,7 @@ class BrainClient:
         resp = await self._unary(self._stub.Recall, req)
         return [codec.decode_recall_hit(h) for h in resp.hits]
 
-    async def recall_batch(
-        self, queries: Sequence[RecallRequest]
-    ) -> list[list[dict]]:
+    async def recall_batch(self, queries: Sequence[RecallRequest]) -> list[list[dict]]:
         """Run N recalls in one round trip; results parallel ``queries``."""
         req = RecallBatchRequest(queries=list(queries))
         resp = await self._unary(self._stub.RecallBatch, req)

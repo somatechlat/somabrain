@@ -6,6 +6,10 @@ from typing import Any
 import requests
 
 from somabrain.core.infrastructure_defs import get_opa_url
+from somabrain.math.contracts import (
+    OPA_POLICY_PATH_ALLOW,
+    OPA_POLICY_PATH_ALLOW_DEV,
+)
 
 LOGGER = logging.getLogger("somabrain.opa")
 
@@ -35,8 +39,8 @@ def _policy_path_for_mode() -> str:
             bundle = None
     bundle = (bundle or "").strip().lower()
     if bundle == "allow-dev" or bundle == "dev":
-        return "somabrain/auth/allow_dev"
-    return "somabrain/auth/allow"
+        return OPA_POLICY_PATH_ALLOW_DEV
+    return OPA_POLICY_PATH_ALLOW
 
 
 class OPAClient:
@@ -54,9 +58,7 @@ class OPAClient:
 
         if settings is not None:
             try:
-                self.timeout = float(
-                    getattr(settings, "OPA_TIMEOUT_SECONDS") or 2.0
-                )
+                self.timeout = float(getattr(settings, "OPA_TIMEOUT_SECONDS") or 2.0)
             except Exception:
                 self.timeout = 2.0
         else:

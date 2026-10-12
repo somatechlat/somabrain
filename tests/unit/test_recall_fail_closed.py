@@ -185,12 +185,15 @@ def test_no_silent_default_tenant_on_boundary_paths():
                         f"silent default tenant/namespace at "
                         f"{path.name}:{lineno}: {stripped!r}"
                     )
-            if 'getattr(' in stripped and '"default"' in stripped:
+            if "getattr(" in stripped and '"default"' in stripped:
                 raise AssertionError(
                     f"silent default tenant via getattr at "
                     f"{path.name}:{lineno}: {stripped!r}"
                 )
-            if 'tenant: str = "default"' in stripped or "tenant: str = 'default'" in stripped:
+            if (
+                'tenant: str = "default"' in stripped
+                or "tenant: str = 'default'" in stripped
+            ):
                 raise AssertionError(
                     f"silent default tenant parameter at "
                     f"{path.name}:{lineno}: {stripped!r}"

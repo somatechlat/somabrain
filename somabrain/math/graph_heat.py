@@ -30,7 +30,10 @@ def expand_spectral_interval(a: float, b: float) -> tuple[float, float]:
     Returns:
         ``(a - ε, b + ε)`` with ``a - ε`` floored at 0 for PSD operators.
     """
-    return max(0.0, float(a) - SPECTRAL_INTERVAL_EPSILON), float(b) + SPECTRAL_INTERVAL_EPSILON
+    return (
+        max(0.0, float(a) - SPECTRAL_INTERVAL_EPSILON),
+        float(b) + SPECTRAL_INTERVAL_EPSILON,
+    )
 
 
 def graph_heat_chebyshev(

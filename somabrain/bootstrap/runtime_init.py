@@ -206,9 +206,7 @@ def should_enforce_backends(settings: Any) -> bool:
     if settings is not None:
         try:
             # Prefer new mode-derived enforcement (always true under Sprint policy)
-            mode_policy = bool(
-                getattr(settings, "SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
-            )
+            mode_policy = bool(getattr(settings, "SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS"))
             if mode_policy:
                 return True
             return bool(getattr(settings, "SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS"))

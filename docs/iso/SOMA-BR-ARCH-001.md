@@ -11,7 +11,7 @@
 |---|---|
 | Document Title | SomaBrain Architecture Document |
 | Document Identifier | SOMA-BR-ARCH-001 |
-| Version | 2.0.1 |
+| Version | 2.0.2 |
 | Date | 2026-06-15 |
 | Status | Approved |
 | Author | SomaTech Architecture Team |
@@ -24,6 +24,7 @@
 
 | Version | Date | Author | Description |
 |---|---|---|---|
+| 2.0.2 | 2026-10-09 | SomaTech Engineering | Removed 'Python fallback when Rust unavailable' for adaptation — Rust is required (DEBT-008 closed); missing `somabrain_rs` raises. |
 | 1.0.0 | 2026-01-15 | Architecture Team | Initial architecture baseline |
 | 1.1.0 | 2026-03-01 | Architecture Team | Added AAAS deployment mode, Rust core section |
 | 1.2.0 | 2026-04-20 | Architecture Team | Expanded integration points, multi-tenancy section |
@@ -148,8 +149,8 @@ SomaBrain operates as a **single-tenant**, self-contained cognitive memory servi
 |---|---|
 | Port | 9696 |
 | Tenancy | Single-tenant |
-| Dependencies | PostgreSQL, Redis, Milvus, Kafka (optional), OPA (optional) |
-| Memory Backend | Milvus (local) or in-process |
+| Dependencies | PostgreSQL, Redis, Kafka, OPA, **Milvus (required)** |
+| Memory Backend | **Dual-store required:** Postgres (durable rows/KV/graph) + Milvus (vector ANN). Hash-only / in-process is not a supported memory backend. |
 | Auth | Optional JWT; configurable strictness via `SOMABRAIN_MODE` |
 | Configuration | `SOMABRAIN_MODE=dev\|staging\|production` |
 
@@ -441,7 +442,7 @@ vector = bhdc_encode(features, dimension=8192, density=0.02)
 score = bhdc_similarity(vector_a, vector_b)
 ```
 
-The Python service layer calls Rust functions transparently. Fallback to pure Python implementations exists when the Rust extension is unavailable.
+The Python service layer calls Rust functions transparently. For adaptation math the Rust extension is **required**: `somabrain/learning/adaptation/rust_math.py` refuses with `RuntimeError` if `somabrain_rs` is missing (DEBT-008 closed — there is no Python gain-law twin). Other Rust surfaces that still expose a Python default do so only where `core/rust_bridge.py` documents it; adaptation is not one of them.
 
 ---
 

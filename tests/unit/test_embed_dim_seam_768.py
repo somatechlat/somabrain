@@ -6,6 +6,7 @@ No component may invent a fallback dimension or fail open on mismatch.
 Also carries the INVARIANTS §2.1 behavioural proof: a present precomputed
 query vector forbids ``embed()`` on the live recall / re-rank path.
 """
+
 from __future__ import annotations
 
 import re
@@ -24,9 +25,9 @@ FOREIGN_DIM_PATTERNS = (
     r'getattr\(\s*settings\s*,\s*["\']EMBED_DIM["\']\s*,\s*256\s*\)',
     r'getattr\(\s*cfg\s*,\s*["\']embed_dim["\']\s*,\s*256\s*\)',
     r'embed_dim["\']\s*,\s*256\s*\)',
-    r'dim\s*=\s*256\b',
-    r'dim=256\b',
-    r'dim\s*:\s*int\s*=\s*256\b',
+    r"dim\s*=\s*256\b",
+    r"dim=256\b",
+    r"dim\s*:\s*int\s*=\s*256\b",
 )
 
 
@@ -54,7 +55,10 @@ class TestNoForeignDimFallbacks:
 
     def test_settings_default_is_768(self):
         src = _read("settings/cognitive.py")
-        assert re.search(r"SOMABRAIN_EMBED_DIM\s*=\s*env\.int\(\s*[\"']EMBED_DIM[\"']\s*,\s*default\s*=\s*768\s*\)", src)
+        assert re.search(
+            r"SOMABRAIN_EMBED_DIM\s*=\s*env\.int\(\s*[\"']EMBED_DIM[\"']\s*,\s*default\s*=\s*768\s*\)",
+            src,
+        )
 
     def test_env_example_is_768(self):
         src = (REPO / ".env.example").read_text(encoding="utf-8")
@@ -72,7 +76,9 @@ class TestNoForeignDimFallbacks:
 
     def test_brain_settings_iso_default_is_768(self):
         src = _read("brain_settings/models.py")
-        assert not re.search(r"[\"']embed_dim[\"']\s*:\s*\{\s*[\"']v[\"']\s*:\s*256", src)
+        assert not re.search(
+            r"[\"']embed_dim[\"']\s*:\s*\{\s*[\"']v[\"']\s*:\s*256", src
+        )
 
 
 class TestResolveEmbedDim:
@@ -98,7 +104,9 @@ class TestResolveEmbedDim:
         except RuntimeError as exc:
             assert "SOMABRAIN_EMBED_DIM" in str(exc)
         else:
-            raise AssertionError("expected RuntimeError for missing SOMABRAIN_EMBED_DIM")
+            raise AssertionError(
+                "expected RuntimeError for missing SOMABRAIN_EMBED_DIM"
+            )
 
     def test_raises_on_contract_mismatch(self):
         """Fail closed when the effective dim violates the configured seam contract."""
@@ -138,7 +146,9 @@ class TestResolveEmbedDim:
 
     def test_no_hardcoded_dim_constant_in_resolver(self):
         src = _read("embed_dim.py")
-        assert not re.search(r"SEAM_EMBED_DIM\s*=\s*\d+", src), "dim must come from settings, not a code constant"
+        assert not re.search(
+            r"SEAM_EMBED_DIM\s*=\s*\d+", src
+        ), "dim must come from settings, not a code constant"
         assert "SOMABRAIN_EMBED_DIM_SEAM" in src
 
 
@@ -175,8 +185,11 @@ class TestClientPayloadContract:
         from somabrain.memory.client.transport import build_store_payload
 
         p = build_store_payload(
-            coord="c1", payload=b"x", memory_type="episodic",
-            embedding=None, tenant_id="t1",
+            coord="c1",
+            payload=b"x",
+            memory_type="episodic",
+            embedding=None,
+            tenant_id="t1",
         )
         assert "embedding" not in p
 
@@ -185,8 +198,11 @@ class TestClientPayloadContract:
 
         try:
             build_store_payload(
-                coord="c1", payload=b"x", memory_type="episodic",
-                embedding=[0.0] * 256, tenant_id="t1",
+                coord="c1",
+                payload=b"x",
+                memory_type="episodic",
+                embedding=[0.0] * 256,
+                tenant_id="t1",
                 settings=self._DimSettings,
             )
         except ValueError as exc:
@@ -198,7 +214,10 @@ class TestClientPayloadContract:
         from somabrain.memory.client.transport import build_search_payload
 
         p = build_search_payload(
-            query="hello", top_k=5, embedding=[0.1] * 768, tenant_id="t1",
+            query="hello",
+            top_k=5,
+            embedding=[0.1] * 768,
+            tenant_id="t1",
             settings=self._DimSettings,
         )
         assert p["embedding"] == [0.1] * 768
@@ -244,11 +263,15 @@ class TestRecallAcceptsPrecomputedQueryVector:
             ), f"{rel} has no first-class embedding field (precomputed query vector)"
 
     def test_descriptions_forbid_reembed(self):
-        for rel in ("api/endpoints/memory.py", "api/memory/models.py", "schemas/memory.py"):
+        for rel in (
+            "api/endpoints/memory.py",
+            "api/memory/models.py",
+            "schemas/memory.py",
+        ):
             src = _read(rel)
-            assert "MUST NEVER be re-embedded" in src, (
-                f"{rel} does not state that a present vector is authoritative"
-            )
+            assert (
+                "MUST NEVER be re-embedded" in src
+            ), f"{rel} does not state that a present vector is authoritative"
 
     def test_wrong_dim_rejected(self):
         from somabrain.embed_dim import (
@@ -284,7 +307,9 @@ class TestRecallAcceptsPrecomputedQueryVector:
     def test_write_path_prefers_top_level_embedding(self):
         """INVARIANTS §5.5: top-level embedding wins; nested is fallback only."""
         src = _read("api/memory/models.py")
-        assert "Prefer the first-class" in src or "prefer the first-class" in src.lower()
+        assert (
+            "Prefer the first-class" in src or "prefer the first-class" in src.lower()
+        )
         # Nested value.embedding is lifted, not silently dropped.
         assert 'value.get("embedding")' in src
         assert 'd["embedding"] = list(emb)' in src
@@ -374,7 +399,7 @@ class TestNoReembedWhenVectorPresent:
             score=None,
             raw={"vector": list(stored)},
         )
-        ranked = _rescore_and_rank_hits(
+        _rescore_and_rank_hits(
             _NoEmbedCfg(), scorer, spy, [hit], "query text", query_vec=qvec
         )
         assert spy.calls == [], "stored hit text must not be re-embedded"
@@ -424,9 +449,7 @@ class TestNoReembedWhenVectorPresent:
         scorer = _RecordingScorer()
         qvec = _unit_axis(0)
         bad = RecallHit(payload={"text": "no vector no score"}, score=None)
-        good = RecallHit(
-            payload={"text": "scored", "embedding": qvec}, score=None
-        )
+        good = RecallHit(payload={"text": "scored", "embedding": qvec}, score=None)
         ranked = _rescore_and_rank_hits(
             _NoEmbedCfg(), scorer, spy, [bad, good], "q", query_vec=qvec
         )
@@ -466,19 +489,23 @@ class TestNoReembedWhenVectorPresent:
 
             def _http_post_with_retries_sync(self, endpoint, body, headers):
                 self.last_body = body
-                return True, 200, {
-                    "hits": [
-                        {
-                            "payload": {
-                                "text": "stored text",
-                                "universe": "real",
-                                "embedding": list(qvec),
-                            },
-                            "score": 0.8,
-                            "vector": list(qvec),
-                        }
-                    ]
-                }
+                return (
+                    True,
+                    200,
+                    {
+                        "hits": [
+                            {
+                                "payload": {
+                                    "text": "stored text",
+                                    "universe": "real",
+                                    "embedding": list(qvec),
+                                },
+                                "score": 0.8,
+                                "vector": list(qvec),
+                            }
+                        ]
+                    },
+                )
 
         client = _StubClient()
         hits = client.recall("query", top_k=1, universe="real", embedding=qvec)
@@ -510,18 +537,22 @@ class TestNoReembedWhenVectorPresent:
                 self._http_async = object()
 
             async def _http_post_with_retries_async(self, endpoint, body, headers):
-                return True, 200, {
-                    "hits": [
-                        {
-                            "payload": {
-                                "text": "stored text",
-                                "universe": "real",
-                                "embedding": list(qvec),
-                            },
-                            "score": 0.7,
-                        }
-                    ]
-                }
+                return (
+                    True,
+                    200,
+                    {
+                        "hits": [
+                            {
+                                "payload": {
+                                    "text": "stored text",
+                                    "universe": "real",
+                                    "embedding": list(qvec),
+                                },
+                                "score": 0.7,
+                            }
+                        ]
+                    },
+                )
 
         client = _StubAsyncClient()
         hits = asyncio.run(

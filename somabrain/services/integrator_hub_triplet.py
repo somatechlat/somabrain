@@ -36,6 +36,11 @@ except Exception as exc:  # pragma: no cover
 
 import requests
 
+from somabrain.math.contracts import (
+    OPA_POLICY_PATH_INTEGRATOR,
+    OPA_REQUEST_TIMEOUT_S,
+)
+
 from somabrain import metrics
 from somabrain.core.infrastructure_defs import get_redis_url
 
@@ -159,8 +164,15 @@ class IntegratorHub:
             except Exception:
                 self._redis_client = None
         self._opa_request = opa_request or self._default_opa_request
-        # Health server
-        self._health_port = int(getattr(ss, "SOMABRAIN_INTEGRATOR_HEALTH_PORT", 9015))
+        # Health server. Port is declared once (settings/infra.py). No call-site
+        # default: a second number here is a second declaration (R-VAL-01).
+        _health_port = getattr(ss, "SOMABRAIN_INTEGRATOR_HEALTH_PORT", None)
+        if not _health_port:
+            raise ValueError(
+                "SOMABRAIN_INTEGRATOR_HEALTH_PORT is required and not configured. "
+                "There is no call-site default (Rule 91)."
+            )
+        self._health_port = int(_health_port)
         self._health_thread = None
         if start_health:
             self._health_thread = threading.Thread(
@@ -312,9 +324,7 @@ class IntegratorHub:
                 "election_time": now,
                 "leader_tenure_seconds": 0.0,
                 "min_dwell_ms": 0,
-                "entropy_cap": float(
-                    getattr(settings, "SOMABRAIN_ENTROPY_CAP") or 0.0
-                ),
+                "entropy_cap": float(getattr(settings, "SOMABRAIN_ENTROPY_CAP") or 0.0),
                 "current_entropy": float(entropy),
                 "dwell_satisfied": True,
                 "transition_allowed": True,
@@ -366,8 +376,10 @@ class IntegratorHub:
         try:
             normalized = url.rstrip("/")
             if "/v1/data" not in normalized:
-                normalized = f"{normalized}/v1/data/soma/policy/integrator"
-            resp = requests.post(normalized, json={"input": context}, timeout=1)
+                normalized = f"{normalized}/v1/data/{OPA_POLICY_PATH_INTEGRATOR}"
+            resp = requests.post(
+                normalized, json={"input": context}, timeout=OPA_REQUEST_TIMEOUT_S
+            )
             if not resp.ok:
                 return False
             data = resp.json().get("result", {})

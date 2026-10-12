@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import time
+from somabrain.math.contracts import HTTP_MAX_RETRIES
 from typing import TYPE_CHECKING, Any
 
 from somabrain import metrics as M
@@ -189,7 +190,7 @@ def http_post_with_retries_sync(
     headers: dict,
     tenant: str,
     *,
-    max_retries: int = 2,
+    max_retries: int = HTTP_MAX_RETRIES,
     operation: str = "unknown",
 ) -> tuple[bool, int, Any]:
     """Execute a synchronous HTTP POST with retries, metrics, and tracing.
@@ -248,7 +249,7 @@ async def http_post_with_retries_async(
     headers: dict,
     tenant: str,
     *,
-    max_retries: int = 2,
+    max_retries: int = HTTP_MAX_RETRIES,
     operation: str = "unknown",
 ) -> tuple[bool, int, Any]:
     """Execute an async HTTP POST with retries, metrics, and tracing.

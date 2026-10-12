@@ -41,24 +41,19 @@ def _seam_store_fields(cfg: Any, enriched: dict, payload: dict) -> dict[str, Any
 
     ARCHITECTURE-INVARIANTS §5: ``embedding`` and ``tenant_id`` are first-class
     top-level fields on ``MemoryStoreRequest`` — never only inside ``payload``.
-    Every write path must add these to its body, not just the single-write one.
+    WAVE-SFM-INT forwards ``importance``, ``belief_confidence`` and
+    ``belief_polarity`` the same way. Every write path must add these to its
+    body, not just the single-write one.
 
-    Regression guard: earlier versions of the *bulk* paths built their body as
-    ``{coord, payload, memory_type}`` and silently stripped both fields, so
-    every batch write fell back to hash vectors and lost tenant isolation. One
-    helper, used by every path, so the two cannot drift apart again.
+    Delegates to :func:`somabrain.memory.payload.seam_store_fields` — one
+    extraction, one definition. Regression guard: earlier versions of the
+    *bulk* paths built their body as ``{coord, payload, memory_type}`` and
+    silently stripped both fields, so every batch write fell back to hash
+    vectors and lost tenant isolation.
     """
-    from somabrain.memory.remember import _get_tenant_namespace
+    from somabrain.memory.payload import seam_store_fields
 
-    tenant, _ns = _get_tenant_namespace(cfg, payload)
-    embedding = enriched.get("embedding")
-    if embedding is None:
-        embedding = payload.get("embedding")
-
-    fields: dict[str, Any] = {"tenant_id": tenant or None}
-    if embedding is not None:
-        fields["embedding"] = embedding
-    return fields
+    return seam_store_fields(cfg, enriched, payload)
 
 
 class WriteMixin:
@@ -149,10 +144,10 @@ class WriteMixin:
                         None, self._remember_sync_persist, coord_key, payload, rid
                     )
             except Exception:
-                try:
-                    self._remember_sync_persist(coord_key, payload, rid)
-                except Exception:
-                    pass
+                # D12 FIX: fallback persist failure must not be swallowed.
+                # _remember_sync_persist records to outbox (E2.1) before the
+                # hop; if it raises here the caller must see the failure.
+                self._remember_sync_persist(coord_key, payload, rid)
             return coord
 
         # Sync callers with fast_ack (optional)
@@ -170,10 +165,8 @@ class WriteMixin:
                     None, self._remember_sync_persist, coord_key, payload, rid
                 )
             except Exception:
-                try:
-                    self._remember_sync_persist(coord_key, payload, rid)
-                except Exception:
-                    pass
+                # D12 FIX: fallback persist failure must not be swallowed.
+                self._remember_sync_persist(coord_key, payload, rid)
             return coord
 
         server_coord = self._remember_sync_persist(coord_key, payload, rid)

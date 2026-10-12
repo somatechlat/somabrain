@@ -224,9 +224,7 @@ def _run_sleep_consolidation(tenant_id: str, target_state: SleepState) -> dict:
                 settings,
                 mtwm,
                 mtmem,
-                recomb_rate=float(
-                    getattr(settings, "SOMABRAIN_REM_RECOMB_RATE")
-                ),
+                recomb_rate=float(getattr(settings, "SOMABRAIN_REM_RECOMB_RATE")),
                 max_summaries=int(
                     getattr(settings, "SOMABRAIN_MAX_SUMMARIES_PER_CYCLE")
                 ),

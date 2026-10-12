@@ -21,7 +21,6 @@ Scope (per SOMA-BR-PLAN-MASTER-001 Wave W1):
 from __future__ import annotations
 
 import math
-import os
 from collections.abc import Sequence
 from typing import Final
 
@@ -74,10 +73,13 @@ def compute_wiener_lambda(p: float, bits: int = QUANT_BITS) -> float:
 def production_sparsity() -> float:
     """BHDC active probability p used in production.
 
-    Reads ``SOMABRAIN_BHDC_SPARSITY`` — the same environment variable (and
-    default) as ``somabrain.settings.cognitive.SOMABRAIN_BHDC_SPARSITY``.
+    Fail-closed (Rule 1/3): the tunable comes from the settings chain
+    (``require_setting("SOMABRAIN_BHDC_SPARSITY")``). Never a call-time env
+    read with a silent default — a default IS a hardcoded value.
     """
-    return float(os.environ.get("SOMABRAIN_BHDC_SPARSITY", BHDC_P))
+    from somabrain.settings.resolve import require_setting
+
+    return float(require_setting("SOMABRAIN_BHDC_SPARSITY"))
 
 
 def production_wiener_lambda(bits: int = QUANT_BITS) -> float:
@@ -232,6 +234,7 @@ def sharpen_mixture_weights(
         vec = [v * scale for v in vec]
     return vec, True
 
+
 # ---------------------------------------------------------------------------
 # Recency kernel parameters (stretched exponential)
 # ---------------------------------------------------------------------------
@@ -328,6 +331,42 @@ LEXICAL_BONUS_TOKEN: Final[float] = 0.25
 LEXICAL_BONUS_TOKEN_CAP: Final[float] = 1.0
 
 # ---------------------------------------------------------------------------
+# HTTP transport policy (timeout / retry / backoff) — one home
+# ---------------------------------------------------------------------------
+#: Per-request HTTP timeout for memory/SFM transport (seconds).
+HTTP_TIMEOUT_S: Final[float] = 10.0
+#: Max retry attempts for memory/SFM POST (call-site default was 2).
+HTTP_MAX_RETRIES: Final[int] = 2
+#: Backoff base for retryable 429/503 responses (seconds).
+HTTP_BACKOFF_BASE_S: Final[float] = 0.01
+#: Jitter added to the 429/503 backoff (seconds).
+HTTP_BACKOFF_JITTER_S: Final[float] = 0.02
+#: Backoff base for 5xx responses (seconds).
+HTTP_BACKOFF_ERROR_BASE_S: Final[float] = 0.05
+#: Jitter added to the 5xx backoff (seconds).
+HTTP_BACKOFF_ERROR_JITTER_S: Final[float] = 0.05
+
+# ---------------------------------------------------------------------------
+# OPA data-API policy paths (one home; call sites import these)
+# ---------------------------------------------------------------------------
+#: Production / staging policy path.
+OPA_POLICY_PATH_ALLOW: Final[str] = "somabrain/auth/allow"
+#: Dev-mode policy path (MODE_OPA_POLICY_BUNDLE allow-dev|dev).
+OPA_POLICY_PATH_ALLOW_DEV: Final[str] = "somabrain/auth/allow_dev"
+#: Integrator leader policy path.
+OPA_POLICY_PATH_INTEGRATOR: Final[str] = "soma/policy/integrator"
+#: Timeout for a single OPA evaluation request (seconds).
+OPA_REQUEST_TIMEOUT_S: Final[float] = 1.0
+
+# ---------------------------------------------------------------------------
+# Learner next-event defaults (one home)
+# ---------------------------------------------------------------------------
+#: Default exploration temperature when an event omits ``tau``.
+LEARNER_DEFAULT_TAU: Final[float] = 1.0
+#: Default learning rate when an event omits ``lr``.
+LEARNER_DEFAULT_LR: Final[float] = 0.0
+
+# ---------------------------------------------------------------------------
 # Outbox backpressure (E2.5)
 # ---------------------------------------------------------------------------
 #: Pending-outbox count that engages backpressure.
@@ -422,6 +461,21 @@ __all__ = [
     "LEXICAL_BONUS_TOKEN_CAP",
     # Outbox
     "OUTBOX_BACKPRESSURE_THRESHOLD",
+    # HTTP transport policy
+    "HTTP_TIMEOUT_S",
+    "HTTP_MAX_RETRIES",
+    "HTTP_BACKOFF_BASE_S",
+    "HTTP_BACKOFF_JITTER_S",
+    "HTTP_BACKOFF_ERROR_BASE_S",
+    "HTTP_BACKOFF_ERROR_JITTER_S",
+    # OPA policy paths
+    "OPA_POLICY_PATH_ALLOW",
+    "OPA_POLICY_PATH_ALLOW_DEV",
+    "OPA_POLICY_PATH_INTEGRATOR",
+    "OPA_REQUEST_TIMEOUT_S",
+    # Learner defaults
+    "LEARNER_DEFAULT_TAU",
+    "LEARNER_DEFAULT_LR",
     # Adaptation / LR
     "ADAPT_LR_SCALE_FLOOR",
     "ADAPT_LR_SCALE_CEIL",

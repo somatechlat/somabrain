@@ -28,6 +28,22 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _memory_content_equal(existing_envelope: dict, stored_payload: dict) -> bool:
+    """Compare outbox envelope content with a new payload (identity = payload only)."""
+    import json
+
+    def _content(envelope: dict) -> Any:
+        inner = envelope.get("payload")
+        return inner if isinstance(inner, dict) else envelope
+
+    try:
+        return json.dumps(_content(existing_envelope), sort_keys=True, default=str) == (
+            json.dumps({"payload": stored_payload}, sort_keys=True, default=str)
+        )
+    except Exception:
+        return _content(existing_envelope) == stored_payload
+
+
 def _record_to_outbox(
     coord: tuple[float, float, float],
     payload: dict,
@@ -42,6 +58,11 @@ def _record_to_outbox(
     MUST raise. A silent ``None`` lets the store hop proceed with no row to
     replay.
 
+    Idempotency (H3 / mem:{coord}): a retry of the same coord collapses to
+    the existing row when content matches; a different payload for the same
+    coord is a collision and raises. Same contract as the API
+    ``_durable_accept`` path.
+
     Args:
         coord: Memory coordinate
         payload: Memory payload
@@ -53,38 +74,64 @@ def _record_to_outbox(
 
     Raises:
         OutboxBackpressureError: outbox above threshold (E2.5).
+        ValueError: idempotency collision — different payload, same coord.
         Exception: any other enqueue failure — never swallowed.
     """
-    from somabrain.db.outbox import enqueue_memory_event
+    from django.db import IntegrityError
 
-    event_id = enqueue_memory_event(
-        topic="memory.store",
-        payload={
-            "coord": list(coord),
-            "payload": payload,
-            "request_id": request_id,
-        },
-        tenant_id=tenant,
-        coord=coord,
-        # INVARIANTS §3.3: identity is mem:{coord} only. request_id is
-        # payload metadata, never part of the dedupe key.
-        extra_key=None,
-        check_backpressure_flag=True,
+    from somabrain.db.outbox import (
+        _idempotency_key,
+        enqueue_memory_event,
+        get_event_by_dedupe_key,
     )
+
+    try:
+        event_id = enqueue_memory_event(
+            topic="memory.store",
+            payload={
+                "coord": list(coord),
+                "payload": payload,
+                "request_id": request_id,
+            },
+            tenant_id=tenant,
+            coord=coord,
+            # INVARIANTS §3.3: identity is mem:{coord} only. request_id is
+            # payload metadata, never part of the dedupe key.
+            extra_key=None,
+            check_backpressure_flag=True,
+        )
+    except IntegrityError:
+        existing = get_event_by_dedupe_key(
+            _idempotency_key("memory.store", coord, tenant, None), tenant_id=tenant
+        )
+        if existing is None:
+            raise
+        if not _memory_content_equal(existing.payload or {}, payload):
+            raise ValueError(
+                "idempotency collision: a different payload already exists for "
+                f"coord={coord} (event={existing.id} status={existing.status}); "
+                "refusing to drop the new write"
+            )
+        return int(existing.id)
     return int(event_id)
 
 
 def _mark_outbox_sent(event_id: int) -> None:
     """Mark outbox event as sent after successful SFM call.
 
-    Per Requirement E2.2: Mark "sent" on success.
+    Per Requirement E2.2: Mark "sent" on success. Failure leaves the row
+    pending (correct) but must be visible to ops — never debug-only.
     """
     try:
         from somabrain.db.outbox import mark_event_sent
 
         mark_event_sent(event_id)
     except Exception as exc:
-        logger.debug(f"Failed to mark outbox event sent: {exc}")
+        logger.warning(
+            "Failed to mark outbox event %s sent (row stays pending, replayable): %s",
+            event_id,
+            exc,
+        )
 
 
 def _get_tenant_namespace(cfg: Any, payload: dict | None = None) -> tuple[str, str]:
@@ -140,14 +187,19 @@ def remember_sync_persist(
     )
     sc = _stable_coord(f"{uni}::{coord_key}")
 
+    # ONE body builder (V1). Previously this rebuilt {coord, payload,
+    # memory_type} and stripped embedding/tenant_id/importance/belief_*.
+    from somabrain.memory.payload import build_store_body, seam_store_fields
+
     coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
-    body: dict[str, Any] = {
-        "coord": coord_str,
-        "payload": dict(enriched),
-        "memory_type": str(
+    body: dict[str, Any] = build_store_body(
+        coord=coord_str,
+        payload=dict(enriched),
+        memory_type=str(
             payload.get("memory_type") or payload.get("type") or "episodic"
         ),
-    }
+        seam_fields=seam_store_fields(cfg, enriched, payload),
+    )
 
     rid = request_id or str(uuid.uuid4())
     rid_hdr = {"X-Request-ID": rid}
@@ -194,9 +246,15 @@ async def aremember_background(
     - Records to outbox before SFM call
     - Marks "sent" on success
     - Leaves "pending" on failure for retry
+
+    Fail-closed (H4): a missing async transport is a refusal, never a silent
+    return — the caller would believe persist was scheduled.
     """
     if transport is None or transport.async_client is None:
-        return
+        raise RuntimeError(
+            "HTTP memory service required for background persistence "
+            "(aremember_background: async transport missing)."
+        )
 
     rid = request_id or str(uuid.uuid4())
     rid_hdr = {"X-Request-ID": rid}
@@ -209,14 +267,17 @@ async def aremember_background(
     # Compute stable coordinate for outbox recording
     sc = _stable_coord(f"{uni}::{coord_key}")
 
-    # VIBE FIX: Construct correct MemoryStoreRequest schema matching sync persist
-    body: dict[str, Any] = {
-        "coord": f"{sc[0]},{sc[1]},{sc[2]}",
-        "payload": dict(enriched),
-        "memory_type": str(
+    # ONE body builder (V1) — same shape as remember_sync_persist.
+    from somabrain.memory.payload import build_store_body, seam_store_fields
+
+    body: dict[str, Any] = build_store_body(
+        coord=f"{sc[0]},{sc[1]},{sc[2]}",
+        payload=dict(enriched),
+        memory_type=str(
             payload.get("memory_type") or payload.get("type") or "episodic"
         ),
-    }
+        seam_fields=seam_store_fields(cfg, enriched, payload),
+    )
 
     # E2.1: Record to outbox before SFM call
     outbox_event_id = _record_to_outbox(sc, enriched, tenant, rid)
@@ -365,11 +426,15 @@ async def aremember_single(
     enriched = dict(enriched)
     enriched.setdefault("coordinate", coord)
     memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
-    body = {
-        "coord": f"{coord[0]},{coord[1]},{coord[2]}",
-        "payload": enriched,
-        "memory_type": memory_type,
-    }
+    # ONE body builder (V1) — this path stripped embedding/tenant_id too.
+    from somabrain.memory.payload import build_store_body, seam_store_fields
+
+    body = build_store_body(
+        coord=f"{coord[0]},{coord[1]},{coord[2]}",
+        payload=enriched,
+        memory_type=memory_type,
+        seam_fields=seam_store_fields(cfg, enriched, payload),
+    )
     rid = request_id or str(uuid.uuid4())
     rid_hdr = {"X-Request-ID": rid}
     rid_hdr.update(compat_hdr)

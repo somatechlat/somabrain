@@ -1,11 +1,15 @@
 """Runtime configuration helpers for hot-path lookups.
 
-Operator law: settings = Django + BrainSetting/DB only. Secrets = Vault only.
-Environment variables are never a settings or secrets channel.
+Several learning and persistence modules read lightweight knobs at runtime.
+Those call sites expect a small module-level API instead of importing Django
+settings directly so they can keep a consistent fallback order:
 
-Fallback order:
-1. Explicit Django settings attributes (including SOMABRAIN_*).
-2. Caller-provided defaults (never invent a secret from env).
+1. Explicit Django settings attributes.
+2. Caller-provided defaults.
+
+Environment variables are never consulted (Rule 164): a secret in the process
+environment is visible in ``ps``, in ``/proc/*/environ`` and in every crash
+dump. Knobs are provisioned via Django settings / BrainSetting only.
 """
 
 from __future__ import annotations
@@ -33,8 +37,11 @@ def _candidate_names(key: str) -> tuple[str, ...]:
 
 
 def _read_raw(key: str) -> Any | None:
+    """Read a runtime knob from Django settings only (no ENV — Rule 164)."""
+    if settings is None:
+        return None
     for name in _candidate_names(key):
-        if settings is not None and hasattr(settings, name):
+        if hasattr(settings, name):
             value = getattr(settings, name)
             if value not in (None, ""):
                 return value

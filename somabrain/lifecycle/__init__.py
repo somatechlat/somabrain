@@ -12,7 +12,6 @@ from somabrain.lifecycle.startup import (
     enforce_opa_postgres_required,
     init_constitution,
     init_health_watchdog,
-    start_milvus_reconciliation_task,
     start_outbox_sync,
     startup_mode_banner,
 )
@@ -29,7 +28,6 @@ __all__ = [
     "enforce_opa_postgres_required",
     "init_health_watchdog",
     "start_outbox_sync",
-    "start_milvus_reconciliation_task",
     # Shutdown functions
     "start_memory_watchdog",
     "stop_memory_watchdog",

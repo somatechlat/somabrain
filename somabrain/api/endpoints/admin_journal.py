@@ -12,7 +12,7 @@ from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
 
-from somabrain.api.auth import api_key_auth
+from somabrain.api.auth import api_key_auth, require_admin_auth
 from somabrain.db import outbox_journal
 from somabrain.schemas import OutboxReplayRequest as JournalReplayRequest
 
@@ -29,6 +29,7 @@ def list_journal_events(
     tenant_id: str | None = None,
 ):
     """List journal events with optional tenant filtering."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         events = outbox_journal.list_journal_events(
             limit=limit,
@@ -59,6 +60,7 @@ def replay_journal_events(
     body: JournalReplayRequest,
 ):
     """Replay journal events to outbox."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         count = outbox_journal.replay_journal_events(
             event_ids=body.event_ids if hasattr(body, "event_ids") else [],
@@ -82,6 +84,7 @@ def cleanup_journal(
     older_than_days: int = 30,
 ):
     """Clean up old journal events."""
+    require_admin_auth(request, getattr(request, "cfg", None))
     try:
         deleted_count = outbox_journal.cleanup_old_journal_events(
             older_than_days=older_than_days

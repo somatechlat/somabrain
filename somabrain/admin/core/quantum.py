@@ -63,34 +63,44 @@ class HRRConfig:
         # Apply Settings defaults for None values
         """Execute post init  ."""
 
-        s = _get_settings()
-        from somabrain.math.contracts import BHDC_D, BHDC_P
+        from somabrain.settings.resolve import require_setting
 
         if self.dim is None:
-            self.dim = int(getattr(s, "SOMABRAIN_HRR_DIM", BHDC_D) or BHDC_D)
+            self.dim = int(require_setting("SOMABRAIN_HRR_DIM"))
         if self.seed is None:
-            self.seed = int(getattr(s, "SOMABRAIN_GLOBAL_SEED", 42) or 42)
+            self.seed = int(require_setting("SOMABRAIN_HRR_SEED"))
         if self.dtype is None:
-            self.dtype = str(getattr(s, "SOMABRAIN_HRR_DTYPE", None) or "float32")
+            self.dtype = str(require_setting("SOMABRAIN_HRR_DTYPE"))
         if self.renorm is None:
-            self.renorm = bool(getattr(s, "SOMABRAIN_HRR_RENORM", True))
+            self.renorm = bool(require_setting("SOMABRAIN_HRR_RENORM"))
         if self.sparsity is None:
-            self.sparsity = float(getattr(s, "SOMABRAIN_BHDC_SPARSITY", BHDC_P) or BHDC_P)
+            self.sparsity = float(require_setting("SOMABRAIN_BHDC_SPARSITY"))
 
-        # Validation
+        # Validation — vocab fields are never invented here (R-VAL-04).
         if self.dim <= 0:
             raise ValueError("HRRConfig.dim must be a positive integer")
         if self.dtype not in ("float32", "float64"):
             raise ValueError("HRRConfig.dtype must be 'float32' or 'float64'")
-        method = (self.binding_method or "bhdc").lower()
+        method = require_setting("SOMABRAIN_MATH_BINDING_METHOD")
+        method = str(self.binding_method if self.binding_method is not None else method).lower()
         if method != "bhdc":
             raise ValueError(f"Unsupported binding_method '{method}'")
         self.binding_method = "bhdc"
-        mode = (self.binary_mode or "pm_one").lower()
+        mode_raw = (
+            self.binary_mode
+            if self.binary_mode is not None
+            else require_setting("SOMABRAIN_MATH_BHDC_BINARY_MODE")
+        )
+        mode = str(mode_raw).lower()
         if mode not in {"pm_one", "zero_one"}:
             raise ValueError("binary_mode must be 'pm_one' or 'zero_one'")
         self.binary_mode = mode
-        mix_mode = (self.mix or "none").lower()
+        mix_raw = (
+            self.mix
+            if self.mix is not None
+            else require_setting("SOMABRAIN_MATH_BHDC_MIX")
+        )
+        mix_mode = str(mix_raw).lower()
         if mix_mode not in {"none", "hadamard"}:
             raise ValueError("mix must be 'none' or 'hadamard'")
         self.mix = mix_mode
@@ -547,6 +557,3 @@ def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
     """
 
     return QuantumLayer(cfg)
-
-
-

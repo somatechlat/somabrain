@@ -128,6 +128,7 @@ class WorkingMemory:
         salience_threshold: float | None = None,
         persister: WMPersister | None = None,
         promoter: WMLTMPromoter | None = None,
+        tenant_id: str | None = None,
     ):
         """
         Initialize working memory with specified capacity and vector dimension.
@@ -184,6 +185,8 @@ class WorkingMemory:
         self._item_ids: list[str] = []
         # WM-LTM Promotion (A2.1-A2.5): Optional promoter for salient items
         self._promoter: WMLTMPromoter | None = promoter
+        # Tenant scope for BrainSetting prune/decay knobs (T-5).
+        self._tenant_id = tenant_id
         # B1.4: Duplicate detection threshold (cosine similarity)
         self._duplicate_threshold: float = 0.95  # Items with sim > 0.95 are duplicates
 
@@ -333,10 +336,14 @@ class WorkingMemory:
                 # No event loop - try to create one
                 try:
                     persisted_id = asyncio.run(self._persister.queue_persist(item))
-                except Exception:
-                    pass  # Persistence is best-effort
-            except Exception:
-                pass  # Persistence is best-effort
+                except Exception as exc:
+                    raise RuntimeError(
+                        f"WM persistence failed (no silent drop): {exc}"
+                    ) from exc
+            except Exception as exc:
+                raise RuntimeError(
+                    f"WM persistence failed (no silent drop): {exc}"
+                ) from exc
         self._item_ids.append(persisted_id)
 
         if len(self._items) > self.capacity:
@@ -351,15 +358,21 @@ class WorkingMemory:
         """
         return find_duplicate(self._items, item_id, vector, self._duplicate_threshold)
 
-    def _evict_lowest_salience(self) -> None:
+    def _evict_lowest_salience(self, force: bool = False) -> None:
         """Evict the item with the lowest salience score.
 
         Delegates to wm_eviction module for the actual eviction logic.
 
         Per Requirement B1.1: WHEN WM reaches capacity THEN the system SHALL
         evict the item with lowest salience score.
+
+        ``force=True`` ignores the configured capacity (used by managed prune
+        when ``max_wm_items`` is tighter than capacity). Without force, a
+        no-op when under capacity would make the prune while-loop spin forever.
         """
-        if len(self._items) <= self.capacity:
+        if not self._items:
+            return
+        if not force and len(self._items) <= self.capacity:
             return
 
         now = self._now()
@@ -552,9 +565,14 @@ class WorkingMemory:
         try:
             from somabrain.brain_settings.models import BrainSetting
 
-            threshold = float(BrainSetting.get("wm_prune_threshold", "default") or 0.0)
-            max_items = int(BrainSetting.get("max_wm_items", "default") or 0)
-            decay = float(BrainSetting.get("memory_decay_rate", "default") or 0.0)
+            # Tenant-scoped knobs (credential tenant is the authority). A
+            # buffer without a tenant falls back to the base profile.
+            tid = getattr(self, "_tenant_id", None) or ""
+            if not tid:
+                raise ValueError("tenant is required (T-5 fail-closed)")
+            threshold = float(BrainSetting.get("wm_prune_threshold", tid) or 0.0)
+            max_items = int(BrainSetting.get("max_wm_items", tid) or 0)
+            decay = float(BrainSetting.get("memory_decay_rate", tid) or 0.0)
         except Exception:
             threshold, max_items, decay = 0.0, 0, 0.0
 
@@ -580,7 +598,7 @@ class WorkingMemory:
         # Cap WM size using managed max_wm_items.
         if max_items > 0:
             while len(self._items) > max_items and len(self._items) > 1:
-                self._evict_lowest_salience()
+                self._evict_lowest_salience(force=True)
 
     def _apply_prune_indices(self, keep_idx: list[int]) -> None:
         """Keep only selected indices; mark others evicted (not hard delete)."""
@@ -594,7 +612,7 @@ class WorkingMemory:
                 if idx < len(self._item_ids):
                     new_ids.append(self._item_ids[idx])
             else:
-                item_id = (
+                (
                     self._item_ids[idx]
                     if idx < len(self._item_ids)
                     else f"wm_{idx}_{getattr(item, 'tick', 0)}"

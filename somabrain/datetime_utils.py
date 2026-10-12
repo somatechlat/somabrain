@@ -71,7 +71,9 @@ def iso_created_at(payload: dict[str, Any]) -> str:
     raw = payload.get("timestamp") or payload.get("created_at")
     if isinstance(raw, (int, float)):
         try:
-            return datetime.datetime.fromtimestamp(float(raw), tz=datetime.UTC).isoformat()
+            return datetime.datetime.fromtimestamp(
+                float(raw), tz=datetime.UTC
+            ).isoformat()
         except (OverflowError, OSError, ValueError):
             pass
     if isinstance(raw, str) and raw.strip():

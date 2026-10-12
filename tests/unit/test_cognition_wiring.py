@@ -233,15 +233,23 @@ class TestEmotionVADCouplings:
         assert abs(d - 0.75) < 1e-12
 
     def test_arousal_raises_salience_boost(self) -> None:
-        low = affect_salience_boost(type("S", (), {"valence": 0.0, "arousal": 0.0, "dominance": 0.0})())
-        high = affect_salience_boost(type("S", (), {"valence": 0.0, "arousal": 1.0, "dominance": 0.0})())
+        low = affect_salience_boost(
+            type("S", (), {"valence": 0.0, "arousal": 0.0, "dominance": 0.0})()
+        )
+        high = affect_salience_boost(
+            type("S", (), {"valence": 0.0, "arousal": 1.0, "dominance": 0.0})()
+        )
         assert high - low == pytest.approx(AROUSAL_SALIENCE_WEIGHT)
 
     def test_valence_contributes_only_when_positive(self) -> None:
         from somabrain.admin.cognitive.emotion import EmotionVector
 
-        pos = affect_salience_boost(EmotionVector(valence=1.0, arousal=0.0, dominance=0.0))
-        neg = affect_salience_boost(EmotionVector(valence=-1.0, arousal=0.0, dominance=0.0))
+        pos = affect_salience_boost(
+            EmotionVector(valence=1.0, arousal=0.0, dominance=0.0)
+        )
+        neg = affect_salience_boost(
+            EmotionVector(valence=-1.0, arousal=0.0, dominance=0.0)
+        )
         assert pos > 0.0
         assert neg == 0.0
 
@@ -284,7 +292,9 @@ class TestEmotionVADCouplings:
             soft_temperature=0.5,
         )
         amy = AmygdalaSalience(cfg)
-        nm = NeuromodState(dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0)
+        nm = NeuromodState(
+            dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0
+        )
         s_plain = amy.score(0.5, 0.0, nm, affect_boost=0.0)
         s_boosted = amy.score(0.5, 0.0, nm, affect_boost=0.3)
         assert s_boosted > s_plain
@@ -303,7 +313,9 @@ class TestPersonalityTraitCoupling:
 
     def test_mapped_trait_blends_dopamine(self) -> None:
         store = PersonalityStore()
-        base = NeuromodState(dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0)
+        base = NeuromodState(
+            dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0
+        )
         traits = PersonalityState(traits={"dopamine": 0.8})
         out = store.modulate_neuromods(base, traits)
         expected = (1.0 - PERSONALITY_BLEND) * 0.4 + PERSONALITY_BLEND * 0.8
@@ -312,13 +324,19 @@ class TestPersonalityTraitCoupling:
 
     def test_alias_keys_map(self) -> None:
         store = PersonalityStore()
-        base = NeuromodState(dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0)
-        out = store.modulate_neuromods(base, PersonalityState(traits={"da": 0.8, "5ht": 0.0}))
+        base = NeuromodState(
+            dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0
+        )
+        out = store.modulate_neuromods(
+            base, PersonalityState(traits={"da": 0.8, "5ht": 0.0})
+        )
         assert out.dopamine != base.dopamine or out.serotonin != base.serotonin
 
     def test_unmapped_traits_are_identity_metadata(self) -> None:
         store = PersonalityStore()
-        base = NeuromodState(dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0)
+        base = NeuromodState(
+            dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0
+        )
         out = store.modulate_neuromods(
             base, PersonalityState(traits={"openness": 0.99, "extraversion": -1.0})
         )
@@ -329,7 +347,9 @@ class TestPersonalityTraitCoupling:
 
     def test_blended_value_stays_in_bounds(self) -> None:
         store = PersonalityStore()
-        base = NeuromodState(dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0)
+        base = NeuromodState(
+            dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0
+        )
         out = store.modulate_neuromods(
             base, PersonalityState(traits={"dopamine": 99.0, "acetylcholine": -5.0})
         )
@@ -359,7 +379,9 @@ class TestHMMFixedParams:
 
     def test_online_viterbi_is_pure_forward_recursion(self) -> None:
         """Same inputs → same outputs; no hidden parameter state mutates."""
-        params = HMMParams(A=((0.95, 0.05), (0.10, 0.90)), mu=(0.0, 1.0), sigma=(1.0, 1.0))
+        params = HMMParams(
+            A=((0.95, 0.05), (0.10, 0.90)), mu=(0.0, 1.0), sigma=(1.0, 1.0)
+        )
         obs = [0.0, 0.1, 0.2, 2.0, 2.1, 0.0]
         first = online_viterbi_probs(obs, params, prior=(0.9, 0.1))
         second = online_viterbi_probs(obs, params, prior=(0.9, 0.1))

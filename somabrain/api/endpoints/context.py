@@ -173,7 +173,6 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None
             )
 
         adapter = _get_adaptation(builder, planner, tenant_id=target_tenant)
-        route_state = get_context_route_state()
 
         return {
             "tenant_id": target_tenant,
@@ -188,7 +187,10 @@ def adaptation_state_endpoint(request: HttpRequest, tenant_id: str | None = None
                 "mu": adapter.utility_weights.mu,
                 "nu": adapter.utility_weights.nu,
             },
-            "history_len": route_state.feedback_counter,
+            # Engine-truth learning count (APM-1): increments on every applied
+            # update — /context/feedback AND memory events. route_state.feedback_counter
+            # only tracks the HTTP feedback route and undercounts.
+            "history_len": int(getattr(adapter, "_feedback_count", 0)),
             "learning_rate": getattr(adapter, "_lr", 0.0),
         }
     except Exception as exc:

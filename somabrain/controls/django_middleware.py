@@ -156,7 +156,14 @@ class ControlsMiddleware:
         )
 
         if dec.decision == "deny":
-            return HttpResponse(b"policy deny", status=503)
+            return JsonResponse(
+                {
+                    "detail": "policy deny",
+                    "reason": dec.reason,
+                    "hints": dec.hints,
+                },
+                status=503,
+            )
 
         # Process Request
         response = self.get_response(request)

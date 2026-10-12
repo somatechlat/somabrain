@@ -94,7 +94,9 @@ def affect_threshold_offset(
     return -float(w_dominance) * dominance
 
 
-def stimulus_from_signals(novelty: float, pred_error: float) -> tuple[float, float, float]:
+def stimulus_from_signals(
+    novelty: float, pred_error: float
+) -> tuple[float, float, float]:
     """Map step signals to a VAD stimulus tuple.
 
     ``valence = 1 − 2·pred_error`` (error → negative affect),
