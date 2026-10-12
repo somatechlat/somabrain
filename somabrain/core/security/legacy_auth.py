@@ -174,8 +174,17 @@ def _validate_api_or_memory_token(token: str) -> bool:
     # on the first mismatch rejected a correct agent↔brain token just because
     # a separate brain→SFM token happened to be configured too — two trust
     # boundaries, two credentials, one validator that must accept either.
+    # SOMABRAIN_ADMIN_TOKEN is the dedicated admin credential: it must pass
+    # this gate too, or /brain/settings cannot satisfy api_key_auth AND
+    # require_admin_auth with a single Authorization header. Ordinary
+    # callers still cannot use it for admin routes — require_admin_auth
+    # rejects the shared memory token.
     configured = False
-    for setting_name in ("SOMA_API_TOKEN", "SOMABRAIN_MEMORY_HTTP_TOKEN"):
+    for setting_name in (
+        "SOMA_API_TOKEN",
+        "SOMABRAIN_MEMORY_HTTP_TOKEN",
+        "SOMABRAIN_ADMIN_TOKEN",
+    ):
         expected = getattr(settings, setting_name, None)
         if not expected:
             continue

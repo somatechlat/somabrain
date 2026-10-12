@@ -500,6 +500,8 @@ class MemoryRecallResponse(BaseModel):
     # TRIAD degradation contract: degraded=true ⇒ error_code + degraded_reason.
     error_code: str | None = None
     degraded_reason: str | None = None
+    # COGNITION ALWAYS ON: memory-cycle cog signals surfaced to the caller.
+    warnings: list[str] = Field(default_factory=list)
 
 
 class ForgetRequest(BaseModel):

@@ -152,7 +152,22 @@ class RuntimeManager:
         try:
             from somabrain.admin.core.embeddings import make_embedder
 
-            self._embedder = make_embedder(_SettingsAdapter(settings))
+            cfg = _SettingsAdapter(settings)
+            # HRR embed provider requires a quantum layer. Build one when the
+            # cognitive stack is on (COGNITION ALWAYS ON) — otherwise the
+            # embedder refuses and every memory path 500s.
+            quantum = None
+            try:
+                if getattr(cfg, "embed_provider", "tiny") == "hrr":
+                    from somabrain.bootstrap.singletons import make_quantum_layer
+
+                    quantum = make_quantum_layer(cfg)
+                    logger.info("Quantum layer built for HRR embedder")
+            except Exception as q_exc:
+                logger.warning("Quantum layer unavailable for HRR: %s", q_exc)
+                quantum = None
+
+            self._embedder = make_embedder(cfg, quantum=quantum)
             logger.info("Embedder initialized successfully")
             return self._embedder
         except Exception as e:

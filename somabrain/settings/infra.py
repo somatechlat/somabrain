@@ -109,6 +109,10 @@ def configure_infra_secrets() -> None:
         )
         _remember("SOMA_API_TOKEN", runtime_secrets.get("api_token"))
         _remember(
+            "SOMABRAIN_ADMIN_TOKEN",
+            runtime_secrets.get("admin_token"),
+        )
+        _remember(
             "SOMABRAIN_PROVENANCE_SECRET",
             runtime_secrets.get("provenance_secret"),
         )
@@ -272,6 +276,9 @@ SOMA_FRACTAL_MEMORY_URL = env.str(
 # There is deliberately no ENV read here. A token in ENV is a token in `ps`,
 # in /proc/*/environ and in every crash dump — Rule 164. Missing is a refusal.
 SOMABRAIN_MEMORY_HTTP_TOKEN = _resolved("SOMABRAIN_MEMORY_HTTP_TOKEN")
+# Dedicated admin credential for /brain/settings and other admin routes.
+# NOT the shared memory token — require_admin_auth refuses that one.
+SOMABRAIN_ADMIN_TOKEN = _resolved("SOMABRAIN_ADMIN_TOKEN")
 if REQUIRE_MEMORY and not SOMABRAIN_MEMORY_HTTP_TOKEN:
     raise environ.ImproperlyConfigured(
         "SOMABRAIN_MEMORY_HTTP_TOKEN must be provisioned via Vault "

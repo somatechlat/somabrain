@@ -401,7 +401,12 @@ def check_soma_fractal_memory() -> dict[str, Any]:
     def _check():
         """Execute check."""
 
-        sfm_url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL")
+        sfm_url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL", "") or ""
+        if not sfm_url:
+            # Managed setting (BrainSetting memory_http_endpoint), not ENV.
+            from somabrain.core.infrastructure_defs import get_memory_http_endpoint
+
+            sfm_url = get_memory_http_endpoint() or ""
 
         if not sfm_url:
             return {"configured": False}

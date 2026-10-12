@@ -250,6 +250,7 @@ async def perform_recall(
     embedder = None
     query_vec: np.ndarray | None = None
     degraded = False
+    degraded_reasons: list[str] = []
     if query_vec_list is not None:
         query_vec = np.asarray(query_vec_list, dtype=np.float32)
     else:
@@ -264,9 +265,11 @@ async def perform_recall(
         except HttpError:
             if layer in (LAYER_WM, LAYER_BOTH):
                 raise
-        except Exception:
+        except Exception as exc:
             embedder = None
             query_vec = None
+            degraded = True
+            degraded_reasons.append(f"reembed: {type(exc).__name__}")
 
     # WM recall
     if layer in (LAYER_WM, LAYER_BOTH) and query_vec is not None:
@@ -301,6 +304,7 @@ async def perform_recall(
         except Exception as e:
             logger.warning("WM recall failed: %s", e)
             degraded = True
+            degraded_reasons.append(f"wm: {type(e).__name__}")
 
     # LTM recall
     if layer in (LAYER_LTM, LAYER_BOTH):
@@ -322,6 +326,10 @@ async def perform_recall(
             raise HttpError(502, f"recall failed: {exc}") from exc
         if getattr(hits, "degraded", False):
             degraded = True
+            ltm_reason = getattr(hits, "degraded_reason", None) or getattr(
+                hits, "error", None
+            )
+            degraded_reasons.append(f"ltm: {ltm_reason or 'degraded hits'}")
         stage_dur = time.perf_counter() - stage_start
         try:
             from somabrain import metrics as M
@@ -390,20 +398,6 @@ async def perform_recall(
     except Exception as e:
         logger.debug("Failed to observe recall latency: %s", e)
 
-    # APM-1: every recall is a learning event (hit vs miss) for the brain.
-    try:
-        from somabrain.learning.memory_events import remember_learned
-
-        kind = "recall_hit" if all_results else "recall_miss"
-        utility = (
-            float(all_results[0].score)
-            if all_results and all_results[0].score is not None
-            else None
-        )
-        remember_learned(payload.tenant, kind=kind, utility=utility)
-    except Exception as e:
-        logger.debug("recall learning hook failed: %s", e)
-
     # Session management
     current_session = payload.session_id or str(uuid.uuid4())
     _prune_sessions()
@@ -416,6 +410,31 @@ async def perform_recall(
             payload.scoring_mode,
             all_results,
         )
+
+    # COGNITION ALWAYS ON: cognition runs on every recall cycle after hits.
+    cog_warnings: list[str] = []
+    try:
+        from somabrain.cognition.memory_cycle import recall_cognition
+
+        cog = recall_cognition(
+            query=payload.query,
+            hits=all_results,
+            tenant_id=payload.tenant,
+        )
+        if cog:
+            import json as _json
+
+            cog_warnings.append("cognition:" + _json.dumps(cog, default=str)[:500])
+    except Exception as cog_exc:
+        logger.debug("recall cognition hook failed: %s", cog_exc)
+        cog_warnings.append(f"cognition_error:{type(cog_exc).__name__}")
+
+    # TRIAD degradation contract: degraded=true ⇒ error_code + degraded_reason.
+    error_code = None
+    degraded_reason = None
+    if degraded:
+        error_code = "recall_degraded"
+        degraded_reason = "; ".join(degraded_reasons) or "recall completed with degraded sources"
 
     return MemoryRecallResponse(
         tenant=payload.tenant,
@@ -432,6 +451,9 @@ async def perform_recall(
         chunk_size=chunk_size,
         conversation_id=payload.conversation_id,
         degraded=degraded,
+        error_code=error_code,
+        degraded_reason=degraded_reason,
+        warnings=cog_warnings,
     )
 
 

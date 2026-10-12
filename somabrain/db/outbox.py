@@ -14,6 +14,7 @@ Migrated from SQLAlchemy to Django ORM.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Sequence
 
 from django.db import transaction
@@ -245,35 +246,94 @@ def mark_events_failed_bulk(
     return escalated + len(dead_ids)
 
 
+# Structured HTTP status extraction. A bare substring like ``"400"`` must NOT
+# match a duration such as ``"4000ms"`` or a count like ``"1400"`` — only a
+# real status token in an HTTP-shaped context is authoritative.
+# Recognised shapes (the ones drain errors actually carry):
+#   HTTP/1.1 400 …          HTTP/2 404 …
+#   status=400              status: 400
+#   status code: 400        status_code=400
+#   HTTP error: 404         code=422
+#   400 Bad Request         (httpx / http.client reason phrase)
+_HTTP_STATUS_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"HTTP/[0-9.]+\s+(\d{3})(?!\d)", re.IGNORECASE),
+    re.compile(r"HTTP\s+error\s*[:=]\s*(\d{3})(?!\d)", re.IGNORECASE),
+    re.compile(r"\bstatus(?:\s*[_\s-]?code)?\s*[:=]\s*[\"']?(\d{3})(?!\d)", re.IGNORECASE),
+    re.compile(r"\bcode\s*[:=]\s*[\"']?(\d{3})(?!\d)", re.IGNORECASE),
+    re.compile(
+        r"\b(\d{3})\s+(?:Bad Request|Unauthorized|Forbidden|Not Found|Method Not "
+        r"Allowed|Conflict|Unprocessable Entity|Too Many Requests|Payload Too "
+        r"Large|Unsupported Media Type|Internal Server Error|Bad Gateway|Service "
+        r"Unavailable|Gateway Timeout)\b",
+        re.IGNORECASE,
+    ),
+)
+
+# Reason phrases that identify a permanent client failure even without a code.
+_PERMANENT_REASON_PHRASES: tuple[str, ...] = (
+    "unauthorized",
+    "forbidden",
+    "not found",
+    "validation",
+    "unprocessable",
+    "conflict",
+)
+
+# Transient codes: rate-limit and gateway classes always retry.
+_TRANSIENT_STATUS_CODES = frozenset({408, 425, 429, 500, 502, 503, 504, 507, 509})
+# Terminal client codes: schema/tenant/auth will never succeed on retry.
+_PERMANENT_STATUS_CODES = frozenset(
+    {400, 401, 403, 404, 405, 409, 415, 422}
+)
+
+
+def _extract_http_status_codes(text: str) -> list[int]:
+    """Parse HTTP status codes from an error string (structured contexts only)."""
+    codes: list[int] = []
+    seen: set[int] = set()
+    for pattern in _HTTP_STATUS_PATTERNS:
+        for match in pattern.finditer(text):
+            try:
+                code = int(match.group(1))
+            except (TypeError, ValueError):
+                continue
+            if code not in seen:
+                seen.add(code)
+                codes.append(code)
+    return codes
+
+
 def _is_permanent_client_error(error: str | None) -> bool:
     """True when the send error is a permanent HTTP 4xx (never retryable).
+
+    Status codes are parsed from HTTP-shaped contexts (``HTTP/1.1 4xx``,
+    ``status=4xx``, ``status code: 4xx``, ``code=4xx``, reason-phrase pairs) —
+    never from raw substrings, so ``"4000ms"`` is not a 400 and ``"4290 rows"``
+    is not a 429.
 
     Transient failures (timeouts, connection resets, 5xx, 429) return False
     so the row goes back to ``pending`` for T-6 replay.
     """
     if not error:
         return False
-    text = str(error).lower()
-    # Transient first: 5xx / 429 / timeouts always retry.
-    if any(tok in text for tok in ("502", "503", "504", "429", "timeout", "timed out")):
+    text = str(error)
+    lower = text.lower()
+
+    # Transient words always win: a timeout is retryable whatever else is in
+    # the message.
+    if any(tok in lower for tok in ("timeout", "timed out", "connection reset", "connection refused", "temporarily")):
         return False
-    return any(
-        tok in text
-        for tok in (
-            "400",
-            "401",
-            "403",
-            "404",
-            "409",
-            "422",
-            "unauthorized",
-            "forbidden",
-            "not found",
-            "validation",
-            "unprocessable",
-            "conflict",
-        )
-    )
+
+    codes = _extract_http_status_codes(text)
+    if codes:
+        # Any transient class in the message means the failure is retryable.
+        if any(c in _TRANSIENT_STATUS_CODES for c in codes):
+            return False
+        # Otherwise permanent only when every parsed code is a terminal 4xx.
+        return bool(codes) and all(c in _PERMANENT_STATUS_CODES for c in codes)
+
+    # No structured status: fall back to explicit reason phrases only.
+    return any(phrase in lower for phrase in _PERMANENT_REASON_PHRASES)
 
 
 def reclaim_expired_claims(now=None) -> int:

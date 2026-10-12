@@ -318,6 +318,19 @@ class WMLTMPromoter:
         start_time = time.perf_counter()
 
         try:
+            # COGNITION ALWAYS ON: cog step runs BEFORE the WM→LTM promote.
+            # The gate is the caller's concern; this module only evaluates.
+            try:
+                from somabrain.cognition.memory_cycle import promote_cognition
+
+                promote_cognition(
+                    candidate=payload,
+                    tenant_id=self._tenant_id,
+                    salience=float((payload or {}).get("importance") or 0.0),
+                )
+            except Exception as cog_exc:
+                logger.debug("promote cognition hook failed: %s", cog_exc)
+
             # Prepare LTM payload (A2.5: memory_type="episodic", promoted_from_wm=true)
             ltm_payload = {
                 **payload,

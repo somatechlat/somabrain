@@ -290,10 +290,15 @@ class ConstitutionEngine:
     def validate(self, instance: dict[str, Any]) -> dict[str, Any]:
         """Validate an instance against the constitution.
 
-        If an OPA endpoint is configured via SOMA_OPA_URL, the engine will proxy the validation
-        to OPA (`/v1/data/soma/policy/allow`). If OPA is not configured or unreachable, fall
+        If an OPA endpoint is configured via SOMABRAIN_OPA_URL, the engine will proxy the validation
+        to OPA. The data path is the single canonical plane
+        (``_policy_path_for_mode()`` -> ``somabrain/auth/allow`` or
+        ``somabrain/auth/allow_dev``); there is no second policy tree. If OPA
+        is not configured or unreachable, fall
         back to a conservative local check that ensures required top-level keys exist.
         """
+        from somabrain.opa.client import _policy_path_for_mode
+
         opa_url = getattr(settings, "SOMABRAIN_OPA_URL")
         # Conservative local check
         required = ["version", "rules"]
@@ -302,8 +307,9 @@ class ConstitutionEngine:
             try:
                 import requests
 
+                policy_path = _policy_path_for_mode().rstrip("/")
                 resp = requests.post(
-                    f"{opa_url.rstrip('/')}/v1/data/soma/policy/allow",
+                    f"{opa_url.rstrip('/')}/v1/data/{policy_path}",
                     json={
                         "input": {
                             "constitution": self._constitution,

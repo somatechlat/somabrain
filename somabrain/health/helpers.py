@@ -68,9 +68,15 @@ def get_mt_memory():
         if _cached_mt_memory is not None:
             return _cached_mt_memory
 
-    # Fallback: verify SFM is reachable for health checks
+    # Fallback: verify SFM is reachable for health checks.
+    # Endpoint is a managed setting (BrainSetting memory_http_endpoint) —
+    # resolved by infrastructure_defs, never invented and never ENV-only.
     try:
-        memory_endpoint = getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+        from somabrain.core.infrastructure_defs import get_memory_http_endpoint
+
+        memory_endpoint = get_memory_http_endpoint(
+            getattr(settings, "SOMABRAIN_MEMORY_HTTP_ENDPOINT", None) or None
+        )
         if memory_endpoint:
             # Ping SFM healthz endpoint to verify it's reachable
             healthz_url = memory_endpoint.rstrip("/") + "/healthz"

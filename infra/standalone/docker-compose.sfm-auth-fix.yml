@@ -1,0 +1,6 @@
+# Temporary overlay: bind the law-fixed sfm_auth.py over the read-only image copy.
+# Single auth-header authority (R5): Vault shared credential wins over any cfg pin.
+services:
+  somabrain_standalone_outbox_publisher:
+    volumes:
+      - ../../somabrain/memory/sfm_auth.py:/app/somabrain/memory/sfm_auth.py:ro

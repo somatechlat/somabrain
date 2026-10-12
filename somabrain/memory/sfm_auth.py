@@ -63,21 +63,15 @@ def build_sfm_request_headers(
 def resolve_sfm_api_token(cfg: object | None = None) -> str | None:
     """Return the SFM bearer token or None when not provisioned.
 
-    Order:
-    1. Explicit ``cfg.soma_api_token`` / ``cfg.SOMA_API_TOKEN`` (pinned).
-    2. Vault shared credential ``somabrain_memory_http_token`` (authoritative).
+    Order (Vault is authoritative — R5):
+    1. Vault shared credential ``somabrain_memory_http_token`` (the one SFM
+       accepts). Always preferred: a pinned cfg token that disagrees is the
+       classic dual-credential 401.
+    2. Explicit ``cfg.soma_api_token`` / ``cfg.SOMA_API_TOKEN`` (bootstrap pin)
+       only when Vault is unreachable.
     3. ``somabrain.settings.django_core.get_api_token()`` / Django
        ``SOMA_API_TOKEN`` after bootstrap merged the same Vault value.
     """
-    if cfg is not None:
-        for name in ("soma_api_token", "SOMA_API_TOKEN"):
-            value = getattr(cfg, name, None)
-            if value:
-                text = str(value).strip()
-                # Bootstrap must never treat a log line as a credential.
-                if text and " " not in text:
-                    return text
-
     try:
         from somabrain.core.security.vault_client import get_runtime_secret
 
@@ -86,6 +80,15 @@ def resolve_sfm_api_token(cfg: object | None = None) -> str | None:
             return str(token).strip()
     except Exception:
         pass
+
+    if cfg is not None:
+        for name in ("soma_api_token", "SOMA_API_TOKEN"):
+            value = getattr(cfg, name, None)
+            if value:
+                text = str(value).strip()
+                # Bootstrap must never treat a log line as a credential.
+                if text and " " not in text:
+                    return text
 
     try:
         from somabrain.settings.django_core import get_api_token

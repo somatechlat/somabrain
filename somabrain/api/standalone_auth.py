@@ -31,7 +31,17 @@ class StandaloneAPIKeyAuth(HttpBearer):
 
     def authenticate(self, request: HttpRequest, token: str) -> dict[str, Any] | None:
         expected = getattr(settings, "SOMABRAIN_MEMORY_HTTP_TOKEN")
-        if not expected or not hmac.compare_digest(token.encode("utf-8"), expected.encode("utf-8")):
+        admin_expected = getattr(settings, "SOMABRAIN_ADMIN_TOKEN", None)
+        # Fail-closed on missing token or missing expected — never crash on
+        # None.encode (security review F-07).
+        if not token or not expected:
+            return None
+        is_admin = bool(admin_expected) and hmac.compare_digest(
+            token.encode("utf-8"), admin_expected.encode("utf-8")
+        )
+        if not is_admin and not hmac.compare_digest(
+            token.encode("utf-8"), expected.encode("utf-8")
+        ):
             return None
         tenant_id = getattr(settings, "SOMABRAIN_DEFAULT_TENANT")
         if not tenant_id:
@@ -44,6 +54,8 @@ class StandaloneAPIKeyAuth(HttpBearer):
             "tenant_slug": tenant_id,
             "api_key": None,
             "api_key_id": "",
-            "scopes": ["memory:read", "memory:write", "admin:read"],
+            "scopes": ["memory:read", "memory:write", "admin:read"]
+            + (["admin", "admin:write"] if is_admin else []),
+            "is_admin": is_admin,
             "is_test": False,
         }

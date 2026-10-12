@@ -75,6 +75,19 @@ python3 manage.py migrate --noinput 2>&1 || {
   }
 }
 
+# Seed BrainSetting rows for the operator-chosen base profile. The tenant is
+# explicit and must match SOMABRAIN_DEFAULT_TENANT — init_brain_settings
+# refuses a mismatch (T-5 / Rule 91). No silent default tenant.
+if [ -z "${SOMABRAIN_DEFAULT_TENANT:-}" ]; then
+  echo "ERROR: SOMABRAIN_DEFAULT_TENANT is not set; refusing to seed brain settings." >&2
+  exit 1
+fi
+echo "Seeding BrainSetting defaults for tenant ${SOMABRAIN_DEFAULT_TENANT}..."
+python3 manage.py init_brain_settings --tenant "${SOMABRAIN_DEFAULT_TENANT}" || {
+  echo "ERROR: init_brain_settings failed; refusing to start." >&2
+  exit 1
+}
+
 # Collect static files only when explicitly requested.
 if [ "${SOMABRAIN_COLLECTSTATIC:?set SOMABRAIN_COLLECTSTATIC}" = "1" ]; then
   python3 manage.py collectstatic --noinput

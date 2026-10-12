@@ -133,3 +133,9 @@ Before large edits, claim. Release when done.
 | somabrain/CLAUDE.md somabrain/AGENT.md somabrain/docs/VIBE_RULES.md | MiMoCode-somabrain | COG-LAW-DOCS | 2026-10-12T15:40:00Z | ACTIVE |
 | somabrain/somabrain/services/milvus_ann.py somabrain/somabrain/services/ann.py somabrain/tests/integration/test_milvus_integration.py somabrain/tests/unit/test_wave_a_fail_closed.py | MiMoCode-somabrain | B29 HARD-DELETE: remove SomaBrain direct-to-Milvus write lane (MilvusAnnIndex); SFM is sole Milvus writer | 2026-10-12T16:05:00Z | ACTIVE |
 | somabrain/somabrain/bootstrap/core_singletons.py somabrain/somabrain/admin/brain/fnom.py | MiMoCode-somabrain | B29: delete create_fnom_memory Milvus/Postgres bypass; FNOM = MemoryClient only | 2026-10-12T16:30:00Z | ACTIVE |
+| somabrain/db/outbox.py tests/e2e/test_outbox_zero_loss.py | MiMoCode-wave5-temporal | WAVE5 outbox 4xx dead-letter matcher + zero-loss chaos tests | 2026-10-12T22:30:00Z | ACTIVE |
+
+| path/prefix | agent | task | started_at | status |
+|---|---|---|---|---|
+| infra/standalone/docker-entrypoint.sh somabrain/management/commands/init_brain_settings.py | MiMoCode-wave2-bootstrap | WAVE 2: entrypoint seeds BrainSetting with explicit --tenant matching SOMABRAIN_DEFAULT_TENANT | 2026-10-12T23:30:00Z | ACTIVE |
+| somabrain/ infra/standalone/ infra/ops/opa/ tests/e2e/ docs/plans/a2a/ | MiMoCode-law-enforcement | LAW CLEANUP: hard-delete env-config, hardcoded URLs, shims/fakes on uncommitted diff + untracked files | 2026-10-12T19:49:06Z | DONE |

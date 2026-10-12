@@ -210,6 +210,10 @@ def get_runtime_secrets() -> dict:
     except SecretNotFound:
         pass
     data["memory_http_token"] = get_runtime_secret("memory_http_token")
+    try:
+        data["admin_token"] = get_runtime_secret("admin_token")
+    except Exception:
+        pass
     return data
 
 
@@ -224,6 +228,9 @@ def get_runtime_secret(key: str) -> Any:
     value from one authority is the point: two independently seeded tokens is
     exactly the 401 this caused. Everything else stays on this service's own
     path.
+
+    ``admin_token`` is the dedicated admin credential (``somabrain_admin_token``).
+    It is NOT the shared memory token — require_admin_auth refuses that one.
     """
     if key in ("memory_http_token", "api_token", "soma_api_token"):
         # ONE authority (vault_client docstring): the agent and SFM share
@@ -231,6 +238,8 @@ def get_runtime_secret(key: str) -> Any:
         # ``api_token`` is exactly the 401 caused by two independently seeded
         # credentials — never invent a second key.
         return get_secret(SHARED_CREDENTIALS_PATH, MEMORY_HTTP_TOKEN_KEY)
+    if key == "admin_token":
+        return get_secret(SHARED_CREDENTIALS_PATH, ADMIN_TOKEN_KEY)
     return get_secret("somabrain/runtime", key)
 
 
@@ -252,6 +261,7 @@ def get_public_key(name: str) -> str:
 # Path form here is "mount/relative" as _split_secret_path expects.
 SHARED_CREDENTIALS_PATH = "secret/agent/credentials"
 MEMORY_HTTP_TOKEN_KEY = "somabrain_memory_http_token"
+ADMIN_TOKEN_KEY = "somabrain_admin_token"
 
 VAULT_PATHS = {
     "jwt_secret": "somabrain/auth",

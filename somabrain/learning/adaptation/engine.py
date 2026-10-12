@@ -599,19 +599,6 @@ class AdaptationEngine:
         self._feedback_count = state.get("feedback_count", 0)
         self._lr = state.get("learning_rate", self._base_lr)
 
-    def optimize_hyperparameters(self, search_space: dict, n_trials: int = 10) -> dict:
-        """Execute optimize hyperparameters."""
-
-        lr_opts, tau_opts = (
-            list(search_space.get("learning_rate", [self._base_lr])),
-            list(search_space.get("tau", [self._retrieval.tau])),
-        )
-        return {"learning_rate": float(lr_opts[0]), "tau": float(tau_opts[0])}
-
-    def transfer_parameters(self, source_task: str, target_task: str) -> None:
-        """Execute transfer parameters."""
-        self._task_type = str(target_task)
-
     def set_curriculum_stage(self, stage: str) -> None:
         """Set curriculum stage."""
 

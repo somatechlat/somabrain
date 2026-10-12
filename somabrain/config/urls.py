@@ -280,7 +280,12 @@ def health_view(request):
     def check_sfm():
         """Execute check sfm."""
 
-        url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL")
+        url = getattr(settings, "SOMA_FRACTAL_MEMORY_URL", "") or ""
+        if not url:
+            # Managed setting (BrainSetting memory_http_endpoint), not ENV.
+            from somabrain.core.infrastructure_defs import get_memory_http_endpoint
+
+            url = get_memory_http_endpoint() or ""
         if not url:
             return {"configured": False}
         with httpx.Client(timeout=3) as c:

@@ -1,8 +1,6 @@
 package soma.policy
 
-# Development policy: allow all. DO NOT use in production.
-default allow = true
+# FAIL-CLOSED. This tree previously shipped `default allow = true` (dev
+# "allow all") — a latent bypass if mounted. Enterprise law: default deny.
 
-allow {
-  true
-}
+default allow = false
