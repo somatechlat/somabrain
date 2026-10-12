@@ -23,6 +23,7 @@ from somabrain.api.auth import api_key_auth
 from somabrain.api.endpoints.memory import (
     RecallRequest,
     forget_memory,
+    get_memory,
     recall_memory,
 )
 from somabrain.api.endpoints.memory_remember import (
@@ -63,3 +64,9 @@ async def recall_alias(request: HttpRequest, payload: RecallRequest):
 async def forget_alias(request: HttpRequest, payload: ForgetRequest):
     """Thin alias of ``POST /api/memory/forget``."""
     return await forget_memory(request, payload)
+
+
+@router.post("/get", auth=api_key_auth)
+async def get_alias(request: HttpRequest, payload: ForgetRequest):
+    """Thin alias of ``POST /api/memory/get`` (exact coord fetch)."""
+    return await get_memory(request, payload)

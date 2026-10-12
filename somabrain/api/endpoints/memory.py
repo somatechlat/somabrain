@@ -578,6 +578,52 @@ async def forget_memory(request: HttpRequest, payload: ForgetRequest):
     }
 
 
+@router.post("/get", auth=api_key_auth)
+async def get_memory(request: HttpRequest, payload: ForgetRequest):
+    """Exact fetch of one memory by coordinate (seam ``MemoryGateway.get``).
+
+    Fail-closed: backend outage is an HTTP error. Missing coord is
+    ``found: false`` — never a silent empty success.
+    """
+    ctx = await get_tenant(request, getattr(settings, "SOMABRAIN_NAMESPACE"))
+    require_auth(request, settings)
+
+    claimed = (payload.tenant or payload.tenant_id or "").strip()
+    if claimed and claimed != ctx.tenant_id:
+        raise HttpError(
+            403,
+            "tenant mismatch: body tenant does not match the authenticated credential",
+        )
+    tenant = ctx.tenant_id
+    namespace = ctx.namespace
+
+    coord_list = _as_float_list(payload.coord)
+    if coord_list is None:
+        raise HttpError(400, f"invalid coord: {payload.coord!r}")
+    coord_str = f"{coord_list[0]},{coord_list[1]},{coord_list[2]}"
+
+    pool = _get_memory_pool()
+    if not pool:
+        raise HttpError(503, "Memory pool not available")
+
+    memsvc = MemoryService(pool, _resolve_namespace(tenant, namespace))
+    memsvc._reset_circuit_if_needed()
+    try:
+        mem = memsvc.fetch_by_coord(tuple(coord_list))
+    except (httpx.HTTPError, MemoryServiceError, RuntimeError) as exc:
+        raise _map_memory_error(exc) from exc
+    except Exception as exc:
+        logger.exception("get failed for coord=%s: %s", coord_str, exc)
+        raise HttpError(500, f"get failed: {exc}") from exc
+
+    return {
+        "found": mem is not None,
+        "coord": coord_str,
+        "tenant": tenant,
+        "memory": mem,
+    }
+
+
 @router.get("/metrics", auth=api_key_auth)
 def memory_metrics(
     request: HttpRequest, tenant: str | None = None, namespace: str | None = None

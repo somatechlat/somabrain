@@ -4,3 +4,9 @@ services:
   somabrain_standalone_outbox_publisher:
     volumes:
       - ../../somabrain/memory/sfm_auth.py:/app/somabrain/memory/sfm_auth.py:ro
+  somabrain_standalone_app:
+    volumes:
+      - ../../somabrain/memory/sfm_auth.py:/app/somabrain/memory/sfm_auth.py:ro
+      - ../../somabrain/api/endpoints/memory.py:/app/somabrain/api/endpoints/memory.py:ro
+      - ../../somabrain/api/endpoints/memory_alias.py:/app/somabrain/api/endpoints/memory_alias.py:ro
+
